@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    * {
+        @apply focus-visible:outline-none;
+    }
+
+    :focus-visible {
+        @apply ring-2 ring-brand-500 ring-offset-2 ring-offset-white;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+}
