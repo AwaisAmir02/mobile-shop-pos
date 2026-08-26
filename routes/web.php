@@ -37,6 +37,8 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('expenses', 'expenses.index')->name('expenses.index')->middleware('shop.access:expenses');
         Volt::route('reports', 'reports.index')->name('reports.index')->middleware('shop.access:reports');
 
+        Volt::route('settings', 'settings.index')->name('settings.index')->middleware('shop.access:settings');
+
         Volt::route('roles', 'roles.index')->name('roles.index')->middleware('shop.access:users');
         Volt::route('users', 'users.index')->name('users.index')->middleware('shop.access:users');
     });
