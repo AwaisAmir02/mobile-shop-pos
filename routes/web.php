@@ -30,6 +30,9 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('sales/history', 'sales.history')->name('sales.history')->middleware('shop.access:sales');
         Volt::route('sales/{sale}', 'sales.show')->name('sales.show')->middleware('shop.access:sales');
 
+        Volt::route('udhaar', 'udhaar.index')->name('udhaar.index')->middleware('shop.access:udhaar');
+        Volt::route('udhaar/{customer}', 'udhaar.show')->name('udhaar.show')->middleware('shop.access:udhaar');
+
         Volt::route('balance-loads', 'balance-loads.create')->name('balance-loads.index')->middleware('shop.access:balance-loads');
         Volt::route('balance-loads/history', 'balance-loads.history')->name('balance-loads.history')->middleware('shop.access:balance-loads');
 

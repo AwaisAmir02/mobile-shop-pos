@@ -8,6 +8,7 @@ enum ShopScreen: string
     case Products = 'products';
     case Customers = 'customers';
     case Sales = 'sales';
+    case Udhaar = 'udhaar';
     case BalanceLoads = 'balance-loads';
     case WalletLoads = 'wallet-loads';
     case Expenses = 'expenses';
@@ -22,6 +23,7 @@ enum ShopScreen: string
             self::Products => 'Products',
             self::Customers => 'Customers',
             self::Sales => 'Sales',
+            self::Udhaar => 'Udhaar',
             self::BalanceLoads => 'Balance Loads',
             self::WalletLoads => 'Wallet Loads',
             self::Expenses => 'Expenses',
@@ -38,6 +40,7 @@ enum ShopScreen: string
             self::Products => 'products.index',
             self::Customers => 'customers.index',
             self::Sales => 'sales.index',
+            self::Udhaar => 'udhaar.index',
             self::BalanceLoads => 'balance-loads.index',
             self::WalletLoads => 'wallet-loads.index',
             self::Expenses => 'expenses.index',
