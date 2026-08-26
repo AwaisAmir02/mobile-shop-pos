@@ -6,6 +6,7 @@ enum ShopScreen: string
 {
     case Dashboard = 'dashboard';
     case Products = 'products';
+    case StockIns = 'stock-ins';
     case Customers = 'customers';
     case Sales = 'sales';
     case Udhaar = 'udhaar';
@@ -21,6 +22,7 @@ enum ShopScreen: string
         return match ($this) {
             self::Dashboard => 'Dashboard',
             self::Products => 'Products',
+            self::StockIns => 'Stock In',
             self::Customers => 'Customers',
             self::Sales => 'Sales',
             self::Udhaar => 'Udhaar',
@@ -38,6 +40,7 @@ enum ShopScreen: string
         return match ($this) {
             self::Dashboard => 'dashboard',
             self::Products => 'products.index',
+            self::StockIns => 'stock-ins.index',
             self::Customers => 'customers.index',
             self::Sales => 'sales.index',
             self::Udhaar => 'udhaar.index',

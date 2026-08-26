@@ -24,6 +24,9 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('products', 'products.index')->name('products.index')->middleware('shop.access:products');
 
+        Volt::route('stock-ins', 'stock-ins.create')->name('stock-ins.index')->middleware('shop.access:stock-ins');
+        Volt::route('stock-ins/history', 'stock-ins.history')->name('stock-ins.history')->middleware('shop.access:stock-ins');
+
         Volt::route('customers', 'customers.index')->name('customers.index')->middleware('shop.access:customers');
 
         Volt::route('sales', 'sales.create')->name('sales.index')->middleware('shop.access:sales');
