@@ -73,6 +73,7 @@ new #[Layout('layouts.app')] #[Title('Create Shop')] class extends Component
                 'name' => $this->userName,
                 'email' => $this->userEmail,
                 'password' => Hash::make($this->password),
+                'is_owner' => true,
             ]);
 
             $user->forceFill(['email_verified_at' => now()])->save();
@@ -116,7 +117,7 @@ new #[Layout('layouts.app')] #[Title('Create Shop')] class extends Component
             </div>
         </x-ui.card>
 
-        <x-ui.card title="Login Credentials" description="The shop's single login — they cannot create additional users.">
+        <x-ui.card title="Login Credentials" description="This becomes the shop's owner account, with full access. The owner can create additional staff logins and roles afterward.">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <x-ui.field label="Owner Name" name="userName" for="userName">
                     <x-ui.input wire:model="userName" id="userName" />

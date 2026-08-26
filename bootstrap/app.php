@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'super.admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
             'shop.user' => \App\Http\Middleware\EnsureShopUser::class,
+            'shop.access' => \App\Http\Middleware\EnsureShopScreenAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

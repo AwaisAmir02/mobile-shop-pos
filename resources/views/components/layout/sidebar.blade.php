@@ -1,19 +1,21 @@
 @php
-    $isSuperAdmin = auth()->user()?->is_super_admin;
+    $user = auth()->user();
+    $isSuperAdmin = $user?->is_super_admin;
 
     $navItems = $isSuperAdmin
         ? [
             ['label' => 'Shops', 'route' => 'admin.dashboard', 'icon' => 'building'],
         ]
-        : [
-            ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home'],
-            ['label' => 'Products', 'route' => 'products.index', 'icon' => 'cube'],
-            ['label' => 'Sales', 'route' => 'sales.index', 'icon' => 'cart'],
-            ['label' => 'Balance Loads', 'route' => 'balance-loads.index', 'icon' => 'signal'],
-            ['label' => 'Wallet Loads', 'route' => 'wallet-loads.index', 'icon' => 'wallet'],
-            ['label' => 'Expenses', 'route' => 'expenses.index', 'icon' => 'banknote'],
-            ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart'],
-        ];
+        : collect([
+            ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home', 'permission' => 'dashboard'],
+            ['label' => 'Products', 'route' => 'products.index', 'icon' => 'cube', 'permission' => 'products'],
+            ['label' => 'Sales', 'route' => 'sales.index', 'icon' => 'cart', 'permission' => 'sales'],
+            ['label' => 'Balance Loads', 'route' => 'balance-loads.index', 'icon' => 'signal', 'permission' => 'balance-loads'],
+            ['label' => 'Wallet Loads', 'route' => 'wallet-loads.index', 'icon' => 'wallet', 'permission' => 'wallet-loads'],
+            ['label' => 'Expenses', 'route' => 'expenses.index', 'icon' => 'banknote', 'permission' => 'expenses'],
+            ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'permission' => 'reports'],
+            ['label' => 'Team', 'route' => 'users.index', 'icon' => 'users', 'permission' => 'users'],
+        ])->filter(fn ($item) => $user?->hasAccessTo($item['permission']))->all();
 
     $icons = [
         'home' => 'M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75',
@@ -24,6 +26,7 @@
         'wallet' => 'M21 12a2.25 2.25 0 00-2.25-2.25H15a1.5 1.5 0 00-1.5 1.5v1.5a1.5 1.5 0 001.5 1.5h3.75A2.25 2.25 0 0021 12zM21 12v4.5a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 16.5V7.5A2.25 2.25 0 015.25 5.25h11.25A2.25 2.25 0 0118.75 7.5v2.25',
         'chart' => 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C6.5 20.496 5.996 21 5.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z',
         'building' => 'M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21',
+        'users' => 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z',
     ];
 @endphp
 
@@ -47,7 +50,7 @@
 
     <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         @foreach ($navItems as $item)
-            @php $active = request()->routeIs($item['route']); @endphp
+            @php $active = request()->routeIs($item['route']) || ($item['route'] === 'users.index' && request()->routeIs('roles.index')); @endphp
             <a
                 href="{{ Route::has($item['route']) ? route($item['route']) : '#' }}"
                 wire:navigate

@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Demo Shop Owner',
             'email' => 'shop@example.com',
             'shop_id' => $shop->id,
+            'is_owner' => true,
         ]);
 
         User::factory()->create([

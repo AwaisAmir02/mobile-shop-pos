@@ -9,29 +9,36 @@ Route::get('/', function () {
         return redirect()->route('login');
     }
 
-    return redirect()->route(Auth::user()->is_super_admin ? 'admin.dashboard' : 'dashboard');
+    if (Auth::user()->is_super_admin) {
+        return redirect()->route('admin.dashboard');
+    }
+
+    return redirect()->route(Auth::user()->firstAccessibleScreenRouteName() ?? 'profile');
 });
 
 Route::middleware(['auth'])->group(function () {
     Route::view('profile', 'profile')->name('profile');
 
     Route::middleware('shop.user')->group(function () {
-        Route::view('dashboard', 'dashboard')->name('dashboard');
+        Route::view('dashboard', 'dashboard')->name('dashboard')->middleware('shop.access:dashboard');
 
-        Volt::route('products', 'products.index')->name('products.index');
+        Volt::route('products', 'products.index')->name('products.index')->middleware('shop.access:products');
 
-        Volt::route('sales', 'sales.create')->name('sales.index');
-        Volt::route('sales/history', 'sales.history')->name('sales.history');
-        Volt::route('sales/{sale}', 'sales.show')->name('sales.show');
+        Volt::route('sales', 'sales.create')->name('sales.index')->middleware('shop.access:sales');
+        Volt::route('sales/history', 'sales.history')->name('sales.history')->middleware('shop.access:sales');
+        Volt::route('sales/{sale}', 'sales.show')->name('sales.show')->middleware('shop.access:sales');
 
-        Volt::route('balance-loads', 'balance-loads.create')->name('balance-loads.index');
-        Volt::route('balance-loads/history', 'balance-loads.history')->name('balance-loads.history');
+        Volt::route('balance-loads', 'balance-loads.create')->name('balance-loads.index')->middleware('shop.access:balance-loads');
+        Volt::route('balance-loads/history', 'balance-loads.history')->name('balance-loads.history')->middleware('shop.access:balance-loads');
 
-        Volt::route('wallet-loads', 'wallet-loads.create')->name('wallet-loads.index');
-        Volt::route('wallet-loads/history', 'wallet-loads.history')->name('wallet-loads.history');
+        Volt::route('wallet-loads', 'wallet-loads.create')->name('wallet-loads.index')->middleware('shop.access:wallet-loads');
+        Volt::route('wallet-loads/history', 'wallet-loads.history')->name('wallet-loads.history')->middleware('shop.access:wallet-loads');
 
-        Volt::route('expenses', 'expenses.index')->name('expenses.index');
-        Volt::route('reports', 'reports.index')->name('reports.index');
+        Volt::route('expenses', 'expenses.index')->name('expenses.index')->middleware('shop.access:expenses');
+        Volt::route('reports', 'reports.index')->name('reports.index')->middleware('shop.access:reports');
+
+        Volt::route('roles', 'roles.index')->name('roles.index')->middleware('shop.access:users');
+        Volt::route('users', 'users.index')->name('users.index')->middleware('shop.access:users');
     });
 
     Route::middleware('super.admin')->prefix('admin')->name('admin.')->group(function () {
