@@ -10,6 +10,8 @@ class BalanceLoad extends Model
 {
     use BelongsToShop;
 
+    public const NETWORKS = ['Jazz', 'Zong', 'Telenor', 'Ufone', 'Other'];
+
     protected $fillable = [
         'shop_id',
         'user_id',

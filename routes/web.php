@@ -35,6 +35,9 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('wallet-loads/history', 'wallet-loads.history')->name('wallet-loads.history')->middleware('shop.access:wallet-loads');
 
         Volt::route('expenses', 'expenses.index')->name('expenses.index')->middleware('shop.access:expenses');
+
+        Volt::route('sim-management', 'sim-management.index')->name('sim-management.index')->middleware('shop.access:sim-management');
+
         Volt::route('reports', 'reports.index')->name('reports.index')->middleware('shop.access:reports');
 
         Volt::route('settings', 'settings.index')->name('settings.index')->middleware('shop.access:settings');

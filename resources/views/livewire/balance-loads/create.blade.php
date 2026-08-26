@@ -13,8 +13,6 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
 {
     use Toasts;
 
-    public const NETWORKS = ['Jazz', 'Zong', 'Telenor', 'Ufone', 'Other'];
-
     public string $networkChoice = 'Jazz';
     public string $customNetwork = '';
     public string $phoneNumber = '';
@@ -32,7 +30,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
     public function save(): void
     {
         $rules = [
-            'networkChoice' => ['required', 'in:'.implode(',', self::NETWORKS)],
+            'networkChoice' => ['required', 'in:'.implode(',', BalanceLoad::NETWORKS)],
             'phoneNumber' => ['nullable', 'string', 'max:20'],
             'amount' => ['required', 'numeric', 'min:1'],
         ];
@@ -112,7 +110,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                 <form wire:submit="save" class="space-y-5">
                     <x-ui.field label="Network" name="networkChoice" for="networkChoice">
                         <x-ui.select wire:model.live="networkChoice" id="networkChoice">
-                            @foreach (self::NETWORKS as $network)
+                            @foreach (BalanceLoad::NETWORKS as $network)
                                 <option value="{{ $network }}">{{ $network }}</option>
                             @endforeach
                         </x-ui.select>
