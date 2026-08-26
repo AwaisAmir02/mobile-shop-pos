@@ -88,7 +88,7 @@ class SecurityAuditTest extends TestCase
             ->set('name', 'Hijacked Name')
             ->set('price', '1')
             ->set('stock_quantity', '1')
-            ->set('category', 'cable')
+            ->set('category', 'Cable')
             ->call('save');
     }
 
@@ -104,7 +104,7 @@ class SecurityAuditTest extends TestCase
             ->set('name', 'Cable')
             ->set('price', '100')
             ->set('stock_quantity', '10')
-            ->set('category', 'cable')
+            ->set('category', 'Cable')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -117,7 +117,7 @@ class SecurityAuditTest extends TestCase
             ->set('name', 'Cable v2')
             ->set('price', '150')
             ->set('stock_quantity', '20')
-            ->set('category', 'cable')
+            ->set('category', 'Cable')
             ->call('save')
             ->assertHasNoErrors();
 

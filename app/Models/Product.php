@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\AccessoryCategory;
 use App\Enums\ProductType;
 use App\Enums\SimForm;
 use App\Enums\SimType;
@@ -53,9 +52,7 @@ class Product extends Model
                 ($this->details['brand'] ?? '').' '.($this->details['model'] ?? '')
             ).(($this->details['imei'] ?? null) ? ' · IMEI '.$this->details['imei'] : ''),
 
-            ProductType::Accessory => isset($this->details['category'])
-                ? AccessoryCategory::from($this->details['category'])->label()
-                : '',
+            ProductType::Accessory => $this->details['category'] ?? '',
 
             ProductType::Sim => collect([
                 isset($this->details['sim_type']) ? SimType::from($this->details['sim_type'])->label() : null,

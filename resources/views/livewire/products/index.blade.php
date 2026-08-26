@@ -1,10 +1,10 @@
 <?php
 
-use App\Enums\AccessoryCategory;
 use App\Enums\ProductType;
 use App\Enums\SimForm;
 use App\Enums\SimType;
 use App\Livewire\Concerns\Toasts;
+use App\Models\AccessoryCategoryOption;
 use App\Models\Product;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -37,6 +37,11 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public string $sim_form = 'physical';
     public string $network = '';
 
+    public function mount(): void
+    {
+        AccessoryCategoryOption::ensureDefaultsExist();
+    }
+
     public function updatingSearch(): void
     {
         $this->resetPage();
@@ -61,7 +66,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 ->latest()
                 ->paginate(10),
             'types' => ProductType::cases(),
-            'accessoryCategories' => AccessoryCategory::cases(),
+            'accessoryCategories' => AccessoryCategoryOption::query()->orderBy('name')->pluck('name'),
             'simTypes' => SimType::cases(),
             'simForms' => SimForm::cases(),
         ];
@@ -146,7 +151,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 'imei' => ['nullable', 'string', 'max:50'],
             ],
             ProductType::Accessory->value => $rules + [
-                'category' => ['required', Rule::enum(AccessoryCategory::class)],
+                'category' => ['required', 'string', 'max:255', Rule::exists('accessory_category_options', 'name')->where('shop_id', auth()->user()->shop_id)],
             ],
             ProductType::Sim->value => $rules + [
                 'sim_type' => ['required', Rule::enum(SimType::class)],
@@ -312,7 +317,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                         <x-ui.select wire:model="category" id="category">
                             <option value="">Select a category</option>
                             @foreach ($accessoryCategories as $option)
-                                <option value="{{ $option->value }}">{{ $option->label() }}</option>
+                                <option value="{{ $option }}">{{ $option }}</option>
                             @endforeach
                         </x-ui.select>
                     </x-ui.field>

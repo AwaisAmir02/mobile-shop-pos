@@ -1,8 +1,10 @@
 <?php
 
 use App\Livewire\Concerns\Toasts;
+use App\Models\AccessoryCategoryOption;
 use App\Models\BalanceLoad;
 use App\Models\Network;
+use App\Models\Product;
 use App\Models\WalletLoad;
 use App\Models\WalletProvider;
 use Illuminate\Validation\Rule;
@@ -13,6 +15,10 @@ use Livewire\Volt\Component;
 new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 {
     use Toasts;
+
+    // Accessory Categories
+    public ?int $accessoryCategoryEditingId = null;
+    public string $accessoryCategoryName = '';
 
     // Wallet Providers
     public ?int $providerEditingId = null;
@@ -25,9 +31,64 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public function with(): array
     {
         return [
+            'accessoryCategories' => AccessoryCategoryOption::query()->orderBy('name')->get(),
             'providers' => WalletProvider::query()->orderBy('name')->get(),
             'networks' => Network::query()->orderBy('name')->get(),
         ];
+    }
+
+    // ── Accessory Categories ─────────────────────────────────────────
+
+    public function openAccessoryCategoryCreate(): void
+    {
+        $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName']);
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'accessory-category-form');
+    }
+
+    public function openAccessoryCategoryEdit(int $id): void
+    {
+        $option = AccessoryCategoryOption::findOrFail($id);
+
+        $this->accessoryCategoryEditingId = $option->id;
+        $this->accessoryCategoryName = $option->name;
+
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'accessory-category-form');
+    }
+
+    public function saveAccessoryCategory(): void
+    {
+        $this->validate([
+            'accessoryCategoryName' => ['required', 'string', 'max:255', Rule::unique('accessory_category_options', 'name')->where('shop_id', auth()->user()->shop_id)->ignore($this->accessoryCategoryEditingId)],
+        ]);
+
+        $option = $this->accessoryCategoryEditingId ? AccessoryCategoryOption::findOrFail($this->accessoryCategoryEditingId) : new AccessoryCategoryOption;
+        $option->fill(['name' => $this->accessoryCategoryName])->save();
+
+        $this->toastSuccess($this->accessoryCategoryEditingId ? 'Accessory category updated.' : 'Accessory category added.');
+        $this->dispatch('close-modal', name: 'accessory-category-form');
+        $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName']);
+    }
+
+    public function deleteAccessoryCategory(int $id): void
+    {
+        $option = AccessoryCategoryOption::findOrFail($id);
+
+        if (Product::where('details->category', $option->name)->exists()) {
+            $this->toastError("Cannot delete \"{$option->name}\" — it's used on existing products.");
+
+            return;
+        }
+
+        $option->delete();
+        $this->toastSuccess('Accessory category deleted.');
+    }
+
+    public function closeAccessoryCategoryForm(): void
+    {
+        $this->dispatch('close-modal', name: 'accessory-category-form');
+        $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName']);
     }
 
     // ── Wallet Providers ─────────────────────────────────────────────
@@ -145,6 +206,52 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     </x-slot>
 
     <div class="space-y-6">
+        <x-ui.card title="Accessory Categories" description="Manage the categories available when adding an Accessory product.">
+            <x-slot name="actions">
+                <x-ui.button size="sm" wire:click="openAccessoryCategoryCreate">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Add Category
+                </x-ui.button>
+            </x-slot>
+
+            @if ($accessoryCategories->isEmpty())
+                <x-ui.empty-state
+                    title="No accessory categories yet"
+                    description="Add Case / Cover, Charger, Cable, or any other category your shop uses."
+                >
+                    <x-slot name="action">
+                        <x-ui.button wire:click="openAccessoryCategoryCreate">Add Category</x-ui.button>
+                    </x-slot>
+                </x-ui.empty-state>
+            @else
+                <x-ui.table :headers="['Category', '']">
+                    @foreach ($accessoryCategories as $option)
+                        <x-ui.table-row wire:key="accessory-category-{{ $option->id }}">
+                            <x-ui.table-cell class="font-medium text-slate-900">{{ $option->name }}</x-ui.table-cell>
+                            <x-ui.table-cell align="right">
+                                <div class="flex justify-end gap-2">
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openAccessoryCategoryEdit({{ $option->id }})">
+                                        Edit
+                                    </x-ui.button>
+                                    <x-ui.button
+                                        size="sm"
+                                        variant="ghost"
+                                        wire:click="deleteAccessoryCategory({{ $option->id }})"
+                                        wire:confirm="Delete {{ $option->name }}?"
+                                        class="text-red-600 hover:bg-red-50"
+                                    >
+                                        Delete
+                                    </x-ui.button>
+                                </div>
+                            </x-ui.table-cell>
+                        </x-ui.table-row>
+                    @endforeach
+                </x-ui.table>
+            @endif
+        </x-ui.card>
+
         <x-ui.card title="Networks" description="Manage the networks available on the Balance Load screen.">
             <x-slot name="actions">
                 <x-ui.button size="sm" wire:click="openNetworkCreate">
@@ -237,6 +344,30 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             @endif
         </x-ui.card>
     </div>
+
+    <x-ui.modal name="accessory-category-form" max-width="sm">
+        <form wire:submit="saveAccessoryCategory" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">
+                {{ $accessoryCategoryEditingId ? 'Edit Accessory Category' : 'Add Accessory Category' }}
+            </h2>
+
+            <div class="mt-5">
+                <x-ui.field label="Category Name" name="accessoryCategoryName" for="accessoryCategoryName">
+                    <x-ui.input wire:model="accessoryCategoryName" id="accessoryCategoryName" placeholder="e.g. Charger" autofocus />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeAccessoryCategoryForm">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveAccessoryCategory">
+                    {{ $accessoryCategoryEditingId ? 'Save Changes' : 'Add Category' }}
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
 
     <x-ui.modal name="network-form" max-width="sm">
         <form wire:submit="saveNetwork" class="p-6">
