@@ -27,6 +27,9 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('balance-loads', 'balance-loads.create')->name('balance-loads.index');
         Volt::route('balance-loads/history', 'balance-loads.history')->name('balance-loads.history');
 
+        Volt::route('wallet-loads', 'wallet-loads.create')->name('wallet-loads.index');
+        Volt::route('wallet-loads/history', 'wallet-loads.history')->name('wallet-loads.history');
+
         Volt::route('expenses', 'expenses.index')->name('expenses.index');
         Volt::route('reports', 'reports.index')->name('reports.index');
     });
