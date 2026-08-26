@@ -13,7 +13,7 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
 
     public function mount(Sale $sale): void
     {
-        $this->sale = $sale->load('items');
+        $this->sale = $sale->load(['items', 'customer']);
     }
 
     public function downloadInvoice(InvoicePdfService $pdf): StreamedResponse
@@ -52,6 +52,15 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                     </div>
                 @endif
             </div>
+
+            @if ($sale->customer)
+                <div class="flex items-center justify-between border-b border-slate-100 py-4">
+                    <p class="text-sm text-slate-500">Customer</p>
+                    <a href="{{ route('customers.show', $sale->customer) }}" wire:navigate class="font-medium text-brand-700 hover:text-brand-800">
+                        {{ $sale->customer->name }}
+                    </a>
+                </div>
+            @endif
 
             <div class="mt-4 divide-y divide-slate-100">
                 @foreach ($sale->items as $item)

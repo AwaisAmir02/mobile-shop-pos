@@ -30,6 +30,7 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
         return [
             'sales' => Sale::query()
                 ->withCount('items')
+                ->with('customer')
                 ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
                 ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
                 ->latest()
@@ -88,7 +89,7 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
             </x-slot>
         </x-ui.empty-state>
     @else
-        <x-ui.table :headers="['Invoice', 'Date', 'Items', 'Discount', 'Total', '']">
+        <x-ui.table :headers="['Invoice', 'Date', 'Customer', 'Items', 'Discount', 'Total', '']">
             @foreach ($sales as $sale)
                 <x-ui.table-row wire:key="sale-{{ $sale->id }}">
                     <x-ui.table-cell class="font-medium text-slate-900">
@@ -97,6 +98,7 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
                         </a>
                     </x-ui.table-cell>
                     <x-ui.table-cell>{{ $sale->created_at->format('d M Y, h:i A') }}</x-ui.table-cell>
+                    <x-ui.table-cell>{{ $sale->customer?->name ?? 'Walk-in' }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $sale->items_count }}</x-ui.table-cell>
                     <x-ui.table-cell>
                         {{ $sale->discount_amount > 0 ? 'Rs '.number_format($sale->discount_amount, 2) : '—' }}

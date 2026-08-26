@@ -22,6 +22,11 @@ class Customer extends Model
         return $this->hasMany(UdhaarTransaction::class)->orderBy('transaction_date')->orderBy('id');
     }
 
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class)->latest();
+    }
+
     public function udhaarBalance(): float
     {
         return $this->udhaarTransactions
@@ -46,6 +51,6 @@ class Customer extends Model
      */
     public function hasFinancialHistory(): bool
     {
-        return $this->udhaarTransactions()->exists();
+        return $this->udhaarTransactions()->exists() || $this->sales()->exists();
     }
 }

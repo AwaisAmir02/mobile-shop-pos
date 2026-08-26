@@ -132,11 +132,18 @@ new #[Layout('layouts.app')] #[Title('Customers')] class extends Component
         <x-ui.table :headers="['Name', 'Phone', 'Address', '']">
             @foreach ($customers as $customer)
                 <x-ui.table-row wire:key="customer-{{ $customer->id }}">
-                    <x-ui.table-cell class="font-medium text-slate-900">{{ $customer->name }}</x-ui.table-cell>
+                    <x-ui.table-cell class="font-medium text-slate-900">
+                        <a href="{{ route('customers.show', $customer) }}" wire:navigate class="hover:text-brand-700">
+                            {{ $customer->name }}
+                        </a>
+                    </x-ui.table-cell>
                     <x-ui.table-cell>{{ $customer->phone ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $customer->address ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell align="right">
                         <div class="flex justify-end gap-2">
+                            <a href="{{ route('customers.show', $customer) }}" wire:navigate>
+                                <x-ui.button size="sm" variant="ghost">View</x-ui.button>
+                            </a>
                             <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $customer->id }})">
                                 Edit
                             </x-ui.button>

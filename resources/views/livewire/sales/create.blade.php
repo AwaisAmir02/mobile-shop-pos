@@ -1,10 +1,12 @@
 <?php
 
 use App\Livewire\Concerns\Toasts;
+use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -17,6 +19,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
     public string $search = '';
     public array $cart = [];
     public string $invoiceDiscount = '0';
+    public string $customerId = '';
 
     public function with(): array
     {
@@ -29,6 +32,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                     ->limit(8)
                     ->get()
                 : collect(),
+            'customers' => Customer::query()->orderBy('name')->get(),
         ];
     }
 
@@ -95,7 +99,10 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             return;
         }
 
-        $rules = ['invoiceDiscount' => ['required', 'numeric', 'min:0']];
+        $rules = [
+            'invoiceDiscount' => ['required', 'numeric', 'min:0'],
+            'customerId' => ['nullable', 'integer', Rule::exists('customers', 'id')->where('shop_id', auth()->user()->shop_id)],
+        ];
 
         foreach ($this->cart as $id => $item) {
             $rules["cart.$id.quantity"] = ['required', 'integer', 'min:1'];
@@ -126,6 +133,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
             $sale = Sale::create([
                 'user_id' => Auth::id(),
+                'customer_id' => $this->customerId !== '' ? $this->customerId : null,
                 'subtotal' => $subtotal,
                 'discount_amount' => $invoiceDiscount,
                 'total' => $subtotal - $invoiceDiscount,
@@ -275,6 +283,15 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
                     <x-ui.field label="Invoice Discount" name="invoiceDiscount" for="invoiceDiscount">
                         <x-ui.input wire:model.live="invoiceDiscount" id="invoiceDiscount" type="number" min="0" step="0.01" />
+                    </x-ui.field>
+
+                    <x-ui.field label="Customer" name="customerId" for="customerId" help="Optional — leave blank for a walk-in sale">
+                        <x-ui.select wire:model="customerId" id="customerId">
+                            <option value="">Walk-in (no customer)</option>
+                            @foreach ($customers as $customer)
+                                <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                            @endforeach
+                        </x-ui.select>
                     </x-ui.field>
 
                     <div class="border-t border-slate-100 pt-3">
