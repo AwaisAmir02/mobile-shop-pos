@@ -8,6 +8,7 @@ use App\Enums\SimForm;
 use App\Enums\SimType;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Product extends Model
 {
@@ -18,12 +19,24 @@ class Product extends Model
     protected $fillable = [
         'shop_id',
         'type',
+        'category_id',
+        'sub_category_id',
         'name',
         'price',
         'cost_price',
         'stock_quantity',
         'details',
     ];
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function subCategory(): BelongsTo
+    {
+        return $this->belongsTo(SubCategory::class);
+    }
 
     protected function casts(): array
     {

@@ -23,8 +23,8 @@ class SettingsWalletProviderTest extends TestCase
         $this->actingAs($owner);
 
         Livewire::test('settings.index')
-            ->set('name', 'SadaPay')
-            ->call('save')
+            ->set('providerName', 'SadaPay')
+            ->call('saveProvider')
             ->assertHasNoErrors();
 
         $this->assertTrue(WalletProvider::where('name', 'SadaPay')->exists());
@@ -41,9 +41,9 @@ class SettingsWalletProviderTest extends TestCase
         $this->actingAs($owner);
 
         Livewire::test('settings.index')
-            ->call('openEdit', $provider->id)
-            ->set('name', 'JazzCash Wallet')
-            ->call('save')
+            ->call('openProviderEdit', $provider->id)
+            ->set('providerName', 'JazzCash Wallet')
+            ->call('saveProvider')
             ->assertHasNoErrors();
 
         $this->assertSame('JazzCash Wallet', $provider->fresh()->name);
@@ -65,7 +65,7 @@ class SettingsWalletProviderTest extends TestCase
 
         $this->actingAs($owner);
 
-        Livewire::test('settings.index')->call('delete', $provider->id);
+        Livewire::test('settings.index')->call('deleteProvider', $provider->id);
 
         $this->assertNotNull($provider->fresh());
         $this->assertSame('JazzCash', WalletLoad::first()->provider);
@@ -79,7 +79,7 @@ class SettingsWalletProviderTest extends TestCase
 
         $this->actingAs($owner);
 
-        Livewire::test('settings.index')->call('delete', $provider->id);
+        Livewire::test('settings.index')->call('deleteProvider', $provider->id);
 
         $this->assertNull($provider->fresh());
     }

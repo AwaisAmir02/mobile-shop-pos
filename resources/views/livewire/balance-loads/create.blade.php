@@ -2,6 +2,7 @@
 
 use App\Livewire\Concerns\Toasts;
 use App\Models\BalanceLoad;
+use App\Models\Network;
 use App\Services\BalanceLoadReceiptPdfService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -13,45 +14,44 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
 {
     use Toasts;
 
-    public string $networkChoice = 'Jazz';
-    public string $customNetwork = '';
+    public string $networkChoice = '';
     public string $phoneNumber = '';
     public string $amount = '';
 
     public ?int $lastLoadId = null;
 
+    public function mount(): void
+    {
+        Network::ensureDefaultsExist();
+        $this->networkChoice = Network::query()->orderBy('name')->value('name') ?? '';
+    }
+
     public function with(): array
     {
         return [
+            'networks' => Network::query()->orderBy('name')->pluck('name'),
             'lastLoad' => $this->lastLoadId ? BalanceLoad::find($this->lastLoadId) : null,
         ];
     }
 
     public function save(): void
     {
-        $rules = [
-            'networkChoice' => ['required', 'in:'.implode(',', BalanceLoad::NETWORKS)],
+        $this->validate([
+            'networkChoice' => ['required', 'string', 'max:255'],
             'phoneNumber' => ['nullable', 'string', 'max:20'],
             'amount' => ['required', 'numeric', 'min:1'],
-        ];
-
-        if ($this->networkChoice === 'Other') {
-            $rules['customNetwork'] = ['required', 'string', 'max:255'];
-        }
-
-        $this->validate($rules);
+        ]);
 
         $load = BalanceLoad::create([
             'user_id' => Auth::id(),
-            'network' => $this->networkChoice === 'Other' ? $this->customNetwork : $this->networkChoice,
+            'network' => $this->networkChoice,
             'phone_number' => $this->phoneNumber !== '' ? $this->phoneNumber : null,
             'amount' => $this->amount,
         ]);
 
         $this->toastSuccess('Balance loaded.');
         $this->lastLoadId = $load->id;
-        $this->reset(['networkChoice', 'customNetwork', 'phoneNumber', 'amount']);
-        $this->networkChoice = 'Jazz';
+        $this->reset(['phoneNumber', 'amount']);
     }
 
     public function logAnother(): void
@@ -109,18 +109,12 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
             <x-ui.card title="New Balance Load">
                 <form wire:submit="save" class="space-y-5">
                     <x-ui.field label="Network" name="networkChoice" for="networkChoice">
-                        <x-ui.select wire:model.live="networkChoice" id="networkChoice">
-                            @foreach (BalanceLoad::NETWORKS as $network)
+                        <x-ui.select wire:model="networkChoice" id="networkChoice">
+                            @foreach ($networks as $network)
                                 <option value="{{ $network }}">{{ $network }}</option>
                             @endforeach
                         </x-ui.select>
                     </x-ui.field>
-
-                    @if ($networkChoice === 'Other')
-                        <x-ui.field label="Network Name" name="customNetwork" for="customNetwork">
-                            <x-ui.input wire:model="customNetwork" id="customNetwork" autofocus />
-                        </x-ui.field>
-                    @endif
 
                     <x-ui.field label="Phone Number" name="phoneNumber" for="phoneNumber" help="Optional">
                         <x-ui.input wire:model="phoneNumber" id="phoneNumber" type="tel" placeholder="03xx-xxxxxxx" />
