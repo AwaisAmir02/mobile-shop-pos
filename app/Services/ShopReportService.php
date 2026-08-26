@@ -8,6 +8,7 @@ use App\Models\Expense;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Shop;
+use App\Models\WalletLoad;
 use Carbon\Carbon;
 
 class ShopReportService
@@ -39,6 +40,10 @@ class ShopReportService
             ->whereBetween('created_at', [$start, $end])
             ->sum('amount');
 
+        $totalWalletLoaded = (float) WalletLoad::where('shop_id', $shop->id)
+            ->whereBetween('created_at', [$start, $end])
+            ->sum('amount');
+
         $totalExpenses = (float) Expense::where('shop_id', $shop->id)
             ->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
             ->sum('amount');
@@ -47,9 +52,50 @@ class ShopReportService
             'totalRevenue' => $totalRevenue,
             'totalDiscount' => $invoiceDiscount + $itemDiscount,
             'categories' => $categories,
+            'totalItemsSold' => (int) $categories->sum('units'),
             'totalBalanceLoaded' => $totalBalanceLoaded,
+            'totalWalletLoaded' => $totalWalletLoaded,
             'totalExpenses' => $totalExpenses,
             'netSummary' => $totalRevenue - $totalExpenses,
         ];
+    }
+
+    public function revenueTrend(Shop $shop, string $periodType): array
+    {
+        $buckets = match ($periodType) {
+            'year' => 6,
+            'month' => 12,
+            default => 14,
+        };
+
+        $points = [];
+
+        for ($i = $buckets - 1; $i >= 0; $i--) {
+            [$start, $end, $label] = match ($periodType) {
+                'year' => [
+                    now()->subYears($i)->startOfYear(),
+                    now()->subYears($i)->endOfYear(),
+                    now()->subYears($i)->format('Y'),
+                ],
+                'month' => [
+                    now()->subMonthsNoOverflow($i)->startOfMonth(),
+                    now()->subMonthsNoOverflow($i)->endOfMonth(),
+                    now()->subMonthsNoOverflow($i)->format('M Y'),
+                ],
+                default => [
+                    now()->subDays($i)->startOfDay(),
+                    now()->subDays($i)->endOfDay(),
+                    now()->subDays($i)->format('d M'),
+                ],
+            };
+
+            $revenue = (float) Sale::where('shop_id', $shop->id)
+                ->whereBetween('created_at', [$start, $end])
+                ->sum('total');
+
+            $points[] = ['label' => $label, 'value' => $revenue];
+        }
+
+        return $points;
     }
 }

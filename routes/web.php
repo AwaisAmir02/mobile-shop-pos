@@ -20,7 +20,7 @@ Route::middleware(['auth'])->group(function () {
     Route::view('profile', 'profile')->name('profile');
 
     Route::middleware('shop.user')->group(function () {
-        Route::view('dashboard', 'dashboard')->name('dashboard')->middleware('shop.access:dashboard');
+        Volt::route('dashboard', 'dashboard.index')->name('dashboard')->middleware('shop.access:dashboard');
 
         Volt::route('products', 'products.index')->name('products.index')->middleware('shop.access:products');
 
