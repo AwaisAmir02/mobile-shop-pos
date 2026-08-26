@@ -5,9 +5,7 @@ use App\Enums\ProductType;
 use App\Enums\SimForm;
 use App\Enums\SimType;
 use App\Livewire\Concerns\Toasts;
-use App\Models\Category;
 use App\Models\Product;
-use App\Models\SubCategory;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -24,8 +22,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public ?int $editingId = null;
 
     public string $type = 'mobile';
-    public ?int $categoryId = null;
-    public ?int $subCategoryId = null;
     public string $name = '';
     public string $price = '';
     public string $cost_price = '';
@@ -56,11 +52,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->resetErrorBag();
     }
 
-    public function updatedCategoryId(): void
-    {
-        $this->subCategoryId = null;
-    }
-
     public function with(): array
     {
         return [
@@ -73,10 +64,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             'accessoryCategories' => AccessoryCategory::cases(),
             'simTypes' => SimType::cases(),
             'simForms' => SimForm::cases(),
-            'categories' => Category::query()->orderBy('name')->get(),
-            'subCategories' => $this->categoryId
-                ? SubCategory::query()->where('category_id', $this->categoryId)->orderBy('name')->get()
-                : collect(),
         ];
     }
 
@@ -92,8 +79,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
         $this->editingId = $product->id;
         $this->type = $product->type->value;
-        $this->categoryId = $product->category_id;
-        $this->subCategoryId = $product->sub_category_id;
         $this->name = $product->name;
         $this->price = (string) $product->price;
         $this->cost_price = (string) $product->cost_price;
@@ -119,8 +104,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
         $product->fill([
             'type' => $this->type,
-            'category_id' => $this->categoryId,
-            'sub_category_id' => $this->subCategoryId,
             'name' => $this->name,
             'price' => $this->price,
             'cost_price' => $this->cost_price !== '' ? $this->cost_price : null,
@@ -150,8 +133,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     {
         $rules = [
             'type' => ['required', Rule::enum(ProductType::class)],
-            'categoryId' => ['nullable', Rule::exists('categories', 'id')->where('shop_id', auth()->user()->shop_id)],
-            'subCategoryId' => ['nullable', Rule::exists('sub_categories', 'id')->where('category_id', $this->categoryId)],
             'name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
@@ -199,7 +180,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     protected function resetForm(): void
     {
         $this->reset([
-            'editingId', 'categoryId', 'subCategoryId', 'name', 'price', 'cost_price',
+            'editingId', 'name', 'price', 'cost_price',
             'brand', 'model', 'imei', 'category', 'network',
         ]);
 
@@ -311,26 +292,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 <x-ui.field label="Product Name" name="name" for="name">
                     <x-ui.input wire:model="name" id="name" autofocus />
                 </x-ui.field>
-
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <x-ui.field label="Category" name="categoryId" for="categoryId" help="Optional">
-                        <x-ui.select wire:model.live="categoryId" id="categoryId">
-                            <option value="">No category</option>
-                            @foreach ($categories as $categoryOption)
-                                <option value="{{ $categoryOption->id }}">{{ $categoryOption->name }}</option>
-                            @endforeach
-                        </x-ui.select>
-                    </x-ui.field>
-
-                    <x-ui.field label="Sub-Category" name="subCategoryId" for="subCategoryId" help="Optional">
-                        <x-ui.select wire:model="subCategoryId" id="subCategoryId" :disabled="! $categoryId">
-                            <option value="">No sub-category</option>
-                            @foreach ($subCategories as $subCategoryOption)
-                                <option value="{{ $subCategoryOption->id }}">{{ $subCategoryOption->name }}</option>
-                            @endforeach
-                        </x-ui.select>
-                    </x-ui.field>
-                </div>
 
                 @if ($type === 'mobile')
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
