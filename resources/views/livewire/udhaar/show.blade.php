@@ -1,11 +1,10 @@
 <?php
 
-use App\Enums\UdhaarTransactionType;
+use App\Actions\CreateUdhaarTransaction;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\Models\UdhaarTransaction;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
@@ -63,21 +62,9 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 
     public function save(): void
     {
-        $this->validate([
-            'type' => ['required', Rule::in([UdhaarTransactionType::Given->value, UdhaarTransactionType::Repayment->value])],
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'transaction_date' => ['required', 'date', 'before_or_equal:today'],
-            'note' => ['nullable', 'string', 'max:255'],
-        ]);
+        $this->validate(CreateUdhaarTransaction::rules());
 
-        UdhaarTransaction::create([
-            'customer_id' => $this->customer->id,
-            'user_id' => Auth::id(),
-            'type' => $this->type,
-            'amount' => $this->amount,
-            'transaction_date' => $this->transaction_date,
-            'note' => $this->note !== '' ? $this->note : null,
-        ]);
+        CreateUdhaarTransaction::handle($this->customer, $this->type, $this->amount, $this->transaction_date, $this->note);
 
         $this->toastSuccess('Transaction recorded.');
         $this->dispatch('close-modal', name: 'transaction-form');
