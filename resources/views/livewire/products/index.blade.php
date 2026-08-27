@@ -85,10 +85,15 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 ->latest()
                 ->paginate(10),
             'types' => ProductType::cases(),
-            'accessoryCategories' => AccessoryCategoryOption::query()->orderBy('name')->get(),
-            'selectedAccessoryCategory' => $this->category !== ''
-                ? AccessoryCategoryOption::query()->where('name', $this->category)->first()
-                : null,
+            'accessoryCategoryOptions' => collect([
+                ['value' => '__create__', 'label' => 'New Category', 'image' => null, 'special' => true],
+            ])->concat(
+                AccessoryCategoryOption::query()->orderBy('name')->get()->map(fn (AccessoryCategoryOption $option) => [
+                    'value' => $option->name,
+                    'label' => $option->name,
+                    'image' => $option->imageUrl(),
+                ])
+            )->all(),
             'simTypes' => SimType::cases(),
             'simForms' => SimForm::cases(),
         ];
@@ -356,18 +361,12 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     </x-ui.field>
                 @elseif ($type === 'accessory')
                     <x-ui.field label="Accessory Category" name="category" for="category">
-                        <div class="flex items-center gap-3">
-                            <x-ui.select wire:model.live="category" id="category" class="flex-1">
-                                <option value="">Select a category</option>
-                                <option value="__create__">+ New Category</option>
-                                @foreach ($accessoryCategories as $option)
-                                    <option value="{{ $option->name }}">{{ $option->name }}</option>
-                                @endforeach
-                            </x-ui.select>
-                            @if ($selectedAccessoryCategory)
-                                <x-ui.thumbnail :src="$selectedAccessoryCategory->imageUrl()" :label="$selectedAccessoryCategory->name" />
-                            @endif
-                        </div>
+                        <x-ui.image-select
+                            wire-model="category"
+                            :options="$accessoryCategoryOptions"
+                            id="category"
+                            placeholder="Select a category"
+                        />
                     </x-ui.field>
                 @elseif ($type === 'sim')
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

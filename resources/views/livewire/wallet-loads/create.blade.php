@@ -29,7 +29,11 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
     public function with(): array
     {
         return [
-            'providers' => WalletProvider::query()->orderBy('name')->get(),
+            'providerOptions' => WalletProvider::query()->orderBy('name')->get()->map(fn (WalletProvider $provider) => [
+                'value' => $provider->name,
+                'label' => $provider->name,
+                'image' => $provider->imageUrl(),
+            ])->all(),
             'selectedProvider' => $this->provider !== ''
                 ? WalletProvider::query()->where('name', $this->provider)->first()
                 : null,
@@ -110,16 +114,12 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
             <x-ui.card title="New Wallet Load">
                 <form wire:submit="save" class="space-y-5">
                     <x-ui.field label="Wallet Provider" name="provider" for="provider">
-                        <div class="flex items-center gap-3">
-                            <x-ui.select wire:model.live="provider" id="provider" class="flex-1">
-                                @foreach ($providers as $option)
-                                    <option value="{{ $option->name }}">{{ $option->name }}</option>
-                                @endforeach
-                            </x-ui.select>
-                            @if ($selectedProvider)
-                                <x-ui.thumbnail :src="$selectedProvider->imageUrl()" :label="$selectedProvider->name" />
-                            @endif
-                        </div>
+                        <x-ui.image-select
+                            wire-model="provider"
+                            :options="$providerOptions"
+                            id="provider"
+                            placeholder="Select a provider"
+                        />
                     </x-ui.field>
 
                     <x-ui.field label="Account / Mobile Number" name="accountNumber" for="accountNumber">

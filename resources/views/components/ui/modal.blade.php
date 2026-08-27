@@ -62,7 +62,7 @@
 
     <div
         x-show="show"
-        class="mb-6 transform overflow-hidden rounded-xl bg-white shadow-xl transition-all sm:mx-auto sm:w-full {{ $maxWidth }}"
+        class="mb-6 transform rounded-xl bg-white shadow-xl transition-all sm:mx-auto sm:w-full {{ $maxWidth }}"
         x-transition:enter="ease-out duration-300"
         x-transition:enter-start="translate-y-4 opacity-0 sm:translate-y-0 sm:scale-95"
         x-transition:enter-end="translate-y-0 opacity-100 sm:scale-100"

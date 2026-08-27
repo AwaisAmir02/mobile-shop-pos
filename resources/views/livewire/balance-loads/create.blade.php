@@ -29,7 +29,12 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
     public function with(): array
     {
         return [
-            'networks' => Network::query()->orderBy('name')->get(),
+            'networkOptions' => Network::query()->orderBy('name')->get()->map(fn (Network $network) => [
+                'value' => $network->name,
+                'label' => $network->name,
+                'image' => $network->imageUrl(),
+                'color' => $network->color,
+            ])->all(),
             'selectedNetwork' => $this->networkChoice !== ''
                 ? Network::query()->where('name', $this->networkChoice)->first()
                 : null,
@@ -113,17 +118,13 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
             <x-ui.card title="New Balance Load">
                 <form wire:submit="save" class="space-y-5">
                     <x-ui.field label="Network" name="networkChoice" for="networkChoice">
-                        <div class="flex items-center gap-3">
-                            <x-ui.select wire:model.live="networkChoice" id="networkChoice" class="flex-1">
-                                @foreach ($networks as $network)
-                                    <option value="{{ $network->name }}">{{ $network->name }}</option>
-                                @endforeach
-                            </x-ui.select>
-                            @if ($selectedNetwork)
-                                <x-ui.thumbnail :src="$selectedNetwork->imageUrl()" :label="$selectedNetwork->name" :color="$selectedNetwork->color" />
-                                <x-ui.color-dot :color="$selectedNetwork->color" />
-                            @endif
-                        </div>
+                        <x-ui.image-select
+                            wire-model="networkChoice"
+                            :options="$networkOptions"
+                            id="networkChoice"
+                            placeholder="Select a network"
+                            with-color
+                        />
                     </x-ui.field>
 
                     <x-ui.field label="Phone Number" name="phoneNumber" for="phoneNumber" help="Optional">

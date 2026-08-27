@@ -112,13 +112,17 @@ class SettingsAccessoryCategoryTest extends TestCase
 
         Livewire::test('products.index')
             ->set('type', 'accessory')
-            ->assertSee('Case / Cover')
-            ->assertSee('Charger')
-            ->assertSee('Cable')
-            ->assertSee('Screen Protector')
-            ->assertSee('Earphones')
-            ->assertSee('Power Bank')
-            ->assertSee('Other');
+            ->assertViewHas('accessoryCategoryOptions', function ($options) {
+                $labels = collect($options)->pluck('label');
+
+                return $labels->contains('Case / Cover')
+                    && $labels->contains('Charger')
+                    && $labels->contains('Cable')
+                    && $labels->contains('Screen Protector')
+                    && $labels->contains('Earphones')
+                    && $labels->contains('Power Bank')
+                    && $labels->contains('Other');
+            });
 
         $this->assertSame(7, AccessoryCategoryOption::count());
     }
