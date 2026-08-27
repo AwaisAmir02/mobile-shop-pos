@@ -1,9 +1,11 @@
 <?php
 
 use App\Enums\PlanType;
+use App\Enums\ShopScreen;
 use App\Enums\SubscriptionStatus;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Shop;
+use App\Models\UdhaarTransaction;
 use App\Services\ShopReportService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -132,6 +134,29 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $this->periodType = $type;
     }
 
+    public function toggleUserActive(int $userId): void
+    {
+        $user = $this->shop->users()->findOrFail($userId);
+
+        $user->update(['is_active' => ! $user->is_active]);
+
+        $this->toastSuccess($user->is_active ? "{$user->name} activated." : "{$user->name} deactivated.");
+    }
+
+    public function toggleScreen(string $screen): void
+    {
+        $disabled = $this->shop->disabled_screens ?? [];
+
+        $disabled = in_array($screen, $disabled, true)
+            ? array_values(array_diff($disabled, [$screen]))
+            : [...$disabled, $screen];
+
+        $this->shop->update(['disabled_screens' => $disabled]);
+        $this->shop->refresh();
+
+        $this->toastSuccess('Module access updated.');
+    }
+
     protected function periodRange(): array
     {
         if ($this->periodType === 'month') {
@@ -156,11 +181,27 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
     {
         [$start, $end] = $this->periodRange();
 
+        $udhaarBalances = UdhaarTransaction::where('shop_id', $this->shop->id)
+            ->selectRaw("SUM(
+                CASE type
+                    WHEN 'given' THEN amount
+                    WHEN 'repayment_reversal' THEN amount
+                    WHEN 'repayment' THEN -amount
+                    WHEN 'given_reversal' THEN -amount
+                    ELSE 0
+                END
+            ) as balance")
+            ->value('balance');
+
         return [
             'periodLabel' => $this->periodLabel(),
             'productCount' => $this->shop->products()->count(),
+            'customerCount' => $this->shop->customers()->count(),
+            'udhaarOutstanding' => max(0.0, (float) $udhaarBalances),
             'loginEmail' => $this->shop->user?->email,
             'expectedRenewalDate' => $this->shop->expectedRenewalDate(),
+            'users' => $this->shop->users()->with('role')->orderByDesc('is_owner')->orderBy('name')->get(),
+            'screens' => ShopScreen::cases(),
             ...$reports->summary($this->shop, $start, $end),
         ];
     }
@@ -262,6 +303,8 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         <div class="space-y-6">
             <x-ui.stat label="Subscription Status" :value="$shop->isSubscriptionActive() ? 'Active' : 'Inactive'" />
             <x-ui.stat label="Product Count" :value="$productCount" />
+            <x-ui.stat label="Customer Count" :value="$customerCount" />
+            <x-ui.stat label="Udhaar Outstanding" value="Rs {{ number_format($udhaarOutstanding, 2) }}" sub="Current, across all customers" />
             <x-ui.stat label="Login Email" :value="$loginEmail ?? 'N/A'" />
 
             <x-ui.card title="Reset Login Password" description="Sets a new password without needing the current one.">
@@ -284,7 +327,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         </div>
     </div>
 
-    <h2 class="mb-3 mt-8 text-sm font-semibold text-slate-700">Sales Activity</h2>
+    <h2 class="mb-3 mt-8 text-sm font-semibold text-slate-700">Shop Activity</h2>
 
     <div class="mb-6 flex flex-wrap items-end gap-4">
         <div>
@@ -326,11 +369,13 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         @endif
     </div>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <x-ui.stat label="Total Sales Revenue" value="Rs {{ number_format($totalRevenue, 2) }}" />
         <x-ui.stat label="Total Discount Given" value="Rs {{ number_format($totalDiscount, 2) }}" />
         <x-ui.stat label="Total Balance Loaded" value="Rs {{ number_format($totalBalanceLoaded, 2) }}" />
+        <x-ui.stat label="Total Wallet Loaded" value="Rs {{ number_format($totalWalletLoaded, 2) }}" />
         <x-ui.stat label="Total Expenses" value="Rs {{ number_format($totalExpenses, 2) }}" />
+        <x-ui.stat label="Stock-In Units" :value="number_format($totalStockInUnits)" />
     </div>
 
     <div class="mt-4 rounded-xl border border-brand-200 bg-brand-50 px-5 py-4">
@@ -342,4 +387,67 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             <p class="text-display text-brand-900">Rs {{ number_format($netSummary, 2) }}</p>
         </div>
     </div>
+
+    <x-ui.card title="Team" description="Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role." class="mt-8">
+        <x-ui.table :headers="['Name', 'Email', 'Role', 'Status', '']">
+            @foreach ($users as $user)
+                <x-ui.table-row wire:key="shop-user-{{ $user->id }}">
+                    <x-ui.table-cell class="font-medium text-slate-900">{{ $user->name }}</x-ui.table-cell>
+                    <x-ui.table-cell>{{ $user->email }}</x-ui.table-cell>
+                    <x-ui.table-cell>
+                        @if ($user->is_owner)
+                            <x-ui.badge variant="brand">Owner</x-ui.badge>
+                        @else
+                            {{ $user->role?->name ?? 'No role' }}
+                        @endif
+                    </x-ui.table-cell>
+                    <x-ui.table-cell>
+                        @if ($user->is_active)
+                            <x-ui.badge variant="success">Active</x-ui.badge>
+                        @else
+                            <x-ui.badge variant="danger">Deactivated</x-ui.badge>
+                        @endif
+                    </x-ui.table-cell>
+                    <x-ui.table-cell align="right">
+                        <x-ui.button
+                            size="sm"
+                            variant="ghost"
+                            wire:click="toggleUserActive({{ $user->id }})"
+                            wire:confirm="{{ $user->is_active ? 'Deactivate' : 'Activate' }} {{ $user->name }}?{{ $user->is_active ? ' They will be immediately blocked from logging in.' : '' }}"
+                            class="{{ $user->is_active ? 'text-red-600 hover:bg-red-50' : '' }}"
+                        >
+                            {{ $user->is_active ? 'Deactivate' : 'Activate' }}
+                        </x-ui.button>
+                    </x-ui.table-cell>
+                </x-ui.table-row>
+            @endforeach
+        </x-ui.table>
+    </x-ui.card>
+
+    <x-ui.card title="Module Access" description="Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role." class="mt-8">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach ($screens as $screen)
+                @php $enabled = ! $shop->isScreenDisabled($screen); @endphp
+                <div class="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-3">
+                    <div>
+                        <p class="text-sm font-medium text-slate-900">{{ $screen->label() }}</p>
+                        @if ($enabled)
+                            <x-ui.badge variant="success">Enabled</x-ui.badge>
+                        @else
+                            <x-ui.badge variant="danger">Disabled</x-ui.badge>
+                        @endif
+                    </div>
+                    <x-ui.button
+                        type="button"
+                        size="sm"
+                        variant="{{ $enabled ? 'secondary' : 'primary' }}"
+                        wire:click="toggleScreen('{{ $screen->value }}')"
+                        wire:confirm="{{ $enabled ? 'Disable' : 'Enable' }} {{ $screen->label() }} for this shop?"
+                    >
+                        {{ $enabled ? 'Disable' : 'Enable' }}
+                    </x-ui.button>
+                </div>
+            @endforeach
+        </div>
+    </x-ui.card>
 </div>

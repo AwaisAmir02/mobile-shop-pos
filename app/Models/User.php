@@ -22,6 +22,7 @@ class User extends Authenticatable
         'role_id',
         'is_super_admin',
         'is_owner',
+        'is_active',
     ];
 
     protected $hidden = [
@@ -46,11 +47,16 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_super_admin' => 'boolean',
             'is_owner' => 'boolean',
+            'is_active' => 'boolean',
         ];
     }
 
     public function hasAccessTo(ShopScreen|string $screen): bool
     {
+        if ($this->shop && $this->shop->isScreenDisabled($screen)) {
+            return false;
+        }
+
         if ($this->is_owner) {
             return true;
         }

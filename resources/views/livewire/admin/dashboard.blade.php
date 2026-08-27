@@ -21,7 +21,7 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
     {
         return [
             'shops' => Shop::query()
-                ->withCount('products')
+                ->withCount(['products', 'users'])
                 ->when($this->search, fn ($query) => $query->where('name', 'like', "%{$this->search}%"))
                 ->latest()
                 ->paginate(10),
@@ -60,7 +60,7 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
             </x-slot>
         </x-ui.empty-state>
     @else
-        <x-ui.table :headers="['Shop', 'Plan', 'Status', 'Start Date', 'Renewal', 'Products', '']">
+        <x-ui.table :headers="['Shop', 'Plan', 'Status', 'Start Date', 'Renewal', 'Products', 'Users', '']">
             @foreach ($shops as $shop)
                 <x-ui.table-row wire:key="shop-{{ $shop->id }}">
                     <x-ui.table-cell class="font-medium text-slate-900">
@@ -79,6 +79,7 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
                     <x-ui.table-cell>{{ $shop->subscription_start_date?->format('d M Y') ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $shop->expectedRenewalDate()?->format('d M Y') ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $shop->products_count }}</x-ui.table-cell>
+                    <x-ui.table-cell>{{ $shop->users_count }}</x-ui.table-cell>
                     <x-ui.table-cell align="right">
                         <a href="{{ route('admin.shops.show', $shop) }}" wire:navigate>
                             <x-ui.button size="sm" variant="ghost">View</x-ui.button>

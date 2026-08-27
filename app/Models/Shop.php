@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PlanType;
+use App\Enums\ShopScreen;
 use App\Enums\SubscriptionStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,7 @@ class Shop extends Model
         'subscription_start_date',
         'products_allowed',
         'sales_allowed',
+        'disabled_screens',
     ];
 
     protected function casts(): array
@@ -33,6 +35,7 @@ class Shop extends Model
             'plan_type' => PlanType::class,
             'subscription_status' => SubscriptionStatus::class,
             'subscription_start_date' => 'date',
+            'disabled_screens' => 'array',
         ];
     }
 
@@ -59,6 +62,33 @@ class Shop extends Model
     public function sales(): HasMany
     {
         return $this->hasMany(Sale::class);
+    }
+
+    public function customers(): HasMany
+    {
+        return $this->hasMany(Customer::class);
+    }
+
+    public function udhaarTransactions(): HasMany
+    {
+        return $this->hasMany(UdhaarTransaction::class);
+    }
+
+    public function stockIns(): HasMany
+    {
+        return $this->hasMany(StockIn::class);
+    }
+
+    /**
+     * Super Admin's platform-level override: a screen disabled here is
+     * unreachable for every user of this shop, owner included, regardless
+     * of their own role permissions. Checked first by User::hasAccessTo().
+     */
+    public function isScreenDisabled(ShopScreen|string $screen): bool
+    {
+        $value = $screen instanceof ShopScreen ? $screen->value : $screen;
+
+        return in_array($value, $this->disabled_screens ?? [], true);
     }
 
     public function expectedRenewalDate(): ?Carbon

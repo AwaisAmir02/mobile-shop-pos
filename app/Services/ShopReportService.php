@@ -8,6 +8,7 @@ use App\Models\Expense;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Shop;
+use App\Models\StockIn;
 use App\Models\WalletLoad;
 use Carbon\Carbon;
 
@@ -48,6 +49,10 @@ class ShopReportService
             ->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
             ->sum('amount');
 
+        $totalStockInUnits = (int) StockIn::where('shop_id', $shop->id)
+            ->whereBetween('stock_date', [$start->toDateString(), $end->toDateString()])
+            ->sum('quantity');
+
         return [
             'totalRevenue' => $totalRevenue,
             'totalDiscount' => $invoiceDiscount + $itemDiscount,
@@ -56,6 +61,7 @@ class ShopReportService
             'totalBalanceLoaded' => $totalBalanceLoaded,
             'totalWalletLoaded' => $totalWalletLoaded,
             'totalExpenses' => $totalExpenses,
+            'totalStockInUnits' => $totalStockInUnits,
             'netSummary' => $totalRevenue - $totalExpenses,
         ];
     }
