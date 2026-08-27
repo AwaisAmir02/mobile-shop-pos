@@ -90,6 +90,7 @@ class SettingsNetworkTest extends TestCase
         $this->actingAs($ownerA);
 
         Livewire::test('settings.index')
+            ->set('tab', 'networks')
             ->assertSee('Network A')
             ->assertDontSee('Network B');
     }

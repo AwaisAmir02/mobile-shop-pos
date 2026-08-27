@@ -158,7 +158,7 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold text-slate-900">Users</h1>
-            <a href="{{ route('roles.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
+            <a href="{{ route('settings.index') }}?tab=roles" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
                 Manage Roles →
             </a>
         </div>

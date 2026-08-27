@@ -18,8 +18,8 @@
             ['label' => 'Expenses', 'route' => 'expenses.index', 'icon' => 'banknote', 'permission' => 'expenses'],
             ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'permission' => 'reports'],
             ['label' => 'Team', 'route' => 'users.index', 'icon' => 'users', 'permission' => 'users'],
-            ['label' => 'Settings', 'route' => 'settings.index', 'icon' => 'cog', 'permission' => 'settings'],
-        ])->filter(fn ($item) => $user?->hasAccessTo($item['permission']))->all();
+            ['label' => 'Settings', 'route' => 'settings.index', 'icon' => 'cog', 'permission' => ['settings', 'users']],
+        ])->filter(fn ($item) => $user && collect((array) $item['permission'])->contains(fn ($p) => $user->hasAccessTo($p)))->all();
 
     $icons = [
         'home' => 'M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75',
@@ -58,7 +58,7 @@
 
     <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         @foreach ($navItems as $item)
-            @php $active = request()->routeIs($item['route']) || ($item['route'] === 'users.index' && request()->routeIs('roles.index')); @endphp
+            @php $active = request()->routeIs($item['route']); @endphp
             <a
                 href="{{ Route::has($item['route']) ? route($item['route']) : '#' }}"
                 wire:navigate

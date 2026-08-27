@@ -96,6 +96,7 @@ class SettingsWalletProviderTest extends TestCase
         $this->actingAs($ownerA);
 
         Livewire::test('settings.index')
+            ->set('tab', 'wallet-providers')
             ->assertSee('Provider A')
             ->assertDontSee('Provider B');
     }

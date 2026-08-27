@@ -20,10 +20,11 @@ class RolesPermissionsTest extends TestCase
 
         $this->actingAs($owner);
 
-        Livewire::test('roles.index')
-            ->set('name', 'Cashier')
-            ->set('permissions', ['sales', 'products'])
-            ->call('save')
+        Livewire::test('settings.index')
+            ->set('tab', 'roles')
+            ->set('roleName', 'Cashier')
+            ->set('rolePermissions', ['sales', 'products'])
+            ->call('saveRole')
             ->assertHasNoErrors();
 
         $role = Role::where('name', 'Cashier')->firstOrFail();
@@ -69,13 +70,14 @@ class RolesPermissionsTest extends TestCase
         $this->get(route('sales.index'))
             ->assertSee('Sales')
             ->assertDontSee('Expenses')
-            ->assertDontSee('Team');
+            ->assertDontSee('Team')
+            ->assertDontSee('Settings');
 
         // Restricted screens are blocked at the route level even by direct URL.
         $this->get(route('expenses.index'))->assertForbidden();
         $this->get(route('dashboard'))->assertForbidden();
         $this->get(route('users.index'))->assertForbidden();
-        $this->get(route('roles.index'))->assertForbidden();
+        $this->get(route('settings.index'))->assertForbidden();
     }
 
     public function test_a_user_with_no_role_has_no_screen_access(): void
@@ -104,7 +106,7 @@ class RolesPermissionsTest extends TestCase
         $this->get(route('expenses.index'))->assertOk();
         $this->get(route('reports.index'))->assertOk();
         $this->get(route('users.index'))->assertOk();
-        $this->get(route('roles.index'))->assertOk();
+        $this->get(route('settings.index'))->assertOk();
     }
 
     public function test_a_role_in_use_cannot_be_deleted(): void
@@ -116,7 +118,7 @@ class RolesPermissionsTest extends TestCase
 
         $this->actingAs($owner);
 
-        Livewire::test('roles.index')->call('delete', $role->id);
+        Livewire::test('settings.index')->set('tab', 'roles')->call('deleteRole', $role->id);
 
         $this->assertNotNull($role->fresh());
     }
@@ -148,12 +150,54 @@ class RolesPermissionsTest extends TestCase
 
         $this->actingAs($ownerA);
 
-        Livewire::test('roles.index')
+        Livewire::test('settings.index')
+            ->set('tab', 'roles')
             ->assertSee('Cashier A')
             ->assertDontSee('Cashier B');
 
         Livewire::test('users.index')
             ->assertSee($ownerA->name)
             ->assertDontSee($ownerB->name);
+    }
+
+    public function test_a_role_with_only_users_permission_can_still_reach_settings_and_manage_roles(): void
+    {
+        $shop = Shop::create(['name' => 'Shop A']);
+        $role = Role::create(['shop_id' => $shop->id, 'name' => 'HR', 'permissions' => ['users']]);
+        $staff = User::factory()->staff()->create(['shop_id' => $shop->id, 'role_id' => $role->id]);
+
+        $this->actingAs($staff);
+
+        // The settings.index route now accepts either "settings" or "users".
+        $this->get(route('settings.index'))->assertOk();
+
+        // Defaults straight to the Roles tab since that's the only one they can see.
+        Livewire::test('settings.index')
+            ->assertSet('tab', 'roles')
+            ->set('roleName', 'Cashier')
+            ->call('saveRole')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(Role::where('name', 'Cashier')->exists());
+    }
+
+    public function test_a_role_with_only_settings_permission_cannot_manage_roles(): void
+    {
+        $shop = Shop::create(['name' => 'Shop A']);
+        $role = Role::create(['shop_id' => $shop->id, 'name' => 'Merchandiser', 'permissions' => ['settings']]);
+        $staff = User::factory()->staff()->create(['shop_id' => $shop->id, 'role_id' => $role->id]);
+
+        $this->actingAs($staff);
+
+        $this->get(route('settings.index'))->assertOk();
+
+        // The guard inside saveRole() blocks it even though the route itself
+        // is reachable — Livewire's test harness absorbs the abort(403)
+        // rather than re-throwing it, so we assert on the actual effect.
+        Livewire::test('settings.index')
+            ->set('roleName', 'Should Not Work')
+            ->call('saveRole');
+
+        $this->assertFalse(Role::where('name', 'Should Not Work')->exists());
     }
 }
