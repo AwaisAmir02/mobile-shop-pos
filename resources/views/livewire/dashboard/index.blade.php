@@ -231,11 +231,11 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
                     @endif
                 @endforeach
 
-                <path d="{{ $chart['areaPath'] }}" fill="#0c8f76" opacity="0.1" />
-                <path d="{{ $chart['linePath'] }}" fill="none" stroke="#0c8f76" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+                <path d="{{ $chart['areaPath'] }}" fill="#049669" opacity="0.1" />
+                <path d="{{ $chart['linePath'] }}" fill="none" stroke="#049669" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
 
                 @php $last = end($chart['points']); @endphp
-                <circle cx="{{ $last['x'] }}" cy="{{ $last['y'] }}" r="4" fill="#0c8f76" stroke="white" stroke-width="2" />
+                <circle cx="{{ $last['x'] }}" cy="{{ $last['y'] }}" r="4" fill="#049669" stroke="white" stroke-width="2" />
                 <text x="{{ $last['x'] }}" y="{{ $last['y'] - 10 }}" text-anchor="end" class="fill-slate-700" font-size="11" font-weight="600">
                     Rs {{ $last['value'] >= 1000 ? number_format($last['value'] / 1000, 1).'K' : number_format($last['value'], 0) }}
                 </text>
@@ -253,7 +253,7 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
                 <template x-if="hovered !== null">
                     <g class="pointer-events-none">
                         <line :x1="points[hovered].x" :x2="points[hovered].x" y1="{{ $chart['padding']['top'] }}" y2="{{ $chart['baselineY'] }}" stroke="#94a3b8" stroke-width="1" />
-                        <circle :cx="points[hovered].x" :cy="points[hovered].y" r="5" fill="#0c8f76" stroke="white" stroke-width="2" />
+                        <circle :cx="points[hovered].x" :cy="points[hovered].y" r="5" fill="#049669" stroke="white" stroke-width="2" />
                     </g>
                 </template>
             </svg>

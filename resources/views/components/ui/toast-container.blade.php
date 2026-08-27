@@ -11,11 +11,11 @@
             x-transition:leave="ease-in duration-150"
             x-transition:leave-start="opacity-100"
             x-transition:leave-end="opacity-0"
-            class="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border bg-white p-4 shadow-card"
+            class="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border p-4 shadow-card"
             :class="{
-                'border-emerald-200': toast.type === 'success',
-                'border-red-200': toast.type === 'error',
-                'border-slate-200': toast.type === 'info',
+                'border-emerald-300 bg-emerald-50': toast.type === 'success',
+                'border-red-300 bg-red-50': toast.type === 'error',
+                'border-slate-200 bg-white': toast.type === 'info',
             }"
         >
             <span

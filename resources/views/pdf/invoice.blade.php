@@ -14,14 +14,14 @@
         }
         .header {
             width: 100%;
-            border-bottom: 2px solid #0c8f76;
+            border-bottom: 2px solid #049669;
             padding-bottom: 12px;
             margin-bottom: 16px;
         }
         .shop-name {
             font-size: 20px;
             font-weight: bold;
-            color: #0c7260;
+            color: #037a56;
         }
         .shop-meta {
             font-size: 10px;
@@ -74,7 +74,7 @@
         .totals .total-row td {
             font-size: 15px;
             font-weight: bold;
-            border-top: 2px solid #0c8f76;
+            border-top: 2px solid #049669;
             padding-top: 8px;
         }
         .footer {

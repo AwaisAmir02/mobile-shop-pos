@@ -34,7 +34,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     // Networks
     public ?int $networkEditingId = null;
     public string $networkName = '';
-    public string $networkColor = '#0c8f76';
+    public string $networkColor = '#049669';
     public $networkImage = null;
     public ?string $networkExistingImageUrl = null;
 
@@ -184,7 +184,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public function openNetworkCreate(): void
     {
         $this->reset(['networkEditingId', 'networkName', 'networkImage', 'networkExistingImageUrl']);
-        $this->networkColor = '#0c8f76';
+        $this->networkColor = '#049669';
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'network-form');
     }
@@ -195,7 +195,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
         $this->networkEditingId = $network->id;
         $this->networkName = $network->name;
-        $this->networkColor = $network->color ?? '#0c8f76';
+        $this->networkColor = $network->color ?? '#049669';
         $this->networkImage = null;
         $this->networkExistingImageUrl = $network->imageUrl();
 

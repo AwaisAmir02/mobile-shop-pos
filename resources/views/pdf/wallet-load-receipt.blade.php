@@ -13,14 +13,14 @@
             padding: 20px;
         }
         .header {
-            border-bottom: 2px solid #0c8f76;
+            border-bottom: 2px solid #049669;
             padding-bottom: 10px;
             margin-bottom: 14px;
         }
         .shop-name {
             font-size: 16px;
             font-weight: bold;
-            color: #0c7260;
+            color: #037a56;
         }
         .receipt-title {
             font-size: 13px;
@@ -54,7 +54,7 @@
         .amount-row td {
             font-size: 18px;
             border-bottom: none;
-            border-top: 2px solid #0c8f76;
+            border-top: 2px solid #049669;
             padding-top: 12px;
         }
         .footer {
