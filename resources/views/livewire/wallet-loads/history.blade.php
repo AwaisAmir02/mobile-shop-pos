@@ -51,6 +51,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
                 ->orderByDesc('total')
                 ->get(),
             'allProviders' => WalletProvider::query()->orderBy('name')->pluck('name'),
+            'providersByName' => WalletProvider::query()->get()->keyBy('name'),
         ];
     }
 
@@ -136,7 +137,12 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
                 <x-ui.table-row wire:key="load-{{ $load->id }}">
                     <x-ui.table-cell class="font-medium text-slate-900">{{ $load->receiptNumber() }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $load->created_at->format('d M Y, h:i A') }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $load->provider }}</x-ui.table-cell>
+                    <x-ui.table-cell>
+                        <div class="flex items-center gap-2">
+                            <x-ui.thumbnail :src="$providersByName->get($load->provider)?->imageUrl()" :label="$load->provider" />
+                            {{ $load->provider }}
+                        </div>
+                    </x-ui.table-cell>
                     <x-ui.table-cell>{{ $load->account_number }}</x-ui.table-cell>
                     <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($load->amount, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell align="right">

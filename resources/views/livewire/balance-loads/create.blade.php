@@ -29,7 +29,10 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
     public function with(): array
     {
         return [
-            'networks' => Network::query()->orderBy('name')->pluck('name'),
+            'networks' => Network::query()->orderBy('name')->get(),
+            'selectedNetwork' => $this->networkChoice !== ''
+                ? Network::query()->where('name', $this->networkChoice)->first()
+                : null,
             'lastLoad' => $this->lastLoadId ? BalanceLoad::find($this->lastLoadId) : null,
         ];
     }
@@ -87,7 +90,8 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
 
                     <p class="mt-3 text-sm text-slate-500">{{ $lastLoad->receiptNumber() }}</p>
                     <p class="text-display-sm text-slate-900">Rs {{ number_format($lastLoad->amount, 2) }}</p>
-                    <p class="mt-1 text-sm text-slate-500">
+                    <p class="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
+                        <x-ui.color-dot :color="$selectedNetwork?->color" />
                         {{ $lastLoad->network }}
                         @if ($lastLoad->phone_number)
                             · {{ $lastLoad->phone_number }}
@@ -109,11 +113,17 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
             <x-ui.card title="New Balance Load">
                 <form wire:submit="save" class="space-y-5">
                     <x-ui.field label="Network" name="networkChoice" for="networkChoice">
-                        <x-ui.select wire:model="networkChoice" id="networkChoice">
-                            @foreach ($networks as $network)
-                                <option value="{{ $network }}">{{ $network }}</option>
-                            @endforeach
-                        </x-ui.select>
+                        <div class="flex items-center gap-3">
+                            <x-ui.select wire:model.live="networkChoice" id="networkChoice" class="flex-1">
+                                @foreach ($networks as $network)
+                                    <option value="{{ $network->name }}">{{ $network->name }}</option>
+                                @endforeach
+                            </x-ui.select>
+                            @if ($selectedNetwork)
+                                <x-ui.thumbnail :src="$selectedNetwork->imageUrl()" :label="$selectedNetwork->name" :color="$selectedNetwork->color" />
+                                <x-ui.color-dot :color="$selectedNetwork->color" />
+                            @endif
+                        </div>
                     </x-ui.field>
 
                     <x-ui.field label="Phone Number" name="phoneNumber" for="phoneNumber" help="Optional">

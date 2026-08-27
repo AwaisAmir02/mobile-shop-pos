@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Concerns\Toasts;
+use App\Livewire\Concerns\UploadsImages;
 use App\Models\AccessoryCategoryOption;
 use App\Models\BalanceLoad;
 use App\Models\Network;
@@ -11,22 +12,30 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
 
 new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 {
-    use Toasts;
+    use Toasts, UploadsImages, WithFileUploads;
 
     // Accessory Categories
     public ?int $accessoryCategoryEditingId = null;
     public string $accessoryCategoryName = '';
+    public $accessoryCategoryImage = null;
+    public ?string $accessoryCategoryExistingImageUrl = null;
 
     // Wallet Providers
     public ?int $providerEditingId = null;
     public string $providerName = '';
+    public $providerImage = null;
+    public ?string $providerExistingImageUrl = null;
 
     // Networks
     public ?int $networkEditingId = null;
     public string $networkName = '';
+    public string $networkColor = '#0c8f76';
+    public $networkImage = null;
+    public ?string $networkExistingImageUrl = null;
 
     public function with(): array
     {
@@ -41,7 +50,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function openAccessoryCategoryCreate(): void
     {
-        $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName']);
+        $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName', 'accessoryCategoryImage', 'accessoryCategoryExistingImageUrl']);
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'accessory-category-form');
     }
@@ -52,6 +61,8 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
         $this->accessoryCategoryEditingId = $option->id;
         $this->accessoryCategoryName = $option->name;
+        $this->accessoryCategoryImage = null;
+        $this->accessoryCategoryExistingImageUrl = $option->imageUrl();
 
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'accessory-category-form');
@@ -61,14 +72,22 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     {
         $this->validate([
             'accessoryCategoryName' => ['required', 'string', 'max:255', Rule::unique('accessory_category_options', 'name')->where('shop_id', auth()->user()->shop_id)->ignore($this->accessoryCategoryEditingId)],
+            'accessoryCategoryImage' => ['nullable', 'image', 'max:2048'],
         ]);
 
         $option = $this->accessoryCategoryEditingId ? AccessoryCategoryOption::findOrFail($this->accessoryCategoryEditingId) : new AccessoryCategoryOption;
-        $option->fill(['name' => $this->accessoryCategoryName])->save();
+
+        $option->name = $this->accessoryCategoryName;
+
+        if ($this->accessoryCategoryImage) {
+            $option->image_path = $this->storeImage($this->accessoryCategoryImage, 'accessory-categories', $option->image_path);
+        }
+
+        $option->save();
 
         $this->toastSuccess($this->accessoryCategoryEditingId ? 'Accessory category updated.' : 'Accessory category added.');
         $this->dispatch('close-modal', name: 'accessory-category-form');
-        $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName']);
+        $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName', 'accessoryCategoryImage', 'accessoryCategoryExistingImageUrl']);
     }
 
     public function deleteAccessoryCategory(int $id): void
@@ -81,6 +100,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             return;
         }
 
+        $this->deleteImage($option->image_path);
         $option->delete();
         $this->toastSuccess('Accessory category deleted.');
     }
@@ -88,14 +108,14 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public function closeAccessoryCategoryForm(): void
     {
         $this->dispatch('close-modal', name: 'accessory-category-form');
-        $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName']);
+        $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName', 'accessoryCategoryImage', 'accessoryCategoryExistingImageUrl']);
     }
 
     // ── Wallet Providers ─────────────────────────────────────────────
 
     public function openProviderCreate(): void
     {
-        $this->reset(['providerEditingId', 'providerName']);
+        $this->reset(['providerEditingId', 'providerName', 'providerImage', 'providerExistingImageUrl']);
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'wallet-provider-form');
     }
@@ -106,6 +126,8 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
         $this->providerEditingId = $provider->id;
         $this->providerName = $provider->name;
+        $this->providerImage = null;
+        $this->providerExistingImageUrl = $provider->imageUrl();
 
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'wallet-provider-form');
@@ -115,14 +137,22 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     {
         $this->validate([
             'providerName' => ['required', 'string', 'max:255', Rule::unique('wallet_providers', 'name')->where('shop_id', auth()->user()->shop_id)->ignore($this->providerEditingId)],
+            'providerImage' => ['nullable', 'image', 'max:2048'],
         ]);
 
         $provider = $this->providerEditingId ? WalletProvider::findOrFail($this->providerEditingId) : new WalletProvider;
-        $provider->fill(['name' => $this->providerName])->save();
+
+        $provider->name = $this->providerName;
+
+        if ($this->providerImage) {
+            $provider->image_path = $this->storeImage($this->providerImage, 'wallet-providers', $provider->image_path);
+        }
+
+        $provider->save();
 
         $this->toastSuccess($this->providerEditingId ? 'Wallet provider updated.' : 'Wallet provider added.');
         $this->dispatch('close-modal', name: 'wallet-provider-form');
-        $this->reset(['providerEditingId', 'providerName']);
+        $this->reset(['providerEditingId', 'providerName', 'providerImage', 'providerExistingImageUrl']);
     }
 
     public function deleteProvider(int $id): void
@@ -135,6 +165,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             return;
         }
 
+        $this->deleteImage($provider->image_path);
         $provider->delete();
         $this->toastSuccess('Wallet provider deleted.');
     }
@@ -142,14 +173,15 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public function closeProviderForm(): void
     {
         $this->dispatch('close-modal', name: 'wallet-provider-form');
-        $this->reset(['providerEditingId', 'providerName']);
+        $this->reset(['providerEditingId', 'providerName', 'providerImage', 'providerExistingImageUrl']);
     }
 
     // ── Networks ─────────────────────────────────────────────────────
 
     public function openNetworkCreate(): void
     {
-        $this->reset(['networkEditingId', 'networkName']);
+        $this->reset(['networkEditingId', 'networkName', 'networkImage', 'networkExistingImageUrl']);
+        $this->networkColor = '#0c8f76';
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'network-form');
     }
@@ -160,6 +192,9 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
         $this->networkEditingId = $network->id;
         $this->networkName = $network->name;
+        $this->networkColor = $network->color ?? '#0c8f76';
+        $this->networkImage = null;
+        $this->networkExistingImageUrl = $network->imageUrl();
 
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'network-form');
@@ -169,14 +204,24 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     {
         $this->validate([
             'networkName' => ['required', 'string', 'max:255', Rule::unique('networks', 'name')->where('shop_id', auth()->user()->shop_id)->ignore($this->networkEditingId)],
+            'networkColor' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'networkImage' => ['nullable', 'image', 'max:2048'],
         ]);
 
         $network = $this->networkEditingId ? Network::findOrFail($this->networkEditingId) : new Network;
-        $network->fill(['name' => $this->networkName])->save();
+
+        $network->name = $this->networkName;
+        $network->color = $this->networkColor;
+
+        if ($this->networkImage) {
+            $network->image_path = $this->storeImage($this->networkImage, 'networks', $network->image_path);
+        }
+
+        $network->save();
 
         $this->toastSuccess($this->networkEditingId ? 'Network updated.' : 'Network added.');
         $this->dispatch('close-modal', name: 'network-form');
-        $this->reset(['networkEditingId', 'networkName']);
+        $this->reset(['networkEditingId', 'networkName', 'networkImage', 'networkExistingImageUrl']);
     }
 
     public function deleteNetwork(int $id): void
@@ -189,6 +234,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             return;
         }
 
+        $this->deleteImage($network->image_path);
         $network->delete();
         $this->toastSuccess('Network deleted.');
     }
@@ -196,7 +242,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public function closeNetworkForm(): void
     {
         $this->dispatch('close-modal', name: 'network-form');
-        $this->reset(['networkEditingId', 'networkName']);
+        $this->reset(['networkEditingId', 'networkName', 'networkImage', 'networkExistingImageUrl']);
     }
 }; ?>
 
@@ -229,7 +275,12 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 <x-ui.table :headers="['Category', '']">
                     @foreach ($accessoryCategories as $option)
                         <x-ui.table-row wire:key="accessory-category-{{ $option->id }}">
-                            <x-ui.table-cell class="font-medium text-slate-900">{{ $option->name }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-medium text-slate-900">
+                                <div class="flex items-center gap-3">
+                                    <x-ui.thumbnail :src="$option->imageUrl()" :label="$option->name" />
+                                    {{ $option->name }}
+                                </div>
+                            </x-ui.table-cell>
                             <x-ui.table-cell align="right">
                                 <div class="flex justify-end gap-2">
                                     <x-ui.button size="sm" variant="ghost" wire:click="openAccessoryCategoryEdit({{ $option->id }})">
@@ -275,7 +326,13 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 <x-ui.table :headers="['Network', '']">
                     @foreach ($networks as $network)
                         <x-ui.table-row wire:key="network-{{ $network->id }}">
-                            <x-ui.table-cell class="font-medium text-slate-900">{{ $network->name }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-medium text-slate-900">
+                                <div class="flex items-center gap-3">
+                                    <x-ui.thumbnail :src="$network->imageUrl()" :label="$network->name" :color="$network->color" />
+                                    {{ $network->name }}
+                                    <x-ui.color-dot :color="$network->color" />
+                                </div>
+                            </x-ui.table-cell>
                             <x-ui.table-cell align="right">
                                 <div class="flex justify-end gap-2">
                                     <x-ui.button size="sm" variant="ghost" wire:click="openNetworkEdit({{ $network->id }})">
@@ -321,7 +378,12 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 <x-ui.table :headers="['Provider', '']">
                     @foreach ($providers as $provider)
                         <x-ui.table-row wire:key="provider-{{ $provider->id }}">
-                            <x-ui.table-cell class="font-medium text-slate-900">{{ $provider->name }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-medium text-slate-900">
+                                <div class="flex items-center gap-3">
+                                    <x-ui.thumbnail :src="$provider->imageUrl()" :label="$provider->name" />
+                                    {{ $provider->name }}
+                                </div>
+                            </x-ui.table-cell>
                             <x-ui.table-cell align="right">
                                 <div class="flex justify-end gap-2">
                                     <x-ui.button size="sm" variant="ghost" wire:click="openProviderEdit({{ $provider->id }})">
@@ -351,9 +413,17 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 {{ $accessoryCategoryEditingId ? 'Edit Accessory Category' : 'Add Accessory Category' }}
             </h2>
 
-            <div class="mt-5">
+            <div class="mt-5 space-y-5">
                 <x-ui.field label="Category Name" name="accessoryCategoryName" for="accessoryCategoryName">
                     <x-ui.input wire:model="accessoryCategoryName" id="accessoryCategoryName" placeholder="e.g. Charger" autofocus />
+                </x-ui.field>
+
+                <x-ui.field label="Image" name="accessoryCategoryImage" for="accessoryCategoryImage" help="Optional">
+                    <x-ui.file-input
+                        wire:model="accessoryCategoryImage"
+                        id="accessoryCategoryImage"
+                        :preview="$this->previewUrl($accessoryCategoryImage, $accessoryCategoryExistingImageUrl)"
+                    />
                 </x-ui.field>
             </div>
 
@@ -375,9 +445,24 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 {{ $networkEditingId ? 'Edit Network' : 'Add Network' }}
             </h2>
 
-            <div class="mt-5">
+            <div class="mt-5 space-y-5">
                 <x-ui.field label="Network Name" name="networkName" for="networkName">
                     <x-ui.input wire:model="networkName" id="networkName" placeholder="e.g. Jazz" autofocus />
+                </x-ui.field>
+
+                <x-ui.field label="Color" name="networkColor" for="networkColor">
+                    <div class="flex items-center gap-3">
+                        <input type="color" wire:model="networkColor" id="networkColor" class="h-10 w-14 cursor-pointer rounded-lg border border-slate-300">
+                        <span class="text-sm text-slate-500">{{ $networkColor }}</span>
+                    </div>
+                </x-ui.field>
+
+                <x-ui.field label="Image" name="networkImage" for="networkImage" help="Optional">
+                    <x-ui.file-input
+                        wire:model="networkImage"
+                        id="networkImage"
+                        :preview="$this->previewUrl($networkImage, $networkExistingImageUrl)"
+                    />
                 </x-ui.field>
             </div>
 
@@ -399,9 +484,17 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 {{ $providerEditingId ? 'Edit Wallet Provider' : 'Add Wallet Provider' }}
             </h2>
 
-            <div class="mt-5">
+            <div class="mt-5 space-y-5">
                 <x-ui.field label="Provider Name" name="providerName" for="providerName">
                     <x-ui.input wire:model="providerName" id="providerName" placeholder="e.g. JazzCash" autofocus />
+                </x-ui.field>
+
+                <x-ui.field label="Image" name="providerImage" for="providerImage" help="Optional">
+                    <x-ui.file-input
+                        wire:model="providerImage"
+                        id="providerImage"
+                        :preview="$this->previewUrl($providerImage, $providerExistingImageUrl)"
+                    />
                 </x-ui.field>
             </div>
 

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\BalanceLoad;
+use App\Models\Network;
 use App\Services\BalanceLoadReceiptPdfService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -37,6 +38,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
         return [
             'loads' => $this->filteredQuery()->latest()->paginate(15),
             'totalLoaded' => $this->filteredQuery()->sum('amount'),
+            'networksByName' => Network::query()->get()->keyBy('name'),
         ];
     }
 
@@ -105,7 +107,14 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
                 <x-ui.table-row wire:key="load-{{ $load->id }}">
                     <x-ui.table-cell class="font-medium text-slate-900">{{ $load->receiptNumber() }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $load->created_at->format('d M Y, h:i A') }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $load->network }}</x-ui.table-cell>
+                    <x-ui.table-cell>
+                        @php $network = $networksByName->get($load->network); @endphp
+                        <div class="flex items-center gap-2">
+                            <x-ui.thumbnail :src="$network?->imageUrl()" :label="$load->network" :color="$network?->color" />
+                            {{ $load->network }}
+                            <x-ui.color-dot :color="$network?->color" />
+                        </div>
+                    </x-ui.table-cell>
                     <x-ui.table-cell>{{ $load->phone_number ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($load->amount, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell align="right">

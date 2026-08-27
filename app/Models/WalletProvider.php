@@ -3,17 +3,19 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Concerns\HasImage;
 use Illuminate\Database\Eloquent\Model;
 
 class WalletProvider extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, HasImage;
 
     public const DEFAULTS = ['JazzCash', 'Easypaisa', 'NayaPay'];
 
     protected $fillable = [
         'shop_id',
         'name',
+        'image_path',
     ];
 
     public static function ensureDefaultsExist(): void

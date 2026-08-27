@@ -6,11 +6,12 @@ use App\Enums\ProductType;
 use App\Enums\SimForm;
 use App\Enums\SimType;
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Concerns\HasImage;
 use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, HasImage;
 
     public const LOW_STOCK_THRESHOLD = 5;
 
@@ -18,6 +19,7 @@ class Product extends Model
         'shop_id',
         'type',
         'name',
+        'image_path',
         'price',
         'cost_price',
         'stock_quantity',

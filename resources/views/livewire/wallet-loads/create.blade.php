@@ -29,7 +29,10 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
     public function with(): array
     {
         return [
-            'providers' => WalletProvider::query()->orderBy('name')->pluck('name'),
+            'providers' => WalletProvider::query()->orderBy('name')->get(),
+            'selectedProvider' => $this->provider !== ''
+                ? WalletProvider::query()->where('name', $this->provider)->first()
+                : null,
             'lastLoad' => $this->lastLoadId ? WalletLoad::find($this->lastLoadId) : null,
         ];
     }
@@ -87,7 +90,8 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
 
                     <p class="mt-3 text-sm text-slate-500">{{ $lastLoad->receiptNumber() }}</p>
                     <p class="text-display-sm text-slate-900">Rs {{ number_format($lastLoad->amount, 2) }}</p>
-                    <p class="mt-1 text-sm text-slate-500">
+                    <p class="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
+                        <x-ui.thumbnail :src="$selectedProvider?->imageUrl()" :label="$lastLoad->provider" />
                         {{ $lastLoad->provider }} · {{ $lastLoad->account_number }}
                     </p>
 
@@ -106,11 +110,16 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
             <x-ui.card title="New Wallet Load">
                 <form wire:submit="save" class="space-y-5">
                     <x-ui.field label="Wallet Provider" name="provider" for="provider">
-                        <x-ui.select wire:model="provider" id="provider">
-                            @foreach ($providers as $name)
-                                <option value="{{ $name }}">{{ $name }}</option>
-                            @endforeach
-                        </x-ui.select>
+                        <div class="flex items-center gap-3">
+                            <x-ui.select wire:model.live="provider" id="provider" class="flex-1">
+                                @foreach ($providers as $option)
+                                    <option value="{{ $option->name }}">{{ $option->name }}</option>
+                                @endforeach
+                            </x-ui.select>
+                            @if ($selectedProvider)
+                                <x-ui.thumbnail :src="$selectedProvider->imageUrl()" :label="$selectedProvider->name" />
+                            @endif
+                        </div>
                     </x-ui.field>
 
                     <x-ui.field label="Account / Mobile Number" name="accountNumber" for="accountNumber">

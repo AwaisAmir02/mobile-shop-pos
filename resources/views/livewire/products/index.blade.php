@@ -4,17 +4,19 @@ use App\Enums\ProductType;
 use App\Enums\SimForm;
 use App\Enums\SimType;
 use App\Livewire\Concerns\Toasts;
+use App\Livewire\Concerns\UploadsImages;
 use App\Models\AccessoryCategoryOption;
 use App\Models\Product;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 {
-    use Toasts, WithPagination;
+    use Toasts, UploadsImages, WithFileUploads, WithPagination;
 
     public string $search = '';
     public string $typeFilter = '';
@@ -23,6 +25,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
     public string $type = 'mobile';
     public string $name = '';
+    public $image = null;
+    public ?string $existingImageUrl = null;
     public string $price = '';
     public string $cost_price = '';
     public string $stock_quantity = '0';
@@ -66,7 +70,10 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 ->latest()
                 ->paginate(10),
             'types' => ProductType::cases(),
-            'accessoryCategories' => AccessoryCategoryOption::query()->orderBy('name')->pluck('name'),
+            'accessoryCategories' => AccessoryCategoryOption::query()->orderBy('name')->get(),
+            'selectedAccessoryCategory' => $this->category !== ''
+                ? AccessoryCategoryOption::query()->where('name', $this->category)->first()
+                : null,
             'simTypes' => SimType::cases(),
             'simForms' => SimForm::cases(),
         ];
@@ -85,6 +92,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->editingId = $product->id;
         $this->type = $product->type->value;
         $this->name = $product->name;
+        $this->image = null;
+        $this->existingImageUrl = $product->imageUrl();
         $this->price = (string) $product->price;
         $this->cost_price = (string) $product->cost_price;
         $this->stock_quantity = (string) $product->stock_quantity;
@@ -114,7 +123,13 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             'cost_price' => $this->cost_price !== '' ? $this->cost_price : null,
             'stock_quantity' => $this->stock_quantity,
             'details' => $this->detailsForType(),
-        ])->save();
+        ]);
+
+        if ($this->image) {
+            $product->image_path = $this->storeImage($this->image, 'products', $product->image_path);
+        }
+
+        $product->save();
 
         $this->toastSuccess($this->editingId ? 'Product updated.' : 'Product added.');
         $this->dispatch('close-modal', name: 'product-form');
@@ -123,7 +138,9 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
     public function delete(int $id): void
     {
-        Product::findOrFail($id)->delete();
+        $product = Product::findOrFail($id);
+        $this->deleteImage($product->image_path);
+        $product->delete();
 
         $this->toastSuccess('Product deleted.');
     }
@@ -139,6 +156,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $rules = [
             'type' => ['required', Rule::enum(ProductType::class)],
             'name' => ['required', 'string', 'max:255'],
+            'image' => ['nullable', 'image', 'max:2048'],
             'price' => ['required', 'numeric', 'min:0'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
             'stock_quantity' => ['required', 'integer', 'min:0'],
@@ -185,7 +203,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     protected function resetForm(): void
     {
         $this->reset([
-            'editingId', 'name', 'price', 'cost_price',
+            'editingId', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
             'brand', 'model', 'imei', 'category', 'network',
         ]);
 
@@ -235,7 +253,12 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         <x-ui.table :headers="['Product', 'Category', 'Price', 'Stock', '']">
             @foreach ($products as $product)
                 <x-ui.table-row wire:key="product-{{ $product->id }}">
-                    <x-ui.table-cell class="font-medium text-slate-900">{{ $product->name }}</x-ui.table-cell>
+                    <x-ui.table-cell class="font-medium text-slate-900">
+                        <div class="flex items-center gap-3">
+                            <x-ui.thumbnail :src="$product->imageUrl()" :label="$product->name" />
+                            {{ $product->name }}
+                        </div>
+                    </x-ui.table-cell>
                     <x-ui.table-cell>
                         <div class="flex flex-col">
                             <span class="text-slate-700">{{ $product->type->label() }}</span>
@@ -298,6 +321,10 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     <x-ui.input wire:model="name" id="name" autofocus />
                 </x-ui.field>
 
+                <x-ui.field label="Image" name="image" for="image" help="Optional">
+                    <x-ui.file-input wire:model="image" id="image" :preview="$this->previewUrl($image, $existingImageUrl)" />
+                </x-ui.field>
+
                 @if ($type === 'mobile')
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-ui.field label="Brand" name="brand" for="brand">
@@ -314,12 +341,17 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     </x-ui.field>
                 @elseif ($type === 'accessory')
                     <x-ui.field label="Accessory Category" name="category" for="category">
-                        <x-ui.select wire:model="category" id="category">
-                            <option value="">Select a category</option>
-                            @foreach ($accessoryCategories as $option)
-                                <option value="{{ $option }}">{{ $option }}</option>
-                            @endforeach
-                        </x-ui.select>
+                        <div class="flex items-center gap-3">
+                            <x-ui.select wire:model.live="category" id="category" class="flex-1">
+                                <option value="">Select a category</option>
+                                @foreach ($accessoryCategories as $option)
+                                    <option value="{{ $option->name }}">{{ $option->name }}</option>
+                                @endforeach
+                            </x-ui.select>
+                            @if ($selectedAccessoryCategory)
+                                <x-ui.thumbnail :src="$selectedAccessoryCategory->imageUrl()" :label="$selectedAccessoryCategory->name" />
+                            @endif
+                        </div>
                     </x-ui.field>
                 @elseif ($type === 'sim')
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

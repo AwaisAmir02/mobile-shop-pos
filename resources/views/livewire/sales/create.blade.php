@@ -192,9 +192,12 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                                     wire:key="result-{{ $product->id }}"
                                     class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50"
                                 >
-                                    <div>
-                                        <p class="text-sm font-medium text-slate-900">{{ $product->name }}</p>
-                                        <p class="text-xs text-slate-400">{{ $product->type->label() }} · {{ $product->stock_quantity }} in stock</p>
+                                    <div class="flex items-center gap-3">
+                                        <x-ui.thumbnail :src="$product->imageUrl()" :label="$product->name" />
+                                        <div>
+                                            <p class="text-sm font-medium text-slate-900">{{ $product->name }}</p>
+                                            <p class="text-xs text-slate-400">{{ $product->type->label() }} · {{ $product->stock_quantity }} in stock</p>
+                                        </div>
                                     </div>
                                     <span class="text-sm font-semibold text-slate-700">Rs {{ number_format($product->price, 2) }}</span>
                                 </button>
