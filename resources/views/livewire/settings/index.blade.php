@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\CreateAccessoryCategory;
 use App\Livewire\Concerns\Toasts;
 use App\Livewire\Concerns\UploadsImages;
 use App\Models\AccessoryCategoryOption;
@@ -75,7 +76,9 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             'accessoryCategoryImage' => ['nullable', 'image', 'max:2048'],
         ]);
 
-        $option = $this->accessoryCategoryEditingId ? AccessoryCategoryOption::findOrFail($this->accessoryCategoryEditingId) : new AccessoryCategoryOption;
+        $option = $this->accessoryCategoryEditingId
+            ? AccessoryCategoryOption::findOrFail($this->accessoryCategoryEditingId)
+            : CreateAccessoryCategory::handle($this->accessoryCategoryName);
 
         $option->name = $this->accessoryCategoryName;
 

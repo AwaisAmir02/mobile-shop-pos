@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\CreateCustomer;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use Livewire\Attributes\Layout;
@@ -57,19 +58,17 @@ new #[Layout('layouts.app')] #[Title('Customers')] class extends Component
 
     public function save(): void
     {
-        $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'address' => ['nullable', 'string', 'max:255'],
-        ]);
+        $this->validate(CreateCustomer::rules());
 
-        $customer = $this->editingId ? Customer::findOrFail($this->editingId) : new Customer;
-
-        $customer->fill([
-            'name' => $this->name,
-            'phone' => $this->phone !== '' ? $this->phone : null,
-            'address' => $this->address !== '' ? $this->address : null,
-        ])->save();
+        if ($this->editingId) {
+            Customer::findOrFail($this->editingId)->update([
+                'name' => $this->name,
+                'phone' => $this->phone !== '' ? $this->phone : null,
+                'address' => $this->address !== '' ? $this->address : null,
+            ]);
+        } else {
+            CreateCustomer::handle($this->name, $this->phone, $this->address);
+        }
 
         $this->toastSuccess($this->editingId ? 'Customer updated.' : 'Customer added.');
         $this->dispatch('close-modal', name: 'customer-form');

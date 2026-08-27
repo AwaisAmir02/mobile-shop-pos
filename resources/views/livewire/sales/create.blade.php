@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 
@@ -20,6 +21,20 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
     public array $cart = [];
     public string $invoiceDiscount = '0';
     public string $customerId = '';
+
+    public function updatedCustomerId(): void
+    {
+        if ($this->customerId === '__create__') {
+            $this->customerId = '';
+            $this->dispatch('open-modal', name: 'quick-create-customer');
+        }
+    }
+
+    #[On('customer-created')]
+    public function onCustomerCreated(int $customerId): void
+    {
+        $this->customerId = (string) $customerId;
+    }
 
     public function with(): array
     {
@@ -289,8 +304,9 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                     </x-ui.field>
 
                     <x-ui.field label="Customer" name="customerId" for="customerId" help="Optional — leave blank for a walk-in sale">
-                        <x-ui.select wire:model="customerId" id="customerId">
+                        <x-ui.select wire:model.live="customerId" id="customerId">
                             <option value="">Walk-in (no customer)</option>
+                            <option value="__create__">+ New Customer</option>
                             @foreach ($customers as $customer)
                                 <option value="{{ $customer->id }}">{{ $customer->name }}</option>
                             @endforeach
@@ -318,4 +334,6 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             </x-ui.card>
         </div>
     </div>
+
+    <livewire:customers.quick-create />
 </div>

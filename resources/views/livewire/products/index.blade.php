@@ -9,6 +9,7 @@ use App\Models\AccessoryCategoryOption;
 use App\Models\Product;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
@@ -59,6 +60,20 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public function updatedType(): void
     {
         $this->resetErrorBag();
+    }
+
+    public function updatedCategory(): void
+    {
+        if ($this->category === '__create__') {
+            $this->category = '';
+            $this->dispatch('open-modal', name: 'quick-create-accessory-category');
+        }
+    }
+
+    #[On('accessory-category-created')]
+    public function onAccessoryCategoryCreated(string $categoryName): void
+    {
+        $this->category = $categoryName;
     }
 
     public function with(): array
@@ -344,6 +359,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                         <div class="flex items-center gap-3">
                             <x-ui.select wire:model.live="category" id="category" class="flex-1">
                                 <option value="">Select a category</option>
+                                <option value="__create__">+ New Category</option>
                                 @foreach ($accessoryCategories as $option)
                                     <option value="{{ $option->name }}">{{ $option->name }}</option>
                                 @endforeach
@@ -403,4 +419,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             </div>
         </form>
     </x-ui.modal>
+
+    <livewire:accessory-categories.quick-create />
 </div>
