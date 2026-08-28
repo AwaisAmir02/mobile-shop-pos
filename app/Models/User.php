@@ -63,15 +63,4 @@ class User extends Authenticatable
 
         return $this->role?->hasAccess($screen) ?? false;
     }
-
-    public function firstAccessibleScreenRouteName(): ?string
-    {
-        foreach (ShopScreen::cases() as $screen) {
-            if ($this->hasAccessTo($screen)) {
-                return $screen->routeName();
-            }
-        }
-
-        return null;
-    }
 }

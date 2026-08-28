@@ -103,19 +103,18 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Udhaar</h1>
-            <x-ui.button wire:click="openAddTransaction">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                Add Transaction
-            </x-ui.button>
-        </div>
+        <h1 class="text-xl font-semibold text-slate-900">Udhaar</h1>
     </x-slot>
 
-    <div class="mb-6">
+    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <x-ui.stat label="Total Outstanding" value="Rs {{ number_format($totalDue, 2) }}" sub="Across all customers who currently owe money" />
+
+        <x-ui.button wire:click="openAddTransaction" class="shrink-0">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Add Transaction
+        </x-ui.button>
     </div>
 
     @if ($rows->isEmpty())

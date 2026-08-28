@@ -18,7 +18,11 @@ new #[Layout('layouts.guest')] class extends Component
 
         Session::regenerate();
 
-        $default = Auth::user()->is_super_admin ? route('admin.dashboard', absolute: false) : route('dashboard', absolute: false);
+        $default = match (true) {
+            Auth::user()->is_super_admin => route('admin.dashboard', absolute: false),
+            Auth::user()->hasAccessTo('dashboard') => route('dashboard', absolute: false),
+            default => route('welcome', absolute: false),
+        };
 
         $this->redirectIntended(default: $default, navigate: true);
     }

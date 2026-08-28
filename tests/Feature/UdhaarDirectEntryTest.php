@@ -89,4 +89,34 @@ class UdhaarDirectEntryTest extends TestCase
             ->assertSet('customerId', '')
             ->assertDispatched('open-modal', name: 'quick-create-customer');
     }
+
+    public function test_the_add_transaction_button_is_rendered_inside_the_livewire_component_not_the_static_header_slot(): void
+    {
+        // Livewire::test() renders the component in isolation and can't
+        // catch a button that is visibly present but wired to nothing —
+        // that only happens when markup sits outside the Livewire
+        // component's own root element (e.g. accidentally placed in the
+        // layout's static x-slot="header" wrapper instead of the body),
+        // so wire:click never binds and clicking silently does nothing.
+        // A real HTTP request through the full layout is required to
+        // catch that class of bug: the button's wire:click attribute
+        // must appear after the component's own wire:snapshot root, not
+        // before it in the page's static header bar.
+        $shop = Shop::create(['name' => 'Shop A']);
+        $owner = User::factory()->create(['shop_id' => $shop->id]);
+        $this->actingAs($owner);
+
+        $html = $this->get(route('udhaar.index'))->getContent();
+
+        $componentRootPos = strpos($html, 'udhaar.index');
+        $buttonPos = strpos($html, 'wire:click="openAddTransaction"');
+
+        $this->assertNotFalse($componentRootPos, 'Could not locate the udhaar.index component root in the rendered page.');
+        $this->assertNotFalse($buttonPos, 'Could not locate the Add Transaction button in the rendered page.');
+        $this->assertGreaterThan(
+            $componentRootPos,
+            $buttonPos,
+            'The Add Transaction button must render inside the Livewire component root, not in the static header slot before it.'
+        );
+    }
 }

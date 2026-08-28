@@ -76,7 +76,7 @@ class DashboardTest extends TestCase
 
         $this->actingAs($staff);
 
-        $this->get('/')->assertRedirect(route('sales.index'));
+        $this->get('/')->assertRedirect(route('welcome'));
         $this->get(route('dashboard'))->assertForbidden();
     }
 

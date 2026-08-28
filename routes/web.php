@@ -13,13 +13,15 @@ Route::get('/', function () {
         return redirect()->route('admin.dashboard');
     }
 
-    return redirect()->route(Auth::user()->firstAccessibleScreenRouteName() ?? 'profile');
+    return redirect()->route(Auth::user()->hasAccessTo('dashboard') ? 'dashboard' : 'welcome');
 });
 
 Route::middleware(['auth'])->group(function () {
     Route::view('profile', 'profile')->name('profile');
 
     Route::middleware('shop.user')->group(function () {
+        Volt::route('welcome', 'welcome.index')->name('welcome');
+
         Volt::route('dashboard', 'dashboard.index')->name('dashboard')->middleware('shop.access:dashboard');
 
         Volt::route('products', 'products.index')->name('products.index')->middleware('shop.access:products');
