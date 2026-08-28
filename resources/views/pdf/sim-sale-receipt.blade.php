@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>{{ $load->receiptNumber() }}</title>
+    <title>{{ $sale->receiptNumber() }}</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -67,46 +67,46 @@
 </head>
 <body>
     <div class="header">
-        <div class="shop-name">{{ $load->shop->name }}</div>
-        <div class="receipt-title">Wallet Load Receipt</div>
-        <div class="receipt-meta">{{ $load->receiptNumber() }} &middot; {{ $load->created_at->format('d M Y, h:i A') }}</div>
+        <div class="shop-name">{{ $sale->shop->name }}</div>
+        <div class="receipt-title">SIM Sale Receipt</div>
+        <div class="receipt-meta">{{ $sale->receiptNumber() }} &middot; {{ $sale->created_at->format('d M Y, h:i A') }}</div>
     </div>
 
     <table class="details">
         <tr>
-            <td class="label">Provider</td>
-            <td class="value">{{ $load->provider }}</td>
+            <td class="label">Network</td>
+            <td class="value">{{ $sale->network }}</td>
         </tr>
         <tr>
-            <td class="label">Account Name</td>
-            <td class="value">{{ $load->account_name }}</td>
+            <td class="label">Plan</td>
+            <td class="value">{{ $sale->sim_type->label() }} &middot; {{ $sale->sim_form->label() }}{{ $sale->is_duplicate ? ' (Duplicate)' : '' }}</td>
         </tr>
         <tr>
-            <td class="label">Account Number</td>
-            <td class="value">{{ $load->account_number }}</td>
+            <td class="label">SIM Number</td>
+            <td class="value">{{ $sale->sim_number }}</td>
         </tr>
         <tr>
-            <td class="label">Amount Loaded</td>
-            <td class="value">Rs {{ number_format($load->amount, 2) }}</td>
+            <td class="label">Customer</td>
+            <td class="value">{{ $sale->customer?->name ?? 'Walk-in' }}</td>
         </tr>
         <tr>
-            <td class="label">Service Charge</td>
-            <td class="value">Rs {{ number_format($load->fee, 2) }}</td>
+            <td class="label">Amount</td>
+            <td class="value">Rs {{ number_format($sale->amount, 2) }}</td>
         </tr>
         <tr>
             <td class="label">Discount</td>
-            <td class="value">− Rs {{ number_format($load->discount, 2) }}</td>
+            <td class="value">− Rs {{ number_format($sale->discount, 2) }}</td>
         </tr>
         <tr class="amount-row">
-            <td class="label">Total Collected</td>
-            <td class="value">Rs {{ number_format($load->total, 2) }}</td>
+            <td class="label">Total</td>
+            <td class="value">Rs {{ number_format($sale->total, 2) }}</td>
         </tr>
     </table>
 
     <div class="footer">
         Thank you for your business!
-        @if ($load->user)
-            &middot; Served by {{ $load->user->name }}
+        @if ($sale->user)
+            &middot; Served by {{ $sale->user->name }}
         @endif
     </div>
 </body>

@@ -1,8 +1,6 @@
 <?php
 
 use App\Enums\ProductType;
-use App\Enums\SimForm;
-use App\Enums\SimType;
 use App\Livewire\Concerns\Toasts;
 use App\Livewire\Concerns\UploadsImages;
 use App\Models\AccessoryCategoryOption;
@@ -37,10 +35,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public string $imei = '';
 
     public string $category = '';
-
-    public string $sim_type = 'prepaid';
-    public string $sim_form = 'physical';
-    public string $network = '';
 
     public function mount(): void
     {
@@ -85,6 +79,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 ->latest()
                 ->paginate(10),
             'types' => ProductType::cases(),
+            'creatableTypes' => [ProductType::Mobile, ProductType::Accessory],
             'accessoryCategoryOptions' => collect([
                 ['value' => '__create__', 'label' => 'New Category', 'image' => null, 'special' => true],
             ])->concat(
@@ -94,8 +89,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     'image' => $option->imageUrl(),
                 ])
             )->all(),
-            'simTypes' => SimType::cases(),
-            'simForms' => SimForm::cases(),
         ];
     }
 
@@ -108,6 +101,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public function openEdit(int $id): void
     {
         $product = Product::findOrFail($id);
+
+        abort_if($product->type === ProductType::Sim, 403, 'Legacy SIM products cannot be edited.');
 
         $this->editingId = $product->id;
         $this->type = $product->type->value;
@@ -122,9 +117,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->model = $product->details['model'] ?? '';
         $this->imei = $product->details['imei'] ?? '';
         $this->category = $product->details['category'] ?? '';
-        $this->sim_type = $product->details['sim_type'] ?? 'prepaid';
-        $this->sim_form = $product->details['sim_form'] ?? 'physical';
-        $this->network = $product->details['network'] ?? '';
 
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'product-form');
@@ -191,11 +183,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             ProductType::Accessory->value => $rules + [
                 'category' => ['required', 'string', 'max:255', Rule::exists('accessory_category_options', 'name')->where('shop_id', auth()->user()->shop_id)],
             ],
-            ProductType::Sim->value => $rules + [
-                'sim_type' => ['required', Rule::enum(SimType::class)],
-                'sim_form' => ['required', Rule::enum(SimForm::class)],
-                'network' => ['required', 'string', 'max:255'],
-            ],
             default => $rules,
         };
     }
@@ -211,11 +198,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             ProductType::Accessory->value => [
                 'category' => $this->category,
             ],
-            ProductType::Sim->value => [
-                'sim_type' => $this->sim_type,
-                'sim_form' => $this->sim_form,
-                'network' => $this->network,
-            ],
             default => [],
         };
     }
@@ -224,13 +206,11 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     {
         $this->reset([
             'editingId', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
-            'brand', 'model', 'imei', 'category', 'network',
+            'brand', 'model', 'imei', 'category',
         ]);
 
         $this->type = 'mobile';
         $this->stock_quantity = '0';
-        $this->sim_type = 'prepaid';
-        $this->sim_form = 'physical';
         $this->resetErrorBag();
     }
 }; ?>
@@ -263,7 +243,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     @if ($products->isEmpty())
         <x-ui.empty-state
             title="No products yet"
-            description="Add your first mobile, accessory, or SIM/eSIM to start selling."
+            description="Add your first mobile or accessory to start selling."
         >
             <x-slot name="action">
                 <x-ui.button wire:click="openCreate">Add Product</x-ui.button>
@@ -281,7 +261,12 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     </x-ui.table-cell>
                     <x-ui.table-cell>
                         <div class="flex flex-col">
-                            <span class="text-slate-700">{{ $product->type->label() }}</span>
+                            <span class="flex items-center gap-1.5 text-slate-700">
+                                {{ $product->type->label() }}
+                                @if ($product->type->value === 'sim')
+                                    <x-ui.badge variant="warning">Legacy</x-ui.badge>
+                                @endif
+                            </span>
                             @if ($line = $product->summaryLine())
                                 <span class="text-xs text-slate-400">{{ $line }}</span>
                             @endif
@@ -299,9 +284,11 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     </x-ui.table-cell>
                     <x-ui.table-cell align="right">
                         <div class="flex justify-end gap-2">
-                            <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $product->id }})">
-                                Edit
-                            </x-ui.button>
+                            @if ($product->type->value !== 'sim')
+                                <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $product->id }})">
+                                    Edit
+                                </x-ui.button>
+                            @endif
                             <x-ui.button
                                 size="sm"
                                 variant="ghost"
@@ -331,7 +318,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             <div class="mt-5 space-y-5">
                 <x-ui.field label="Category" name="type" for="type">
                     <x-ui.select wire:model.live="type" id="type">
-                        @foreach ($types as $option)
+                        @foreach ($creatableTypes as $option)
                             <option value="{{ $option->value }}">{{ $option->label() }}</option>
                         @endforeach
                     </x-ui.select>
@@ -367,28 +354,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                             id="category"
                             placeholder="Select a category"
                         />
-                    </x-ui.field>
-                @elseif ($type === 'sim')
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <x-ui.field label="Plan Type" name="sim_type" for="sim_type">
-                            <x-ui.select wire:model="sim_type" id="sim_type">
-                                @foreach ($simTypes as $option)
-                                    <option value="{{ $option->value }}">{{ $option->label() }}</option>
-                                @endforeach
-                            </x-ui.select>
-                        </x-ui.field>
-
-                        <x-ui.field label="SIM Form" name="sim_form" for="sim_form">
-                            <x-ui.select wire:model="sim_form" id="sim_form">
-                                @foreach ($simForms as $option)
-                                    <option value="{{ $option->value }}">{{ $option->label() }}</option>
-                                @endforeach
-                            </x-ui.select>
-                        </x-ui.field>
-                    </div>
-
-                    <x-ui.field label="Network / Carrier" name="network" for="network">
-                        <x-ui.input wire:model="network" id="network" placeholder="e.g. Jazz, Zong, Telenor" />
                     </x-ui.field>
                 @endif
 

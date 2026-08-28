@@ -36,6 +36,9 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('sales/history', 'sales.history')->name('sales.history')->middleware('shop.access:sales');
         Volt::route('sales/{sale}', 'sales.show')->name('sales.show')->middleware('shop.access:sales');
 
+        Volt::route('sim-sales', 'sim-sales.create')->name('sim-sales.index')->middleware('shop.access:sim-sales');
+        Volt::route('sim-sales/history', 'sim-sales.history')->name('sim-sales.history')->middleware('shop.access:sim-sales');
+
         Volt::route('udhaar', 'udhaar.index')->name('udhaar.index')->middleware('shop.access:udhaar');
         Volt::route('udhaar/{customer}', 'udhaar.show')->name('udhaar.show')->middleware('shop.access:udhaar');
 
@@ -45,11 +48,17 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('wallet-loads', 'wallet-loads.create')->name('wallet-loads.index')->middleware('shop.access:wallet-loads');
         Volt::route('wallet-loads/history', 'wallet-loads.history')->name('wallet-loads.history')->middleware('shop.access:wallet-loads');
 
+        Volt::route('bills', 'bills.create')->name('bills.index')->middleware('shop.access:bills');
+        Volt::route('bills/history', 'bills.history')->name('bills.history')->middleware('shop.access:bills');
+
+        Volt::route('repairs', 'repairs.create')->name('repairs.index')->middleware('shop.access:repairs');
+        Volt::route('repairs/history', 'repairs.history')->name('repairs.history')->middleware('shop.access:repairs');
+
         Volt::route('expenses', 'expenses.index')->name('expenses.index')->middleware('shop.access:expenses');
 
         Volt::route('reports', 'reports.index')->name('reports.index')->middleware('shop.access:reports');
 
-        Volt::route('settings', 'settings.index')->name('settings.index')->middleware('shop.access:settings,users');
+        Volt::route('settings', 'settings.index')->name('settings.index')->middleware('shop.access:settings,users,shop-accounts');
 
         Volt::route('users', 'users.index')->name('users.index')->middleware('shop.access:users');
     });

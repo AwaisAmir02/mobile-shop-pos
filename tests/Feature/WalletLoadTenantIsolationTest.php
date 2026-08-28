@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Shop;
+use App\Models\ShopAccount;
 use App\Models\User;
 use App\Models\WalletLoad;
 use App\Models\WalletProvider;
@@ -50,19 +51,30 @@ class WalletLoadTenantIsolationTest extends TestCase
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $user = User::factory()->create(['shop_id' => $shop->id]);
+        $account = ShopAccount::create(['shop_id' => $shop->id, 'name' => 'My JazzCash', 'provider_type' => 'JazzCash']);
 
         $this->actingAs($user);
 
         Livewire::test('wallet-loads.create')
             ->set('provider', 'NayaPay')
+            ->set('accountName', 'Ali Khan')
             ->set('accountNumber', '03001234567')
+            ->set('shopAccountId', (string) $account->id)
             ->set('amount', '250')
-            ->call('save');
+            ->set('fee', '10')
+            ->set('discount', '5')
+            ->call('save')
+            ->assertHasNoErrors();
 
         $load = WalletLoad::first();
         $this->assertSame($shop->id, $load->shop_id);
         $this->assertSame('NayaPay', $load->provider);
+        $this->assertSame('Ali Khan', $load->account_name);
+        $this->assertSame($account->id, $load->shop_account_id);
         $this->assertEquals(250, $load->amount);
+        $this->assertEquals(10, $load->fee);
+        $this->assertEquals(5, $load->discount);
+        $this->assertEquals(255, $load->total);
     }
 
     public function test_wallet_providers_are_scoped_per_shop(): void

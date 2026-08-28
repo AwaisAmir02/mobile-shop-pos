@@ -2,23 +2,22 @@
 
 namespace App\Models;
 
+use App\Enums\RepairCategory;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class WalletLoad extends Model
+class Repair extends Model
 {
     use BelongsToShop;
 
     protected $fillable = [
         'shop_id',
         'user_id',
-        'provider',
-        'account_name',
-        'account_number',
-        'shop_account_id',
+        'customer_id',
+        'category',
+        'description',
         'amount',
-        'fee',
         'discount',
         'total',
     ];
@@ -26,8 +25,8 @@ class WalletLoad extends Model
     protected function casts(): array
     {
         return [
+            'category' => RepairCategory::class,
             'amount' => 'decimal:2',
-            'fee' => 'decimal:2',
             'discount' => 'decimal:2',
             'total' => 'decimal:2',
         ];
@@ -38,13 +37,13 @@ class WalletLoad extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function shopAccount(): BelongsTo
+    public function customer(): BelongsTo
     {
-        return $this->belongsTo(ShopAccount::class);
+        return $this->belongsTo(Customer::class);
     }
 
     public function receiptNumber(): string
     {
-        return 'WL-'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+        return 'RP-'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
     }
 }

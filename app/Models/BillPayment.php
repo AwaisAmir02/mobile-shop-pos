@@ -6,17 +6,18 @@ use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class WalletLoad extends Model
+class BillPayment extends Model
 {
     use BelongsToShop;
 
     protected $fillable = [
         'shop_id',
         'user_id',
-        'provider',
-        'account_name',
-        'account_number',
-        'shop_account_id',
+        'customer_id',
+        'bill_category_id',
+        'bill_provider_id',
+        'consumer_number',
+        'consumer_name',
         'amount',
         'fee',
         'discount',
@@ -38,13 +39,23 @@ class WalletLoad extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function shopAccount(): BelongsTo
+    public function customer(): BelongsTo
     {
-        return $this->belongsTo(ShopAccount::class);
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function billCategory(): BelongsTo
+    {
+        return $this->belongsTo(BillCategory::class);
+    }
+
+    public function billProvider(): BelongsTo
+    {
+        return $this->belongsTo(BillProvider::class);
     }
 
     public function receiptNumber(): string
     {
-        return 'WL-'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+        return 'BP-'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
     }
 }

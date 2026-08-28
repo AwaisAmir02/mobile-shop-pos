@@ -6,9 +6,13 @@ use App\Livewire\Concerns\Toasts;
 use App\Livewire\Concerns\UploadsImages;
 use App\Models\AccessoryCategoryOption;
 use App\Models\BalanceLoad;
+use App\Models\BillCategory;
+use App\Models\BillPayment;
+use App\Models\BillProvider;
 use App\Models\Network;
 use App\Models\Product;
 use App\Models\Role;
+use App\Models\ShopAccount;
 use App\Models\WalletLoad;
 use App\Models\WalletProvider;
 use Illuminate\Support\Facades\Auth;
@@ -45,6 +49,21 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public $networkImage = null;
     public ?string $networkExistingImageUrl = null;
 
+    // Shop Accounts
+    public ?int $shopAccountEditingId = null;
+    public string $shopAccountName = '';
+    public string $shopAccountProviderType = '';
+
+    // Bill Categories
+    public ?int $billCategoryEditingId = null;
+    public string $billCategoryName = '';
+
+    // Bill Providers
+    public ?int $billProviderEditingId = null;
+    public string $billProviderName = '';
+    public string $billProviderCategoryId = '';
+    public string $billProviderRegion = '';
+
     // Roles
     public ?int $roleEditingId = null;
     public string $roleName = '';
@@ -71,7 +90,11 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $tabs = [];
 
         if (Auth::user()->hasAccessTo('settings')) {
-            $tabs = [...$tabs, 'accessory-categories', 'networks', 'wallet-providers'];
+            $tabs = [...$tabs, 'accessory-categories', 'networks', 'wallet-providers', 'bills'];
+        }
+
+        if (Auth::user()->hasAccessTo('shop-accounts')) {
+            $tabs[] = 'shop-accounts';
         }
 
         if (Auth::user()->hasAccessTo('users')) {
@@ -108,6 +131,15 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 : collect(),
             'networks' => in_array('networks', $accessible, true)
                 ? Network::query()->orderBy('name')->get()
+                : collect(),
+            'shopAccounts' => in_array('shop-accounts', $accessible, true)
+                ? ShopAccount::query()->withSum('walletLoads', 'amount')->orderBy('name')->get()
+                : collect(),
+            'billCategories' => in_array('bills', $accessible, true)
+                ? BillCategory::query()->withCount('billProviders')->orderBy('name')->get()
+                : collect(),
+            'billProviders' => in_array('bills', $accessible, true)
+                ? BillProvider::query()->with('billCategory')->orderBy('name')->get()
                 : collect(),
             'roles' => in_array('roles', $accessible, true)
                 ? Role::query()->withCount('users')->orderBy('name')->get()
@@ -341,6 +373,208 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $this->reset(['networkEditingId', 'networkName', 'networkImage', 'networkExistingImageUrl']);
     }
 
+    // ── Shop Accounts ────────────────────────────────────────────────
+
+    public function openShopAccountCreate(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('shop-accounts'), 403);
+
+        $this->reset(['shopAccountEditingId', 'shopAccountName', 'shopAccountProviderType']);
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'shop-account-form');
+    }
+
+    public function openShopAccountEdit(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('shop-accounts'), 403);
+
+        $account = ShopAccount::findOrFail($id);
+
+        $this->shopAccountEditingId = $account->id;
+        $this->shopAccountName = $account->name;
+        $this->shopAccountProviderType = $account->provider_type;
+
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'shop-account-form');
+    }
+
+    public function saveShopAccount(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('shop-accounts'), 403);
+
+        $this->validate([
+            'shopAccountName' => ['required', 'string', 'max:255', Rule::unique('shop_accounts', 'name')->where('shop_id', Auth::user()->shop_id)->ignore($this->shopAccountEditingId)],
+            'shopAccountProviderType' => ['required', 'string', 'max:255'],
+        ]);
+
+        $account = $this->shopAccountEditingId ? ShopAccount::findOrFail($this->shopAccountEditingId) : new ShopAccount;
+
+        $account->name = $this->shopAccountName;
+        $account->provider_type = $this->shopAccountProviderType;
+        $account->save();
+
+        $this->toastSuccess($this->shopAccountEditingId ? 'Shop account updated.' : 'Shop account added.');
+        $this->dispatch('close-modal', name: 'shop-account-form');
+        $this->reset(['shopAccountEditingId', 'shopAccountName', 'shopAccountProviderType']);
+    }
+
+    public function deleteShopAccount(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('shop-accounts'), 403);
+
+        $account = ShopAccount::findOrFail($id);
+
+        if (WalletLoad::where('shop_account_id', $account->id)->exists()) {
+            $this->toastError("Cannot delete \"{$account->name}\" — it has wallet load history.");
+
+            return;
+        }
+
+        $account->delete();
+        $this->toastSuccess('Shop account deleted.');
+    }
+
+    public function closeShopAccountForm(): void
+    {
+        $this->dispatch('close-modal', name: 'shop-account-form');
+        $this->reset(['shopAccountEditingId', 'shopAccountName', 'shopAccountProviderType']);
+    }
+
+    // ── Bill Categories ──────────────────────────────────────────────
+
+    public function openBillCategoryCreate(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+
+        $this->reset(['billCategoryEditingId', 'billCategoryName']);
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'bill-category-form');
+    }
+
+    public function openBillCategoryEdit(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+
+        $category = BillCategory::findOrFail($id);
+
+        $this->billCategoryEditingId = $category->id;
+        $this->billCategoryName = $category->name;
+
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'bill-category-form');
+    }
+
+    public function saveBillCategory(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+
+        $this->validate([
+            'billCategoryName' => ['required', 'string', 'max:255', Rule::unique('bill_categories', 'name')->where('shop_id', Auth::user()->shop_id)->ignore($this->billCategoryEditingId)],
+        ]);
+
+        $category = $this->billCategoryEditingId ? BillCategory::findOrFail($this->billCategoryEditingId) : new BillCategory;
+
+        $category->name = $this->billCategoryName;
+        $category->save();
+
+        $this->toastSuccess($this->billCategoryEditingId ? 'Bill category updated.' : 'Bill category added.');
+        $this->dispatch('close-modal', name: 'bill-category-form');
+        $this->reset(['billCategoryEditingId', 'billCategoryName']);
+    }
+
+    public function deleteBillCategory(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+
+        $category = BillCategory::withCount('billProviders')->findOrFail($id);
+
+        if ($category->bill_providers_count > 0) {
+            $this->toastError("Cannot delete \"{$category->name}\" — it has providers under it. Delete those first.");
+
+            return;
+        }
+
+        $category->delete();
+        $this->toastSuccess('Bill category deleted.');
+    }
+
+    public function closeBillCategoryForm(): void
+    {
+        $this->dispatch('close-modal', name: 'bill-category-form');
+        $this->reset(['billCategoryEditingId', 'billCategoryName']);
+    }
+
+    // ── Bill Providers ───────────────────────────────────────────────
+
+    public function openBillProviderCreate(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+
+        $this->reset(['billProviderEditingId', 'billProviderName', 'billProviderRegion']);
+        $this->billProviderCategoryId = (string) (BillCategory::query()->orderBy('name')->value('id') ?? '');
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'bill-provider-form');
+    }
+
+    public function openBillProviderEdit(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+
+        $provider = BillProvider::findOrFail($id);
+
+        $this->billProviderEditingId = $provider->id;
+        $this->billProviderName = $provider->name;
+        $this->billProviderCategoryId = (string) $provider->bill_category_id;
+        $this->billProviderRegion = $provider->region ?? '';
+
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'bill-provider-form');
+    }
+
+    public function saveBillProvider(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+
+        $this->validate([
+            'billProviderName' => ['required', 'string', 'max:255'],
+            'billProviderCategoryId' => ['required', 'integer', Rule::exists('bill_categories', 'id')->where('shop_id', Auth::user()->shop_id)],
+            'billProviderRegion' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $provider = $this->billProviderEditingId ? BillProvider::findOrFail($this->billProviderEditingId) : new BillProvider;
+
+        $provider->name = $this->billProviderName;
+        $provider->bill_category_id = $this->billProviderCategoryId;
+        $provider->region = $this->billProviderRegion !== '' ? $this->billProviderRegion : null;
+        $provider->save();
+
+        $this->toastSuccess($this->billProviderEditingId ? 'Bill provider updated.' : 'Bill provider added.');
+        $this->dispatch('close-modal', name: 'bill-provider-form');
+        $this->reset(['billProviderEditingId', 'billProviderName', 'billProviderCategoryId', 'billProviderRegion']);
+    }
+
+    public function deleteBillProvider(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+
+        $provider = BillProvider::findOrFail($id);
+
+        if (BillPayment::where('bill_provider_id', $provider->id)->exists()) {
+            $this->toastError("Cannot delete \"{$provider->name}\" — it has bill payment history.");
+
+            return;
+        }
+
+        $provider->delete();
+        $this->toastSuccess('Bill provider deleted.');
+    }
+
+    public function closeBillProviderForm(): void
+    {
+        $this->dispatch('close-modal', name: 'bill-provider-form');
+        $this->reset(['billProviderEditingId', 'billProviderName', 'billProviderCategoryId', 'billProviderRegion']);
+    }
+
     // ── Roles ────────────────────────────────────────────────────────
 
     public function openRoleCreate(): void
@@ -421,6 +655,8 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             'accessory-categories' => 'Accessory Categories',
             'networks' => 'Networks',
             'wallet-providers' => 'Wallet Providers',
+            'shop-accounts' => 'Shop Accounts',
+            'bills' => 'Bills',
             'profile' => 'Profile',
             'roles' => 'Roles',
         ];
@@ -598,6 +834,151 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 </x-ui.table>
             @endif
         </x-ui.card>
+    @elseif ($tab === 'shop-accounts')
+        <x-ui.card title="Shop Accounts" description="Manage the shop's own wallet/bank accounts used to send Wallet Loads, and see how much has moved through each.">
+            <x-slot name="actions">
+                <x-ui.button size="sm" wire:click="openShopAccountCreate">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Add Account
+                </x-ui.button>
+            </x-slot>
+
+            @if ($shopAccounts->isEmpty())
+                <x-ui.empty-state
+                    title="No shop accounts yet"
+                    description="Add the shop's own JazzCash, Easypaisa, or bank account used to send Wallet Loads."
+                >
+                    <x-slot name="action">
+                        <x-ui.button wire:click="openShopAccountCreate">Add Account</x-ui.button>
+                    </x-slot>
+                </x-ui.empty-state>
+            @else
+                <x-ui.table :headers="['Account', 'Provider / Type', 'Total Sent', '']">
+                    @foreach ($shopAccounts as $account)
+                        <x-ui.table-row wire:key="shop-account-{{ $account->id }}">
+                            <x-ui.table-cell class="font-medium text-slate-900">{{ $account->name }}</x-ui.table-cell>
+                            <x-ui.table-cell>{{ $account->provider_type }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($account->wallet_loads_sum_amount ?? 0, 2) }}</x-ui.table-cell>
+                            <x-ui.table-cell align="right">
+                                <div class="flex justify-end gap-2">
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openShopAccountEdit({{ $account->id }})">
+                                        Edit
+                                    </x-ui.button>
+                                    <x-ui.button
+                                        size="sm"
+                                        variant="ghost"
+                                        wire:click="deleteShopAccount({{ $account->id }})"
+                                        wire:confirm="Delete {{ $account->name }}?"
+                                        class="text-red-600 hover:bg-red-50"
+                                    >
+                                        Delete
+                                    </x-ui.button>
+                                </div>
+                            </x-ui.table-cell>
+                        </x-ui.table-row>
+                    @endforeach
+                </x-ui.table>
+            @endif
+        </x-ui.card>
+    @elseif ($tab === 'bills')
+        <div class="space-y-6">
+            <x-ui.card title="Bill Categories" description="Manage the types of bills your shop accepts payment for (Electricity, Gas, Water, Telephone, etc.).">
+                <x-slot name="actions">
+                    <x-ui.button size="sm" wire:click="openBillCategoryCreate">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Add Category
+                    </x-ui.button>
+                </x-slot>
+
+                @if ($billCategories->isEmpty())
+                    <x-ui.empty-state
+                        title="No bill categories yet"
+                        description="Add Electricity, Gas, Water, Telephone, or any other category your shop accepts."
+                    >
+                        <x-slot name="action">
+                            <x-ui.button wire:click="openBillCategoryCreate">Add Category</x-ui.button>
+                        </x-slot>
+                    </x-ui.empty-state>
+                @else
+                    <x-ui.table :headers="['Category', 'Providers', '']">
+                        @foreach ($billCategories as $category)
+                            <x-ui.table-row wire:key="bill-category-{{ $category->id }}">
+                                <x-ui.table-cell class="font-medium text-slate-900">{{ $category->name }}</x-ui.table-cell>
+                                <x-ui.table-cell>{{ $category->bill_providers_count }}</x-ui.table-cell>
+                                <x-ui.table-cell align="right">
+                                    <div class="flex justify-end gap-2">
+                                        <x-ui.button size="sm" variant="ghost" wire:click="openBillCategoryEdit({{ $category->id }})">
+                                            Edit
+                                        </x-ui.button>
+                                        <x-ui.button
+                                            size="sm"
+                                            variant="ghost"
+                                            wire:click="deleteBillCategory({{ $category->id }})"
+                                            wire:confirm="Delete {{ $category->name }}?"
+                                            class="text-red-600 hover:bg-red-50"
+                                        >
+                                            Delete
+                                        </x-ui.button>
+                                    </div>
+                                </x-ui.table-cell>
+                            </x-ui.table-row>
+                        @endforeach
+                    </x-ui.table>
+                @endif
+            </x-ui.card>
+
+            <x-ui.card title="Bill Providers" description="Manage the companies under each category (e.g. LESCO, K-Electric under Electricity).">
+                <x-slot name="actions">
+                    <x-ui.button size="sm" wire:click="openBillProviderCreate">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Add Provider
+                    </x-ui.button>
+                </x-slot>
+
+                @if ($billProviders->isEmpty())
+                    <x-ui.empty-state
+                        title="No bill providers yet"
+                        description="Add the companies your shop collects payments for, e.g. LESCO or K-Electric."
+                    >
+                        <x-slot name="action">
+                            <x-ui.button wire:click="openBillProviderCreate">Add Provider</x-ui.button>
+                        </x-slot>
+                    </x-ui.empty-state>
+                @else
+                    <x-ui.table :headers="['Provider', 'Category', 'Region', '']">
+                        @foreach ($billProviders as $provider)
+                            <x-ui.table-row wire:key="bill-provider-{{ $provider->id }}">
+                                <x-ui.table-cell class="font-medium text-slate-900">{{ $provider->name }}</x-ui.table-cell>
+                                <x-ui.table-cell>{{ $provider->billCategory->name }}</x-ui.table-cell>
+                                <x-ui.table-cell>{{ $provider->region ?? '—' }}</x-ui.table-cell>
+                                <x-ui.table-cell align="right">
+                                    <div class="flex justify-end gap-2">
+                                        <x-ui.button size="sm" variant="ghost" wire:click="openBillProviderEdit({{ $provider->id }})">
+                                            Edit
+                                        </x-ui.button>
+                                        <x-ui.button
+                                            size="sm"
+                                            variant="ghost"
+                                            wire:click="deleteBillProvider({{ $provider->id }})"
+                                            wire:confirm="Delete {{ $provider->name }}?"
+                                            class="text-red-600 hover:bg-red-50"
+                                        >
+                                            Delete
+                                        </x-ui.button>
+                                    </div>
+                                </x-ui.table-cell>
+                            </x-ui.table-row>
+                        @endforeach
+                    </x-ui.table>
+                @endif
+            </x-ui.card>
+        </div>
     @elseif ($tab === 'profile')
         <div class="max-w-2xl space-y-6">
             <x-ui.card>
@@ -771,6 +1152,94 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveProvider">
                     {{ $providerEditingId ? 'Save Changes' : 'Add Provider' }}
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="shop-account-form" max-width="sm">
+        <form wire:submit="saveShopAccount" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">
+                {{ $shopAccountEditingId ? 'Edit Shop Account' : 'Add Shop Account' }}
+            </h2>
+
+            <div class="mt-5 space-y-5">
+                <x-ui.field label="Account Name" name="shopAccountName" for="shopAccountName" help="e.g. My JazzCash — 03xx-xxxxxxx">
+                    <x-ui.input wire:model="shopAccountName" id="shopAccountName" autofocus />
+                </x-ui.field>
+
+                <x-ui.field label="Provider / Type" name="shopAccountProviderType" for="shopAccountProviderType" help="e.g. JazzCash, Easypaisa, Bank">
+                    <x-ui.input wire:model="shopAccountProviderType" id="shopAccountProviderType" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeShopAccountForm">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveShopAccount">
+                    {{ $shopAccountEditingId ? 'Save Changes' : 'Add Account' }}
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="bill-category-form" max-width="sm">
+        <form wire:submit="saveBillCategory" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">
+                {{ $billCategoryEditingId ? 'Edit Bill Category' : 'Add Bill Category' }}
+            </h2>
+
+            <div class="mt-5 space-y-5">
+                <x-ui.field label="Category Name" name="billCategoryName" for="billCategoryName" help="e.g. Electricity, Gas, Water">
+                    <x-ui.input wire:model="billCategoryName" id="billCategoryName" autofocus />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeBillCategoryForm">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveBillCategory">
+                    {{ $billCategoryEditingId ? 'Save Changes' : 'Add Category' }}
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="bill-provider-form" max-width="sm">
+        <form wire:submit="saveBillProvider" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">
+                {{ $billProviderEditingId ? 'Edit Bill Provider' : 'Add Bill Provider' }}
+            </h2>
+
+            <div class="mt-5 space-y-5">
+                <x-ui.field label="Category" name="billProviderCategoryId" for="billProviderCategoryId">
+                    <x-ui.select wire:model="billProviderCategoryId" id="billProviderCategoryId">
+                        @foreach ($billCategories as $category)
+                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </x-ui.field>
+
+                <x-ui.field label="Provider Name" name="billProviderName" for="billProviderName" help="e.g. LESCO, K-Electric">
+                    <x-ui.input wire:model="billProviderName" id="billProviderName" />
+                </x-ui.field>
+
+                <x-ui.field label="Region / Province" name="billProviderRegion" for="billProviderRegion" help="Optional">
+                    <x-ui.input wire:model="billProviderRegion" id="billProviderRegion" placeholder="e.g. Punjab" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeBillProviderForm">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveBillProvider">
+                    {{ $billProviderEditingId ? 'Save Changes' : 'Add Provider' }}
                 </x-ui.button>
             </div>
         </form>

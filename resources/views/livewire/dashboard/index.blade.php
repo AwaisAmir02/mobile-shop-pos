@@ -201,6 +201,11 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
         <x-ui.stat label="Items Sold" :value="number_format($totalItemsSold)" sub="{{ $categories->firstWhere('label', 'Mobile Phone')['units'] ?? 0 }} mobile · {{ $categories->firstWhere('label', 'Accessory')['units'] ?? 0 }} accessory · {{ $categories->firstWhere('label', 'SIM / eSIM')['units'] ?? 0 }} SIM" />
         <x-ui.stat label="Balance Loaded" value="Rs {{ number_format($totalBalanceLoaded, 2) }}" />
         <x-ui.stat label="Wallet Loaded" value="Rs {{ number_format($totalWalletLoaded, 2) }}" />
+        <x-ui.stat label="Wallet Load Fees" value="Rs {{ number_format($totalWalletLoadFees, 2) }}" sub="Net service revenue" />
+        <x-ui.stat label="SIM Sales" :value="number_format($totalSimSalesSold)" sub="Rs {{ number_format($totalSimSaleRevenue, 2) }} revenue" />
+        <x-ui.stat label="Bills Collected" value="Rs {{ number_format($totalBillsCollected, 2) }}" />
+        <x-ui.stat label="Bills Fee Revenue" value="Rs {{ number_format($totalBillsFeeRevenue, 2) }}" sub="Net service revenue" />
+        <x-ui.stat label="Repairs Revenue" value="Rs {{ number_format($totalRepairsRevenue, 2) }}" />
         <x-ui.stat label="Expenses" value="Rs {{ number_format($totalExpenses, 2) }}" />
     </div>
 

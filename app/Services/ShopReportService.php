@@ -4,10 +4,13 @@ namespace App\Services;
 
 use App\Enums\ProductType;
 use App\Models\BalanceLoad;
+use App\Models\BillPayment;
 use App\Models\Expense;
+use App\Models\Repair;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Shop;
+use App\Models\SimSale;
 use App\Models\StockIn;
 use App\Models\WalletLoad;
 use Carbon\Carbon;
@@ -41,9 +44,10 @@ class ShopReportService
             ->whereBetween('created_at', [$start, $end])
             ->sum('amount');
 
-        $totalWalletLoaded = (float) WalletLoad::where('shop_id', $shop->id)
-            ->whereBetween('created_at', [$start, $end])
-            ->sum('amount');
+        $walletLoadsQuery = fn () => WalletLoad::where('shop_id', $shop->id)->whereBetween('created_at', [$start, $end]);
+
+        $totalWalletLoaded = (float) $walletLoadsQuery()->sum('amount');
+        $totalWalletLoadFees = (float) $walletLoadsQuery()->sum('fee') - (float) $walletLoadsQuery()->sum('discount');
 
         $totalExpenses = (float) Expense::where('shop_id', $shop->id)
             ->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
@@ -53,6 +57,20 @@ class ShopReportService
             ->whereBetween('stock_date', [$start->toDateString(), $end->toDateString()])
             ->sum('quantity');
 
+        $simSalesQuery = fn () => SimSale::where('shop_id', $shop->id)->whereBetween('created_at', [$start, $end]);
+
+        $totalSimSalesSold = (int) $simSalesQuery()->count();
+        $totalSimSaleRevenue = (float) $simSalesQuery()->sum('total');
+
+        $billPaymentsQuery = fn () => BillPayment::where('shop_id', $shop->id)->whereBetween('created_at', [$start, $end]);
+
+        $totalBillsCollected = (float) $billPaymentsQuery()->sum('amount');
+        $totalBillsFeeRevenue = (float) $billPaymentsQuery()->sum('fee') - (float) $billPaymentsQuery()->sum('discount');
+
+        $totalRepairsRevenue = (float) Repair::where('shop_id', $shop->id)
+            ->whereBetween('created_at', [$start, $end])
+            ->sum('total');
+
         return [
             'totalRevenue' => $totalRevenue,
             'totalDiscount' => $invoiceDiscount + $itemDiscount,
@@ -60,8 +78,14 @@ class ShopReportService
             'totalItemsSold' => (int) $categories->sum('units'),
             'totalBalanceLoaded' => $totalBalanceLoaded,
             'totalWalletLoaded' => $totalWalletLoaded,
+            'totalWalletLoadFees' => $totalWalletLoadFees,
             'totalExpenses' => $totalExpenses,
             'totalStockInUnits' => $totalStockInUnits,
+            'totalSimSalesSold' => $totalSimSalesSold,
+            'totalSimSaleRevenue' => $totalSimSaleRevenue,
+            'totalBillsCollected' => $totalBillsCollected,
+            'totalBillsFeeRevenue' => $totalBillsFeeRevenue,
+            'totalRepairsRevenue' => $totalRepairsRevenue,
             'netSummary' => $totalRevenue - $totalExpenses,
         ];
     }
