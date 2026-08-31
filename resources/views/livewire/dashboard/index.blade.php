@@ -206,6 +206,7 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
         <x-ui.stat label="Bills Collected" value="Rs {{ number_format($totalBillsCollected, 2) }}" />
         <x-ui.stat label="Bills Fee Revenue" value="Rs {{ number_format($totalBillsFeeRevenue, 2) }}" sub="Net service revenue" />
         <x-ui.stat label="Repairs Revenue" value="Rs {{ number_format($totalRepairsRevenue, 2) }}" />
+        <x-ui.stat label="NADRA Verifications" :value="number_format($totalNadraVerifications)" sub="Rs {{ number_format($totalNadraRevenue, 2) }} revenue" />
         <x-ui.stat label="Expenses" value="Rs {{ number_format($totalExpenses, 2) }}" />
     </div>
 

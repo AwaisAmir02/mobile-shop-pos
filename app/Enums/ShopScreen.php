@@ -16,6 +16,7 @@ enum ShopScreen: string
     case ShopAccounts = 'shop-accounts';
     case Bills = 'bills';
     case Repairs = 'repairs';
+    case NadraVerifications = 'nadra-verifications';
     case Expenses = 'expenses';
     case Settings = 'settings';
     case Reports = 'reports';
@@ -36,6 +37,7 @@ enum ShopScreen: string
             self::ShopAccounts => 'Shop Accounts',
             self::Bills => 'Bills',
             self::Repairs => 'Repairs',
+            self::NadraVerifications => 'NADRA Verification',
             self::Expenses => 'Expenses',
             self::Settings => 'Settings',
             self::Reports => 'Reports',
@@ -58,6 +60,7 @@ enum ShopScreen: string
             self::ShopAccounts => 'settings.index',
             self::Bills => 'bills.index',
             self::Repairs => 'repairs.index',
+            self::NadraVerifications => 'nadra-verifications.index',
             self::Expenses => 'expenses.index',
             self::Settings => 'settings.index',
             self::Reports => 'reports.index',

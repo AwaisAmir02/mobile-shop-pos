@@ -6,6 +6,7 @@ use App\Enums\ProductType;
 use App\Models\BalanceLoad;
 use App\Models\BillPayment;
 use App\Models\Expense;
+use App\Models\NadraVerification;
 use App\Models\Repair;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -71,6 +72,11 @@ class ShopReportService
             ->whereBetween('created_at', [$start, $end])
             ->sum('total');
 
+        $nadraVerificationsQuery = fn () => NadraVerification::where('shop_id', $shop->id)->whereBetween('created_at', [$start, $end]);
+
+        $totalNadraVerifications = (int) $nadraVerificationsQuery()->count();
+        $totalNadraRevenue = (float) $nadraVerificationsQuery()->sum('total');
+
         return [
             'totalRevenue' => $totalRevenue,
             'totalDiscount' => $invoiceDiscount + $itemDiscount,
@@ -86,6 +92,8 @@ class ShopReportService
             'totalBillsCollected' => $totalBillsCollected,
             'totalBillsFeeRevenue' => $totalBillsFeeRevenue,
             'totalRepairsRevenue' => $totalRepairsRevenue,
+            'totalNadraVerifications' => $totalNadraVerifications,
+            'totalNadraRevenue' => $totalNadraRevenue,
             'netSummary' => $totalRevenue - $totalExpenses,
         ];
     }

@@ -112,6 +112,7 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
         <x-ui.stat label="Total Bills Collected" value="Rs {{ number_format($totalBillsCollected, 2) }}" />
         <x-ui.stat label="Bills Fee Revenue" value="Rs {{ number_format($totalBillsFeeRevenue, 2) }}" sub="Net service revenue" />
         <x-ui.stat label="Total Repairs Revenue" value="Rs {{ number_format($totalRepairsRevenue, 2) }}" />
+        <x-ui.stat label="Total NADRA Revenue" value="Rs {{ number_format($totalNadraRevenue, 2) }}" :sub="$totalNadraVerifications.' verified'" />
         <x-ui.stat label="Total Expenses" value="Rs {{ number_format($totalExpenses, 2) }}" />
     </div>
 

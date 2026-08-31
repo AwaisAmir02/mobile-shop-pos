@@ -54,6 +54,9 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('repairs', 'repairs.create')->name('repairs.index')->middleware('shop.access:repairs');
         Volt::route('repairs/history', 'repairs.history')->name('repairs.history')->middleware('shop.access:repairs');
 
+        Volt::route('nadra-verifications', 'nadra-verifications.create')->name('nadra-verifications.index')->middleware('shop.access:nadra-verifications');
+        Volt::route('nadra-verifications/history', 'nadra-verifications.history')->name('nadra-verifications.history')->middleware('shop.access:nadra-verifications');
+
         Volt::route('expenses', 'expenses.index')->name('expenses.index')->middleware('shop.access:expenses');
 
         Volt::route('reports', 'reports.index')->name('reports.index')->middleware('shop.access:reports');
