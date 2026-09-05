@@ -94,6 +94,10 @@
             <td class="value">Rs {{ number_format($sale->amount, 2) }}</td>
         </tr>
         <tr>
+            <td class="label">Service Fee</td>
+            <td class="value">Rs {{ number_format($sale->fee, 2) }}</td>
+        </tr>
+        <tr>
             <td class="label">Discount</td>
             <td class="value">− Rs {{ number_format($sale->discount, 2) }}</td>
         </tr>

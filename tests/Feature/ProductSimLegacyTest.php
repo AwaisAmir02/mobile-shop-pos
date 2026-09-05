@@ -23,31 +23,35 @@ class ProductSimLegacyTest extends TestCase
         $this->actingAs($owner);
 
         Livewire::test('products.index')
-            ->assertViewHas('creatableTypes', function ($types) {
-                return collect($types)->pluck('value')->all() === ['mobile', 'accessory'];
+            ->assertViewHas('mainCategories', function ($categories) {
+                $slugs = $categories->pluck('slug')->all();
+
+                return in_array('mobile', $slugs, true)
+                    && in_array('accessory', $slugs, true)
+                    && ! in_array('sim', $slugs, true);
             });
     }
 
-    public function test_a_tampered_type_of_sim_does_not_crash_the_save_flow(): void
+    public function test_a_tampered_type_of_sim_is_rejected_and_does_not_crash_the_save_flow(): void
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
 
         $this->actingAs($owner);
 
+        // 'sim' matches no Main Category slug (Main Categories never
+        // include it), so the type-exists validation rejects it outright —
+        // a stronger guarantee than before, when it merely fell through to
+        // generic rules. The important part is nothing crashes either way.
         Livewire::test('products.index')
             ->set('type', 'sim')
             ->set('name', 'Tampered SIM')
             ->set('price', '500')
             ->set('stock_quantity', '1')
             ->call('save')
-            ->assertHasNoErrors();
+            ->assertHasErrors(['type']);
 
-        // With no sim-specific rules left, a tampered "sim" type falls through
-        // to the base rules and is simply saved as a bare product — it does
-        // NOT gain the legacy SIM fields, since those can never be filled in
-        // via this form again. The important guarantee is nothing crashes.
-        $this->assertTrue(Product::where('name', 'Tampered SIM')->exists());
+        $this->assertFalse(Product::where('name', 'Tampered SIM')->exists());
     }
 
     public function test_an_existing_legacy_sim_product_remains_visible_and_readable(): void
@@ -70,7 +74,7 @@ class ProductSimLegacyTest extends TestCase
             ->assertSee('Legacy');
 
         $this->assertNotNull($simProduct->fresh());
-        $this->assertSame('sim', $simProduct->fresh()->type->value);
+        $this->assertSame('sim', $simProduct->fresh()->type);
     }
 
     public function test_editing_a_legacy_sim_product_is_blocked(): void

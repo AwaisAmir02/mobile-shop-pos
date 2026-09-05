@@ -20,7 +20,9 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification')] class extends Compon
     public string $phoneNumber = '';
     public string $cnicNumber = '';
     public string $amount = '';
+    public string $fee = '0';
     public string $discount = '0';
+    public bool $feeTouched = false;
 
     public ?int $lastVerificationId = null;
 
@@ -38,9 +40,32 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification')] class extends Compon
         $this->customerId = (string) $customerId;
     }
 
+    public function updatedAmount(): void
+    {
+        if (! $this->feeTouched) {
+            $this->fee = $this->suggestedFee();
+        }
+    }
+
+    public function updatedFee(): void
+    {
+        $this->feeTouched = true;
+    }
+
+    protected function suggestedFee(): string
+    {
+        $percent = (float) (Auth::user()->shop?->nadra_verification_commission_percent ?? 0);
+
+        if ($percent <= 0 || $this->amount === '') {
+            return '0';
+        }
+
+        return number_format(((float) $this->amount) * $percent / 100, 2, '.', '');
+    }
+
     public function totalCollected(): float
     {
-        return max(0.0, (float) ($this->amount !== '' ? $this->amount : 0) - (float) $this->discount);
+        return max(0.0, (float) ($this->amount !== '' ? $this->amount : 0) + (float) $this->fee - (float) $this->discount);
     }
 
     public function with(): array
@@ -59,6 +84,7 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification')] class extends Compon
             'phoneNumber' => ['required', 'string', 'max:20'],
             'cnicNumber' => ['required', 'string', 'max:20'],
             'amount' => ['required', 'numeric', 'min:0'],
+            'fee' => ['required', 'numeric', 'min:0'],
             'discount' => ['required', 'numeric', 'min:0'],
         ]);
 
@@ -68,13 +94,14 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification')] class extends Compon
             'phone_number' => $this->phoneNumber,
             'cnic_number' => $this->cnicNumber,
             'amount' => $this->amount,
+            'fee' => $this->fee,
             'discount' => $this->discount,
             'total' => $this->totalCollected(),
         ]);
 
         $this->toastSuccess('NADRA verification recorded.');
         $this->lastVerificationId = $verification->id;
-        $this->reset(['customerId', 'phoneNumber', 'cnicNumber', 'amount', 'discount']);
+        $this->reset(['customerId', 'phoneNumber', 'cnicNumber', 'amount', 'fee', 'discount', 'feeTouched']);
     }
 
     public function logAnother(): void
@@ -144,9 +171,13 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification')] class extends Compon
                         <x-ui.input wire:model="cnicNumber" id="cnicNumber" placeholder="xxxxx-xxxxxxx-x" />
                     </x-ui.field>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <x-ui.field label="Amount" name="amount" for="amount">
                             <x-ui.input wire:model.live="amount" id="amount" type="number" min="0" step="0.01" class="text-lg" />
+                        </x-ui.field>
+
+                        <x-ui.field label="Service Fee" name="fee" for="fee" help="Auto-suggested from your commission % — edit freely">
+                            <x-ui.input wire:model.live="fee" id="fee" type="number" min="0" step="0.01" />
                         </x-ui.field>
 
                         <x-ui.field label="Discount" name="discount" for="discount" help="Optional">

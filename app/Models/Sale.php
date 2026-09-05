@@ -34,6 +34,11 @@ class Sale extends Model
         return $this->hasMany(SaleItem::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(SalePayment::class);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -47,5 +52,28 @@ class Sale extends Model
     public function invoiceNumber(): string
     {
         return 'INV-'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+    }
+
+    public function amountPaid(): float
+    {
+        if (array_key_exists('payments_sum_amount', $this->attributes)) {
+            return (float) ($this->attributes['payments_sum_amount'] ?? 0);
+        }
+
+        return (float) $this->payments()->sum('amount');
+    }
+
+    public function amountDue(): float
+    {
+        return max(0.0, (float) $this->total - $this->amountPaid());
+    }
+
+    public function paymentStatus(): string
+    {
+        if ($this->amountDue() <= 0.0) {
+            return 'paid';
+        }
+
+        return $this->amountPaid() > 0.0 ? 'partial' : 'unpaid';
     }
 }

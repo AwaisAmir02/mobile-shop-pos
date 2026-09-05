@@ -16,8 +16,14 @@
             return this.options.find((o) => o.value === $wire.{{ $wireModel }}) ?? null;
         },
         select(option) {
-            $wire.{{ $wireModel }} = option.value;
             this.close();
+
+            if (option.special) {
+                this.$dispatch('open-modal', option.modal);
+                return;
+            }
+
+            $wire.{{ $wireModel }} = option.value;
             this.$refs.button.focus();
         },
         toggle() {

@@ -43,6 +43,29 @@ class SimSaleTest extends TestCase
         $this->assertNull($sale->customer_id);
     }
 
+    public function test_a_manually_entered_service_fee_is_included_in_the_total(): void
+    {
+        $shop = Shop::create(['name' => 'Shop A']);
+        $owner = User::factory()->create(['shop_id' => $shop->id]);
+
+        $this->actingAs($owner);
+
+        Livewire::test('sim-sales.create')
+            ->set('simNumber', '03001234567')
+            ->set('amount', '500')
+            ->set('fee', '25')
+            ->set('discount', '50')
+            ->assertViewHas('totalCollected', 475.0)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $sale = SimSale::firstOrFail();
+        $this->assertEquals(500, $sale->amount);
+        $this->assertEquals(25, $sale->fee);
+        $this->assertEquals(50, $sale->discount);
+        $this->assertEquals(475, $sale->total);
+    }
+
     public function test_the_total_never_goes_negative_when_discount_exceeds_amount(): void
     {
         $shop = Shop::create(['name' => 'Shop A']);

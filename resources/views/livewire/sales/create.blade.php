@@ -21,6 +21,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
     public array $cart = [];
     public string $invoiceDiscount = '0';
     public string $customerId = '';
+    public string $amountPaidNow = '';
 
     public function updatedCustomerId(): void
     {
@@ -75,7 +76,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             $this->cart[$productId] = [
                 'product_id' => $product->id,
                 'name' => $product->name,
-                'category' => $product->type->label(),
+                'category' => $product->typeLabel(),
                 'unit_price' => (string) $product->price,
                 'quantity' => 1,
                 'discount' => '0',
@@ -114,9 +115,18 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             return;
         }
 
+        $total = $this->total();
+        $paidNow = $this->amountPaidNow !== '' ? (float) $this->amountPaidNow : $total;
+        $isFullyPaid = $paidNow >= $total;
+
         $rules = [
             'invoiceDiscount' => ['required', 'numeric', 'min:0'],
-            'customerId' => ['nullable', 'integer', Rule::exists('customers', 'id')->where('shop_id', auth()->user()->shop_id)],
+            'amountPaidNow' => ['nullable', 'numeric', 'min:0', 'max:'.$total],
+            'customerId' => [
+                $isFullyPaid ? 'nullable' : 'required',
+                'integer',
+                Rule::exists('customers', 'id')->where('shop_id', auth()->user()->shop_id),
+            ],
         ];
 
         foreach ($this->cart as $id => $item) {
@@ -126,7 +136,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
         $this->validate($rules);
 
-        $sale = DB::transaction(function () {
+        $sale = DB::transaction(function () use ($paidNow) {
             $subtotal = 0;
             $lines = [];
 
@@ -158,7 +168,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                 $sale->items()->create([
                     'product_id' => $line['product']->id,
                     'product_name' => $line['product']->name,
-                    'product_type' => $line['product']->type->value,
+                    'product_type' => $line['product']->type,
                     'unit_price' => $line['item']['unit_price'],
                     'quantity' => $line['item']['quantity'],
                     'discount_amount' => $line['item']['discount'],
@@ -167,6 +177,12 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
                 $line['product']->decrement('stock_quantity', (int) $line['item']['quantity']);
             }
+
+            $sale->payments()->create([
+                'user_id' => Auth::id(),
+                'amount' => $paidNow,
+                'payment_date' => now()->toDateString(),
+            ]);
 
             return $sale;
         });
@@ -211,7 +227,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                                         <x-ui.thumbnail :src="$product->imageUrl()" :label="$product->name" />
                                         <div>
                                             <p class="text-sm font-medium text-slate-900">{{ $product->name }}</p>
-                                            <p class="text-xs text-slate-400">{{ $product->type->label() }} · {{ $product->stock_quantity }} in stock</p>
+                                            <p class="text-xs text-slate-400">{{ $product->typeLabel() }} · {{ $product->stock_quantity }} in stock</p>
                                         </div>
                                     </div>
                                     <span class="text-sm font-semibold text-slate-700">Rs {{ number_format($product->price, 2) }}</span>
@@ -303,7 +319,11 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                         <x-ui.input wire:model.live="invoiceDiscount" id="invoiceDiscount" type="number" min="0" step="0.01" />
                     </x-ui.field>
 
-                    <x-ui.field label="Customer" name="customerId" for="customerId" help="Optional — leave blank for a walk-in sale">
+                    <x-ui.field label="Amount Paid Now" name="amountPaidNow" for="amountPaidNow" help="Leave blank to record as paid in full">
+                        <x-ui.input wire:model.live="amountPaidNow" id="amountPaidNow" type="number" min="0" step="0.01" :placeholder="number_format($this->total(), 2)" />
+                    </x-ui.field>
+
+                    <x-ui.field label="Customer" name="customerId" for="customerId" :help="$amountPaidNow !== '' && (float) $amountPaidNow < $this->total() ? 'Required — this sale is not being paid in full' : 'Optional — leave blank for a walk-in sale'">
                         <x-ui.select wire:model.live="customerId" id="customerId">
                             <option value="">Walk-in (no customer)</option>
                             <option value="__create__">+ New Customer</option>
@@ -318,6 +338,12 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                             <span class="text-sm font-medium text-slate-500">Total</span>
                             <span class="text-display-sm text-slate-900">Rs {{ number_format($this->total(), 2) }}</span>
                         </div>
+                        @if ($amountPaidNow !== '' && (float) $amountPaidNow < $this->total())
+                            <div class="mt-1 flex items-center justify-between text-sm">
+                                <span class="text-slate-500">Due After Sale</span>
+                                <span class="font-medium text-amber-600">Rs {{ number_format($this->total() - (float) $amountPaidNow, 2) }}</span>
+                            </div>
+                        @endif
                     </div>
 
                     <x-ui.button

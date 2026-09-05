@@ -33,6 +33,19 @@ class Customer extends Model
             ->sum(fn (UdhaarTransaction $transaction) => $transaction->signedAmount());
     }
 
+    /**
+     * Outstanding balance from Sales specifically — kept entirely separate
+     * from the Udhaar balance above, since they are two different kinds of
+     * money owed and must never be combined or netted together.
+     */
+    public function salesOutstandingBalance(): float
+    {
+        return Sale::where('customer_id', $this->id)
+            ->withSum('payments', 'amount')
+            ->get()
+            ->sum(fn (Sale $sale) => $sale->amountDue());
+    }
+
     public function udhaarStatus(): string
     {
         $balance = $this->udhaarBalance();

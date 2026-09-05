@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\CreateAccessoryCategory;
+use App\Actions\CreateWalletProvider;
 use App\Enums\ShopScreen;
 use App\Livewire\Concerns\Toasts;
 use App\Livewire\Concerns\UploadsImages;
@@ -9,6 +10,7 @@ use App\Models\BalanceLoad;
 use App\Models\BillCategory;
 use App\Models\BillPayment;
 use App\Models\BillProvider;
+use App\Models\MainCategory;
 use App\Models\Network;
 use App\Models\Product;
 use App\Models\Role;
@@ -30,9 +32,14 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     #[Url]
     public string $tab = 'accessory-categories';
 
-    // Accessory Categories
+    // Main Categories
+    public ?int $mainCategoryEditingId = null;
+    public string $mainCategoryName = '';
+
+    // Sub-Categories (formerly "Accessory Categories")
     public ?int $accessoryCategoryEditingId = null;
     public string $accessoryCategoryName = '';
+    public string $accessoryCategoryMainCategoryId = '';
     public $accessoryCategoryImage = null;
     public ?string $accessoryCategoryExistingImageUrl = null;
 
@@ -69,13 +76,29 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public string $roleName = '';
     public array $rolePermissions = [];
 
+    // Commission Percentages
+    public string $simSaleCommissionPercent = '';
+    public string $balanceLoadCommissionPercent = '';
+    public string $walletLoadCommissionPercent = '';
+    public string $billsCommissionPercent = '';
+    public string $nadraVerificationCommissionPercent = '';
+
     public function mount(): void
     {
+        MainCategory::ensureDefaultsExist();
+
         $accessible = $this->accessibleTabs();
 
         if (! in_array($this->tab, $accessible, true)) {
             $this->tab = $accessible[0] ?? 'profile';
         }
+
+        $shop = Auth::user()->shop;
+        $this->simSaleCommissionPercent = $shop?->sim_sale_commission_percent !== null ? (string) $shop->sim_sale_commission_percent : '';
+        $this->balanceLoadCommissionPercent = $shop?->balance_load_commission_percent !== null ? (string) $shop->balance_load_commission_percent : '';
+        $this->walletLoadCommissionPercent = $shop?->wallet_load_commission_percent !== null ? (string) $shop->wallet_load_commission_percent : '';
+        $this->billsCommissionPercent = $shop?->bills_commission_percent !== null ? (string) $shop->bills_commission_percent : '';
+        $this->nadraVerificationCommissionPercent = $shop?->nadra_verification_commission_percent !== null ? (string) $shop->nadra_verification_commission_percent : '';
     }
 
     /**
@@ -90,7 +113,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $tabs = [];
 
         if (Auth::user()->hasAccessTo('settings')) {
-            $tabs = [...$tabs, 'accessory-categories', 'networks', 'wallet-providers', 'bills'];
+            $tabs = [...$tabs, 'accessory-categories', 'networks', 'wallet-providers', 'bills', 'percentage'];
         }
 
         if (Auth::user()->hasAccessTo('shop-accounts')) {
@@ -123,8 +146,11 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
         return [
             'accessibleTabs' => $accessible,
+            'mainCategories' => in_array('accessory-categories', $accessible, true)
+                ? MainCategory::query()->withCount('subCategories')->orderBy('name')->get()
+                : collect(),
             'accessoryCategories' => in_array('accessory-categories', $accessible, true)
-                ? AccessoryCategoryOption::query()->orderBy('name')->get()
+                ? AccessoryCategoryOption::query()->with('mainCategory')->orderBy('name')->get()
                 : collect(),
             'providers' => in_array('wallet-providers', $accessible, true)
                 ? WalletProvider::query()->orderBy('name')->get()
@@ -148,13 +174,96 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         ];
     }
 
-    // ── Accessory Categories ─────────────────────────────────────────
+    // ── Main Categories ──────────────────────────────────────────────
+
+    public function openMainCategoryCreate(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+
+        $this->reset(['mainCategoryEditingId', 'mainCategoryName']);
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'main-category-form');
+    }
+
+    public function openMainCategoryEdit(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+
+        $category = MainCategory::findOrFail($id);
+
+        $this->mainCategoryEditingId = $category->id;
+        $this->mainCategoryName = $category->name;
+
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'main-category-form');
+    }
+
+    public function saveMainCategory(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+
+        $this->validate([
+            'mainCategoryName' => ['required', 'string', 'max:255', Rule::unique('main_categories', 'name')->where('shop_id', Auth::user()->shop_id)->ignore($this->mainCategoryEditingId)],
+        ]);
+
+        if ($this->mainCategoryEditingId) {
+            $category = MainCategory::findOrFail($this->mainCategoryEditingId);
+            $category->name = $this->mainCategoryName;
+            $category->save();
+        } else {
+            MainCategory::create([
+                'name' => $this->mainCategoryName,
+                'slug' => MainCategory::uniqueSlugFor($this->mainCategoryName),
+            ]);
+        }
+
+        $this->toastSuccess($this->mainCategoryEditingId ? 'Main category updated.' : 'Main category added.');
+        $this->dispatch('close-modal', name: 'main-category-form');
+        $this->reset(['mainCategoryEditingId', 'mainCategoryName']);
+    }
+
+    public function deleteMainCategory(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+
+        $category = MainCategory::findOrFail($id);
+
+        if ($category->is_builtin) {
+            $this->toastError("\"{$category->name}\" is a built-in category and cannot be deleted.");
+
+            return;
+        }
+
+        if (Product::where('type', $category->slug)->exists()) {
+            $this->toastError("Cannot delete \"{$category->name}\" — it's used on existing products.");
+
+            return;
+        }
+
+        if (AccessoryCategoryOption::where('main_category_id', $category->id)->exists()) {
+            $this->toastError("Cannot delete \"{$category->name}\" — it has sub-categories under it. Delete those first.");
+
+            return;
+        }
+
+        $category->delete();
+        $this->toastSuccess('Main category deleted.');
+    }
+
+    public function closeMainCategoryForm(): void
+    {
+        $this->dispatch('close-modal', name: 'main-category-form');
+        $this->reset(['mainCategoryEditingId', 'mainCategoryName']);
+    }
+
+    // ── Sub-Categories ───────────────────────────────────────────────
 
     public function openAccessoryCategoryCreate(): void
     {
         abort_unless(Auth::user()->hasAccessTo('settings'), 403);
 
         $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName', 'accessoryCategoryImage', 'accessoryCategoryExistingImageUrl']);
+        $this->accessoryCategoryMainCategoryId = (string) (MainCategory::query()->orderBy('name')->value('id') ?? '');
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'accessory-category-form');
     }
@@ -167,6 +276,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
         $this->accessoryCategoryEditingId = $option->id;
         $this->accessoryCategoryName = $option->name;
+        $this->accessoryCategoryMainCategoryId = (string) $option->main_category_id;
         $this->accessoryCategoryImage = null;
         $this->accessoryCategoryExistingImageUrl = $option->imageUrl();
 
@@ -180,14 +290,16 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
         $this->validate([
             'accessoryCategoryName' => ['required', 'string', 'max:255', Rule::unique('accessory_category_options', 'name')->where('shop_id', Auth::user()->shop_id)->ignore($this->accessoryCategoryEditingId)],
+            'accessoryCategoryMainCategoryId' => ['required', 'integer', Rule::exists('main_categories', 'id')->where('shop_id', Auth::user()->shop_id)],
             'accessoryCategoryImage' => ['nullable', 'image', 'max:2048'],
         ]);
 
         $option = $this->accessoryCategoryEditingId
             ? AccessoryCategoryOption::findOrFail($this->accessoryCategoryEditingId)
-            : CreateAccessoryCategory::handle($this->accessoryCategoryName);
+            : CreateAccessoryCategory::handle($this->accessoryCategoryName, (int) $this->accessoryCategoryMainCategoryId);
 
         $option->name = $this->accessoryCategoryName;
+        $option->main_category_id = $this->accessoryCategoryMainCategoryId;
 
         if ($this->accessoryCategoryImage) {
             $option->image_path = $this->storeImage($this->accessoryCategoryImage, 'accessory-categories', $option->image_path);
@@ -195,9 +307,9 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
         $option->save();
 
-        $this->toastSuccess($this->accessoryCategoryEditingId ? 'Accessory category updated.' : 'Accessory category added.');
+        $this->toastSuccess($this->accessoryCategoryEditingId ? 'Sub-category updated.' : 'Sub-category added.');
         $this->dispatch('close-modal', name: 'accessory-category-form');
-        $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName', 'accessoryCategoryImage', 'accessoryCategoryExistingImageUrl']);
+        $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName', 'accessoryCategoryMainCategoryId', 'accessoryCategoryImage', 'accessoryCategoryExistingImageUrl']);
     }
 
     public function deleteAccessoryCategory(int $id): void
@@ -214,13 +326,13 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
         $this->deleteImage($option->image_path);
         $option->delete();
-        $this->toastSuccess('Accessory category deleted.');
+        $this->toastSuccess('Sub-category deleted.');
     }
 
     public function closeAccessoryCategoryForm(): void
     {
         $this->dispatch('close-modal', name: 'accessory-category-form');
-        $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName', 'accessoryCategoryImage', 'accessoryCategoryExistingImageUrl']);
+        $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName', 'accessoryCategoryMainCategoryId', 'accessoryCategoryImage', 'accessoryCategoryExistingImageUrl']);
     }
 
     // ── Wallet Providers ─────────────────────────────────────────────
@@ -258,7 +370,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             'providerImage' => ['nullable', 'image', 'max:2048'],
         ]);
 
-        $provider = $this->providerEditingId ? WalletProvider::findOrFail($this->providerEditingId) : new WalletProvider;
+        $provider = $this->providerEditingId ? WalletProvider::findOrFail($this->providerEditingId) : CreateWalletProvider::handle($this->providerName);
 
         $provider->name = $this->providerName;
 
@@ -643,6 +755,31 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $this->dispatch('close-modal', name: 'role-form');
         $this->reset(['roleEditingId', 'roleName', 'rolePermissions']);
     }
+
+    // ── Commission Percentages ───────────────────────────────────────
+
+    public function saveCommissionPercentages(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+
+        $this->validate([
+            'simSaleCommissionPercent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'balanceLoadCommissionPercent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'walletLoadCommissionPercent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'billsCommissionPercent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'nadraVerificationCommissionPercent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+        ]);
+
+        Auth::user()->shop->update([
+            'sim_sale_commission_percent' => $this->simSaleCommissionPercent !== '' ? $this->simSaleCommissionPercent : null,
+            'balance_load_commission_percent' => $this->balanceLoadCommissionPercent !== '' ? $this->balanceLoadCommissionPercent : null,
+            'wallet_load_commission_percent' => $this->walletLoadCommissionPercent !== '' ? $this->walletLoadCommissionPercent : null,
+            'bills_commission_percent' => $this->billsCommissionPercent !== '' ? $this->billsCommissionPercent : null,
+            'nadra_verification_commission_percent' => $this->nadraVerificationCommissionPercent !== '' ? $this->nadraVerificationCommissionPercent : null,
+        ]);
+
+        $this->toastSuccess('Commission percentages saved.');
+    }
 }; ?>
 
 <div>
@@ -652,11 +789,12 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     @php
         $tabLabels = [
-            'accessory-categories' => 'Accessory Categories',
+            'accessory-categories' => 'Categories',
             'networks' => 'Networks',
             'wallet-providers' => 'Wallet Providers',
             'shop-accounts' => 'Shop Accounts',
             'bills' => 'Bills',
+            'percentage' => 'Percentage',
             'profile' => 'Profile',
             'roles' => 'Roles',
         ];
@@ -681,56 +819,104 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     </div>
 
     @if ($tab === 'accessory-categories')
-        <x-ui.card title="Accessory Categories" description="Manage the categories available when adding an Accessory product.">
-            <x-slot name="actions">
-                <x-ui.button size="sm" wire:click="openAccessoryCategoryCreate">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    Add Category
-                </x-ui.button>
-            </x-slot>
+        <div class="space-y-6">
+            <x-ui.card title="Main Categories" description="The top-level categories a Product can be. Mobile Phone and Accessory are built in; add your own for anything else your shop sells.">
+                <x-slot name="actions">
+                    <x-ui.button size="sm" wire:click="openMainCategoryCreate">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Add Main Category
+                    </x-ui.button>
+                </x-slot>
 
-            @if ($accessoryCategories->isEmpty())
-                <x-ui.empty-state
-                    title="No accessory categories yet"
-                    description="Add Case / Cover, Charger, Cable, or any other category your shop uses."
-                >
-                    <x-slot name="action">
-                        <x-ui.button wire:click="openAccessoryCategoryCreate">Add Category</x-ui.button>
-                    </x-slot>
-                </x-ui.empty-state>
-            @else
-                <x-ui.table :headers="['Category', '']">
-                    @foreach ($accessoryCategories as $option)
-                        <x-ui.table-row wire:key="accessory-category-{{ $option->id }}">
+                <x-ui.table :headers="['Main Category', 'Sub-Categories', '']">
+                    @foreach ($mainCategories as $category)
+                        <x-ui.table-row wire:key="main-category-{{ $category->id }}">
                             <x-ui.table-cell class="font-medium text-slate-900">
-                                <div class="flex items-center gap-3">
-                                    <x-ui.thumbnail :src="$option->imageUrl()" :label="$option->name" />
-                                    {{ $option->name }}
+                                <div class="flex items-center gap-2">
+                                    {{ $category->name }}
+                                    @if ($category->is_builtin)
+                                        <x-ui.badge variant="brand">Built-in</x-ui.badge>
+                                    @endif
                                 </div>
                             </x-ui.table-cell>
+                            <x-ui.table-cell>{{ $category->sub_categories_count }}</x-ui.table-cell>
                             <x-ui.table-cell align="right">
                                 <div class="flex justify-end gap-2">
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openAccessoryCategoryEdit({{ $option->id }})">
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openMainCategoryEdit({{ $category->id }})">
                                         Edit
                                     </x-ui.button>
-                                    <x-ui.button
-                                        size="sm"
-                                        variant="ghost"
-                                        wire:click="deleteAccessoryCategory({{ $option->id }})"
-                                        wire:confirm="Delete {{ $option->name }}?"
-                                        class="text-red-600 hover:bg-red-50"
-                                    >
-                                        Delete
-                                    </x-ui.button>
+                                    @unless ($category->is_builtin)
+                                        <x-ui.button
+                                            size="sm"
+                                            variant="ghost"
+                                            wire:click="deleteMainCategory({{ $category->id }})"
+                                            wire:confirm="Delete {{ $category->name }}?"
+                                            class="text-red-600 hover:bg-red-50"
+                                        >
+                                            Delete
+                                        </x-ui.button>
+                                    @endunless
                                 </div>
                             </x-ui.table-cell>
                         </x-ui.table-row>
                     @endforeach
                 </x-ui.table>
-            @endif
-        </x-ui.card>
+            </x-ui.card>
+
+            <x-ui.card title="Sub-Categories" description="Manage the sub-categories available under each Main Category when adding a product.">
+                <x-slot name="actions">
+                    <x-ui.button size="sm" wire:click="openAccessoryCategoryCreate">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Add Sub-Category
+                    </x-ui.button>
+                </x-slot>
+
+                @if ($accessoryCategories->isEmpty())
+                    <x-ui.empty-state
+                        title="No sub-categories yet"
+                        description="Add Case / Cover, Charger, Cable, or any other sub-category your shop uses."
+                    >
+                        <x-slot name="action">
+                            <x-ui.button wire:click="openAccessoryCategoryCreate">Add Sub-Category</x-ui.button>
+                        </x-slot>
+                    </x-ui.empty-state>
+                @else
+                    <x-ui.table :headers="['Sub-Category', 'Main Category', '']">
+                        @foreach ($accessoryCategories as $option)
+                            <x-ui.table-row wire:key="accessory-category-{{ $option->id }}">
+                                <x-ui.table-cell class="font-medium text-slate-900">
+                                    <div class="flex items-center gap-3">
+                                        <x-ui.thumbnail :src="$option->imageUrl()" :label="$option->name" />
+                                        {{ $option->name }}
+                                    </div>
+                                </x-ui.table-cell>
+                                <x-ui.table-cell>{{ $option->mainCategory?->name ?? '—' }}</x-ui.table-cell>
+                                <x-ui.table-cell align="right">
+                                    <div class="flex justify-end gap-2">
+                                        <x-ui.button size="sm" variant="ghost" wire:click="openAccessoryCategoryEdit({{ $option->id }})">
+                                            Edit
+                                        </x-ui.button>
+                                        <x-ui.button
+                                            size="sm"
+                                            variant="ghost"
+                                            wire:click="deleteAccessoryCategory({{ $option->id }})"
+                                            wire:confirm="Delete {{ $option->name }}?"
+                                            class="text-red-600 hover:bg-red-50"
+                                        >
+                                            Delete
+                                        </x-ui.button>
+                                    </div>
+                                </x-ui.table-cell>
+                            </x-ui.table-row>
+                        @endforeach
+                    </x-ui.table>
+                @endif
+            </x-ui.card>
+        </div>
     @elseif ($tab === 'networks')
         <x-ui.card title="Networks" description="Manage the networks available on the Balance Load screen.">
             <x-slot name="actions">
@@ -979,6 +1165,42 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 @endif
             </x-ui.card>
         </div>
+    @elseif ($tab === 'percentage')
+        <div class="max-w-2xl space-y-6">
+            <x-ui.card title="Commission Percentages" description="Set a default % for each service. When staff enter an amount, this auto-suggests the service fee — they can still edit it freely before saving.">
+                <form wire:submit="saveCommissionPercentages" class="space-y-5">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <x-ui.field label="SIM Sale %" name="simSaleCommissionPercent" for="simSaleCommissionPercent" help="Leave blank for no auto-suggestion">
+                            <x-ui.input wire:model="simSaleCommissionPercent" id="simSaleCommissionPercent" type="number" min="0" max="100" step="0.01" />
+                        </x-ui.field>
+
+                        <x-ui.field label="Balance Load %" name="balanceLoadCommissionPercent" for="balanceLoadCommissionPercent" help="Leave blank for no auto-suggestion">
+                            <x-ui.input wire:model="balanceLoadCommissionPercent" id="balanceLoadCommissionPercent" type="number" min="0" max="100" step="0.01" />
+                        </x-ui.field>
+
+                        <x-ui.field label="Wallet Load %" name="walletLoadCommissionPercent" for="walletLoadCommissionPercent" help="Leave blank for no auto-suggestion">
+                            <x-ui.input wire:model="walletLoadCommissionPercent" id="walletLoadCommissionPercent" type="number" min="0" max="100" step="0.01" />
+                        </x-ui.field>
+
+                        <x-ui.field label="Bills %" name="billsCommissionPercent" for="billsCommissionPercent" help="Leave blank for no auto-suggestion">
+                            <x-ui.input wire:model="billsCommissionPercent" id="billsCommissionPercent" type="number" min="0" max="100" step="0.01" />
+                        </x-ui.field>
+
+                        <x-ui.field label="NADRA Verification %" name="nadraVerificationCommissionPercent" for="nadraVerificationCommissionPercent" help="Leave blank for no auto-suggestion">
+                            <x-ui.input wire:model="nadraVerificationCommissionPercent" id="nadraVerificationCommissionPercent" type="number" min="0" max="100" step="0.01" />
+                        </x-ui.field>
+                    </div>
+
+                    <p class="text-sm text-slate-500">
+                        Udhaar isn't listed here — it's a customer loan, not a paid service, so it has no commission.
+                    </p>
+
+                    <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveCommissionPercentages">
+                        Save Percentages
+                    </x-ui.button>
+                </form>
+            </x-ui.card>
+        </div>
     @elseif ($tab === 'profile')
         <div class="max-w-2xl space-y-6">
             <x-ui.card>
@@ -1054,15 +1276,47 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         </x-ui.card>
     @endif
 
-    <x-ui.modal name="accessory-category-form" max-width="sm">
-        <form wire:submit="saveAccessoryCategory" class="p-6">
+    <x-ui.modal name="main-category-form" max-width="sm">
+        <form wire:submit="saveMainCategory" class="p-6">
             <h2 class="text-lg font-semibold text-slate-900">
-                {{ $accessoryCategoryEditingId ? 'Edit Accessory Category' : 'Add Accessory Category' }}
+                {{ $mainCategoryEditingId ? 'Edit Main Category' : 'Add Main Category' }}
             </h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Category Name" name="accessoryCategoryName" for="accessoryCategoryName">
-                    <x-ui.input wire:model="accessoryCategoryName" id="accessoryCategoryName" placeholder="e.g. Charger" autofocus />
+                <x-ui.field label="Main Category Name" name="mainCategoryName" for="mainCategoryName">
+                    <x-ui.input wire:model="mainCategoryName" id="mainCategoryName" placeholder="e.g. Repair Parts" autofocus />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeMainCategoryForm">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveMainCategory">
+                    {{ $mainCategoryEditingId ? 'Save Changes' : 'Add Main Category' }}
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="accessory-category-form" max-width="sm">
+        <form wire:submit="saveAccessoryCategory" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">
+                {{ $accessoryCategoryEditingId ? 'Edit Sub-Category' : 'Add Sub-Category' }}
+            </h2>
+
+            <div class="mt-5 space-y-5">
+                <x-ui.field label="Main Category" name="accessoryCategoryMainCategoryId" for="accessoryCategoryMainCategoryId">
+                    <x-ui.select wire:model="accessoryCategoryMainCategoryId" id="accessoryCategoryMainCategoryId">
+                        @foreach ($mainCategories as $option)
+                            <option value="{{ $option->id }}">{{ $option->name }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </x-ui.field>
+
+                <x-ui.field label="Sub-Category Name" name="accessoryCategoryName" for="accessoryCategoryName">
+                    <x-ui.input wire:model="accessoryCategoryName" id="accessoryCategoryName" placeholder="e.g. Charger" />
                 </x-ui.field>
 
                 <x-ui.field label="Image" name="accessoryCategoryImage" for="accessoryCategoryImage" help="Optional">
@@ -1080,7 +1334,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 </x-ui.button>
 
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveAccessoryCategory">
-                    {{ $accessoryCategoryEditingId ? 'Save Changes' : 'Add Category' }}
+                    {{ $accessoryCategoryEditingId ? 'Save Changes' : 'Add Sub-Category' }}
                 </x-ui.button>
             </div>
         </form>

@@ -13,7 +13,7 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
 
     public function mount(Sale $sale): void
     {
-        $this->sale = $sale->load(['items', 'customer']);
+        $this->sale = $sale->load(['items', 'customer', 'payments']);
     }
 
     public function downloadInvoice(InvoicePdfService $pdf): StreamedResponse
@@ -92,6 +92,26 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                     <span class="font-medium text-slate-500">Total</span>
                     <span class="text-display-sm text-slate-900">Rs {{ number_format($sale->total, 2) }}</span>
                 </div>
+            </div>
+
+            <div class="mt-4 flex items-center justify-between rounded-xl border border-slate-200 px-4 py-4">
+                <div class="flex gap-6">
+                    <div>
+                        <p class="text-sm text-slate-500">Paid</p>
+                        <p class="font-semibold text-slate-900">Rs {{ number_format($sale->amountPaid(), 2) }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-500">Due</p>
+                        <p class="font-semibold text-slate-900">Rs {{ number_format($sale->amountDue(), 2) }}</p>
+                    </div>
+                </div>
+                @if ($sale->paymentStatus() === 'paid')
+                    <x-ui.badge variant="success">Paid</x-ui.badge>
+                @elseif ($sale->paymentStatus() === 'partial')
+                    <x-ui.badge variant="warning">Partial</x-ui.badge>
+                @else
+                    <x-ui.badge variant="danger">Unpaid</x-ui.badge>
+                @endif
             </div>
         </x-ui.card>
 

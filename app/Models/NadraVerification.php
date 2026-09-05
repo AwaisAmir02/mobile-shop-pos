@@ -17,6 +17,7 @@ class NadraVerification extends Model
         'phone_number',
         'cnic_number',
         'amount',
+        'fee',
         'discount',
         'total',
     ];
@@ -25,6 +26,7 @@ class NadraVerification extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'fee' => 'decimal:2',
             'discount' => 'decimal:2',
             'total' => 'decimal:2',
         ];

@@ -11,11 +11,12 @@ class CreateAccessoryCategory
     {
         return [
             'name' => ['required', 'string', 'max:255', Rule::unique('accessory_category_options', 'name')->where('shop_id', $shopId)],
+            'mainCategoryId' => ['required', 'integer', Rule::exists('main_categories', 'id')->where('shop_id', $shopId)],
         ];
     }
 
-    public static function handle(string $name): AccessoryCategoryOption
+    public static function handle(string $name, int $mainCategoryId): AccessoryCategoryOption
     {
-        return AccessoryCategoryOption::create(['name' => $name]);
+        return AccessoryCategoryOption::create(['name' => $name, 'main_category_id' => $mainCategoryId]);
     }
 }

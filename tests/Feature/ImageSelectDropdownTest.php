@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AccessoryCategoryOption;
+use App\Models\MainCategory;
 use App\Models\Network;
 use App\Models\Shop;
 use App\Models\User;
@@ -51,8 +52,10 @@ class ImageSelectDropdownTest extends TestCase
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
+        $accessory = MainCategory::create(['shop_id' => $shop->id, 'name' => 'Accessory', 'slug' => 'accessory', 'is_builtin' => true]);
         $category = AccessoryCategoryOption::create([
             'shop_id' => $shop->id,
+            'main_category_id' => $accessory->id,
             'name' => 'Case / Cover',
             'image_path' => 'shop-'.$shop->id.'/accessory-categories/case.jpg',
         ]);

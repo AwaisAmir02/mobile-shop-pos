@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Enums\ProductType;
 use App\Models\BalanceLoad;
 use App\Models\BillPayment;
 use App\Models\Expense;
+use App\Models\MainCategory;
 use App\Models\NadraVerification;
 use App\Models\Repair;
 use App\Models\Sale;
@@ -20,6 +20,8 @@ class ShopReportService
 {
     public function summary(Shop $shop, Carbon $start, Carbon $end): array
     {
+        MainCategory::ensureDefaultsExist($shop->id);
+
         $salesQuery = fn () => Sale::where('shop_id', $shop->id)->whereBetween('created_at', [$start, $end]);
 
         $saleItemsQuery = fn () => SaleItem::where('shop_id', $shop->id)
@@ -35,15 +37,30 @@ class ShopReportService
             ->get()
             ->keyBy('product_type');
 
-        $categories = collect(ProductType::cases())->map(fn (ProductType $type) => [
-            'label' => $type->label(),
-            'revenue' => (float) ($categoryRows->get($type->value)->revenue ?? 0),
-            'units' => (int) ($categoryRows->get($type->value)->units ?? 0),
-        ]);
+        $categories = MainCategory::where('shop_id', $shop->id)->orderBy('name')->get()
+            ->map(fn (MainCategory $category) => [
+                'slug' => $category->slug,
+                'label' => $category->name,
+                'revenue' => (float) ($categoryRows->get($category->slug)->revenue ?? 0),
+                'units' => (int) ($categoryRows->get($category->slug)->units ?? 0),
+            ]);
 
-        $totalBalanceLoaded = (float) BalanceLoad::where('shop_id', $shop->id)
-            ->whereBetween('created_at', [$start, $end])
-            ->sum('amount');
+        // SIM stopped being a product type (and predates Main Categories
+        // entirely) but historical sales that included one must stay
+        // visible here rather than silently dropping out of the breakdown.
+        if ($categoryRows->has('sim')) {
+            $categories->push([
+                'slug' => 'sim',
+                'label' => 'SIM / eSIM (Legacy)',
+                'revenue' => (float) $categoryRows->get('sim')->revenue,
+                'units' => (int) $categoryRows->get('sim')->units,
+            ]);
+        }
+
+        $balanceLoadsQuery = fn () => BalanceLoad::where('shop_id', $shop->id)->whereBetween('created_at', [$start, $end]);
+
+        $totalBalanceLoaded = (float) $balanceLoadsQuery()->sum('amount');
+        $totalBalanceLoadFees = (float) $balanceLoadsQuery()->sum('fee') - (float) $balanceLoadsQuery()->sum('discount');
 
         $walletLoadsQuery = fn () => WalletLoad::where('shop_id', $shop->id)->whereBetween('created_at', [$start, $end]);
 
@@ -83,6 +100,7 @@ class ShopReportService
             'categories' => $categories,
             'totalItemsSold' => (int) $categories->sum('units'),
             'totalBalanceLoaded' => $totalBalanceLoaded,
+            'totalBalanceLoadFees' => $totalBalanceLoadFees,
             'totalWalletLoaded' => $totalWalletLoaded,
             'totalWalletLoadFees' => $totalWalletLoadFees,
             'totalExpenses' => $totalExpenses,

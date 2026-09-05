@@ -21,6 +21,7 @@ enum ShopScreen: string
     case Settings = 'settings';
     case Reports = 'reports';
     case Users = 'users';
+    case PartyLedger = 'party-ledger';
 
     public function label(): string
     {
@@ -42,6 +43,7 @@ enum ShopScreen: string
             self::Settings => 'Settings',
             self::Reports => 'Reports',
             self::Users => 'Users & Roles',
+            self::PartyLedger => 'Party Ledger',
         };
     }
 
@@ -65,6 +67,7 @@ enum ShopScreen: string
             self::Settings => 'settings.index',
             self::Reports => 'reports.index',
             self::Users => 'users.index',
+            self::PartyLedger => 'party-ledger.index',
         };
     }
 }

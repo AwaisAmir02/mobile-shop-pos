@@ -74,8 +74,8 @@ class InlineCreateTest extends TestCase
         $owner = User::factory()->create(['shop_id' => $shop->id]);
         $this->actingAs($owner);
 
-        $products = Livewire::test('products.index');
-        $quickCreate = Livewire::test('accessory-categories.quick-create');
+        $products = Livewire::test('products.index')->set('type', 'accessory');
+        $quickCreate = Livewire::test('accessory-categories.quick-create', ['defaultMainCategorySlug' => 'accessory']);
 
         $quickCreate
             ->set('name', 'Tempered Glass')
@@ -89,7 +89,6 @@ class InlineCreateTest extends TestCase
         $products->assertSet('category', 'Tempered Glass');
 
         $products
-            ->set('type', 'accessory')
             ->set('name', 'Screen Guard')
             ->set('price', '300')
             ->set('stock_quantity', '5')

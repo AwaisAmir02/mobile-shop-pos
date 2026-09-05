@@ -115,4 +115,28 @@ class ReportsTest extends TestCase
             ->assertDontSee('Rs 5,000.00')
             ->assertDontSee('9,000.00');
     }
+
+    public function test_balance_load_fees_appear_as_their_own_revenue_line_separate_from_amount_loaded(): void
+    {
+        $shop = Shop::create(['name' => 'Shop A']);
+        $owner = User::factory()->create(['shop_id' => $shop->id]);
+        $today = now()->toDateString();
+
+        BalanceLoad::create([
+            'shop_id' => $shop->id,
+            'user_id' => $owner->id,
+            'network' => 'Jazz',
+            'amount' => 1000,
+            'fee' => 50,
+            'discount' => 10,
+            'total' => 1040,
+        ]);
+
+        $this->actingAs($owner);
+
+        Livewire::test('reports.index')
+            ->set('day', $today)
+            ->assertSee('Rs 1,000.00') // amount loaded (volume)
+            ->assertSee('Rs 40.00');   // fee (50) minus discount (10) = net service revenue
+    }
 }

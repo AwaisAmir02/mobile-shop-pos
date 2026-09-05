@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AccessoryCategoryOption;
+use App\Models\MainCategory;
 use App\Models\Product;
 use App\Models\Role;
 use App\Models\Shop;
@@ -15,19 +16,27 @@ class SettingsAccessoryCategoryTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function accessoryMainCategory(Shop $shop): MainCategory
+    {
+        return MainCategory::create(['shop_id' => $shop->id, 'name' => 'Accessory', 'slug' => 'accessory', 'is_builtin' => true]);
+    }
+
     public function test_owner_can_add_an_accessory_category_and_it_appears_on_the_add_product_screen(): void
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
+        $accessory = $this->accessoryMainCategory($shop);
 
         $this->actingAs($owner);
 
         Livewire::test('settings.index')
+            ->call('openAccessoryCategoryCreate')
             ->set('accessoryCategoryName', 'Tempered Glass')
+            ->set('accessoryCategoryMainCategoryId', (string) $accessory->id)
             ->call('saveAccessoryCategory')
             ->assertHasNoErrors();
 
-        $this->assertTrue(AccessoryCategoryOption::where('name', 'Tempered Glass')->exists());
+        $this->assertTrue(AccessoryCategoryOption::where('name', 'Tempered Glass')->where('main_category_id', $accessory->id)->exists());
 
         Livewire::test('products.index')
             ->set('type', 'accessory')
@@ -38,7 +47,8 @@ class SettingsAccessoryCategoryTest extends TestCase
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
-        $option = AccessoryCategoryOption::create(['shop_id' => $shop->id, 'name' => 'Charger']);
+        $accessory = $this->accessoryMainCategory($shop);
+        $option = AccessoryCategoryOption::create(['shop_id' => $shop->id, 'main_category_id' => $accessory->id, 'name' => 'Charger']);
 
         $this->actingAs($owner);
 
@@ -55,7 +65,8 @@ class SettingsAccessoryCategoryTest extends TestCase
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
-        $option = AccessoryCategoryOption::create(['shop_id' => $shop->id, 'name' => 'Charger']);
+        $accessory = $this->accessoryMainCategory($shop);
+        $option = AccessoryCategoryOption::create(['shop_id' => $shop->id, 'main_category_id' => $accessory->id, 'name' => 'Charger']);
 
         Product::create([
             'shop_id' => $shop->id,
@@ -78,7 +89,8 @@ class SettingsAccessoryCategoryTest extends TestCase
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
-        $option = AccessoryCategoryOption::create(['shop_id' => $shop->id, 'name' => 'Unused Category']);
+        $accessory = $this->accessoryMainCategory($shop);
+        $option = AccessoryCategoryOption::create(['shop_id' => $shop->id, 'main_category_id' => $accessory->id, 'name' => 'Unused Category']);
 
         $this->actingAs($owner);
 
@@ -93,8 +105,10 @@ class SettingsAccessoryCategoryTest extends TestCase
         $shopB = Shop::create(['name' => 'Shop B']);
 
         $ownerA = User::factory()->create(['shop_id' => $shopA->id]);
-        AccessoryCategoryOption::create(['shop_id' => $shopA->id, 'name' => 'Category A']);
-        AccessoryCategoryOption::create(['shop_id' => $shopB->id, 'name' => 'Category B']);
+        $accessoryA = $this->accessoryMainCategory($shopA);
+        $accessoryB = $this->accessoryMainCategory($shopB);
+        AccessoryCategoryOption::create(['shop_id' => $shopA->id, 'main_category_id' => $accessoryA->id, 'name' => 'Category A']);
+        AccessoryCategoryOption::create(['shop_id' => $shopB->id, 'main_category_id' => $accessoryB->id, 'name' => 'Category B']);
 
         $this->actingAs($ownerA);
 
@@ -131,7 +145,8 @@ class SettingsAccessoryCategoryTest extends TestCase
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
-        AccessoryCategoryOption::create(['shop_id' => $shop->id, 'name' => 'Tempered Glass']);
+        $accessory = $this->accessoryMainCategory($shop);
+        AccessoryCategoryOption::create(['shop_id' => $shop->id, 'main_category_id' => $accessory->id, 'name' => 'Tempered Glass']);
 
         $this->actingAs($owner);
 

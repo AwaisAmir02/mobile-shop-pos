@@ -140,6 +140,16 @@
             <td>Total</td>
             <td class="text-right">Rs {{ number_format($sale->total, 2) }}</td>
         </tr>
+        <tr>
+            <td>Paid</td>
+            <td class="text-right">Rs {{ number_format($sale->amountPaid(), 2) }}</td>
+        </tr>
+        @if ($sale->amountDue() > 0)
+            <tr>
+                <td>Due</td>
+                <td class="text-right">Rs {{ number_format($sale->amountDue(), 2) }}</td>
+            </tr>
+        @endif
     </table>
 
     <div class="footer">

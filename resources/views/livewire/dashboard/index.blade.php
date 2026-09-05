@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Sale;
 use App\Services\ShopReportService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -128,9 +129,18 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
         $summary = $reports->summary(Auth::user()->shop, $start, $end);
         $trend = $reports->revenueTrend(Auth::user()->shop, $this->periodType);
 
+        // A running balance, like Udhaar's own Total Outstanding — deliberately
+        // not scoped to the dashboard's period selector, which describes sales
+        // activity in a window, not which sales still owe money right now.
+        $totalSalesOutstanding = Sale::query()
+            ->withSum('payments', 'amount')
+            ->get()
+            ->sum(fn (Sale $sale) => $sale->amountDue());
+
         return [
             'periodLabel' => $this->periodLabel(),
             'chart' => $this->buildTrendChart($trend),
+            'totalSalesOutstanding' => $totalSalesOutstanding,
             ...$summary,
         ];
     }
@@ -198,8 +208,10 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <x-ui.stat label="Sales Revenue" value="Rs {{ number_format($totalRevenue, 2) }}" :sub="$periodLabel" />
-        <x-ui.stat label="Items Sold" :value="number_format($totalItemsSold)" sub="{{ $categories->firstWhere('label', 'Mobile Phone')['units'] ?? 0 }} mobile · {{ $categories->firstWhere('label', 'Accessory')['units'] ?? 0 }} accessory · {{ $categories->firstWhere('label', 'SIM / eSIM')['units'] ?? 0 }} SIM" />
+        <x-ui.stat label="Items Sold" :value="number_format($totalItemsSold)" sub="{{ $categories->firstWhere('slug', 'mobile')['units'] ?? 0 }} mobile · {{ $categories->firstWhere('slug', 'accessory')['units'] ?? 0 }} accessory · {{ $categories->firstWhere('slug', 'sim')['units'] ?? 0 }} SIM" />
+        <x-ui.stat label="Sales Outstanding" value="Rs {{ number_format($totalSalesOutstanding, 2) }}" sub="Across all unpaid/partial sales" />
         <x-ui.stat label="Balance Loaded" value="Rs {{ number_format($totalBalanceLoaded, 2) }}" />
+        <x-ui.stat label="Balance Load Fees" value="Rs {{ number_format($totalBalanceLoadFees, 2) }}" sub="Net service revenue" />
         <x-ui.stat label="Wallet Loaded" value="Rs {{ number_format($totalWalletLoaded, 2) }}" />
         <x-ui.stat label="Wallet Load Fees" value="Rs {{ number_format($totalWalletLoadFees, 2) }}" sub="Net service revenue" />
         <x-ui.stat label="SIM Sales" :value="number_format($totalSimSalesSold)" sub="Rs {{ number_format($totalSimSaleRevenue, 2) }} revenue" />

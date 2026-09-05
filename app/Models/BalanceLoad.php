@@ -16,12 +16,18 @@ class BalanceLoad extends Model
         'network',
         'phone_number',
         'amount',
+        'fee',
+        'discount',
+        'total',
     ];
 
     protected function casts(): array
     {
         return [
             'amount' => 'decimal:2',
+            'fee' => 'decimal:2',
+            'discount' => 'decimal:2',
+            'total' => 'decimal:2',
         ];
     }
 

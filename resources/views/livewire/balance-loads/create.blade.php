@@ -17,6 +17,9 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
     public string $networkChoice = '';
     public string $phoneNumber = '';
     public string $amount = '';
+    public string $fee = '0';
+    public string $discount = '0';
+    public bool $feeTouched = false;
 
     public ?int $lastLoadId = null;
 
@@ -24,6 +27,34 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
     {
         Network::ensureDefaultsExist();
         $this->networkChoice = Network::query()->orderBy('name')->value('name') ?? '';
+    }
+
+    public function updatedAmount(): void
+    {
+        if (! $this->feeTouched) {
+            $this->fee = $this->suggestedFee();
+        }
+    }
+
+    public function updatedFee(): void
+    {
+        $this->feeTouched = true;
+    }
+
+    protected function suggestedFee(): string
+    {
+        $percent = (float) (Auth::user()->shop?->balance_load_commission_percent ?? 0);
+
+        if ($percent <= 0 || $this->amount === '') {
+            return '0';
+        }
+
+        return number_format(((float) $this->amount) * $percent / 100, 2, '.', '');
+    }
+
+    public function totalCollected(): float
+    {
+        return max(0.0, (float) ($this->amount !== '' ? $this->amount : 0) + (float) $this->fee - (float) $this->discount);
     }
 
     public function with(): array
@@ -39,6 +70,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                 ? Network::query()->where('name', $this->networkChoice)->first()
                 : null,
             'lastLoad' => $this->lastLoadId ? BalanceLoad::find($this->lastLoadId) : null,
+            'totalCollected' => $this->totalCollected(),
         ];
     }
 
@@ -48,6 +80,8 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
             'networkChoice' => ['required', 'string', 'max:255'],
             'phoneNumber' => ['nullable', 'string', 'max:20'],
             'amount' => ['required', 'numeric', 'min:1'],
+            'fee' => ['required', 'numeric', 'min:0'],
+            'discount' => ['required', 'numeric', 'min:0'],
         ]);
 
         $load = BalanceLoad::create([
@@ -55,11 +89,14 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
             'network' => $this->networkChoice,
             'phone_number' => $this->phoneNumber !== '' ? $this->phoneNumber : null,
             'amount' => $this->amount,
+            'fee' => $this->fee,
+            'discount' => $this->discount,
+            'total' => $this->totalCollected(),
         ]);
 
         $this->toastSuccess('Balance loaded.');
         $this->lastLoadId = $load->id;
-        $this->reset(['phoneNumber', 'amount']);
+        $this->reset(['phoneNumber', 'amount', 'fee', 'discount', 'feeTouched']);
     }
 
     public function logAnother(): void
@@ -94,7 +131,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                     </div>
 
                     <p class="mt-3 text-sm text-slate-500">{{ $lastLoad->receiptNumber() }}</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format($lastLoad->amount, 2) }}</p>
+                    <p class="text-display-sm text-slate-900">Rs {{ number_format($lastLoad->total, 2) }}</p>
                     <p class="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
                         <x-ui.color-dot :color="$selectedNetwork?->color" />
                         {{ $lastLoad->network }}
@@ -102,6 +139,25 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                             · {{ $lastLoad->phone_number }}
                         @endif
                     </p>
+
+                    <div class="mt-4 w-full space-y-1.5 rounded-lg border border-slate-200 p-4 text-left text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Amount Loaded</span>
+                            <span class="font-medium text-slate-900">Rs {{ number_format($lastLoad->amount, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Service Charge</span>
+                            <span class="font-medium text-slate-900">Rs {{ number_format($lastLoad->fee, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Discount</span>
+                            <span class="font-medium text-slate-900">− Rs {{ number_format($lastLoad->discount, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between border-t border-slate-200 pt-1.5 font-semibold text-slate-900">
+                            <span>Total Collected</span>
+                            <span>Rs {{ number_format($lastLoad->total, 2) }}</span>
+                        </div>
+                    </div>
 
                     <div class="mt-6 flex w-full gap-3">
                         <x-ui.button type="button" variant="secondary" wire:click="downloadReceipt" class="flex-1 justify-center">
@@ -132,8 +188,23 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                     </x-ui.field>
 
                     <x-ui.field label="Amount" name="amount" for="amount">
-                        <x-ui.input wire:model="amount" id="amount" type="number" min="1" step="0.01" class="text-lg" autofocus />
+                        <x-ui.input wire:model.live="amount" id="amount" type="number" min="1" step="0.01" class="text-lg" autofocus />
                     </x-ui.field>
+
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <x-ui.field label="Service Charge" name="fee" for="fee" help="Auto-suggested from your commission % — edit freely">
+                            <x-ui.input wire:model.live="fee" id="fee" type="number" min="0" step="0.01" />
+                        </x-ui.field>
+
+                        <x-ui.field label="Discount" name="discount" for="discount" help="Optional">
+                            <x-ui.input wire:model.live="discount" id="discount" type="number" min="0" step="0.01" />
+                        </x-ui.field>
+                    </div>
+
+                    <div class="flex items-center justify-between rounded-lg bg-brand-50 px-4 py-3">
+                        <span class="text-sm font-medium text-brand-700">Total Collected</span>
+                        <span class="text-lg font-semibold text-brand-900">Rs {{ number_format($totalCollected, 2) }}</span>
+                    </div>
 
                     <x-ui.button type="submit" size="lg" class="w-full justify-center" wire:loading.attr="disabled" wire:target="save">
                         Save

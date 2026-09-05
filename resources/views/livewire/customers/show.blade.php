@@ -21,6 +21,7 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
         return [
             'sales' => $this->customer->sales,
             'totalSalesRevenue' => $this->customer->sales->sum('total'),
+            'salesOutstanding' => $this->customer->salesOutstandingBalance(),
             'udhaarBalance' => $this->customer->udhaarBalance(),
             'udhaarStatus' => $this->customer->udhaarStatus(),
         ];
@@ -37,10 +38,11 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
         </div>
     </x-slot>
 
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <x-ui.stat label="Phone" :value="$customer->phone ?? '—'" />
         <x-ui.stat label="Address / Notes" :value="$customer->address ?? '—'" />
         <x-ui.stat label="Total Sales" value="Rs {{ number_format($totalSalesRevenue, 2) }}" :sub="$sales->count().' sale(s)'" />
+        <x-ui.stat label="Sales Outstanding" value="Rs {{ number_format($salesOutstanding, 2) }}" sub="Separate from Udhaar" />
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">

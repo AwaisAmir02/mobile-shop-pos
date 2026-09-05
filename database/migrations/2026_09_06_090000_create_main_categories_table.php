@@ -1,0 +1,28 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('main_categories', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('shop_id')->constrained()->cascadeOnDelete();
+            $table->string('name');
+            $table->string('slug');
+            $table->boolean('is_builtin')->default(false);
+            $table->timestamps();
+
+            $table->unique(['shop_id', 'slug']);
+            $table->unique(['shop_id', 'name']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('main_categories');
+    }
+};

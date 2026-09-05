@@ -1,9 +1,9 @@
 <?php
 
-use App\Enums\ProductType;
 use App\Livewire\Concerns\Toasts;
 use App\Livewire\Concerns\UploadsImages;
 use App\Models\AccessoryCategoryOption;
+use App\Models\MainCategory;
 use App\Models\Product;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -38,6 +38,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
     public function mount(): void
     {
+        MainCategory::ensureDefaultsExist();
         AccessoryCategoryOption::ensureDefaultsExist();
     }
 
@@ -51,9 +52,33 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->resetPage();
     }
 
+    protected string $typeBeforeCreate = '';
+
+    public function updatingType(string $value): void
+    {
+        if ($value === '__create__') {
+            $this->typeBeforeCreate = $this->type;
+        }
+    }
+
     public function updatedType(): void
     {
+        if ($this->type === '__create__') {
+            $this->type = $this->typeBeforeCreate !== '' ? $this->typeBeforeCreate : 'mobile';
+            $this->dispatch('open-modal', name: 'quick-create-main-category');
+
+            return;
+        }
+
         $this->resetErrorBag();
+        $this->category = '';
+    }
+
+    #[On('main-category-created')]
+    public function onMainCategoryCreated(string $slug): void
+    {
+        $this->type = $slug;
+        $this->category = '';
     }
 
     public function updatedCategory(): void
@@ -72,22 +97,34 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
     public function with(): array
     {
+        $mainCategories = MainCategory::query()->orderBy('name')->get();
+        $currentMainCategory = $mainCategories->firstWhere('slug', $this->type);
+
         return [
             'products' => Product::query()
                 ->when($this->search, fn ($query) => $query->where('name', 'like', "%{$this->search}%"))
                 ->when($this->typeFilter, fn ($query) => $query->where('type', $this->typeFilter))
                 ->latest()
                 ->paginate(10),
-            'types' => ProductType::cases(),
-            'creatableTypes' => [ProductType::Mobile, ProductType::Accessory],
+            'mainCategories' => $mainCategories,
+            'typeFilterOptions' => $mainCategories
+                ->map(fn (MainCategory $category) => ['value' => $category->slug, 'label' => $category->name])
+                ->when(
+                    Product::where('type', 'sim')->exists(),
+                    fn ($options) => $options->push(['value' => 'sim', 'label' => 'SIM / eSIM (Legacy)'])
+                ),
             'accessoryCategoryOptions' => collect([
-                ['value' => '__create__', 'label' => 'New Category', 'image' => null, 'special' => true],
+                ['value' => '__create__', 'label' => 'New Sub-Category', 'image' => null, 'special' => true, 'modal' => 'quick-create-accessory-category'],
             ])->concat(
-                AccessoryCategoryOption::query()->orderBy('name')->get()->map(fn (AccessoryCategoryOption $option) => [
-                    'value' => $option->name,
-                    'label' => $option->name,
-                    'image' => $option->imageUrl(),
-                ])
+                AccessoryCategoryOption::query()
+                    ->when($currentMainCategory, fn ($query) => $query->where('main_category_id', $currentMainCategory->id))
+                    ->orderBy('name')
+                    ->get()
+                    ->map(fn (AccessoryCategoryOption $option) => [
+                        'value' => $option->name,
+                        'label' => $option->name,
+                        'image' => $option->imageUrl(),
+                    ])
             )->all(),
         ];
     }
@@ -102,10 +139,10 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     {
         $product = Product::findOrFail($id);
 
-        abort_if($product->type === ProductType::Sim, 403, 'Legacy SIM products cannot be edited.');
+        abort_if($product->type === 'sim', 403, 'Legacy SIM products cannot be edited.');
 
         $this->editingId = $product->id;
-        $this->type = $product->type->value;
+        $this->type = $product->type;
         $this->name = $product->name;
         $this->image = null;
         $this->existingImageUrl = $product->imageUrl();
@@ -165,41 +202,45 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
     protected function rules(): array
     {
+        $mainCategoryId = MainCategory::where('slug', $this->type)->value('id');
+
         $rules = [
-            'type' => ['required', Rule::enum(ProductType::class)],
+            'type' => ['required', 'string', Rule::exists('main_categories', 'slug')->where('shop_id', auth()->user()->shop_id)],
             'name' => ['required', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'max:2048'],
             'price' => ['required', 'numeric', 'min:0'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
             'stock_quantity' => ['required', 'integer', 'min:0'],
+            'category' => [
+                $this->type === 'accessory' ? 'required' : 'nullable',
+                'string', 'max:255',
+                Rule::exists('accessory_category_options', 'name')->where('shop_id', auth()->user()->shop_id)->where('main_category_id', $mainCategoryId),
+            ],
         ];
 
-        return match ($this->type) {
-            ProductType::Mobile->value => $rules + [
-                'brand' => ['required', 'string', 'max:255'],
-                'model' => ['required', 'string', 'max:255'],
-                'imei' => ['nullable', 'string', 'max:50'],
-            ],
-            ProductType::Accessory->value => $rules + [
-                'category' => ['required', 'string', 'max:255', Rule::exists('accessory_category_options', 'name')->where('shop_id', auth()->user()->shop_id)],
-            ],
-            default => $rules,
-        };
+        if ($this->type === 'mobile') {
+            $rules['brand'] = ['required', 'string', 'max:255'];
+            $rules['model'] = ['required', 'string', 'max:255'];
+            $rules['imei'] = ['nullable', 'string', 'max:50'];
+        }
+
+        return $rules;
     }
 
     protected function detailsForType(): array
     {
-        return match ($this->type) {
-            ProductType::Mobile->value => [
+        $details = ['category' => $this->category !== '' ? $this->category : null];
+
+        if ($this->type === 'mobile') {
+            $details = [
                 'brand' => $this->brand,
                 'model' => $this->model,
                 'imei' => $this->imei !== '' ? $this->imei : null,
-            ],
-            ProductType::Accessory->value => [
-                'category' => $this->category,
-            ],
-            default => [],
-        };
+                ...$details,
+            ];
+        }
+
+        return $details;
     }
 
     protected function resetForm(): void
@@ -226,8 +267,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
             <x-ui.select wire:model.live="typeFilter" class="sm:max-w-xs">
                 <option value="">All categories</option>
-                @foreach ($types as $typeOption)
-                    <option value="{{ $typeOption->value }}">{{ $typeOption->label() }}</option>
+                @foreach ($typeFilterOptions as $option)
+                    <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
                 @endforeach
             </x-ui.select>
         </div>
@@ -243,7 +284,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     @if ($products->isEmpty())
         <x-ui.empty-state
             title="No products yet"
-            description="Add your first mobile or accessory to start selling."
+            description="Add your first product to start selling."
         >
             <x-slot name="action">
                 <x-ui.button wire:click="openCreate">Add Product</x-ui.button>
@@ -262,8 +303,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     <x-ui.table-cell>
                         <div class="flex flex-col">
                             <span class="flex items-center gap-1.5 text-slate-700">
-                                {{ $product->type->label() }}
-                                @if ($product->type->value === 'sim')
+                                {{ $product->typeLabel() }}
+                                @if ($product->type === 'sim')
                                     <x-ui.badge variant="warning">Legacy</x-ui.badge>
                                 @endif
                             </span>
@@ -284,7 +325,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     </x-ui.table-cell>
                     <x-ui.table-cell align="right">
                         <div class="flex justify-end gap-2">
-                            @if ($product->type->value !== 'sim')
+                            @if ($product->type !== 'sim')
                                 <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $product->id }})">
                                     Edit
                                 </x-ui.button>
@@ -316,17 +357,20 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             </h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Category" name="type" for="type">
-                    <x-ui.select wire:model.live="type" id="type">
-                        @foreach ($creatableTypes as $option)
-                            <option value="{{ $option->value }}">{{ $option->label() }}</option>
-                        @endforeach
-                    </x-ui.select>
-                </x-ui.field>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Main Category" name="type" for="type">
+                        <x-ui.select wire:model.live="type" id="type">
+                            <option value="__create__">+ New Main Category</option>
+                            @foreach ($mainCategories as $option)
+                                <option value="{{ $option->slug }}">{{ $option->name }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
 
-                <x-ui.field label="Product Name" name="name" for="name">
-                    <x-ui.input wire:model="name" id="name" autofocus />
-                </x-ui.field>
+                    <x-ui.field label="Product Name" name="name" for="name">
+                        <x-ui.input wire:model="name" id="name" autofocus />
+                    </x-ui.field>
+                </div>
 
                 <x-ui.field label="Image" name="image" for="image" help="Optional">
                     <x-ui.file-input wire:model="image" id="image" :preview="$this->previewUrl($image, $existingImageUrl)" />
@@ -346,19 +390,20 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     <x-ui.field label="IMEI / Serial" name="imei" for="imei" help="Optional">
                         <x-ui.input wire:model="imei" id="imei" />
                     </x-ui.field>
-                @elseif ($type === 'accessory')
-                    <x-ui.field label="Accessory Category" name="category" for="category">
-                        <x-ui.image-select
-                            wire-model="category"
-                            :options="$accessoryCategoryOptions"
-                            id="category"
-                            placeholder="Select a category"
-                        />
-                    </x-ui.field>
                 @endif
 
+                <x-ui.field label="Sub-Category" name="category" for="category" :help="$type === 'accessory' ? null : 'Optional'">
+                    <x-ui.image-select
+                        wire:key="category-select-{{ $type }}"
+                        wire-model="category"
+                        :options="$accessoryCategoryOptions"
+                        id="category"
+                        placeholder="Select a sub-category"
+                    />
+                </x-ui.field>
+
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <x-ui.field label="Price" name="price" for="price">
+                    <x-ui.field label="Selling Price" name="price" for="price">
                         <x-ui.input wire:model="price" id="price" type="number" step="0.01" min="0" />
                     </x-ui.field>
 
@@ -384,5 +429,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         </form>
     </x-ui.modal>
 
-    <livewire:accessory-categories.quick-create />
+    <livewire:accessory-categories.quick-create :default-main-category-slug="$type" />
+    <livewire:main-categories.quick-create />
 </div>

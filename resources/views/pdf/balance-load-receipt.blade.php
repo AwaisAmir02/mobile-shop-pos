@@ -83,9 +83,21 @@
                 <td class="value">{{ $load->phone_number }}</td>
             </tr>
         @endif
-        <tr class="amount-row">
-            <td class="label">Amount</td>
+        <tr>
+            <td class="label">Amount Loaded</td>
             <td class="value">Rs {{ number_format($load->amount, 2) }}</td>
+        </tr>
+        <tr>
+            <td class="label">Service Charge</td>
+            <td class="value">Rs {{ number_format($load->fee, 2) }}</td>
+        </tr>
+        <tr>
+            <td class="label">Discount</td>
+            <td class="value">− Rs {{ number_format($load->discount, 2) }}</td>
+        </tr>
+        <tr class="amount-row">
+            <td class="label">Total Collected</td>
+            <td class="value">Rs {{ number_format($load->total, 2) }}</td>
         </tr>
     </table>
 

@@ -27,6 +27,11 @@ class Shop extends Model
         'products_allowed',
         'sales_allowed',
         'disabled_screens',
+        'sim_sale_commission_percent',
+        'balance_load_commission_percent',
+        'wallet_load_commission_percent',
+        'bills_commission_percent',
+        'nadra_verification_commission_percent',
     ];
 
     protected function casts(): array
@@ -36,6 +41,11 @@ class Shop extends Model
             'subscription_status' => SubscriptionStatus::class,
             'subscription_start_date' => 'date',
             'disabled_screens' => 'array',
+            'sim_sale_commission_percent' => 'decimal:2',
+            'balance_load_commission_percent' => 'decimal:2',
+            'wallet_load_commission_percent' => 'decimal:2',
+            'bills_commission_percent' => 'decimal:2',
+            'nadra_verification_commission_percent' => 'decimal:2',
         ];
     }
 

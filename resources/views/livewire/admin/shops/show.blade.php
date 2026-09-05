@@ -373,6 +373,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         <x-ui.stat label="Total Sales Revenue" value="Rs {{ number_format($totalRevenue, 2) }}" />
         <x-ui.stat label="Total Discount Given" value="Rs {{ number_format($totalDiscount, 2) }}" />
         <x-ui.stat label="Total Balance Loaded" value="Rs {{ number_format($totalBalanceLoaded, 2) }}" />
+        <x-ui.stat label="Balance Load Fees" value="Rs {{ number_format($totalBalanceLoadFees, 2) }}" sub="Net service revenue" />
         <x-ui.stat label="Total Wallet Loaded" value="Rs {{ number_format($totalWalletLoaded, 2) }}" />
         <x-ui.stat label="Total Expenses" value="Rs {{ number_format($totalExpenses, 2) }}" />
         <x-ui.stat label="Stock-In Units" :value="number_format($totalStockInUnits)" />

@@ -59,4 +59,27 @@ class BalanceLoadTenantIsolationTest extends TestCase
         $this->assertSame($shop->id, $load->shop_id);
         $this->assertEquals(150, $load->amount);
     }
+
+    public function test_the_total_collected_is_computed_as_amount_plus_fee_minus_discount(): void
+    {
+        $shop = Shop::create(['name' => 'Shop A']);
+        $user = User::factory()->create(['shop_id' => $shop->id]);
+
+        $this->actingAs($user);
+
+        Livewire::test('balance-loads.create')
+            ->set('networkChoice', 'Jazz')
+            ->set('amount', '1000')
+            ->set('fee', '20')
+            ->set('discount', '5')
+            ->assertViewHas('totalCollected', 1015.0)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $load = BalanceLoad::firstOrFail();
+        $this->assertEquals(1000, $load->amount);
+        $this->assertEquals(20, $load->fee);
+        $this->assertEquals(5, $load->discount);
+        $this->assertEquals(1015, $load->total);
+    }
 }

@@ -101,6 +101,7 @@ class ImagesAndColorTest extends TestCase
         $this->actingAs($owner);
 
         Livewire::test('settings.index')
+            ->call('openAccessoryCategoryCreate')
             ->set('accessoryCategoryName', 'Tempered Glass')
             ->set('accessoryCategoryImage', UploadedFile::fake()->image('glass.jpg'))
             ->call('saveAccessoryCategory')

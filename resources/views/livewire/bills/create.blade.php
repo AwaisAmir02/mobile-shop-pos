@@ -27,6 +27,7 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
     public string $amount = '';
     public string $fee = '0';
     public string $discount = '0';
+    public bool $feeTouched = false;
 
     public ?int $lastPaymentId = null;
 
@@ -59,6 +60,29 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
     public function onCustomerCreated(int $customerId): void
     {
         $this->customerId = (string) $customerId;
+    }
+
+    public function updatedAmount(): void
+    {
+        if (! $this->feeTouched) {
+            $this->fee = $this->suggestedFee();
+        }
+    }
+
+    public function updatedFee(): void
+    {
+        $this->feeTouched = true;
+    }
+
+    protected function suggestedFee(): string
+    {
+        $percent = (float) (Auth::user()->shop?->bills_commission_percent ?? 0);
+
+        if ($percent <= 0 || $this->amount === '') {
+            return '0';
+        }
+
+        return number_format(((float) $this->amount) * $percent / 100, 2, '.', '');
     }
 
     public function totalCollected(): float
@@ -112,7 +136,7 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
 
         $this->toastSuccess('Bill payment recorded.');
         $this->lastPaymentId = $payment->id;
-        $this->reset(['consumerNumber', 'consumerName', 'customerId', 'amount', 'fee', 'discount']);
+        $this->reset(['consumerNumber', 'consumerName', 'customerId', 'amount', 'fee', 'discount', 'feeTouched']);
     }
 
     public function logAnother(): void
@@ -236,7 +260,7 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
                     </x-ui.field>
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <x-ui.field label="Service Charge" name="fee" for="fee">
+                        <x-ui.field label="Service Charge" name="fee" for="fee" help="Auto-suggested from your commission % — edit freely">
                             <x-ui.input wire:model.live="fee" id="fee" type="number" min="0" step="0.01" />
                         </x-ui.field>
 

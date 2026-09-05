@@ -10,12 +10,12 @@ class InvoicePdfService
 {
     public function download(Sale $sale): StreamedResponse
     {
-        $sale->loadMissing(['items', 'shop', 'user']);
+        $sale->loadMissing(['items', 'shop', 'user', 'payments']);
 
         $pdf = Pdf::loadView('pdf.invoice', ['sale' => $sale])->setPaper('a5');
 
         return response()->streamDownload(
-            fn () => print($pdf->output()),
+            fn () => print ($pdf->output()),
             $sale->invoiceNumber().'.pdf'
         );
     }

@@ -22,6 +22,7 @@ class SimSale extends Model
         'is_duplicate',
         'sim_number',
         'amount',
+        'fee',
         'discount',
         'total',
     ];
@@ -33,6 +34,7 @@ class SimSale extends Model
             'sim_form' => SimForm::class,
             'is_duplicate' => 'boolean',
             'amount' => 'decimal:2',
+            'fee' => 'decimal:2',
             'discount' => 'decimal:2',
             'total' => 'decimal:2',
         ];

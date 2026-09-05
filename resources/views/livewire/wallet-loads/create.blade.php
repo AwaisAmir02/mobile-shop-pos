@@ -24,6 +24,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
     public string $amount = '';
     public string $fee = '0';
     public string $discount = '0';
+    public bool $feeTouched = false;
 
     public ?int $lastLoadId = null;
 
@@ -32,6 +33,20 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
         WalletProvider::ensureDefaultsExist();
         $this->provider = WalletProvider::query()->orderBy('name')->value('name') ?? '';
         $this->shopAccountId = (string) (ShopAccount::query()->orderBy('name')->value('id') ?? '');
+    }
+
+    public function updatedProvider(): void
+    {
+        if ($this->provider === '__create__') {
+            $this->provider = '';
+            $this->dispatch('open-modal', name: 'quick-create-wallet-provider');
+        }
+    }
+
+    #[On('wallet-provider-created')]
+    public function onWalletProviderCreated(string $providerName): void
+    {
+        $this->provider = $providerName;
     }
 
     public function updatedShopAccountId(): void
@@ -48,6 +63,29 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
         $this->shopAccountId = (string) $shopAccountId;
     }
 
+    public function updatedAmount(): void
+    {
+        if (! $this->feeTouched) {
+            $this->fee = $this->suggestedFee();
+        }
+    }
+
+    public function updatedFee(): void
+    {
+        $this->feeTouched = true;
+    }
+
+    protected function suggestedFee(): string
+    {
+        $percent = (float) (Auth::user()->shop?->wallet_load_commission_percent ?? 0);
+
+        if ($percent <= 0 || $this->amount === '') {
+            return '0';
+        }
+
+        return number_format(((float) $this->amount) * $percent / 100, 2, '.', '');
+    }
+
     public function totalCollected(): float
     {
         return max(0.0, (float) ($this->amount !== '' ? $this->amount : 0) + (float) $this->fee - (float) $this->discount);
@@ -56,13 +94,17 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
     public function with(): array
     {
         return [
-            'providerOptions' => WalletProvider::query()->orderBy('name')->get()->map(fn (WalletProvider $provider) => [
-                'value' => $provider->name,
-                'label' => $provider->name,
-                'image' => $provider->imageUrl(),
-            ])->all(),
+            'providerOptions' => collect([
+                ['value' => '__create__', 'label' => 'New Provider', 'image' => null, 'special' => true, 'modal' => 'quick-create-wallet-provider'],
+            ])->concat(
+                WalletProvider::query()->orderBy('name')->get()->map(fn (WalletProvider $provider) => [
+                    'value' => $provider->name,
+                    'label' => $provider->name,
+                    'image' => $provider->imageUrl(),
+                ])
+            )->all(),
             'shopAccountOptions' => collect([
-                ['value' => '__create__', 'label' => 'New Shop Account', 'image' => null, 'special' => true],
+                ['value' => '__create__', 'label' => 'New Shop Account', 'image' => null, 'special' => true, 'modal' => 'quick-create-shop-account'],
             ])->concat(
                 ShopAccount::query()->orderBy('name')->get()->map(fn (ShopAccount $account) => [
                     'value' => (string) $account->id,
@@ -104,7 +146,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
 
         $this->toastSuccess('Wallet load saved.');
         $this->lastLoadId = $load->id;
-        $this->reset(['accountName', 'accountNumber', 'amount', 'fee', 'discount']);
+        $this->reset(['accountName', 'accountNumber', 'amount', 'fee', 'discount', 'feeTouched']);
     }
 
     public function logAnother(): void
@@ -209,7 +251,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
                     </x-ui.field>
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <x-ui.field label="Service Charge" name="fee" for="fee" help="Fee charged to the customer">
+                        <x-ui.field label="Service Charge" name="fee" for="fee" help="Auto-suggested from your commission % — edit freely">
                             <x-ui.input wire:model.live="fee" id="fee" type="number" min="0" step="0.01" />
                         </x-ui.field>
 
@@ -231,5 +273,6 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
         @endif
     </div>
 
+    <livewire:wallet-providers.quick-create />
     <livewire:shop-accounts.quick-create />
 </div>

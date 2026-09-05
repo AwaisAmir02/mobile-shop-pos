@@ -38,6 +38,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
         return [
             'loads' => $this->filteredQuery()->latest()->paginate(15),
             'totalLoaded' => $this->filteredQuery()->sum('amount'),
+            'totalFees' => $this->filteredQuery()->sum('fee') - $this->filteredQuery()->sum('discount'),
             'networksByName' => Network::query()->get()->keyBy('name'),
         ];
     }
@@ -82,12 +83,21 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
             @endif
         </div>
 
-        <x-ui.card :padding="false" class="w-full sm:w-auto">
-            <div class="px-5 py-3 text-right">
-                <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Loaded</p>
-                <p class="text-display-sm text-slate-900">Rs {{ number_format($totalLoaded, 2) }}</p>
-            </div>
-        </x-ui.card>
+        <div class="flex flex-col gap-4 sm:flex-row">
+            <x-ui.card :padding="false" class="w-full sm:w-auto">
+                <div class="px-5 py-3 text-right">
+                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Loaded</p>
+                    <p class="text-display-sm text-slate-900">Rs {{ number_format($totalLoaded, 2) }}</p>
+                </div>
+            </x-ui.card>
+
+            <x-ui.card :padding="false" class="w-full sm:w-auto">
+                <div class="px-5 py-3 text-right">
+                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Fees</p>
+                    <p class="text-display-sm text-slate-900">Rs {{ number_format($totalFees, 2) }}</p>
+                </div>
+            </x-ui.card>
+        </div>
     </div>
 
     @if ($loads->isEmpty())
@@ -102,7 +112,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
             </x-slot>
         </x-ui.empty-state>
     @else
-        <x-ui.table :headers="['Receipt', 'Date', 'Network', 'Phone', 'Amount', '']">
+        <x-ui.table :headers="['Receipt', 'Date', 'Network', 'Phone', 'Amount', 'Fee', 'Discount', 'Total', '']">
             @foreach ($loads as $load)
                 <x-ui.table-row wire:key="load-{{ $load->id }}">
                     <x-ui.table-cell class="font-medium text-slate-900">{{ $load->receiptNumber() }}</x-ui.table-cell>
@@ -117,6 +127,9 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
                     </x-ui.table-cell>
                     <x-ui.table-cell>{{ $load->phone_number ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($load->amount, 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell>Rs {{ number_format($load->fee, 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell>Rs {{ number_format($load->discount, 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($load->total, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell align="right">
                         <x-ui.button size="sm" variant="ghost" wire:click="downloadReceipt({{ $load->id }})">
                             Download

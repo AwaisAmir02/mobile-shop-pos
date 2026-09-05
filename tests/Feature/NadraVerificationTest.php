@@ -41,6 +41,30 @@ class NadraVerificationTest extends TestCase
         $this->assertNull($verification->customer_id);
     }
 
+    public function test_a_manually_entered_service_fee_is_included_in_the_total(): void
+    {
+        $shop = Shop::create(['name' => 'Shop A']);
+        $owner = User::factory()->create(['shop_id' => $shop->id]);
+
+        $this->actingAs($owner);
+
+        Livewire::test('nadra-verifications.create')
+            ->set('phoneNumber', '03001234567')
+            ->set('cnicNumber', '12345-1234567-1')
+            ->set('amount', '200')
+            ->set('fee', '30')
+            ->set('discount', '50')
+            ->assertViewHas('totalCollected', 180.0)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $verification = NadraVerification::firstOrFail();
+        $this->assertEquals(200, $verification->amount);
+        $this->assertEquals(30, $verification->fee);
+        $this->assertEquals(50, $verification->discount);
+        $this->assertEquals(180, $verification->total);
+    }
+
     public function test_the_total_never_goes_negative_when_discount_exceeds_amount(): void
     {
         $shop = Shop::create(['name' => 'Shop A']);

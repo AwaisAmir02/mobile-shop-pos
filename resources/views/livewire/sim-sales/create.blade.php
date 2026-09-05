@@ -26,7 +26,9 @@ new #[Layout('layouts.app')] #[Title('SIM Sale')] class extends Component
     public string $customerId = '';
     public string $simNumber = '';
     public string $amount = '';
+    public string $fee = '0';
     public string $discount = '0';
+    public bool $feeTouched = false;
 
     public ?int $lastSaleId = null;
 
@@ -50,9 +52,32 @@ new #[Layout('layouts.app')] #[Title('SIM Sale')] class extends Component
         $this->customerId = (string) $customerId;
     }
 
+    public function updatedAmount(): void
+    {
+        if (! $this->feeTouched) {
+            $this->fee = $this->suggestedFee();
+        }
+    }
+
+    public function updatedFee(): void
+    {
+        $this->feeTouched = true;
+    }
+
+    protected function suggestedFee(): string
+    {
+        $percent = (float) (Auth::user()->shop?->sim_sale_commission_percent ?? 0);
+
+        if ($percent <= 0 || $this->amount === '') {
+            return '0';
+        }
+
+        return number_format(((float) $this->amount) * $percent / 100, 2, '.', '');
+    }
+
     public function totalCollected(): float
     {
-        return max(0.0, (float) ($this->amount !== '' ? $this->amount : 0) - (float) $this->discount);
+        return max(0.0, (float) ($this->amount !== '' ? $this->amount : 0) + (float) $this->fee - (float) $this->discount);
     }
 
     public function with(): array
@@ -81,6 +106,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale')] class extends Component
             'customerId' => ['nullable', 'integer', Rule::exists('customers', 'id')->where('shop_id', Auth::user()->shop_id)],
             'simNumber' => ['required', 'string', 'max:50'],
             'amount' => ['required', 'numeric', 'min:0'],
+            'fee' => ['required', 'numeric', 'min:0'],
             'discount' => ['required', 'numeric', 'min:0'],
         ]);
 
@@ -93,13 +119,14 @@ new #[Layout('layouts.app')] #[Title('SIM Sale')] class extends Component
             'is_duplicate' => $this->isDuplicate,
             'sim_number' => $this->simNumber,
             'amount' => $this->amount,
+            'fee' => $this->fee,
             'discount' => $this->discount,
             'total' => $this->totalCollected(),
         ]);
 
         $this->toastSuccess('SIM sale recorded.');
         $this->lastSaleId = $sale->id;
-        $this->reset(['simType', 'simForm', 'isDuplicate', 'customerId', 'simNumber', 'amount', 'discount']);
+        $this->reset(['simType', 'simForm', 'isDuplicate', 'customerId', 'simNumber', 'amount', 'fee', 'discount', 'feeTouched']);
     }
 
     public function logAnother(): void
@@ -201,9 +228,13 @@ new #[Layout('layouts.app')] #[Title('SIM Sale')] class extends Component
                         <x-ui.input wire:model="simNumber" id="simNumber" placeholder="03xx-xxxxxxx" />
                     </x-ui.field>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <x-ui.field label="Amount" name="amount" for="amount">
                             <x-ui.input wire:model.live="amount" id="amount" type="number" min="0" step="0.01" class="text-lg" />
+                        </x-ui.field>
+
+                        <x-ui.field label="Service Fee" name="fee" for="fee" help="Auto-suggested from your commission % — edit freely">
+                            <x-ui.input wire:model.live="fee" id="fee" type="number" min="0" step="0.01" />
                         </x-ui.field>
 
                         <x-ui.field label="Discount" name="discount" for="discount" help="Optional">

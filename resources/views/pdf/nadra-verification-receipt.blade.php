@@ -90,6 +90,10 @@
             <td class="value">Rs {{ number_format($verification->amount, 2) }}</td>
         </tr>
         <tr>
+            <td class="label">Service Fee</td>
+            <td class="value">Rs {{ number_format($verification->fee, 2) }}</td>
+        </tr>
+        <tr>
             <td class="label">Discount</td>
             <td class="value">− Rs {{ number_format($verification->discount, 2) }}</td>
         </tr>
