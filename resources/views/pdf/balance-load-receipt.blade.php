@@ -77,6 +77,10 @@
             <td class="label">Network</td>
             <td class="value">{{ $load->network }}</td>
         </tr>
+        <tr>
+            <td class="label">Type</td>
+            <td class="value">{{ $load->load_type->label() }}</td>
+        </tr>
         @if ($load->phone_number)
             <tr>
                 <td class="label">Phone Number</td>

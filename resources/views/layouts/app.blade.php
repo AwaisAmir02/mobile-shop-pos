@@ -18,7 +18,7 @@
         <div x-data="{ sidebarOpen: false }" class="flex min-h-screen bg-slate-50">
             <x-layout.sidebar />
 
-            <div class="flex min-w-0 flex-1 flex-col">
+            <div class="flex min-w-0 flex-1 flex-col lg:pl-64">
                 <livewire:layout.navigation />
 
                 @isset($header)

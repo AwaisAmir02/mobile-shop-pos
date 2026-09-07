@@ -112,7 +112,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
             </x-slot>
         </x-ui.empty-state>
     @else
-        <x-ui.table :headers="['Receipt', 'Date', 'Network', 'Phone', 'Amount', 'Fee', 'Discount', 'Total', '']">
+        <x-ui.table :headers="['Receipt', 'Date', 'Network', 'Type', 'Phone', 'Amount', 'Fee', 'Discount', 'Total', '']">
             @foreach ($loads as $load)
                 <x-ui.table-row wire:key="load-{{ $load->id }}">
                     <x-ui.table-cell class="font-medium text-slate-900">{{ $load->receiptNumber() }}</x-ui.table-cell>
@@ -125,6 +125,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
                             <x-ui.color-dot :color="$network?->color" />
                         </div>
                     </x-ui.table-cell>
+                    <x-ui.table-cell>{{ $load->load_type->label() }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $load->phone_number ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($load->amount, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell>Rs {{ number_format($load->fee, 2) }}</x-ui.table-cell>

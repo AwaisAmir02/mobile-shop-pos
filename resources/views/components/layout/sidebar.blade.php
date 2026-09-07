@@ -9,18 +9,18 @@
         : collect([
             ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home', 'permission' => 'dashboard'],
             ['label' => 'Products', 'route' => 'products.index', 'icon' => 'cube', 'permission' => 'products'],
-            ['label' => 'Stock In', 'route' => 'stock-ins.index', 'icon' => 'stock-in', 'permission' => 'stock-ins'],
-            ['label' => 'Customers', 'route' => 'customers.index', 'icon' => 'customers', 'permission' => 'customers'],
             ['label' => 'Sales', 'route' => 'sales.index', 'icon' => 'cart', 'permission' => 'sales'],
+            ['label' => 'Wallet Loads', 'route' => 'wallet-loads.index', 'icon' => 'wallet', 'permission' => 'wallet-loads'],
+            ['label' => 'NADRA Verification', 'route' => 'nadra-verifications.index', 'icon' => 'identification', 'permission' => 'nadra-verifications'],
+            ['label' => 'Expenses', 'route' => 'expenses.index', 'icon' => 'banknote', 'permission' => 'expenses'],
             ['label' => 'SIM Sale', 'route' => 'sim-sales.index', 'icon' => 'sim', 'permission' => 'sim-sales'],
             ['label' => 'Udhaar', 'route' => 'udhaar.index', 'icon' => 'udhaar', 'permission' => 'udhaar'],
             ['label' => 'Balance Loads', 'route' => 'balance-loads.index', 'icon' => 'signal', 'permission' => 'balance-loads'],
-            ['label' => 'Wallet Loads', 'route' => 'wallet-loads.index', 'icon' => 'wallet', 'permission' => 'wallet-loads'],
             ['label' => 'Bills', 'route' => 'bills.index', 'icon' => 'bolt', 'permission' => 'bills'],
+            ['label' => 'Stock In', 'route' => 'stock-ins.index', 'icon' => 'stock-in', 'permission' => 'stock-ins'],
+            ['label' => 'Customers', 'route' => 'customers.index', 'icon' => 'customers', 'permission' => 'customers'],
             ['label' => 'Repairs', 'route' => 'repairs.index', 'icon' => 'wrench', 'permission' => 'repairs'],
-            ['label' => 'NADRA Verification', 'route' => 'nadra-verifications.index', 'icon' => 'identification', 'permission' => 'nadra-verifications'],
-            ['label' => 'Expenses', 'route' => 'expenses.index', 'icon' => 'banknote', 'permission' => 'expenses'],
-            ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'permission' => 'reports'],
+            // ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'permission' => 'reports'],
             ['label' => 'Party Ledger', 'route' => 'party-ledger.index', 'icon' => 'ledger', 'permission' => 'party-ledger'],
             ['label' => 'Team', 'route' => 'users.index', 'icon' => 'users', 'permission' => 'users'],
             ['label' => 'Settings', 'route' => 'settings.index', 'icon' => 'cog', 'permission' => ['settings', 'users']],
@@ -56,7 +56,7 @@
 ></div>
 
 <aside
-    class="fixed inset-y-0 left-0 z-50 flex w-72 -translate-x-full flex-col border-r border-slate-200 bg-white transition-transform duration-200 lg:static lg:z-auto lg:w-64 lg:translate-x-0"
+    class="fixed inset-y-0 left-0 z-50 flex w-72 -translate-x-full flex-col border-r border-slate-200 bg-white transition-transform duration-200 lg:w-64 lg:translate-x-0"
     :class="sidebarOpen && '!translate-x-0'"
 >
     <div class="flex h-16 shrink-0 items-center gap-2.5 border-b border-slate-100 px-5">

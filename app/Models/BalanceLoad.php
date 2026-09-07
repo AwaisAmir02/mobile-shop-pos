@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\BalanceLoadType;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,7 @@ class BalanceLoad extends Model
         'shop_id',
         'user_id',
         'network',
+        'load_type',
         'phone_number',
         'amount',
         'fee',
@@ -24,6 +26,7 @@ class BalanceLoad extends Model
     protected function casts(): array
     {
         return [
+            'load_type' => BalanceLoadType::class,
             'amount' => 'decimal:2',
             'fee' => 'decimal:2',
             'discount' => 'decimal:2',

@@ -66,22 +66,24 @@ new class extends Component
 }; ?>
 
 <div>
-    <x-ui.modal name="quick-create-accessory-category" max-width="sm">
+    <x-ui.modal name="quick-create-accessory-category" max-width="md">
         <form wire:submit="save" class="p-6">
             <h2 class="text-lg font-semibold text-slate-900">New Sub-Category</h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Main Category" name="mainCategoryId" for="quickSubCategoryMainCategory">
-                    <x-ui.select wire:model="mainCategoryId" id="quickSubCategoryMainCategory">
-                        @foreach ($mainCategories as $option)
-                            <option value="{{ $option->id }}">{{ $option->name }}</option>
-                        @endforeach
-                    </x-ui.select>
-                </x-ui.field>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Main Category" name="mainCategoryId" for="quickSubCategoryMainCategory">
+                        <x-ui.select wire:model="mainCategoryId" id="quickSubCategoryMainCategory">
+                            @foreach ($mainCategories as $option)
+                                <option value="{{ $option->id }}">{{ $option->name }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
 
-                <x-ui.field label="Sub-Category Name" name="name" for="quickCategoryName">
-                    <x-ui.input wire:model="name" id="quickCategoryName" placeholder="e.g. Charger" autofocus />
-                </x-ui.field>
+                    <x-ui.field label="Sub-Category Name" name="name" for="quickCategoryName">
+                        <x-ui.input wire:model="name" id="quickCategoryName" placeholder="e.g. Charger" autofocus />
+                    </x-ui.field>
+                </div>
             </div>
 
             <div class="mt-6 flex justify-end gap-3">

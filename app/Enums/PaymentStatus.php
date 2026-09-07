@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum StockInPaymentStatus: string
+enum PaymentStatus: string
 {
     case Paid = 'paid';
     case Unpaid = 'unpaid';

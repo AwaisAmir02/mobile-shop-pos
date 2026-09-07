@@ -8,6 +8,7 @@ use App\Models\BillProvider;
 use App\Models\Customer;
 use App\Models\Role;
 use App\Models\Shop;
+use App\Models\ShopAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -119,12 +120,14 @@ class BillPaymentTest extends TestCase
         $owner = User::factory()->create(['shop_id' => $shop->id]);
         $category = BillCategory::create(['shop_id' => $shop->id, 'name' => 'Electricity']);
         $provider = BillProvider::create(['shop_id' => $shop->id, 'bill_category_id' => $category->id, 'name' => 'LESCO', 'region' => 'Punjab']);
+        $account = ShopAccount::create(['shop_id' => $shop->id, 'name' => 'My JazzCash', 'provider_type' => 'JazzCash']);
 
         $this->actingAs($owner);
 
         Livewire::test('bills.create')
             ->set('billCategoryId', (string) $category->id)
             ->set('billProviderId', (string) $provider->id)
+            ->set('shopAccountId', (string) $account->id)
             ->set('consumerNumber', 'C-123')
             ->set('consumerName', 'Ali Khan')
             ->set('amount', '5000')
@@ -171,12 +174,14 @@ class BillPaymentTest extends TestCase
         $category = BillCategory::create(['shop_id' => $shop->id, 'name' => 'Electricity']);
         $provider = BillProvider::create(['shop_id' => $shop->id, 'bill_category_id' => $category->id, 'name' => 'LESCO']);
         $customer = Customer::create(['shop_id' => $shop->id, 'name' => 'Ali Khan']);
+        $account = ShopAccount::create(['shop_id' => $shop->id, 'name' => 'My JazzCash', 'provider_type' => 'JazzCash']);
 
         $this->actingAs($owner);
 
         Livewire::test('bills.create')
             ->set('billCategoryId', (string) $category->id)
             ->set('billProviderId', (string) $provider->id)
+            ->set('shopAccountId', (string) $account->id)
             ->set('customerId', (string) $customer->id)
             ->set('consumerNumber', 'C-123')
             ->set('consumerName', 'Ali Khan')

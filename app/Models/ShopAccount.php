@@ -20,4 +20,9 @@ class ShopAccount extends Model
     {
         return $this->hasMany(WalletLoad::class);
     }
+
+    public function billPayments(): HasMany
+    {
+        return $this->hasMany(BillPayment::class);
+    }
 }

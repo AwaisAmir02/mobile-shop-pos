@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PaymentStatus;
 use App\Livewire\Concerns\Toasts;
 use App\Models\ShopAccount;
 use App\Models\WalletLoad;
@@ -25,6 +26,8 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
     public string $fee = '0';
     public string $discount = '0';
     public bool $feeTouched = false;
+    public string $paymentStatus = 'paid';
+    public string $amountPaid = '';
 
     public ?int $lastLoadId = null;
 
@@ -86,6 +89,13 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
         return number_format(((float) $this->amount) * $percent / 100, 2, '.', '');
     }
 
+    public function updatedPaymentStatus(): void
+    {
+        if ($this->paymentStatus !== 'partial') {
+            $this->amountPaid = '';
+        }
+    }
+
     public function totalCollected(): float
     {
         return max(0.0, (float) ($this->amount !== '' ? $this->amount : 0) + (float) $this->fee - (float) $this->discount);
@@ -94,6 +104,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
     public function with(): array
     {
         return [
+            'paymentStatuses' => PaymentStatus::cases(),
             'providerOptions' => collect([
                 ['value' => '__create__', 'label' => 'New Provider', 'image' => null, 'special' => true, 'modal' => 'quick-create-wallet-provider'],
             ])->concat(
@@ -130,7 +141,17 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
             'amount' => ['required', 'numeric', 'min:1'],
             'fee' => ['required', 'numeric', 'min:0'],
             'discount' => ['required', 'numeric', 'min:0'],
+            'paymentStatus' => ['required', Rule::enum(PaymentStatus::class)],
+            'amountPaid' => ['nullable', 'numeric', 'min:0', 'required_if:paymentStatus,partial'],
         ]);
+
+        $total = $this->totalCollected();
+
+        $amountPaid = match ($this->paymentStatus) {
+            'paid' => $total,
+            'partial' => $this->amountPaid !== '' ? $this->amountPaid : 0,
+            default => 0,
+        };
 
         $load = WalletLoad::create([
             'user_id' => Auth::id(),
@@ -141,12 +162,15 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
             'amount' => $this->amount,
             'fee' => $this->fee,
             'discount' => $this->discount,
-            'total' => $this->totalCollected(),
+            'total' => $total,
+            'payment_status' => $this->paymentStatus,
+            'amount_paid' => $amountPaid,
         ]);
 
         $this->toastSuccess('Wallet load saved.');
         $this->lastLoadId = $load->id;
-        $this->reset(['accountName', 'accountNumber', 'amount', 'fee', 'discount', 'feeTouched']);
+        $this->reset(['accountName', 'accountNumber', 'amount', 'fee', 'discount', 'feeTouched', 'amountPaid']);
+        $this->paymentStatus = 'paid';
     }
 
     public function logAnother(): void
@@ -170,9 +194,9 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
         </div>
     </x-slot>
 
-    <div class="mx-auto max-w-lg">
+    <div>
         @if ($lastLoad)
-            <x-ui.card>
+            <x-ui.card class="mx-auto max-w-lg">
                 <div class="flex flex-col items-center text-center">
                     <div class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -220,37 +244,39 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
         @else
             <x-ui.card title="New Wallet Load">
                 <form wire:submit="save" class="space-y-5">
-                    <x-ui.field label="Wallet Provider" name="provider" for="provider">
-                        <x-ui.image-select
-                            wire-model="provider"
-                            :options="$providerOptions"
-                            id="provider"
-                            placeholder="Select a provider"
-                        />
-                    </x-ui.field>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <x-ui.field label="Wallet Provider" name="provider" for="provider">
+                            <x-ui.image-select
+                                wire-model="provider"
+                                :options="$providerOptions"
+                                id="provider"
+                                placeholder="Select a provider"
+                            />
+                        </x-ui.field>
 
-                    <x-ui.field label="Account Name" name="accountName" for="accountName" help="Name on the recipient's wallet account">
-                        <x-ui.input wire:model="accountName" id="accountName" autofocus />
-                    </x-ui.field>
+                        <x-ui.field label="Send From" name="shopAccountId" for="shopAccountId" help="Which of the shop's own accounts is sending this">
+                            <x-ui.image-select
+                                wire-model="shopAccountId"
+                                :options="$shopAccountOptions"
+                                id="shopAccountId"
+                                placeholder="Select a shop account"
+                            />
+                        </x-ui.field>
 
-                    <x-ui.field label="Account / Mobile Number" name="accountNumber" for="accountNumber">
-                        <x-ui.input wire:model="accountNumber" id="accountNumber" type="tel" placeholder="03xx-xxxxxxx" />
-                    </x-ui.field>
+                        <x-ui.field label="Account Name" name="accountName" for="accountName" help="Name on the recipient's wallet account">
+                            <x-ui.input wire:model="accountName" id="accountName" autofocus />
+                        </x-ui.field>
 
-                    <x-ui.field label="Amount" name="amount" for="amount" help="Amount being loaded into the recipient's account">
-                        <x-ui.input wire:model.live="amount" id="amount" type="number" min="1" step="0.01" class="text-lg" />
-                    </x-ui.field>
+                        <x-ui.field label="Account / Mobile Number" name="accountNumber" for="accountNumber">
+                            <x-ui.input wire:model="accountNumber" id="accountNumber" type="tel" placeholder="03xx-xxxxxxx" />
+                        </x-ui.field>
+                    </div>
 
-                    <x-ui.field label="Send From" name="shopAccountId" for="shopAccountId" help="Which of the shop's own accounts is sending this">
-                        <x-ui.image-select
-                            wire-model="shopAccountId"
-                            :options="$shopAccountOptions"
-                            id="shopAccountId"
-                            placeholder="Select a shop account"
-                        />
-                    </x-ui.field>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <x-ui.field label="Amount" name="amount" for="amount" help="Amount being loaded into the recipient's account">
+                            <x-ui.input wire:model.live="amount" id="amount" type="number" min="1" step="0.01" class="text-lg" />
+                        </x-ui.field>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-ui.field label="Service Charge" name="fee" for="fee" help="Auto-suggested from your commission % — edit freely">
                             <x-ui.input wire:model.live="fee" id="fee" type="number" min="0" step="0.01" />
                         </x-ui.field>
@@ -258,14 +284,28 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
                         <x-ui.field label="Discount" name="discount" for="discount" help="Optional">
                             <x-ui.input wire:model.live="discount" id="discount" type="number" min="0" step="0.01" />
                         </x-ui.field>
+
+                        <x-ui.field label="Payment Status" name="paymentStatus" for="paymentStatus" help="Has the customer paid you?">
+                            <x-ui.select wire:model.live="paymentStatus" id="paymentStatus">
+                                @foreach ($paymentStatuses as $status)
+                                    <option value="{{ $status->value }}">{{ $status->label() }}</option>
+                                @endforeach
+                            </x-ui.select>
+                        </x-ui.field>
                     </div>
+
+                    @if ($paymentStatus === 'partial')
+                        <x-ui.field label="Amount Paid" name="amountPaid" for="amountPaid" class="sm:w-1/4">
+                            <x-ui.input wire:model="amountPaid" id="amountPaid" type="number" min="0" step="0.01" />
+                        </x-ui.field>
+                    @endif
 
                     <div class="flex items-center justify-between rounded-lg bg-brand-50 px-4 py-3">
                         <span class="text-sm font-medium text-brand-700">Total Received from Customer</span>
                         <span class="text-lg font-semibold text-brand-900">Rs {{ number_format($totalCollected, 2) }}</span>
                     </div>
 
-                    <x-ui.button type="submit" size="lg" class="w-full justify-center" wire:loading.attr="disabled" wire:target="save">
+                    <x-ui.button type="submit" size="lg" class="w-full justify-center sm:w-auto" wire:loading.attr="disabled" wire:target="save">
                         Save
                     </x-ui.button>
                 </form>

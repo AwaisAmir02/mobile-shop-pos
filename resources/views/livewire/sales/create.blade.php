@@ -202,10 +202,64 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         </div>
     </x-slot>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div class="lg:col-span-2">
-            <x-ui.card :padding="false">
-                <div class="p-5">
+    <div>
+        <x-ui.card title="Summary">
+            <div class="space-y-5">
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-slate-500">Subtotal</span>
+                    <span class="font-medium text-slate-900">Rs {{ number_format($this->subtotal(), 2) }}</span>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <x-ui.field label="Invoice Discount" name="invoiceDiscount" for="invoiceDiscount">
+                        <x-ui.input wire:model.live="invoiceDiscount" id="invoiceDiscount" type="number" min="0" step="0.01" />
+                    </x-ui.field>
+
+                    <x-ui.field label="Amount Paid Now" name="amountPaidNow" for="amountPaidNow" help="Leave blank to record as paid in full">
+                        <x-ui.input wire:model.live="amountPaidNow" id="amountPaidNow" type="number" min="0" step="0.01" :placeholder="number_format($this->total(), 2)" />
+                    </x-ui.field>
+
+                    <x-ui.field label="Customer" name="customerId" for="customerId" :help="$amountPaidNow !== '' && (float) $amountPaidNow < $this->total() ? 'Required — this sale is not being paid in full' : 'Optional — leave blank for a walk-in sale'">
+                        <x-ui.select wire:model.live="customerId" id="customerId">
+                            <option value="">Walk-in (no customer)</option>
+                            <option value="__create__">+ New Customer</option>
+                            @foreach ($customers as $customer)
+                                <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                </div>
+
+                <div class="border-t border-slate-100 pt-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-slate-500">Total</span>
+                        <span class="text-display-sm text-slate-900">Rs {{ number_format($this->total(), 2) }}</span>
+                    </div>
+                    @if ($amountPaidNow !== '' && (float) $amountPaidNow < $this->total())
+                        <div class="mt-1 flex items-center justify-between text-sm">
+                            <span class="text-slate-500">Due After Sale</span>
+                            <span class="font-medium text-amber-600">Rs {{ number_format($this->total() - (float) $amountPaidNow, 2) }}</span>
+                        </div>
+                    @endif
+                </div>
+
+                <x-ui.button
+                    type="button"
+                    wire:click="completeSale"
+                    wire:loading.attr="disabled"
+                    wire:target="completeSale"
+                    size="lg"
+                    class="w-full justify-center sm:w-auto"
+                >
+                    Complete Sale
+                </x-ui.button>
+            </div>
+        </x-ui.card>
+    </div>
+
+    <div class="mt-6">
+        <x-ui.card :padding="false">
+            <div class="p-5">
                     <x-ui.input
                         wire:model.live.debounce.250ms="search"
                         type="search"
@@ -306,60 +360,6 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                 @endif
             </x-ui.card>
         </div>
-
-        <div>
-            <x-ui.card title="Summary">
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="text-slate-500">Subtotal</span>
-                        <span class="font-medium text-slate-900">Rs {{ number_format($this->subtotal(), 2) }}</span>
-                    </div>
-
-                    <x-ui.field label="Invoice Discount" name="invoiceDiscount" for="invoiceDiscount">
-                        <x-ui.input wire:model.live="invoiceDiscount" id="invoiceDiscount" type="number" min="0" step="0.01" />
-                    </x-ui.field>
-
-                    <x-ui.field label="Amount Paid Now" name="amountPaidNow" for="amountPaidNow" help="Leave blank to record as paid in full">
-                        <x-ui.input wire:model.live="amountPaidNow" id="amountPaidNow" type="number" min="0" step="0.01" :placeholder="number_format($this->total(), 2)" />
-                    </x-ui.field>
-
-                    <x-ui.field label="Customer" name="customerId" for="customerId" :help="$amountPaidNow !== '' && (float) $amountPaidNow < $this->total() ? 'Required — this sale is not being paid in full' : 'Optional — leave blank for a walk-in sale'">
-                        <x-ui.select wire:model.live="customerId" id="customerId">
-                            <option value="">Walk-in (no customer)</option>
-                            <option value="__create__">+ New Customer</option>
-                            @foreach ($customers as $customer)
-                                <option value="{{ $customer->id }}">{{ $customer->name }}</option>
-                            @endforeach
-                        </x-ui.select>
-                    </x-ui.field>
-
-                    <div class="border-t border-slate-100 pt-3">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-slate-500">Total</span>
-                            <span class="text-display-sm text-slate-900">Rs {{ number_format($this->total(), 2) }}</span>
-                        </div>
-                        @if ($amountPaidNow !== '' && (float) $amountPaidNow < $this->total())
-                            <div class="mt-1 flex items-center justify-between text-sm">
-                                <span class="text-slate-500">Due After Sale</span>
-                                <span class="font-medium text-amber-600">Rs {{ number_format($this->total() - (float) $amountPaidNow, 2) }}</span>
-                            </div>
-                        @endif
-                    </div>
-
-                    <x-ui.button
-                        type="button"
-                        wire:click="completeSale"
-                        wire:loading.attr="disabled"
-                        wire:target="completeSale"
-                        size="lg"
-                        class="w-full justify-center"
-                    >
-                        Complete Sale
-                    </x-ui.button>
-                </div>
-            </x-ui.card>
-        </div>
-    </div>
 
     <livewire:customers.quick-create />
 </div>

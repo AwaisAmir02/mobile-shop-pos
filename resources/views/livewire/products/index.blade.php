@@ -1,11 +1,11 @@
 <?php
 
+use App\Actions\CreateProduct;
 use App\Livewire\Concerns\Toasts;
 use App\Livewire\Concerns\UploadsImages;
 use App\Models\AccessoryCategoryOption;
 use App\Models\MainCategory;
 use App\Models\Product;
-use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
@@ -202,45 +202,12 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
     protected function rules(): array
     {
-        $mainCategoryId = MainCategory::where('slug', $this->type)->value('id');
-
-        $rules = [
-            'type' => ['required', 'string', Rule::exists('main_categories', 'slug')->where('shop_id', auth()->user()->shop_id)],
-            'name' => ['required', 'string', 'max:255'],
-            'image' => ['nullable', 'image', 'max:2048'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'cost_price' => ['nullable', 'numeric', 'min:0'],
-            'stock_quantity' => ['required', 'integer', 'min:0'],
-            'category' => [
-                $this->type === 'accessory' ? 'required' : 'nullable',
-                'string', 'max:255',
-                Rule::exists('accessory_category_options', 'name')->where('shop_id', auth()->user()->shop_id)->where('main_category_id', $mainCategoryId),
-            ],
-        ];
-
-        if ($this->type === 'mobile') {
-            $rules['brand'] = ['required', 'string', 'max:255'];
-            $rules['model'] = ['required', 'string', 'max:255'];
-            $rules['imei'] = ['nullable', 'string', 'max:50'];
-        }
-
-        return $rules;
+        return CreateProduct::rules(auth()->user()->shop_id, $this->type);
     }
 
     protected function detailsForType(): array
     {
-        $details = ['category' => $this->category !== '' ? $this->category : null];
-
-        if ($this->type === 'mobile') {
-            $details = [
-                'brand' => $this->brand,
-                'model' => $this->model,
-                'imei' => $this->imei !== '' ? $this->imei : null,
-                ...$details,
-            ];
-        }
-
-        return $details;
+        return CreateProduct::detailsForType($this->type, $this->category, $this->brand, $this->model, $this->imei);
     }
 
     protected function resetForm(): void

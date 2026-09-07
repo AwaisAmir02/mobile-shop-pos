@@ -23,7 +23,7 @@ class RepairTest extends TestCase
         $this->actingAs($owner);
 
         Livewire::test('repairs.create')
-            ->set('category', 'phone')
+            ->set('mainCategorySlug', 'mobile')
             ->set('description', 'iPhone 13, screen cracked')
             ->set('amount', '3000')
             ->set('discount', '500')
@@ -33,7 +33,7 @@ class RepairTest extends TestCase
 
         $repair = Repair::firstOrFail();
         $this->assertSame($shop->id, $repair->shop_id);
-        $this->assertSame('phone', $repair->category->value);
+        $this->assertSame('mobile', $repair->category);
         $this->assertSame('iPhone 13, screen cracked', $repair->description);
         $this->assertEquals(3000, $repair->amount);
         $this->assertEquals(500, $repair->discount);
@@ -65,13 +65,13 @@ class RepairTest extends TestCase
         $this->actingAs($owner);
 
         Livewire::test('repairs.create')
-            ->set('category', 'accessory')
+            ->set('mainCategorySlug', 'accessory')
             ->set('description', 'Samsung charger, not powering on')
             ->set('amount', '200')
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertSame('accessory', Repair::firstOrFail()->category->value);
+        $this->assertSame('accessory', Repair::firstOrFail()->category);
     }
 
     public function test_a_repair_can_be_linked_to_a_customer_or_left_as_walk_in(): void

@@ -33,18 +33,20 @@ new class extends Component
 }; ?>
 
 <div>
-    <x-ui.modal name="quick-create-shop-account" max-width="sm">
+    <x-ui.modal name="quick-create-shop-account" max-width="md">
         <form wire:submit="save" class="p-6">
             <h2 class="text-lg font-semibold text-slate-900">New Shop Account</h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Account Name" name="name" for="quickShopAccountName" help="e.g. My JazzCash — 03xx-xxxxxxx">
-                    <x-ui.input wire:model="name" id="quickShopAccountName" autofocus />
-                </x-ui.field>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Account Name" name="name" for="quickShopAccountName" help="e.g. My JazzCash — 03xx-xxxxxxx">
+                        <x-ui.input wire:model="name" id="quickShopAccountName" autofocus />
+                    </x-ui.field>
 
-                <x-ui.field label="Provider / Type" name="providerType" for="quickShopAccountProviderType" help="e.g. JazzCash, Easypaisa, Bank">
-                    <x-ui.input wire:model="providerType" id="quickShopAccountProviderType" />
-                </x-ui.field>
+                    <x-ui.field label="Provider / Type" name="providerType" for="quickShopAccountProviderType" help="e.g. JazzCash, Easypaisa, Bank">
+                        <x-ui.input wire:model="providerType" id="quickShopAccountProviderType" />
+                    </x-ui.field>
+                </div>
             </div>
 
             <div class="mt-6 flex justify-end gap-3">

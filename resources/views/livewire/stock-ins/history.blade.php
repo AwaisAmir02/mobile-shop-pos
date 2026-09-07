@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\StockInPaymentStatus;
+use App\Enums\PaymentStatus;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Product;
 use App\Models\StockIn;
@@ -57,11 +57,11 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'entries' => $this->filteredQuery()->latest('stock_date')->latest('id')->paginate(15),
             'totalUnits' => $this->filteredQuery()->sum('quantity'),
             'totalOwed' => StockIn::query()
-                ->where('payment_status', '!=', StockInPaymentStatus::Paid->value)
+                ->where('payment_status', '!=', PaymentStatus::Paid->value)
                 ->get()
                 ->sum(fn (StockIn $entry) => $entry->amountOwed()),
             'products' => Product::query()->orderBy('name')->get(),
-            'paymentStatuses' => StockInPaymentStatus::cases(),
+            'paymentStatuses' => PaymentStatus::cases(),
         ];
     }
 
@@ -75,7 +75,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
         $entry = StockIn::findOrFail($id);
 
         $entry->update([
-            'payment_status' => StockInPaymentStatus::Paid,
+            'payment_status' => PaymentStatus::Paid,
             'amount_paid' => $entry->total_cost ?? $entry->amount_paid,
         ]);
 
@@ -102,8 +102,8 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
         $entry->update([
             'amount_paid' => $newAmountPaid,
             'payment_status' => $entry->total_cost !== null && $newAmountPaid >= (float) $entry->total_cost
-                ? StockInPaymentStatus::Paid
-                : StockInPaymentStatus::Partial,
+                ? PaymentStatus::Paid
+                : PaymentStatus::Partial,
         ]);
 
         $this->toastSuccess('Payment recorded.');

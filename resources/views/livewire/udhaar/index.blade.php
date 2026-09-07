@@ -156,7 +156,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
         </x-ui.table>
     @endif
 
-    <x-ui.modal name="quick-transaction-form" max-width="sm">
+    <x-ui.modal name="quick-transaction-form" max-width="md">
         <form wire:submit="save" class="p-6">
             <h2 class="text-lg font-semibold text-slate-900">Add Transaction</h2>
 
@@ -171,19 +171,21 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
                     </x-ui.select>
                 </x-ui.field>
 
-                <x-ui.field label="Type" name="type" for="type">
-                    <x-ui.select wire:model="type" id="type">
-                        <option value="given">Udhaar Given</option>
-                        <option value="repayment">Repayment</option>
-                    </x-ui.select>
-                </x-ui.field>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Type" name="type" for="type">
+                        <x-ui.select wire:model="type" id="type">
+                            <option value="given">Udhaar Given</option>
+                            <option value="repayment">Repayment</option>
+                        </x-ui.select>
+                    </x-ui.field>
+
+                    <x-ui.field label="Date" name="transaction_date" for="transaction_date">
+                        <x-ui.input wire:model="transaction_date" id="transaction_date" type="date" />
+                    </x-ui.field>
+                </div>
 
                 <x-ui.field label="Amount" name="amount" for="amount">
                     <x-ui.input wire:model="amount" id="amount" type="number" min="0.01" step="0.01" class="text-lg" />
-                </x-ui.field>
-
-                <x-ui.field label="Date" name="transaction_date" for="transaction_date">
-                    <x-ui.input wire:model="transaction_date" id="transaction_date" type="date" />
                 </x-ui.field>
 
                 <x-ui.field label="Note" name="note" for="note" help="Optional">

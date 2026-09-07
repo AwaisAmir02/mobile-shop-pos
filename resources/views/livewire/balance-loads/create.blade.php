@@ -1,10 +1,12 @@
 <?php
 
+use App\Enums\BalanceLoadType;
 use App\Livewire\Concerns\Toasts;
 use App\Models\BalanceLoad;
 use App\Models\Network;
 use App\Services\BalanceLoadReceiptPdfService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
@@ -15,6 +17,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
     use Toasts;
 
     public string $networkChoice = '';
+    public string $loadType = 'balance';
     public string $phoneNumber = '';
     public string $amount = '';
     public string $fee = '0';
@@ -71,6 +74,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                 : null,
             'lastLoad' => $this->lastLoadId ? BalanceLoad::find($this->lastLoadId) : null,
             'totalCollected' => $this->totalCollected(),
+            'loadTypes' => BalanceLoadType::cases(),
         ];
     }
 
@@ -78,6 +82,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
     {
         $this->validate([
             'networkChoice' => ['required', 'string', 'max:255'],
+            'loadType' => ['required', Rule::enum(BalanceLoadType::class)],
             'phoneNumber' => ['nullable', 'string', 'max:20'],
             'amount' => ['required', 'numeric', 'min:1'],
             'fee' => ['required', 'numeric', 'min:0'],
@@ -87,6 +92,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
         $load = BalanceLoad::create([
             'user_id' => Auth::id(),
             'network' => $this->networkChoice,
+            'load_type' => $this->loadType,
             'phone_number' => $this->phoneNumber !== '' ? $this->phoneNumber : null,
             'amount' => $this->amount,
             'fee' => $this->fee,
@@ -120,9 +126,9 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
         </div>
     </x-slot>
 
-    <div class="mx-auto max-w-lg">
+    <div>
         @if ($lastLoad)
-            <x-ui.card>
+            <x-ui.card class="mx-auto max-w-lg">
                 <div class="flex flex-col items-center text-center">
                     <div class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -134,7 +140,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                     <p class="text-display-sm text-slate-900">Rs {{ number_format($lastLoad->total, 2) }}</p>
                     <p class="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
                         <x-ui.color-dot :color="$selectedNetwork?->color" />
-                        {{ $lastLoad->network }}
+                        {{ $lastLoad->network }} · {{ $lastLoad->load_type->label() }}
                         @if ($lastLoad->phone_number)
                             · {{ $lastLoad->phone_number }}
                         @endif
@@ -173,25 +179,35 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
         @else
             <x-ui.card title="New Balance Load">
                 <form wire:submit="save" class="space-y-5">
-                    <x-ui.field label="Network" name="networkChoice" for="networkChoice">
-                        <x-ui.image-select
-                            wire-model="networkChoice"
-                            :options="$networkOptions"
-                            id="networkChoice"
-                            placeholder="Select a network"
-                            with-color
-                        />
-                    </x-ui.field>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <x-ui.field label="Network" name="networkChoice" for="networkChoice">
+                            <x-ui.image-select
+                                wire-model="networkChoice"
+                                :options="$networkOptions"
+                                id="networkChoice"
+                                placeholder="Select a network"
+                                with-color
+                            />
+                        </x-ui.field>
 
-                    <x-ui.field label="Phone Number" name="phoneNumber" for="phoneNumber" help="Optional">
-                        <x-ui.input wire:model="phoneNumber" id="phoneNumber" type="tel" placeholder="03xx-xxxxxxx" />
-                    </x-ui.field>
+                        <x-ui.field label="Type" name="loadType" for="loadType">
+                            <x-ui.select wire:model="loadType" id="loadType">
+                                @foreach ($loadTypes as $type)
+                                    <option value="{{ $type->value }}">{{ $type->label() }}</option>
+                                @endforeach
+                            </x-ui.select>
+                        </x-ui.field>
 
-                    <x-ui.field label="Amount" name="amount" for="amount">
-                        <x-ui.input wire:model.live="amount" id="amount" type="number" min="1" step="0.01" class="text-lg" autofocus />
-                    </x-ui.field>
+                        <x-ui.field label="Phone Number" name="phoneNumber" for="phoneNumber" help="Optional">
+                            <x-ui.input wire:model="phoneNumber" id="phoneNumber" type="tel" placeholder="03xx-xxxxxxx" />
+                        </x-ui.field>
+                    </div>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <x-ui.field label="Amount" name="amount" for="amount">
+                            <x-ui.input wire:model.live="amount" id="amount" type="number" min="1" step="0.01" class="text-lg" autofocus />
+                        </x-ui.field>
+
                         <x-ui.field label="Service Charge" name="fee" for="fee" help="Auto-suggested from your commission % — edit freely">
                             <x-ui.input wire:model.live="fee" id="fee" type="number" min="0" step="0.01" />
                         </x-ui.field>
@@ -206,7 +222,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                         <span class="text-lg font-semibold text-brand-900">Rs {{ number_format($totalCollected, 2) }}</span>
                     </div>
 
-                    <x-ui.button type="submit" size="lg" class="w-full justify-center" wire:loading.attr="disabled" wire:target="save">
+                    <x-ui.button type="submit" size="lg" class="w-full justify-center sm:w-auto" wire:loading.attr="disabled" wire:target="save">
                         Save
                     </x-ui.button>
                 </form>

@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\StockInPaymentStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -29,7 +29,7 @@ class StockIn extends Model
         return [
             'quantity' => 'integer',
             'total_cost' => 'decimal:2',
-            'payment_status' => StockInPaymentStatus::class,
+            'payment_status' => PaymentStatus::class,
             'amount_paid' => 'decimal:2',
             'stock_date' => 'date',
         ];
@@ -47,7 +47,7 @@ class StockIn extends Model
 
     public function amountOwed(): float
     {
-        if ($this->payment_status === StockInPaymentStatus::Paid) {
+        if ($this->payment_status === PaymentStatus::Paid) {
             return 0.0;
         }
 

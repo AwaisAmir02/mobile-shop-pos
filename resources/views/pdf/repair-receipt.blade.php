@@ -78,7 +78,7 @@
     <table class="details">
         <tr>
             <td class="label">Category</td>
-            <td class="value">{{ $repair->category->label() }}</td>
+            <td class="value">{{ $repair->categoryLabel() }}</td>
         </tr>
         <tr>
             <td class="label">Description</td>

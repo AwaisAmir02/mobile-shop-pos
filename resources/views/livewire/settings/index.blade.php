@@ -1,6 +1,8 @@
 <?php
 
 use App\Actions\CreateAccessoryCategory;
+use App\Actions\CreateBillCategory;
+use App\Actions\CreateBillProvider;
 use App\Actions\CreateWalletProvider;
 use App\Enums\ShopScreen;
 use App\Livewire\Concerns\Toasts;
@@ -159,7 +161,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 ? Network::query()->orderBy('name')->get()
                 : collect(),
             'shopAccounts' => in_array('shop-accounts', $accessible, true)
-                ? ShopAccount::query()->withSum('walletLoads', 'amount')->orderBy('name')->get()
+                ? ShopAccount::query()->withSum('walletLoads', 'amount')->withSum('billPayments', 'amount')->orderBy('name')->get()
                 : collect(),
             'billCategories' => in_array('bills', $accessible, true)
                 ? BillCategory::query()->withCount('billProviders')->orderBy('name')->get()
@@ -542,6 +544,12 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             return;
         }
 
+        if (BillPayment::where('shop_account_id', $account->id)->exists()) {
+            $this->toastError("Cannot delete \"{$account->name}\" — it has bill payment history.");
+
+            return;
+        }
+
         $account->delete();
         $this->toastSuccess('Shop account deleted.');
     }
@@ -584,7 +592,9 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             'billCategoryName' => ['required', 'string', 'max:255', Rule::unique('bill_categories', 'name')->where('shop_id', Auth::user()->shop_id)->ignore($this->billCategoryEditingId)],
         ]);
 
-        $category = $this->billCategoryEditingId ? BillCategory::findOrFail($this->billCategoryEditingId) : new BillCategory;
+        $category = $this->billCategoryEditingId
+            ? BillCategory::findOrFail($this->billCategoryEditingId)
+            : CreateBillCategory::handle($this->billCategoryName);
 
         $category->name = $this->billCategoryName;
         $category->save();
@@ -653,7 +663,9 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             'billProviderRegion' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $provider = $this->billProviderEditingId ? BillProvider::findOrFail($this->billProviderEditingId) : new BillProvider;
+        $provider = $this->billProviderEditingId
+            ? BillProvider::findOrFail($this->billProviderEditingId)
+            : CreateBillProvider::handle($this->billProviderName, (int) $this->billProviderCategoryId, $this->billProviderRegion !== '' ? $this->billProviderRegion : null);
 
         $provider->name = $this->billProviderName;
         $provider->bill_category_id = $this->billProviderCategoryId;
@@ -1046,7 +1058,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                         <x-ui.table-row wire:key="shop-account-{{ $account->id }}">
                             <x-ui.table-cell class="font-medium text-slate-900">{{ $account->name }}</x-ui.table-cell>
                             <x-ui.table-cell>{{ $account->provider_type }}</x-ui.table-cell>
-                            <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($account->wallet_loads_sum_amount ?? 0, 2) }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format(($account->wallet_loads_sum_amount ?? 0) + ($account->bill_payments_sum_amount ?? 0), 2) }}</x-ui.table-cell>
                             <x-ui.table-cell align="right">
                                 <div class="flex justify-end gap-2">
                                     <x-ui.button size="sm" variant="ghost" wire:click="openShopAccountEdit({{ $account->id }})">
@@ -1300,24 +1312,26 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         </form>
     </x-ui.modal>
 
-    <x-ui.modal name="accessory-category-form" max-width="sm">
+    <x-ui.modal name="accessory-category-form" max-width="md">
         <form wire:submit="saveAccessoryCategory" class="p-6">
             <h2 class="text-lg font-semibold text-slate-900">
                 {{ $accessoryCategoryEditingId ? 'Edit Sub-Category' : 'Add Sub-Category' }}
             </h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Main Category" name="accessoryCategoryMainCategoryId" for="accessoryCategoryMainCategoryId">
-                    <x-ui.select wire:model="accessoryCategoryMainCategoryId" id="accessoryCategoryMainCategoryId">
-                        @foreach ($mainCategories as $option)
-                            <option value="{{ $option->id }}">{{ $option->name }}</option>
-                        @endforeach
-                    </x-ui.select>
-                </x-ui.field>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Main Category" name="accessoryCategoryMainCategoryId" for="accessoryCategoryMainCategoryId">
+                        <x-ui.select wire:model="accessoryCategoryMainCategoryId" id="accessoryCategoryMainCategoryId">
+                            @foreach ($mainCategories as $option)
+                                <option value="{{ $option->id }}">{{ $option->name }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
 
-                <x-ui.field label="Sub-Category Name" name="accessoryCategoryName" for="accessoryCategoryName">
-                    <x-ui.input wire:model="accessoryCategoryName" id="accessoryCategoryName" placeholder="e.g. Charger" />
-                </x-ui.field>
+                    <x-ui.field label="Sub-Category Name" name="accessoryCategoryName" for="accessoryCategoryName">
+                        <x-ui.input wire:model="accessoryCategoryName" id="accessoryCategoryName" placeholder="e.g. Charger" />
+                    </x-ui.field>
+                </div>
 
                 <x-ui.field label="Image" name="accessoryCategoryImage" for="accessoryCategoryImage" help="Optional">
                     <x-ui.file-input
@@ -1340,23 +1354,25 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         </form>
     </x-ui.modal>
 
-    <x-ui.modal name="network-form" max-width="sm">
+    <x-ui.modal name="network-form" max-width="md">
         <form wire:submit="saveNetwork" class="p-6">
             <h2 class="text-lg font-semibold text-slate-900">
                 {{ $networkEditingId ? 'Edit Network' : 'Add Network' }}
             </h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Network Name" name="networkName" for="networkName">
-                    <x-ui.input wire:model="networkName" id="networkName" placeholder="e.g. Jazz" autofocus />
-                </x-ui.field>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Network Name" name="networkName" for="networkName">
+                        <x-ui.input wire:model="networkName" id="networkName" placeholder="e.g. Jazz" autofocus />
+                    </x-ui.field>
 
-                <x-ui.field label="Color" name="networkColor" for="networkColor">
-                    <div class="flex items-center gap-3">
-                        <input type="color" wire:model="networkColor" id="networkColor" class="h-10 w-14 cursor-pointer rounded-lg border border-slate-300">
-                        <span class="text-sm text-slate-500">{{ $networkColor }}</span>
-                    </div>
-                </x-ui.field>
+                    <x-ui.field label="Color" name="networkColor" for="networkColor">
+                        <div class="flex items-center gap-3">
+                            <input type="color" wire:model="networkColor" id="networkColor" class="h-10 w-14 cursor-pointer rounded-lg border border-slate-300">
+                            <span class="text-sm text-slate-500">{{ $networkColor }}</span>
+                        </div>
+                    </x-ui.field>
+                </div>
 
                 <x-ui.field label="Image" name="networkImage" for="networkImage" help="Optional">
                     <x-ui.file-input
@@ -1411,20 +1427,22 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         </form>
     </x-ui.modal>
 
-    <x-ui.modal name="shop-account-form" max-width="sm">
+    <x-ui.modal name="shop-account-form" max-width="md">
         <form wire:submit="saveShopAccount" class="p-6">
             <h2 class="text-lg font-semibold text-slate-900">
                 {{ $shopAccountEditingId ? 'Edit Shop Account' : 'Add Shop Account' }}
             </h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Account Name" name="shopAccountName" for="shopAccountName" help="e.g. My JazzCash — 03xx-xxxxxxx">
-                    <x-ui.input wire:model="shopAccountName" id="shopAccountName" autofocus />
-                </x-ui.field>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Account Name" name="shopAccountName" for="shopAccountName" help="e.g. My JazzCash — 03xx-xxxxxxx">
+                        <x-ui.input wire:model="shopAccountName" id="shopAccountName" autofocus />
+                    </x-ui.field>
 
-                <x-ui.field label="Provider / Type" name="shopAccountProviderType" for="shopAccountProviderType" help="e.g. JazzCash, Easypaisa, Bank">
-                    <x-ui.input wire:model="shopAccountProviderType" id="shopAccountProviderType" />
-                </x-ui.field>
+                    <x-ui.field label="Provider / Type" name="shopAccountProviderType" for="shopAccountProviderType" help="e.g. JazzCash, Easypaisa, Bank">
+                        <x-ui.input wire:model="shopAccountProviderType" id="shopAccountProviderType" />
+                    </x-ui.field>
+                </div>
             </div>
 
             <div class="mt-6 flex justify-end gap-3">
@@ -1463,7 +1481,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         </form>
     </x-ui.modal>
 
-    <x-ui.modal name="bill-provider-form" max-width="sm">
+    <x-ui.modal name="bill-provider-form" max-width="md">
         <form wire:submit="saveBillProvider" class="p-6">
             <h2 class="text-lg font-semibold text-slate-900">
                 {{ $billProviderEditingId ? 'Edit Bill Provider' : 'Add Bill Provider' }}
@@ -1478,13 +1496,15 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                     </x-ui.select>
                 </x-ui.field>
 
-                <x-ui.field label="Provider Name" name="billProviderName" for="billProviderName" help="e.g. LESCO, K-Electric">
-                    <x-ui.input wire:model="billProviderName" id="billProviderName" />
-                </x-ui.field>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Provider Name" name="billProviderName" for="billProviderName" help="e.g. LESCO, K-Electric">
+                        <x-ui.input wire:model="billProviderName" id="billProviderName" />
+                    </x-ui.field>
 
-                <x-ui.field label="Region / Province" name="billProviderRegion" for="billProviderRegion" help="Optional">
-                    <x-ui.input wire:model="billProviderRegion" id="billProviderRegion" placeholder="e.g. Punjab" />
-                </x-ui.field>
+                    <x-ui.field label="Region / Province" name="billProviderRegion" for="billProviderRegion" help="Optional">
+                        <x-ui.input wire:model="billProviderRegion" id="billProviderRegion" placeholder="e.g. Punjab" />
+                    </x-ui.field>
+                </div>
             </div>
 
             <div class="mt-6 flex justify-end gap-3">
