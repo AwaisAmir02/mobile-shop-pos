@@ -212,8 +212,9 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
         <x-ui.stat label="Sales Outstanding" value="Rs {{ number_format($totalSalesOutstanding, 2) }}" sub="Across all unpaid/partial sales" />
         <x-ui.stat label="Balance Loaded" value="Rs {{ number_format($totalBalanceLoaded, 2) }}" />
         <x-ui.stat label="Balance Load Fees" value="Rs {{ number_format($totalBalanceLoadFees, 2) }}" sub="Net service revenue" />
-        <x-ui.stat label="Wallet Loaded" value="Rs {{ number_format($totalWalletLoaded, 2) }}" />
-        <x-ui.stat label="Wallet Load Fees" value="Rs {{ number_format($totalWalletLoadFees, 2) }}" sub="Net service revenue" />
+        <x-ui.stat label="Wallet Cash In" value="Rs {{ number_format($totalWalletCashInAmount, 2) }}" />
+        <x-ui.stat label="Wallet Cash Out" value="Rs {{ number_format($totalWalletCashOutAmount, 2) }}" />
+        <x-ui.stat label="Wallet Load Fees" value="Rs {{ number_format($totalWalletLoadFees, 2) }}" sub="Net service revenue, both directions" />
         <x-ui.stat label="SIM Sales" :value="number_format($totalSimSalesSold)" sub="Rs {{ number_format($totalSimSaleRevenue, 2) }} revenue" />
         <x-ui.stat label="Bills Collected" value="Rs {{ number_format($totalBillsCollected, 2) }}" />
         <x-ui.stat label="Bills Fee Revenue" value="Rs {{ number_format($totalBillsFeeRevenue, 2) }}" sub="Net service revenue" />

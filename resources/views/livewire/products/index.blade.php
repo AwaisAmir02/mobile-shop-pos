@@ -317,7 +317,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         </div>
     @endif
 
-    <x-ui.modal name="product-form" max-width="lg">
+    <x-ui.modal name="product-form" max-width="xl">
         <form wire:submit="save" class="p-6">
             <h2 class="text-lg font-semibold text-slate-900">
                 {{ $editingId ? 'Edit Product' : 'Add Product' }}
@@ -353,21 +353,25 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                             <x-ui.input wire:model="model" id="model" placeholder="e.g. Galaxy A15" />
                         </x-ui.field>
                     </div>
-
-                    <x-ui.field label="IMEI / Serial" name="imei" for="imei" help="Optional">
-                        <x-ui.input wire:model="imei" id="imei" />
-                    </x-ui.field>
                 @endif
 
-                <x-ui.field label="Sub-Category" name="category" for="category" :help="$type === 'accessory' ? null : 'Optional'">
-                    <x-ui.image-select
-                        wire:key="category-select-{{ $type }}"
-                        wire-model="category"
-                        :options="$accessoryCategoryOptions"
-                        id="category"
-                        placeholder="Select a sub-category"
-                    />
-                </x-ui.field>
+                <div @class(['grid grid-cols-1 gap-4', 'sm:grid-cols-2' => $type === 'mobile'])>
+                    @if ($type === 'mobile')
+                        <x-ui.field label="IMEI / Serial" name="imei" for="imei" help="Optional">
+                            <x-ui.input wire:model="imei" id="imei" />
+                        </x-ui.field>
+                    @endif
+
+                    <x-ui.field label="Sub-Category" name="category" for="category" :help="$type === 'accessory' ? null : 'Optional'">
+                        <x-ui.image-select
+                            wire:key="category-select-{{ $type }}"
+                            wire-model="category"
+                            :options="$accessoryCategoryOptions"
+                            id="category"
+                            placeholder="Select a sub-category"
+                        />
+                    </x-ui.field>
+                </div>
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <x-ui.field label="Selling Price" name="price" for="price">

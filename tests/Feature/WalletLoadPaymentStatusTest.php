@@ -14,29 +14,11 @@ class WalletLoadPaymentStatusTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_a_wallet_load_defaults_to_paid_and_owes_nothing(): void
-    {
-        $shop = Shop::create(['name' => 'Shop A']);
-        $owner = User::factory()->create(['shop_id' => $shop->id]);
-        $account = ShopAccount::create(['shop_id' => $shop->id, 'name' => 'My JazzCash', 'provider_type' => 'JazzCash']);
+    // ── Payment Status is derived from "Cash Received" / "Amount Received
+    // in Account", the same way Sales derives it from "Amount Paid Now" —
+    // there is no manual dropdown on this screen. ──────────────────────
 
-        $this->actingAs($owner);
-
-        Livewire::test('wallet-loads.create')
-            ->set('accountName', 'Ali')
-            ->set('accountNumber', '0300')
-            ->set('shopAccountId', (string) $account->id)
-            ->set('amount', '1000')
-            ->call('save')
-            ->assertHasNoErrors();
-
-        $load = WalletLoad::firstOrFail();
-        $this->assertSame('paid', $load->payment_status->value);
-        $this->assertEquals(1000, $load->amount_paid);
-        $this->assertSame(0.0, $load->amountOwed());
-    }
-
-    public function test_an_unpaid_wallet_load_owes_the_full_total(): void
+    public function test_leaving_amount_received_blank_records_the_load_as_unpaid(): void
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
@@ -50,7 +32,6 @@ class WalletLoadPaymentStatusTest extends TestCase
             ->set('shopAccountId', (string) $account->id)
             ->set('amount', '1000')
             ->set('fee', '50')
-            ->set('paymentStatus', 'unpaid')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -60,7 +41,7 @@ class WalletLoadPaymentStatusTest extends TestCase
         $this->assertEquals(1050, $load->amountOwed());
     }
 
-    public function test_a_partial_wallet_load_requires_and_stores_the_amount_paid(): void
+    public function test_entering_zero_as_amount_received_also_records_it_as_unpaid(): void
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
@@ -73,17 +54,50 @@ class WalletLoadPaymentStatusTest extends TestCase
             ->set('accountNumber', '0300')
             ->set('shopAccountId', (string) $account->id)
             ->set('amount', '1000')
-            ->set('paymentStatus', 'partial')
+            ->set('amountReceivedNow', '0')
             ->call('save')
-            ->assertHasErrors(['amountPaid']);
+            ->assertHasNoErrors();
+
+        $this->assertSame('unpaid', WalletLoad::firstOrFail()->payment_status->value);
+    }
+
+    public function test_entering_the_full_total_as_amount_received_records_it_as_paid(): void
+    {
+        $shop = Shop::create(['name' => 'Shop A']);
+        $owner = User::factory()->create(['shop_id' => $shop->id]);
+        $account = ShopAccount::create(['shop_id' => $shop->id, 'name' => 'My JazzCash', 'provider_type' => 'JazzCash']);
+
+        $this->actingAs($owner);
 
         Livewire::test('wallet-loads.create')
             ->set('accountName', 'Ali')
             ->set('accountNumber', '0300')
             ->set('shopAccountId', (string) $account->id)
             ->set('amount', '1000')
-            ->set('paymentStatus', 'partial')
-            ->set('amountPaid', '400')
+            ->set('amountReceivedNow', '1000')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $load = WalletLoad::firstOrFail();
+        $this->assertSame('paid', $load->payment_status->value);
+        $this->assertEquals(1000, $load->amount_paid);
+        $this->assertSame(0.0, $load->amountOwed());
+    }
+
+    public function test_entering_a_partial_amount_received_records_it_as_partial_and_stores_it(): void
+    {
+        $shop = Shop::create(['name' => 'Shop A']);
+        $owner = User::factory()->create(['shop_id' => $shop->id]);
+        $account = ShopAccount::create(['shop_id' => $shop->id, 'name' => 'My JazzCash', 'provider_type' => 'JazzCash']);
+
+        $this->actingAs($owner);
+
+        Livewire::test('wallet-loads.create')
+            ->set('accountName', 'Ali')
+            ->set('accountNumber', '0300')
+            ->set('shopAccountId', (string) $account->id)
+            ->set('amount', '1000')
+            ->set('amountReceivedNow', '400')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -92,6 +106,27 @@ class WalletLoadPaymentStatusTest extends TestCase
         $this->assertEquals(400, $load->amount_paid);
         $this->assertEquals(600, $load->amountOwed());
     }
+
+    public function test_amount_received_cannot_exceed_the_computed_total(): void
+    {
+        $shop = Shop::create(['name' => 'Shop A']);
+        $owner = User::factory()->create(['shop_id' => $shop->id]);
+        $account = ShopAccount::create(['shop_id' => $shop->id, 'name' => 'My JazzCash', 'provider_type' => 'JazzCash']);
+
+        $this->actingAs($owner);
+
+        Livewire::test('wallet-loads.create')
+            ->set('accountName', 'Ali')
+            ->set('accountNumber', '0300')
+            ->set('shopAccountId', (string) $account->id)
+            ->set('amount', '1000')
+            ->set('amountReceivedNow', '99999')
+            ->call('save')
+            ->assertHasErrors(['amountReceivedNow']);
+    }
+
+    // ── Settle-later actions on the History screen (unaffected by the
+    // create-time derivation change) ────────────────────────────────
 
     public function test_marking_a_wallet_load_as_paid_zeroes_out_what_is_owed(): void
     {

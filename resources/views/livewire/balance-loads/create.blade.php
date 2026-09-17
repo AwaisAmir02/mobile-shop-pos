@@ -1,13 +1,16 @@
 <?php
 
 use App\Enums\BalanceLoadType;
+use App\Enums\PaymentStatus;
 use App\Livewire\Concerns\Toasts;
 use App\Models\BalanceLoad;
+use App\Models\Customer;
 use App\Models\Network;
 use App\Services\BalanceLoadReceiptPdfService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -19,10 +22,12 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
     public string $networkChoice = '';
     public string $loadType = 'balance';
     public string $phoneNumber = '';
+    public string $customerId = '';
     public string $amount = '';
     public string $fee = '0';
     public string $discount = '0';
     public bool $feeTouched = false;
+    public string $amountReceivedNow = '';
 
     public ?int $lastLoadId = null;
 
@@ -30,6 +35,20 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
     {
         Network::ensureDefaultsExist();
         $this->networkChoice = Network::query()->orderBy('name')->value('name') ?? '';
+    }
+
+    public function updatedCustomerId(): void
+    {
+        if ($this->customerId === '__create__') {
+            $this->customerId = '';
+            $this->dispatch('open-modal', name: 'quick-create-customer');
+        }
+    }
+
+    #[On('customer-created')]
+    public function onCustomerCreated(int $customerId): void
+    {
+        $this->customerId = (string) $customerId;
     }
 
     public function updatedAmount(): void
@@ -60,6 +79,22 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
         return max(0.0, (float) ($this->amount !== '' ? $this->amount : 0) + (float) $this->fee - (float) $this->discount);
     }
 
+    protected function derivePaymentStatus(float $received, float $total): PaymentStatus
+    {
+        if ($received <= 0) {
+            return PaymentStatus::Unpaid;
+        }
+
+        return $received >= $total ? PaymentStatus::Paid : PaymentStatus::Partial;
+    }
+
+    public function previewPaymentStatus(): PaymentStatus
+    {
+        $received = $this->amountReceivedNow !== '' ? (float) $this->amountReceivedNow : 0.0;
+
+        return $this->derivePaymentStatus($received, $this->totalCollected());
+    }
+
     public function with(): array
     {
         return [
@@ -72,37 +107,48 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
             'selectedNetwork' => $this->networkChoice !== ''
                 ? Network::query()->where('name', $this->networkChoice)->first()
                 : null,
+            'customers' => Customer::query()->orderBy('name')->get(),
             'lastLoad' => $this->lastLoadId ? BalanceLoad::find($this->lastLoadId) : null,
             'totalCollected' => $this->totalCollected(),
+            'previewPaymentStatus' => $this->previewPaymentStatus(),
             'loadTypes' => BalanceLoadType::cases(),
         ];
     }
 
     public function save(): void
     {
+        $total = $this->totalCollected();
+
         $this->validate([
             'networkChoice' => ['required', 'string', 'max:255'],
             'loadType' => ['required', Rule::enum(BalanceLoadType::class)],
             'phoneNumber' => ['nullable', 'string', 'max:20'],
+            'customerId' => ['nullable', 'integer', Rule::exists('customers', 'id')->where('shop_id', Auth::user()->shop_id)],
             'amount' => ['required', 'numeric', 'min:1'],
             'fee' => ['required', 'numeric', 'min:0'],
             'discount' => ['required', 'numeric', 'min:0'],
+            'amountReceivedNow' => ['nullable', 'numeric', 'min:0', 'max:'.$total],
         ]);
+
+        $received = min($this->amountReceivedNow !== '' ? (float) $this->amountReceivedNow : 0.0, $total);
 
         $load = BalanceLoad::create([
             'user_id' => Auth::id(),
+            'customer_id' => $this->customerId !== '' ? $this->customerId : null,
             'network' => $this->networkChoice,
             'load_type' => $this->loadType,
             'phone_number' => $this->phoneNumber !== '' ? $this->phoneNumber : null,
             'amount' => $this->amount,
             'fee' => $this->fee,
             'discount' => $this->discount,
-            'total' => $this->totalCollected(),
+            'total' => $total,
+            'payment_status' => $this->derivePaymentStatus($received, $total),
+            'amount_paid' => $received,
         ]);
 
         $this->toastSuccess('Balance loaded.');
         $this->lastLoadId = $load->id;
-        $this->reset(['phoneNumber', 'amount', 'fee', 'discount', 'feeTouched']);
+        $this->reset(['phoneNumber', 'customerId', 'amount', 'fee', 'discount', 'feeTouched', 'amountReceivedNow']);
     }
 
     public function logAnother(): void
@@ -163,6 +209,10 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                             <span>Total Collected</span>
                             <span>Rs {{ number_format($lastLoad->total, 2) }}</span>
                         </div>
+                        <div class="flex justify-between pt-1.5">
+                            <span class="text-slate-500">Payment Status</span>
+                            <span class="font-medium text-slate-900">{{ $lastLoad->payment_status->label() }}</span>
+                        </div>
                     </div>
 
                     <div class="mt-6 flex w-full gap-3">
@@ -179,7 +229,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
         @else
             <x-ui.card title="New Balance Load">
                 <form wire:submit="save" class="space-y-5">
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         <x-ui.field label="Network" name="networkChoice" for="networkChoice">
                             <x-ui.image-select
                                 wire-model="networkChoice"
@@ -201,6 +251,16 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                         <x-ui.field label="Phone Number" name="phoneNumber" for="phoneNumber" help="Optional">
                             <x-ui.input wire:model="phoneNumber" id="phoneNumber" type="tel" placeholder="03xx-xxxxxxx" />
                         </x-ui.field>
+
+                        <x-ui.field label="Customer" name="customerId" for="customerId" help="Optional — leave blank for a walk-in">
+                            <x-ui.select wire:model.live="customerId" id="customerId">
+                                <option value="">Walk-in (no customer)</option>
+                                <option value="__create__">+ New Customer</option>
+                                @foreach ($customers as $customer)
+                                    <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                                @endforeach
+                            </x-ui.select>
+                        </x-ui.field>
                     </div>
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -217,9 +277,29 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                         </x-ui.field>
                     </div>
 
-                    <div class="flex items-center justify-between rounded-lg bg-brand-50 px-4 py-3">
-                        <span class="text-sm font-medium text-brand-700">Total Collected</span>
-                        <span class="text-lg font-semibold text-brand-900">Rs {{ number_format($totalCollected, 2) }}</span>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <x-ui.field label="Cash Received" name="amountReceivedNow" for="amountReceivedNow" help="How much cash did the customer hand you just now?">
+                            <x-ui.input wire:model.live="amountReceivedNow" id="amountReceivedNow" type="number" min="0" step="0.01" placeholder="0" />
+                        </x-ui.field>
+                    </div>
+
+                    <div class="rounded-lg bg-brand-50 px-4 py-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium text-brand-700">Total Collected</span>
+                            <span class="text-lg font-semibold text-brand-900">Rs {{ number_format($totalCollected, 2) }}</span>
+                        </div>
+                        <div class="mt-1 flex items-center justify-between">
+                            <span class="text-sm text-brand-700">Will be recorded as</span>
+                            <x-ui.badge :variant="match($previewPaymentStatus->value) { 'paid' => 'success', 'partial' => 'warning', default => 'danger' }">
+                                {{ $previewPaymentStatus->label() }}
+                            </x-ui.badge>
+                        </div>
+                        @if ($amountReceivedNow !== '' && (float) $amountReceivedNow < $totalCollected)
+                            <div class="mt-1 flex items-center justify-between text-sm">
+                                <span class="text-slate-500">Still Owed by Customer</span>
+                                <span class="font-medium text-amber-600">Rs {{ number_format($totalCollected - (float) $amountReceivedNow, 2) }}</span>
+                            </div>
+                        @endif
                     </div>
 
                     <x-ui.button type="submit" size="lg" class="w-full justify-center sm:w-auto" wire:loading.attr="disabled" wire:target="save">
@@ -229,4 +309,6 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
             </x-ui.card>
         @endif
     </div>
+
+    <livewire:customers.quick-create />
 </div>

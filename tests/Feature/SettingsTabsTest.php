@@ -36,9 +36,9 @@ class SettingsTabsTest extends TestCase
             ->assertSee('Manage the networks available on the Balance Load screen.');
 
         Livewire::test('settings.index')
-            ->call('setTab', 'wallet-providers')
-            ->assertSet('tab', 'wallet-providers')
-            ->assertSee('Manage the providers available on the Wallet Load screen.');
+            ->call('setTab', 'shop-accounts')
+            ->assertSet('tab', 'shop-accounts')
+            ->assertSee("Manage the shop's own wallet/bank accounts used to send Wallet Loads, and see how much has moved through each.");
     }
 
     public function test_the_profile_tab_embeds_the_same_components_as_the_standalone_profile_route(): void

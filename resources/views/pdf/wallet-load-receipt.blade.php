@@ -66,9 +66,13 @@
     </style>
 </head>
 <body>
+    @php
+        $isCashIn = $load->direction->value === 'cash_in';
+    @endphp
+
     <div class="header">
         <div class="shop-name">{{ $load->shop->name }}</div>
-        <div class="receipt-title">Wallet Load Receipt</div>
+        <div class="receipt-title">Wallet {{ $load->direction->label() }} Receipt</div>
         <div class="receipt-meta">{{ $load->receiptNumber() }} &middot; {{ $load->created_at->format('d M Y, h:i A') }}</div>
     </div>
 
@@ -77,17 +81,25 @@
             <td class="label">Provider</td>
             <td class="value">{{ $load->provider }}</td>
         </tr>
+        @if ($load->customer)
+            <tr>
+                <td class="label">Customer</td>
+                <td class="value">{{ $load->customer->name }}</td>
+            </tr>
+        @endif
+        @if ($isCashIn)
+            <tr>
+                <td class="label">Account Name</td>
+                <td class="value">{{ $load->account_name }}</td>
+            </tr>
+            <tr>
+                <td class="label">Account Number</td>
+                <td class="value">{{ $load->account_number }}</td>
+            </tr>
+        @endif
         <tr>
-            <td class="label">Account Name</td>
-            <td class="value">{{ $load->account_name }}</td>
-        </tr>
-        <tr>
-            <td class="label">Account Number</td>
-            <td class="value">{{ $load->account_number }}</td>
-        </tr>
-        <tr>
-            <td class="label">Amount Loaded</td>
-            <td class="value">Rs {{ number_format($load->amount, 2) }}</td>
+            <td class="label">{{ $isCashIn ? 'Amount Loaded' : 'Amount Given' }}</td>
+            <td class="value">Rs {{ number_format($load->net_amount, 2) }}</td>
         </tr>
         <tr>
             <td class="label">Service Charge</td>
@@ -98,7 +110,7 @@
             <td class="value">− Rs {{ number_format($load->discount, 2) }}</td>
         </tr>
         <tr class="amount-row">
-            <td class="label">Total Collected</td>
+            <td class="label">{{ $isCashIn ? 'Total Collected' : 'Total Received' }}</td>
             <td class="value">Rs {{ number_format($load->total, 2) }}</td>
         </tr>
     </table>

@@ -87,6 +87,12 @@
                 <td class="value">{{ $load->phone_number }}</td>
             </tr>
         @endif
+        @if ($load->customer)
+            <tr>
+                <td class="label">Customer</td>
+                <td class="value">{{ $load->customer->name }}</td>
+            </tr>
+        @endif
         <tr>
             <td class="label">Amount Loaded</td>
             <td class="value">Rs {{ number_format($load->amount, 2) }}</td>
@@ -102,6 +108,10 @@
         <tr class="amount-row">
             <td class="label">Total Collected</td>
             <td class="value">Rs {{ number_format($load->total, 2) }}</td>
+        </tr>
+        <tr>
+            <td class="label">Payment Status</td>
+            <td class="value">{{ $load->payment_status->label() }}</td>
         </tr>
     </table>
 

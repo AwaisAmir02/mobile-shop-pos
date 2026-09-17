@@ -3,7 +3,6 @@
 use App\Actions\CreateAccessoryCategory;
 use App\Actions\CreateBillCategory;
 use App\Actions\CreateBillProvider;
-use App\Actions\CreateWalletProvider;
 use App\Enums\ShopScreen;
 use App\Livewire\Concerns\Toasts;
 use App\Livewire\Concerns\UploadsImages;
@@ -18,7 +17,6 @@ use App\Models\Product;
 use App\Models\Role;
 use App\Models\ShopAccount;
 use App\Models\WalletLoad;
-use App\Models\WalletProvider;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -44,12 +42,6 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public string $accessoryCategoryMainCategoryId = '';
     public $accessoryCategoryImage = null;
     public ?string $accessoryCategoryExistingImageUrl = null;
-
-    // Wallet Providers
-    public ?int $providerEditingId = null;
-    public string $providerName = '';
-    public $providerImage = null;
-    public ?string $providerExistingImageUrl = null;
 
     // Networks
     public ?int $networkEditingId = null;
@@ -115,7 +107,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $tabs = [];
 
         if (Auth::user()->hasAccessTo('settings')) {
-            $tabs = [...$tabs, 'accessory-categories', 'networks', 'wallet-providers', 'bills', 'percentage'];
+            $tabs = [...$tabs, 'accessory-categories', 'networks', 'bills', 'percentage'];
         }
 
         if (Auth::user()->hasAccessTo('shop-accounts')) {
@@ -154,14 +146,16 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             'accessoryCategories' => in_array('accessory-categories', $accessible, true)
                 ? AccessoryCategoryOption::query()->with('mainCategory')->orderBy('name')->get()
                 : collect(),
-            'providers' => in_array('wallet-providers', $accessible, true)
-                ? WalletProvider::query()->orderBy('name')->get()
-                : collect(),
             'networks' => in_array('networks', $accessible, true)
                 ? Network::query()->orderBy('name')->get()
                 : collect(),
             'shopAccounts' => in_array('shop-accounts', $accessible, true)
-                ? ShopAccount::query()->withSum('walletLoads', 'amount')->withSum('billPayments', 'amount')->orderBy('name')->get()
+                ? ShopAccount::query()
+                    ->withSum(['walletLoads as wallet_cash_in_sum_amount' => fn ($query) => $query->where('direction', 'cash_in')], 'amount')
+                    ->withSum(['walletLoads as wallet_cash_out_sum_amount' => fn ($query) => $query->where('direction', 'cash_out')], 'amount')
+                    ->withSum('billPayments', 'amount')
+                    ->orderBy('name')
+                    ->get()
                 : collect(),
             'billCategories' => in_array('bills', $accessible, true)
                 ? BillCategory::query()->withCount('billProviders')->orderBy('name')->get()
@@ -335,79 +329,6 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     {
         $this->dispatch('close-modal', name: 'accessory-category-form');
         $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName', 'accessoryCategoryMainCategoryId', 'accessoryCategoryImage', 'accessoryCategoryExistingImageUrl']);
-    }
-
-    // ── Wallet Providers ─────────────────────────────────────────────
-
-    public function openProviderCreate(): void
-    {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
-
-        $this->reset(['providerEditingId', 'providerName', 'providerImage', 'providerExistingImageUrl']);
-        $this->resetErrorBag();
-        $this->dispatch('open-modal', name: 'wallet-provider-form');
-    }
-
-    public function openProviderEdit(int $id): void
-    {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
-
-        $provider = WalletProvider::findOrFail($id);
-
-        $this->providerEditingId = $provider->id;
-        $this->providerName = $provider->name;
-        $this->providerImage = null;
-        $this->providerExistingImageUrl = $provider->imageUrl();
-
-        $this->resetErrorBag();
-        $this->dispatch('open-modal', name: 'wallet-provider-form');
-    }
-
-    public function saveProvider(): void
-    {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
-
-        $this->validate([
-            'providerName' => ['required', 'string', 'max:255', Rule::unique('wallet_providers', 'name')->where('shop_id', Auth::user()->shop_id)->ignore($this->providerEditingId)],
-            'providerImage' => ['nullable', 'image', 'max:2048'],
-        ]);
-
-        $provider = $this->providerEditingId ? WalletProvider::findOrFail($this->providerEditingId) : CreateWalletProvider::handle($this->providerName);
-
-        $provider->name = $this->providerName;
-
-        if ($this->providerImage) {
-            $provider->image_path = $this->storeImage($this->providerImage, 'wallet-providers', $provider->image_path);
-        }
-
-        $provider->save();
-
-        $this->toastSuccess($this->providerEditingId ? 'Wallet provider updated.' : 'Wallet provider added.');
-        $this->dispatch('close-modal', name: 'wallet-provider-form');
-        $this->reset(['providerEditingId', 'providerName', 'providerImage', 'providerExistingImageUrl']);
-    }
-
-    public function deleteProvider(int $id): void
-    {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
-
-        $provider = WalletProvider::findOrFail($id);
-
-        if (WalletLoad::where('provider', $provider->name)->exists()) {
-            $this->toastError("Cannot delete \"{$provider->name}\" — it has wallet load history.");
-
-            return;
-        }
-
-        $this->deleteImage($provider->image_path);
-        $provider->delete();
-        $this->toastSuccess('Wallet provider deleted.');
-    }
-
-    public function closeProviderForm(): void
-    {
-        $this->dispatch('close-modal', name: 'wallet-provider-form');
-        $this->reset(['providerEditingId', 'providerName', 'providerImage', 'providerExistingImageUrl']);
     }
 
     // ── Networks ─────────────────────────────────────────────────────
@@ -803,7 +724,6 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $tabLabels = [
             'accessory-categories' => 'Categories',
             'networks' => 'Networks',
-            'wallet-providers' => 'Wallet Providers',
             'shop-accounts' => 'Shop Accounts',
             'bills' => 'Bills',
             'percentage' => 'Percentage',
@@ -981,57 +901,6 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 </x-ui.table>
             @endif
         </x-ui.card>
-    @elseif ($tab === 'wallet-providers')
-        <x-ui.card title="Wallet Providers" description="Manage the providers available on the Wallet Load screen.">
-            <x-slot name="actions">
-                <x-ui.button size="sm" wire:click="openProviderCreate">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    Add Provider
-                </x-ui.button>
-            </x-slot>
-
-            @if ($providers->isEmpty())
-                <x-ui.empty-state
-                    title="No wallet providers yet"
-                    description="Add JazzCash, Easypaisa, NayaPay, or any other provider your shop supports."
-                >
-                    <x-slot name="action">
-                        <x-ui.button wire:click="openProviderCreate">Add Provider</x-ui.button>
-                    </x-slot>
-                </x-ui.empty-state>
-            @else
-                <x-ui.table :headers="['Provider', '']">
-                    @foreach ($providers as $provider)
-                        <x-ui.table-row wire:key="provider-{{ $provider->id }}">
-                            <x-ui.table-cell class="font-medium text-slate-900">
-                                <div class="flex items-center gap-3">
-                                    <x-ui.thumbnail :src="$provider->imageUrl()" :label="$provider->name" />
-                                    {{ $provider->name }}
-                                </div>
-                            </x-ui.table-cell>
-                            <x-ui.table-cell align="right">
-                                <div class="flex justify-end gap-2">
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openProviderEdit({{ $provider->id }})">
-                                        Edit
-                                    </x-ui.button>
-                                    <x-ui.button
-                                        size="sm"
-                                        variant="ghost"
-                                        wire:click="deleteProvider({{ $provider->id }})"
-                                        wire:confirm="Delete {{ $provider->name }}?"
-                                        class="text-red-600 hover:bg-red-50"
-                                    >
-                                        Delete
-                                    </x-ui.button>
-                                </div>
-                            </x-ui.table-cell>
-                        </x-ui.table-row>
-                    @endforeach
-                </x-ui.table>
-            @endif
-        </x-ui.card>
     @elseif ($tab === 'shop-accounts')
         <x-ui.card title="Shop Accounts" description="Manage the shop's own wallet/bank accounts used to send Wallet Loads, and see how much has moved through each.">
             <x-slot name="actions">
@@ -1053,12 +922,13 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                     </x-slot>
                 </x-ui.empty-state>
             @else
-                <x-ui.table :headers="['Account', 'Provider / Type', 'Total Sent', '']">
+                <x-ui.table :headers="['Account', 'Provider / Type', 'Total Sent', 'Total Received', '']">
                     @foreach ($shopAccounts as $account)
                         <x-ui.table-row wire:key="shop-account-{{ $account->id }}">
                             <x-ui.table-cell class="font-medium text-slate-900">{{ $account->name }}</x-ui.table-cell>
                             <x-ui.table-cell>{{ $account->provider_type }}</x-ui.table-cell>
-                            <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format(($account->wallet_loads_sum_amount ?? 0) + ($account->bill_payments_sum_amount ?? 0), 2) }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format(($account->wallet_cash_in_sum_amount ?? 0) + ($account->bill_payments_sum_amount ?? 0), 2) }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($account->wallet_cash_out_sum_amount ?? 0, 2) }}</x-ui.table-cell>
                             <x-ui.table-cell align="right">
                                 <div class="flex justify-end gap-2">
                                     <x-ui.button size="sm" variant="ghost" wire:click="openShopAccountEdit({{ $account->id }})">
@@ -1395,37 +1265,6 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         </form>
     </x-ui.modal>
 
-    <x-ui.modal name="wallet-provider-form" max-width="sm">
-        <form wire:submit="saveProvider" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
-                {{ $providerEditingId ? 'Edit Wallet Provider' : 'Add Wallet Provider' }}
-            </h2>
-
-            <div class="mt-5 space-y-5">
-                <x-ui.field label="Provider Name" name="providerName" for="providerName">
-                    <x-ui.input wire:model="providerName" id="providerName" placeholder="e.g. JazzCash" autofocus />
-                </x-ui.field>
-
-                <x-ui.field label="Image" name="providerImage" for="providerImage" help="Optional">
-                    <x-ui.file-input
-                        wire:model="providerImage"
-                        id="providerImage"
-                        :preview="$this->previewUrl($providerImage, $providerExistingImageUrl)"
-                    />
-                </x-ui.field>
-            </div>
-
-            <div class="mt-6 flex justify-end gap-3">
-                <x-ui.button type="button" variant="secondary" wire:click="closeProviderForm">
-                    Cancel
-                </x-ui.button>
-
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveProvider">
-                    {{ $providerEditingId ? 'Save Changes' : 'Add Provider' }}
-                </x-ui.button>
-            </div>
-        </form>
-    </x-ui.modal>
 
     <x-ui.modal name="shop-account-form" max-width="md">
         <form wire:submit="saveShopAccount" class="p-6">

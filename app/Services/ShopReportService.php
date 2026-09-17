@@ -62,10 +62,19 @@ class ShopReportService
         $totalBalanceLoaded = (float) $balanceLoadsQuery()->sum('amount');
         $totalBalanceLoadFees = (float) $balanceLoadsQuery()->sum('fee') - (float) $balanceLoadsQuery()->sum('discount');
 
-        $walletLoadsQuery = fn () => WalletLoad::where('shop_id', $shop->id)->whereBetween('created_at', [$start, $end]);
+        $walletCashInQuery = fn () => WalletLoad::where('shop_id', $shop->id)->where('direction', 'cash_in')->whereBetween('created_at', [$start, $end]);
+        $walletCashOutQuery = fn () => WalletLoad::where('shop_id', $shop->id)->where('direction', 'cash_out')->whereBetween('created_at', [$start, $end]);
 
-        $totalWalletLoaded = (float) $walletLoadsQuery()->sum('amount');
-        $totalWalletLoadFees = (float) $walletLoadsQuery()->sum('fee') - (float) $walletLoadsQuery()->sum('discount');
+        $totalWalletCashInAmount = (float) $walletCashInQuery()->sum('amount');
+        $totalWalletCashInFees = (float) $walletCashInQuery()->sum('fee') - (float) $walletCashInQuery()->sum('discount');
+        $totalWalletCashOutAmount = (float) $walletCashOutQuery()->sum('amount');
+        $totalWalletCashOutFees = (float) $walletCashOutQuery()->sum('fee') - (float) $walletCashOutQuery()->sum('discount');
+
+        // Fees are commission revenue regardless of direction, so — unlike
+        // the amount figures above, which represent opposite-direction cash
+        // flows and must stay separate — this combined total is safe to
+        // sum for the Party Ledger's overall commission figure.
+        $totalWalletLoadFees = $totalWalletCashInFees + $totalWalletCashOutFees;
 
         $totalExpenses = (float) Expense::where('shop_id', $shop->id)
             ->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
@@ -101,7 +110,10 @@ class ShopReportService
             'totalItemsSold' => (int) $categories->sum('units'),
             'totalBalanceLoaded' => $totalBalanceLoaded,
             'totalBalanceLoadFees' => $totalBalanceLoadFees,
-            'totalWalletLoaded' => $totalWalletLoaded,
+            'totalWalletCashInAmount' => $totalWalletCashInAmount,
+            'totalWalletCashInFees' => $totalWalletCashInFees,
+            'totalWalletCashOutAmount' => $totalWalletCashOutAmount,
+            'totalWalletCashOutFees' => $totalWalletCashOutFees,
             'totalWalletLoadFees' => $totalWalletLoadFees,
             'totalExpenses' => $totalExpenses,
             'totalStockInUnits' => $totalStockInUnits,

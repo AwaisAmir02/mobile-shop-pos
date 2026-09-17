@@ -27,6 +27,36 @@ class Customer extends Model
         return $this->hasMany(Sale::class)->latest();
     }
 
+    public function walletLoads(): HasMany
+    {
+        return $this->hasMany(WalletLoad::class)->latest();
+    }
+
+    public function balanceLoads(): HasMany
+    {
+        return $this->hasMany(BalanceLoad::class)->latest();
+    }
+
+    public function billPayments(): HasMany
+    {
+        return $this->hasMany(BillPayment::class)->latest();
+    }
+
+    public function repairs(): HasMany
+    {
+        return $this->hasMany(Repair::class)->latest();
+    }
+
+    public function nadraVerifications(): HasMany
+    {
+        return $this->hasMany(NadraVerification::class)->latest();
+    }
+
+    public function simSales(): HasMany
+    {
+        return $this->hasMany(SimSale::class)->latest();
+    }
+
     public function udhaarBalance(): float
     {
         return $this->udhaarTransactions
@@ -64,6 +94,13 @@ class Customer extends Model
      */
     public function hasFinancialHistory(): bool
     {
-        return $this->udhaarTransactions()->exists() || $this->sales()->exists();
+        return $this->udhaarTransactions()->exists()
+            || $this->sales()->exists()
+            || $this->walletLoads()->exists()
+            || $this->balanceLoads()->exists()
+            || $this->billPayments()->exists()
+            || $this->repairs()->exists()
+            || $this->nadraVerifications()->exists()
+            || $this->simSales()->exists();
     }
 }

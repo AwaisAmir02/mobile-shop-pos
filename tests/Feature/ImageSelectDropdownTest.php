@@ -7,7 +7,6 @@ use App\Models\MainCategory;
 use App\Models\Network;
 use App\Models\Shop;
 use App\Models\User;
-use App\Models\WalletProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -73,28 +72,6 @@ class ImageSelectDropdownTest extends TestCase
                     && $options->firstWhere('value', 'Case / Cover')['image'] === $category->imageUrl();
             })
             ->assertDontSee('<option value="Case / Cover">', false);
-    }
-
-    public function test_the_wallet_provider_dropdown_carries_each_providers_image_url(): void
-    {
-        $shop = Shop::create(['name' => 'Shop A']);
-        $owner = User::factory()->create(['shop_id' => $shop->id]);
-        $provider = WalletProvider::create([
-            'shop_id' => $shop->id,
-            'name' => 'SadaPay',
-            'image_path' => 'shop-'.$shop->id.'/wallet-providers/sadapay.jpg',
-        ]);
-        Storage::disk('public')->put($provider->image_path, 'fake-image-content');
-
-        $this->actingAs($owner);
-
-        Livewire::test('wallet-loads.create')
-            ->assertViewHas('providerOptions', function ($options) use ($provider) {
-                $sadaPay = collect($options)->firstWhere('value', 'SadaPay');
-
-                return $sadaPay && $sadaPay['image'] === $provider->imageUrl();
-            })
-            ->assertDontSee('<option value="SadaPay">', false);
     }
 
     public function test_selecting_the_new_category_option_via_the_livewire_property_still_opens_the_quick_create_modal(): void

@@ -1,10 +1,10 @@
 <?php
 
 use App\Enums\PaymentStatus;
+use App\Enums\WalletLoadDirection;
 use App\Livewire\Concerns\Toasts;
 use App\Models\ShopAccount;
 use App\Models\WalletLoad;
-use App\Models\WalletProvider;
 use App\Services\WalletLoadReceiptPdfService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -16,6 +16,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
 {
     use Toasts, WithPagination;
 
+    public string $tab = 'cash_in';
     public string $from = '';
     public string $to = '';
     public string $provider = '';
@@ -24,6 +25,16 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
 
     public ?int $payingId = null;
     public string $paymentAmount = '';
+
+    public function switchTab(string $tab): void
+    {
+        if (! in_array($tab, ['cash_in', 'cash_out'], true) || $tab === $this->tab) {
+            return;
+        }
+
+        $this->tab = $tab;
+        $this->resetPage();
+    }
 
     public function updatingFrom(): void
     {
@@ -53,6 +64,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
     protected function filteredQuery()
     {
         return WalletLoad::query()
+            ->where('direction', $this->tab)
             ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
             ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
             ->when($this->provider, fn ($query) => $query->where('provider', $this->provider))
@@ -66,7 +78,14 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
             'loads' => $this->filteredQuery()->latest()->paginate(15),
             'totalLoaded' => $this->filteredQuery()->sum('amount'),
             'totalFees' => $this->filteredQuery()->sum('fee') - $this->filteredQuery()->sum('discount'),
+            // A running balance, like every other module's "Total Owed" —
+            // deliberately not scoped to the from/to/provider/account
+            // filters above (those describe which rows to list, not which
+            // ones still owe money), but IS scoped to the active tab: Cash
+            // Out's shortfall is a shop liability, not a customer
+            // receivable, and must never be summed together with Cash In's.
             'totalOwed' => WalletLoad::query()
+                ->where('direction', $this->tab)
                 ->where('payment_status', '!=', PaymentStatus::Paid->value)
                 ->get()
                 ->sum(fn (WalletLoad $load) => $load->amountOwed()),
@@ -75,11 +94,16 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
                 ->groupBy('provider')
                 ->orderByDesc('total')
                 ->get(),
-            'allProviders' => WalletProvider::query()->orderBy('name')->pluck('name'),
-            'providersByName' => WalletProvider::query()->get()->keyBy('name'),
+            'allProviders' => WalletLoad::query()
+                ->where('direction', $this->tab)
+                ->whereNotNull('provider')
+                ->distinct()
+                ->orderBy('provider')
+                ->pluck('provider'),
             'allShopAccounts' => ShopAccount::query()->orderBy('name')->get(),
             'shopAccountsById' => ShopAccount::query()->get()->keyBy('id'),
             'paymentStatuses' => PaymentStatus::cases(),
+            'directions' => WalletLoadDirection::cases(),
         ];
     }
 
@@ -151,6 +175,24 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
         </div>
     </x-slot>
 
+    <div class="mb-4 border-b border-slate-200">
+        <nav class="-mb-px flex gap-6">
+            @foreach ($directions as $option)
+                <button
+                    type="button"
+                    wire:click="switchTab('{{ $option->value }}')"
+                    @class([
+                        'whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition',
+                        'border-brand-600 text-brand-700' => $tab === $option->value,
+                        'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700' => $tab !== $option->value,
+                    ])
+                >
+                    {{ $option->label() }}
+                </button>
+            @endforeach
+        </nav>
+    </div>
+
     <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
             <x-ui.field label="From" name="from" for="from" class="sm:max-w-[10rem]">
@@ -170,7 +212,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
                 </x-ui.select>
             </x-ui.field>
 
-            <x-ui.field label="Send From" name="shopAccountId" for="shopAccountId" class="sm:max-w-[10rem]">
+            <x-ui.field label="Shop Account" name="shopAccountId" for="shopAccountId" class="sm:max-w-[10rem]">
                 <x-ui.select wire:model.live="shopAccountId" id="shopAccountId">
                     <option value="">All Accounts</option>
                     @foreach ($allShopAccounts as $account)
@@ -200,7 +242,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
         <div class="flex gap-4">
             <x-ui.card :padding="false">
                 <div class="px-5 py-3 text-right">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Loaded</p>
+                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ $tab === 'cash_in' ? 'Total Loaded' : 'Total Given' }}</p>
                     <p class="text-display-sm text-slate-900">Rs {{ number_format($totalLoaded, 2) }}</p>
                 </div>
             </x-ui.card>
@@ -214,7 +256,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
 
             <x-ui.card :padding="false">
                 <div class="px-5 py-3 text-right">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Owed by Customers</p>
+                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ $tab === 'cash_in' ? 'Total Owed by Customers' : 'Total Owed to Customers' }}</p>
                     <p class="text-display-sm text-slate-900">Rs {{ number_format($totalOwed, 2) }}</p>
                 </div>
             </x-ui.card>
@@ -231,7 +273,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
 
     @if ($loads->isEmpty())
         <x-ui.empty-state
-            title="No wallet loads yet"
+            title="No {{ $tab === 'cash_in' ? 'cash in' : 'cash out' }} wallet loads yet"
             description="Completed wallet loads will show up here."
         >
             <x-slot name="action">
@@ -241,23 +283,31 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
             </x-slot>
         </x-ui.empty-state>
     @else
-        <x-ui.table :headers="['Receipt', 'Date', 'Provider', 'Recipient', 'Amount', 'Fee', 'Discount', 'Total', 'Send From', 'Payment', 'Owed', '']">
+        <x-ui.table :headers="$tab === 'cash_in'
+            ? ['Receipt', 'Date', 'Provider', 'Recipient', 'Amount', 'Fee', 'Discount', 'Total', 'Shop Account', 'Payment', 'Owed', '']
+            : ['Receipt', 'Date', 'Provider', 'Customer', 'Amount', 'Fee', 'Discount', 'Total', 'Shop Account', 'Payment', 'Owed', '']">
             @foreach ($loads as $load)
                 <x-ui.table-row wire:key="load-{{ $load->id }}">
                     <x-ui.table-cell class="font-medium text-slate-900">{{ $load->receiptNumber() }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $load->created_at->format('d M Y, h:i A') }}</x-ui.table-cell>
                     <x-ui.table-cell>
                         <div class="flex items-center gap-2">
-                            <x-ui.thumbnail :src="$providersByName->get($load->provider)?->imageUrl()" :label="$load->provider" />
+                            <x-ui.thumbnail :label="$load->provider" />
                             {{ $load->provider }}
                         </div>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>
-                        <div class="flex flex-col">
-                            <span class="text-slate-700">{{ $load->account_name ?? '—' }}</span>
-                            <span class="text-xs text-slate-400">{{ $load->account_number }}</span>
-                        </div>
-                    </x-ui.table-cell>
+                    @if ($tab === 'cash_in')
+                        <x-ui.table-cell>
+                            <div class="flex flex-col">
+                                <span class="text-slate-700">{{ $load->customer?->name ?? $load->account_name ?? '—' }}</span>
+                                @if ($load->account_number)
+                                    <span class="text-xs text-slate-400">{{ $load->account_number }}</span>
+                                @endif
+                            </div>
+                        </x-ui.table-cell>
+                    @else
+                        <x-ui.table-cell>{{ $load->customer?->name ?? 'Walk-in' }}</x-ui.table-cell>
+                    @endif
                     <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($load->amount, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell>Rs {{ number_format($load->fee, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell>Rs {{ number_format($load->discount, 2) }}</x-ui.table-cell>

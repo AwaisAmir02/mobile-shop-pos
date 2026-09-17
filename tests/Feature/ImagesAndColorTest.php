@@ -7,7 +7,6 @@ use App\Models\Network;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
-use App\Models\WalletProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -110,23 +109,6 @@ class ImagesAndColorTest extends TestCase
         $option = AccessoryCategoryOption::where('name', 'Tempered Glass')->firstOrFail();
         $this->assertStringStartsWith('shop-'.$shop->id.'/accessory-categories/', $option->image_path);
         Storage::disk('public')->assertExists($option->image_path);
-    }
-
-    public function test_uploading_a_wallet_provider_image_is_tenant_scoped(): void
-    {
-        $shop = Shop::create(['name' => 'Shop A']);
-        $owner = User::factory()->create(['shop_id' => $shop->id]);
-        $this->actingAs($owner);
-
-        Livewire::test('settings.index')
-            ->set('providerName', 'SadaPay')
-            ->set('providerImage', UploadedFile::fake()->image('logo.jpg'))
-            ->call('saveProvider')
-            ->assertHasNoErrors();
-
-        $provider = WalletProvider::where('name', 'SadaPay')->firstOrFail();
-        $this->assertStringStartsWith('shop-'.$shop->id.'/wallet-providers/', $provider->image_path);
-        Storage::disk('public')->assertExists($provider->image_path);
     }
 
     public function test_a_network_can_be_saved_with_a_color_and_an_image(): void

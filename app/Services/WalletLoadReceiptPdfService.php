@@ -10,12 +10,12 @@ class WalletLoadReceiptPdfService
 {
     public function download(WalletLoad $walletLoad): StreamedResponse
     {
-        $walletLoad->loadMissing(['shop', 'user']);
+        $walletLoad->loadMissing(['shop', 'user', 'customer']);
 
         $pdf = Pdf::loadView('pdf.wallet-load-receipt', ['load' => $walletLoad])->setPaper('a6');
 
         return response()->streamDownload(
-            fn () => print($pdf->output()),
+            fn () => print ($pdf->output()),
             $walletLoad->receiptNumber().'.pdf'
         );
     }

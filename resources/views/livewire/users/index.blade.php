@@ -222,18 +222,20 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
                     <x-ui.input wire:model="name" id="name" autofocus />
                 </x-ui.field>
 
-                <x-ui.field label="Email" name="email" for="email">
-                    <x-ui.input wire:model="email" id="email" type="email" />
-                </x-ui.field>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Email" name="email" for="email">
+                        <x-ui.input wire:model="email" id="email" type="email" />
+                    </x-ui.field>
 
-                <x-ui.field label="Role" name="roleId" for="roleId">
-                    <x-ui.select wire:model="roleId" id="roleId">
-                        <option value="">Select a role</option>
-                        @foreach ($roles as $role)
-                            <option value="{{ $role->id }}">{{ $role->name }}</option>
-                        @endforeach
-                    </x-ui.select>
-                </x-ui.field>
+                    <x-ui.field label="Role" name="roleId" for="roleId">
+                        <x-ui.select wire:model="roleId" id="roleId">
+                            <option value="">Select a role</option>
+                            @foreach ($roles as $role)
+                                <option value="{{ $role->id }}">{{ $role->name }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                </div>
 
                 @unless ($editingId)
                     <p class="text-sm text-slate-500">

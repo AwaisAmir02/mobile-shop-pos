@@ -154,8 +154,8 @@ class WalletLoadShopAccountAndFeeTest extends TestCase
                 $a = $accounts->firstWhere('id', $accountA->id);
                 $b = $accounts->firstWhere('id', $accountB->id);
 
-                return (float) $a->wallet_loads_sum_amount === 1500.0
-                    && (float) ($b->wallet_loads_sum_amount ?? 0) === 0.0;
+                return (float) $a->wallet_cash_in_sum_amount === 1500.0
+                    && (float) ($b->wallet_cash_in_sum_amount ?? 0) === 0.0;
             });
     }
 

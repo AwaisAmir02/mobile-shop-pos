@@ -9,7 +9,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * The Wallet Provider / Shop Account "+ New" bug happened because the
+ * The Shop Account "+ New" bug happened because the
  * dropdown's own click handler set the Livewire property directly and
  * relied on a server round-trip (an updated{Property}() hook) to notice
  * the special "__create__" value and open the modal — a real click never
@@ -27,24 +27,6 @@ use Tests\TestCase;
 class ImageSelectCreateOptionClickPathTest extends TestCase
 {
     use RefreshDatabase;
-
-    public function test_the_wallet_provider_dropdowns_create_option_names_a_modal_that_exists_in_the_page(): void
-    {
-        $shop = Shop::create(['name' => 'Shop A']);
-        $owner = User::factory()->create(['shop_id' => $shop->id]);
-        $this->actingAs($owner);
-
-        $component = Livewire::test('wallet-loads.create')
-            ->assertViewHas('providerOptions', function ($options) {
-                $create = collect($options)->firstWhere('value', '__create__');
-
-                return $create
-                    && $create['special'] === true
-                    && $create['modal'] === 'quick-create-wallet-provider';
-            });
-
-        $component->assertSee('New Wallet Provider');
-    }
 
     public function test_the_shop_account_dropdowns_create_option_names_a_modal_that_exists_in_the_page(): void
     {

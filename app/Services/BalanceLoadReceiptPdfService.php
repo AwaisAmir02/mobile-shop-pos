@@ -10,12 +10,12 @@ class BalanceLoadReceiptPdfService
 {
     public function download(BalanceLoad $balanceLoad): StreamedResponse
     {
-        $balanceLoad->loadMissing(['shop', 'user']);
+        $balanceLoad->loadMissing(['shop', 'user', 'customer']);
 
         $pdf = Pdf::loadView('pdf.balance-load-receipt', ['load' => $balanceLoad])->setPaper('a6');
 
         return response()->streamDownload(
-            fn () => print($pdf->output()),
+            fn () => print ($pdf->output()),
             $balanceLoad->receiptNumber().'.pdf'
         );
     }

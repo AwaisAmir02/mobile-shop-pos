@@ -1,9 +1,20 @@
 <?php
 
 use App\Actions\CreateUdhaarTransaction;
+use App\Actions\RecordModulePayment;
+use App\Actions\RecordSalePayment;
 use App\Livewire\Concerns\Toasts;
+use App\Models\BalanceLoad;
+use App\Models\BillPayment;
 use App\Models\Customer;
+use App\Models\NadraVerification;
+use App\Models\Repair;
+use App\Models\Sale;
+use App\Models\SimSale;
 use App\Models\UdhaarTransaction;
+use App\Models\WalletLoad;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -19,6 +30,10 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
     public string $amount = '';
     public string $transaction_date = '';
     public string $note = '';
+
+    public string $settlingSource = '';
+    public ?int $settlingId = null;
+    public string $dueSettleAmount = '';
 
     public function mount(Customer $customer): void
     {
@@ -48,7 +63,182 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
                 $running < 0 => 'advance',
                 default => 'settled',
             },
+            'dues' => $this->duesForCustomer(),
         ];
+    }
+
+    /**
+     * Everything else this customer still owes across other modules — a
+     * consolidated CHECKLIST, not a merged balance. Each row stays
+     * individually labeled and individually payable, and this list is
+     * deliberately kept separate from the Udhaar ledger above: it never
+     * feeds into $balance/$status, and settling a row here only ever
+     * updates that row's own source record, never anything Udhaar-related.
+     *
+     * Wallet Load Cash Out is intentionally excluded — its "owed" amount
+     * means the shop still owes the customer cash, the opposite direction
+     * from every other source here, which all represent the customer
+     * owing the shop.
+     */
+    protected function duesForCustomer(): Collection
+    {
+        $customerId = $this->customer->id;
+        $rows = collect();
+
+        Sale::where('customer_id', $customerId)->withSum('payments', 'amount')->get()
+            ->each(function (Sale $sale) use ($rows) {
+                if ($sale->amountDue() > 0) {
+                    $rows->push([
+                        'source' => 'sale',
+                        'sourceLabel' => 'Sale',
+                        'id' => $sale->id,
+                        'description' => $sale->invoiceNumber(),
+                        'date' => $sale->created_at,
+                        'amountDue' => $sale->amountDue(),
+                    ]);
+                }
+            });
+
+        WalletLoad::where('customer_id', $customerId)->where('direction', 'cash_in')->get()
+            ->each(function (WalletLoad $load) use ($rows) {
+                if ($load->amountOwed() > 0) {
+                    $rows->push([
+                        'source' => 'wallet_load',
+                        'sourceLabel' => 'Wallet Load',
+                        'id' => $load->id,
+                        'description' => $load->receiptNumber().' · '.$load->provider,
+                        'date' => $load->created_at,
+                        'amountDue' => $load->amountOwed(),
+                    ]);
+                }
+            });
+
+        BalanceLoad::where('customer_id', $customerId)->get()
+            ->each(function (BalanceLoad $load) use ($rows) {
+                if ($load->amountOwed() > 0) {
+                    $rows->push([
+                        'source' => 'balance_load',
+                        'sourceLabel' => 'Balance Load',
+                        'id' => $load->id,
+                        'description' => $load->receiptNumber().' · '.$load->network,
+                        'date' => $load->created_at,
+                        'amountDue' => $load->amountOwed(),
+                    ]);
+                }
+            });
+
+        BillPayment::where('customer_id', $customerId)->with('billCategory')->get()
+            ->each(function (BillPayment $payment) use ($rows) {
+                if ($payment->amountOwed() > 0) {
+                    $rows->push([
+                        'source' => 'bill_payment',
+                        'sourceLabel' => 'Bill',
+                        'id' => $payment->id,
+                        'description' => $payment->receiptNumber().' · '.($payment->billCategory?->name ?? $payment->consumer_name),
+                        'date' => $payment->created_at,
+                        'amountDue' => $payment->amountOwed(),
+                    ]);
+                }
+            });
+
+        Repair::where('customer_id', $customerId)->get()
+            ->each(function (Repair $repair) use ($rows) {
+                if ($repair->amountOwed() > 0) {
+                    $rows->push([
+                        'source' => 'repair',
+                        'sourceLabel' => 'Repair',
+                        'id' => $repair->id,
+                        'description' => $repair->receiptNumber().' · '.$repair->categoryLabel(),
+                        'date' => $repair->created_at,
+                        'amountDue' => $repair->amountOwed(),
+                    ]);
+                }
+            });
+
+        NadraVerification::where('customer_id', $customerId)->get()
+            ->each(function (NadraVerification $verification) use ($rows) {
+                if ($verification->amountOwed() > 0) {
+                    $rows->push([
+                        'source' => 'nadra_verification',
+                        'sourceLabel' => 'NADRA Verification',
+                        'id' => $verification->id,
+                        'description' => $verification->receiptNumber(),
+                        'date' => $verification->created_at,
+                        'amountDue' => $verification->amountOwed(),
+                    ]);
+                }
+            });
+
+        SimSale::where('customer_id', $customerId)->get()
+            ->each(function (SimSale $simSale) use ($rows) {
+                if ($simSale->amountOwed() > 0) {
+                    $rows->push([
+                        'source' => 'sim_sale',
+                        'sourceLabel' => 'SIM Sale',
+                        'id' => $simSale->id,
+                        'description' => $simSale->receiptNumber().' · '.$simSale->network,
+                        'date' => $simSale->created_at,
+                        'amountDue' => $simSale->amountOwed(),
+                    ]);
+                }
+            });
+
+        return $rows->sortByDesc('date')->values();
+    }
+
+    protected function dueRecordFor(string $source, int $id): Model
+    {
+        $model = match ($source) {
+            'sale' => Sale::findOrFail($id),
+            'wallet_load' => WalletLoad::findOrFail($id),
+            'balance_load' => BalanceLoad::findOrFail($id),
+            'bill_payment' => BillPayment::findOrFail($id),
+            'repair' => Repair::findOrFail($id),
+            'nadra_verification' => NadraVerification::findOrFail($id),
+            'sim_sale' => SimSale::findOrFail($id),
+            default => abort(404),
+        };
+
+        // A tampered source/id pair must never settle another customer's
+        // balance — every source here carries a customer_id to check.
+        abort_unless((int) $model->customer_id === $this->customer->id, 403);
+
+        return $model;
+    }
+
+    public function openSettleDue(string $source, int $id): void
+    {
+        $this->settlingSource = $source;
+        $this->settlingId = $id;
+        $this->dueSettleAmount = '';
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'settle-due-form');
+    }
+
+    public function submitDueSettlement(): void
+    {
+        $record = $this->dueRecordFor($this->settlingSource, $this->settlingId);
+        $amountDue = $this->settlingSource === 'sale' ? $record->amountDue() : $record->amountOwed();
+
+        $this->validate([
+            'dueSettleAmount' => ['required', 'numeric', 'min:0.01', 'max:'.$amountDue],
+        ]);
+
+        if ($this->settlingSource === 'sale') {
+            RecordSalePayment::handle($record, (float) $this->dueSettleAmount, Auth::id());
+        } else {
+            RecordModulePayment::handle($record, (float) $this->dueSettleAmount);
+        }
+
+        $this->toastSuccess('Payment recorded.');
+        $this->dispatch('close-modal', name: 'settle-due-form');
+        $this->reset(['settlingSource', 'settlingId', 'dueSettleAmount']);
+    }
+
+    public function closeDueSettlement(): void
+    {
+        $this->dispatch('close-modal', name: 'settle-due-form');
+        $this->reset(['settlingSource', 'settlingId', 'dueSettleAmount']);
     }
 
     public function openAddTransaction(): void
@@ -178,6 +368,55 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
             @endforeach
         </x-ui.table>
     @endif
+
+    @if ($dues->isNotEmpty())
+        <div class="mt-8">
+            <x-ui.card
+                title="Other Amounts Owed"
+                description="Unsettled balances from Sales, Wallet Loads, Balance Loads, Bills, Repairs, NADRA Verifications, and SIM Sales — separate from the Udhaar loan balance above. Each item is its own transaction, settled on its own."
+            >
+                <x-ui.table :headers="['Source', 'Description', 'Date', 'Amount Due', '']">
+                    @foreach ($dues as $due)
+                        <x-ui.table-row wire:key="due-{{ $due['source'] }}-{{ $due['id'] }}">
+                            <x-ui.table-cell>
+                                <x-ui.badge variant="neutral">{{ $due['sourceLabel'] }}</x-ui.badge>
+                            </x-ui.table-cell>
+                            <x-ui.table-cell>{{ $due['description'] }}</x-ui.table-cell>
+                            <x-ui.table-cell>{{ $due['date']->format('d M Y') }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($due['amountDue'], 2) }}</x-ui.table-cell>
+                            <x-ui.table-cell align="right">
+                                <x-ui.button size="sm" variant="ghost" wire:click="openSettleDue('{{ $due['source'] }}', {{ $due['id'] }})">
+                                    Record Payment
+                                </x-ui.button>
+                            </x-ui.table-cell>
+                        </x-ui.table-row>
+                    @endforeach
+                </x-ui.table>
+            </x-ui.card>
+        </div>
+    @endif
+
+    <x-ui.modal name="settle-due-form" max-width="sm">
+        <form wire:submit="submitDueSettlement" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Record Payment</h2>
+
+            <div class="mt-5 space-y-5">
+                <x-ui.field label="Amount Paid Now" name="dueSettleAmount" for="dueSettleAmount">
+                    <x-ui.input wire:model="dueSettleAmount" id="dueSettleAmount" type="number" min="0.01" step="0.01" autofocus />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeDueSettlement">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="submitDueSettlement">
+                    Save Payment
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
 
     <x-ui.modal name="transaction-form" max-width="sm">
         <form wire:submit="save" class="p-6">

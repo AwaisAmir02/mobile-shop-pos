@@ -177,13 +177,15 @@ new #[Layout('layouts.app')] #[Title('Customers')] class extends Component
                     <x-ui.input wire:model="name" id="name" autofocus />
                 </x-ui.field>
 
-                <x-ui.field label="Phone" name="phone" for="phone" help="Optional">
-                    <x-ui.input wire:model="phone" id="phone" type="tel" placeholder="03xx-xxxxxxx" />
-                </x-ui.field>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.field label="Phone" name="phone" for="phone" help="Optional">
+                        <x-ui.input wire:model="phone" id="phone" type="tel" placeholder="03xx-xxxxxxx" />
+                    </x-ui.field>
 
-                <x-ui.field label="Address / Notes" name="address" for="address" help="Optional">
-                    <x-ui.input wire:model="address" id="address" />
-                </x-ui.field>
+                    <x-ui.field label="Address / Notes" name="address" for="address" help="Optional">
+                        <x-ui.input wire:model="address" id="address" />
+                    </x-ui.field>
+                </div>
             </div>
 
             <div class="mt-6 flex justify-end gap-3">
