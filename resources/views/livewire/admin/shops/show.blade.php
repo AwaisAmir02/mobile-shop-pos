@@ -202,6 +202,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             'expectedRenewalDate' => $this->shop->expectedRenewalDate(),
             'users' => $this->shop->users()->with('role')->orderByDesc('is_owner')->orderBy('name')->get(),
             'screens' => ShopScreen::cases(),
+            'groupedScreens' => ShopScreen::grouped(),
             ...$reports->summary($this->shop, $start, $end),
         ];
     }
@@ -427,27 +428,39 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
     </x-ui.card>
 
     <x-ui.card title="Module Access" description="Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role." class="mt-8">
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach ($screens as $screen)
-                @php $enabled = ! $shop->isScreenDisabled($screen); @endphp
-                <div class="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-3">
-                    <div>
-                        <p class="text-sm font-medium text-slate-900">{{ $screen->label() }}</p>
-                        @if ($enabled)
-                            <x-ui.badge variant="success">Enabled</x-ui.badge>
-                        @else
-                            <x-ui.badge variant="danger">Disabled</x-ui.badge>
-                        @endif
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            @foreach ($groupedScreens as $groupLabel => $groupScreens)
+                <div>
+                    <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{{ $groupLabel }}</h3>
+                    <div class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                        @foreach ($groupScreens as $screen)
+                            @php $enabled = ! $shop->isScreenDisabled($screen); @endphp
+                            <div class="flex items-center justify-between gap-3 px-4 py-2.5">
+                                <span class="text-sm font-medium text-slate-900">{{ $screen->label() }}</span>
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked="{{ $enabled ? 'true' : 'false' }}"
+                                    aria-label="{{ $enabled ? 'Disable' : 'Enable' }} {{ $screen->label() }}"
+                                    wire:click="toggleScreen('{{ $screen->value }}')"
+                                    wire:confirm="{{ $enabled ? 'Disable' : 'Enable' }} {{ $screen->label() }} for this shop?"
+                                    @class([
+                                        'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                                        'bg-emerald-500' => $enabled,
+                                        'bg-slate-300' => ! $enabled,
+                                    ])
+                                >
+                                    <span
+                                        @class([
+                                            'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                                            'translate-x-6' => $enabled,
+                                            'translate-x-1' => ! $enabled,
+                                        ])
+                                    ></span>
+                                </button>
+                            </div>
+                        @endforeach
                     </div>
-                    <x-ui.button
-                        type="button"
-                        size="sm"
-                        variant="{{ $enabled ? 'secondary' : 'primary' }}"
-                        wire:click="toggleScreen('{{ $screen->value }}')"
-                        wire:confirm="{{ $enabled ? 'Disable' : 'Enable' }} {{ $screen->label() }} for this shop?"
-                    >
-                        {{ $enabled ? 'Disable' : 'Enable' }}
-                    </x-ui.button>
                 </div>
             @endforeach
         </div>

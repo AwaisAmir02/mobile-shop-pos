@@ -22,6 +22,10 @@ enum ShopScreen: string
     case Reports = 'reports';
     case Users = 'users';
     case PartyLedger = 'party-ledger';
+    case SettingsCategories = 'settings-categories';
+    case SettingsNetworks = 'settings-networks';
+    case SettingsBillConfig = 'settings-bill-config';
+    case SettingsPercentage = 'settings-percentage';
 
     public function label(): string
     {
@@ -44,6 +48,10 @@ enum ShopScreen: string
             self::Reports => 'Reports',
             self::Users => 'Users & Roles',
             self::PartyLedger => 'Party Ledger',
+            self::SettingsCategories => 'Settings: Categories',
+            self::SettingsNetworks => 'Settings: Networks',
+            self::SettingsBillConfig => 'Settings: Bill Providers',
+            self::SettingsPercentage => 'Settings: Percentage',
         };
     }
 
@@ -68,6 +76,29 @@ enum ShopScreen: string
             self::Reports => 'reports.index',
             self::Users => 'users.index',
             self::PartyLedger => 'party-ledger.index',
+            self::SettingsCategories => 'settings.index',
+            self::SettingsNetworks => 'settings.index',
+            self::SettingsBillConfig => 'settings.index',
+            self::SettingsPercentage => 'settings.index',
         };
+    }
+
+    /**
+     * Screens grouped into logical sections for display — used by both the
+     * Super Admin Module Access grid and the shop's own Role "Screen
+     * Access" checklist, so the two stay visually consistent and adding a
+     * screen only ever means updating this one place.
+     *
+     * @return array<string, array<self>>
+     */
+    public static function grouped(): array
+    {
+        return [
+            'Core' => [self::Dashboard, self::Products, self::Customers, self::Reports, self::PartyLedger],
+            'Inventory & Sales' => [self::StockIns, self::Sales, self::SimSales],
+            'Financial Services' => [self::BalanceLoads, self::WalletLoads, self::Bills, self::Repairs, self::NadraVerifications, self::Udhaar, self::Expenses],
+            'Administration' => [self::Users, self::ShopAccounts],
+            'Settings' => [self::Settings, self::SettingsCategories, self::SettingsNetworks, self::SettingsBillConfig, self::SettingsPercentage],
+        ];
     }
 }

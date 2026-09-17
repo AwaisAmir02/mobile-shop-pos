@@ -63,7 +63,7 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('party-ledger', 'party-ledger.index')->name('party-ledger.index')->middleware('shop.access:party-ledger');
 
-        Volt::route('settings', 'settings.index')->name('settings.index')->middleware('shop.access:settings,users,shop-accounts');
+        Volt::route('settings', 'settings.index')->name('settings.index')->middleware('shop.access:settings,users,shop-accounts,settings-categories,settings-networks,settings-bill-config,settings-percentage');
 
         Volt::route('users', 'users.index')->name('users.index')->middleware('shop.access:users');
     });

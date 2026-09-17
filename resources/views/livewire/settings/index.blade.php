@@ -96,18 +96,30 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     }
 
     /**
-     * The settings.index route accepts either the "settings" or "users"
-     * screen permission (it now hosts both feature sets), so each tab
-     * checks its own specific permission rather than assuming the page
-     * gate covers it. Profile has no permission requirement, matching
-     * the standalone /profile route it mirrors.
+     * The settings.index route accepts several screen permissions (it now
+     * hosts many feature sets), so each tab checks its own specific
+     * permission rather than assuming the page gate covers it. Profile has
+     * no permission requirement, matching the standalone /profile route
+     * it mirrors.
      */
     protected function accessibleTabs(): array
     {
         $tabs = [];
 
-        if (Auth::user()->hasAccessTo('settings')) {
-            $tabs = [...$tabs, 'accessory-categories', 'networks', 'bills', 'percentage'];
+        if (Auth::user()->hasAccessTo('settings-categories')) {
+            $tabs[] = 'accessory-categories';
+        }
+
+        if (Auth::user()->hasAccessTo('settings-networks')) {
+            $tabs[] = 'networks';
+        }
+
+        if (Auth::user()->hasAccessTo('settings-bill-config')) {
+            $tabs[] = 'bills';
+        }
+
+        if (Auth::user()->hasAccessTo('settings-percentage')) {
+            $tabs[] = 'percentage';
         }
 
         if (Auth::user()->hasAccessTo('shop-accounts')) {
@@ -167,6 +179,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 ? Role::query()->withCount('users')->orderBy('name')->get()
                 : collect(),
             'screens' => ShopScreen::cases(),
+            'groupedScreens' => ShopScreen::grouped(),
         ];
     }
 
@@ -174,7 +187,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function openMainCategoryCreate(): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-categories'), 403);
 
         $this->reset(['mainCategoryEditingId', 'mainCategoryName']);
         $this->resetErrorBag();
@@ -183,7 +196,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function openMainCategoryEdit(int $id): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-categories'), 403);
 
         $category = MainCategory::findOrFail($id);
 
@@ -196,7 +209,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function saveMainCategory(): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-categories'), 403);
 
         $this->validate([
             'mainCategoryName' => ['required', 'string', 'max:255', Rule::unique('main_categories', 'name')->where('shop_id', Auth::user()->shop_id)->ignore($this->mainCategoryEditingId)],
@@ -220,7 +233,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function deleteMainCategory(int $id): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-categories'), 403);
 
         $category = MainCategory::findOrFail($id);
 
@@ -256,7 +269,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function openAccessoryCategoryCreate(): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-categories'), 403);
 
         $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName', 'accessoryCategoryImage', 'accessoryCategoryExistingImageUrl']);
         $this->accessoryCategoryMainCategoryId = (string) (MainCategory::query()->orderBy('name')->value('id') ?? '');
@@ -266,7 +279,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function openAccessoryCategoryEdit(int $id): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-categories'), 403);
 
         $option = AccessoryCategoryOption::findOrFail($id);
 
@@ -282,7 +295,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function saveAccessoryCategory(): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-categories'), 403);
 
         $this->validate([
             'accessoryCategoryName' => ['required', 'string', 'max:255', Rule::unique('accessory_category_options', 'name')->where('shop_id', Auth::user()->shop_id)->ignore($this->accessoryCategoryEditingId)],
@@ -310,7 +323,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function deleteAccessoryCategory(int $id): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-categories'), 403);
 
         $option = AccessoryCategoryOption::findOrFail($id);
 
@@ -335,7 +348,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function openNetworkCreate(): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-networks'), 403);
 
         $this->reset(['networkEditingId', 'networkName', 'networkImage', 'networkExistingImageUrl']);
         $this->networkColor = '#049669';
@@ -345,7 +358,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function openNetworkEdit(int $id): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-networks'), 403);
 
         $network = Network::findOrFail($id);
 
@@ -361,7 +374,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function saveNetwork(): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-networks'), 403);
 
         $this->validate([
             'networkName' => ['required', 'string', 'max:255', Rule::unique('networks', 'name')->where('shop_id', Auth::user()->shop_id)->ignore($this->networkEditingId)],
@@ -387,7 +400,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function deleteNetwork(int $id): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-networks'), 403);
 
         $network = Network::findOrFail($id);
 
@@ -485,7 +498,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function openBillCategoryCreate(): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-bill-config'), 403);
 
         $this->reset(['billCategoryEditingId', 'billCategoryName']);
         $this->resetErrorBag();
@@ -494,7 +507,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function openBillCategoryEdit(int $id): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-bill-config'), 403);
 
         $category = BillCategory::findOrFail($id);
 
@@ -507,7 +520,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function saveBillCategory(): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-bill-config'), 403);
 
         $this->validate([
             'billCategoryName' => ['required', 'string', 'max:255', Rule::unique('bill_categories', 'name')->where('shop_id', Auth::user()->shop_id)->ignore($this->billCategoryEditingId)],
@@ -527,7 +540,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function deleteBillCategory(int $id): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-bill-config'), 403);
 
         $category = BillCategory::withCount('billProviders')->findOrFail($id);
 
@@ -551,7 +564,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function openBillProviderCreate(): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-bill-config'), 403);
 
         $this->reset(['billProviderEditingId', 'billProviderName', 'billProviderRegion']);
         $this->billProviderCategoryId = (string) (BillCategory::query()->orderBy('name')->value('id') ?? '');
@@ -561,7 +574,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function openBillProviderEdit(int $id): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-bill-config'), 403);
 
         $provider = BillProvider::findOrFail($id);
 
@@ -576,7 +589,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function saveBillProvider(): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-bill-config'), 403);
 
         $this->validate([
             'billProviderName' => ['required', 'string', 'max:255'],
@@ -600,7 +613,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function deleteBillProvider(int $id): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-bill-config'), 403);
 
         $provider = BillProvider::findOrFail($id);
 
@@ -693,7 +706,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     public function saveCommissionPercentages(): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings'), 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-percentage'), 403);
 
         $this->validate([
             'simSaleCommissionPercent' => ['nullable', 'numeric', 'min:0', 'max:100'],
@@ -1370,9 +1383,16 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 </x-ui.field>
 
                 <x-ui.field label="Screen Access" name="rolePermissions">
-                    <div class="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 p-4">
-                        @foreach ($screens as $screen)
-                            <x-ui.checkbox wire:model="rolePermissions" value="{{ $screen->value }}" :label="$screen->label()" />
+                    <div class="max-h-96 space-y-4 overflow-y-auto rounded-lg border border-slate-200 p-4">
+                        @foreach ($groupedScreens as $groupLabel => $groupScreens)
+                            <div>
+                                <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">{{ $groupLabel }}</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    @foreach ($groupScreens as $screen)
+                                        <x-ui.checkbox wire:model="rolePermissions" value="{{ $screen->value }}" :label="$screen->label()" />
+                                    @endforeach
+                                </div>
+                            </div>
                         @endforeach
                     </div>
                 </x-ui.field>
