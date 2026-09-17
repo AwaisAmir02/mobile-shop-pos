@@ -1,14 +1,19 @@
 <?php
 
 use App\Enums\PaymentStatus;
+use App\Exports\TableExport;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Product;
 use App\Models\StockIn;
+use App\Services\TableExportService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Component
 {
@@ -63,6 +68,69 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'products' => Product::query()->orderBy('name')->get(),
             'paymentStatuses' => PaymentStatus::cases(),
         ];
+    }
+
+    protected function exportFiltersSummary(): array
+    {
+        $parts = [];
+
+        if ($this->from || $this->to) {
+            $from = $this->from ? \Carbon\Carbon::parse($this->from)->format('d M Y') : 'earliest';
+            $to = $this->to ? \Carbon\Carbon::parse($this->to)->format('d M Y') : 'latest';
+            $parts[] = "Date range: {$from} – {$to}";
+        }
+
+        if ($this->productFilter) {
+            $parts[] = 'Product: '.(Product::find($this->productFilter)?->name ?? 'Unknown');
+        }
+
+        if ($this->paymentStatusFilter) {
+            $parts[] = 'Payment Status: '.PaymentStatus::from($this->paymentStatusFilter)->label();
+        }
+
+        return $parts ?: ['All records'];
+    }
+
+    protected function exportHeaders(): array
+    {
+        return ['Date', 'Product', 'Quantity', 'Payment', 'Owed', 'Note', 'Entered By'];
+    }
+
+    protected function exportRows(bool $forExcel): array
+    {
+        return $this->filteredQuery()->latest('stock_date')->latest('id')->get()->map(function (StockIn $entry) use ($forExcel) {
+            $product = TableExportService::sanitizeCell($entry->product_name);
+            $status = $entry->payment_status->label();
+            $note = TableExportService::sanitizeCell($entry->note ?? '');
+            $enteredBy = TableExportService::sanitizeCell($entry->user?->name ?? '—');
+
+            return $forExcel
+                ? [TableExport::excelDate($entry->stock_date), $product, (int) $entry->quantity, $status, (float) $entry->amountOwed(), $note, $enteredBy]
+                : [$entry->stock_date->format('d M Y'), $product, (string) $entry->quantity, $status, $entry->amountOwed() > 0 ? 'Rs '.number_format($entry->amountOwed(), 2) : '—', $note ?: '—', $enteredBy];
+        })->all();
+    }
+
+    public function exportPdf(TableExportService $exportService): StreamedResponse
+    {
+        return $exportService->toPdf(
+            'Stock In History',
+            Auth::user()->shop->name,
+            implode('; ', $this->exportFiltersSummary()),
+            $this->exportHeaders(),
+            $this->exportRows(forExcel: false),
+        );
+    }
+
+    public function exportExcel(TableExportService $exportService): BinaryFileResponse
+    {
+        return $exportService->toExcel(
+            'Stock In History',
+            Auth::user()->shop->name,
+            implode('; ', $this->exportFiltersSummary()),
+            $this->exportHeaders(),
+            $this->exportRows(forExcel: true),
+            ['date', 'string', 'integer', 'string', 'currency', 'string', 'string'],
+        );
     }
 
     public function clearFilters(): void
@@ -122,9 +190,12 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold text-slate-900">Stock In History</h1>
-            <a href="{{ route('stock-ins.index') }}" wire:navigate>
-                <x-ui.button size="sm">Add Stock</x-ui.button>
-            </a>
+            <div class="flex items-center gap-2">
+                <x-ui.export-dropdown />
+                <a href="{{ route('stock-ins.index') }}" wire:navigate>
+                    <x-ui.button size="sm">Add Stock</x-ui.button>
+                </a>
+            </div>
         </div>
     </x-slot>
 

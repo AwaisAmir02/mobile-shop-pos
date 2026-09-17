@@ -12,12 +12,16 @@ use App\Models\Sale;
 use App\Models\SimSale;
 use App\Models\UdhaarTransaction;
 use App\Models\WalletLoad;
+use App\Services\TableExportService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
 {
@@ -77,13 +81,13 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
             ->values();
     }
 
-    public function with(): array
+    protected function buildRows(): Collection
     {
         $balances = UdhaarTransaction::balancesByCustomer();
         $otherDueCustomerIds = $this->otherDueCustomerIds();
         $customerIds = $balances->keys()->merge($otherDueCustomerIds)->unique();
 
-        $rows = Customer::query()
+        return Customer::query()
             ->whereIn('id', $customerIds)
             ->orderBy('name')
             ->get()
@@ -103,6 +107,11 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
             })
             ->sortByDesc('balance')
             ->values();
+    }
+
+    public function with(): array
+    {
+        $rows = $this->buildRows();
 
         return [
             'rows' => $rows,
@@ -157,6 +166,47 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
     {
         $this->dispatch('close-modal', name: 'quick-transaction-form');
     }
+
+    protected function exportHeaders(): array
+    {
+        return ['Customer', 'Phone', 'Balance', 'Status', 'Other Dues'];
+    }
+
+    protected function exportRows(bool $forExcel): array
+    {
+        return $this->buildRows()->map(function (array $row) use ($forExcel) {
+            $balance = abs($row['balance']);
+            $status = ucfirst($row['status']);
+            $phone = TableExportService::sanitizeCell($row['customer']->phone ?? '');
+
+            return $forExcel
+                ? [$row['customer']->name, $phone, (float) $balance, $status, $row['hasOtherDues'] ? 'Yes' : 'No']
+                : [$row['customer']->name, $phone ?: '—', 'Rs '.number_format($balance, 2), $status, $row['hasOtherDues'] ? 'Yes' : 'No'];
+        })->all();
+    }
+
+    public function exportPdf(TableExportService $exportService): StreamedResponse
+    {
+        return $exportService->toPdf(
+            'Udhaar',
+            Auth::user()->shop->name,
+            'All records',
+            $this->exportHeaders(),
+            $this->exportRows(forExcel: false),
+        );
+    }
+
+    public function exportExcel(TableExportService $exportService): BinaryFileResponse
+    {
+        return $exportService->toExcel(
+            'Udhaar',
+            Auth::user()->shop->name,
+            'All records',
+            $this->exportHeaders(),
+            $this->exportRows(forExcel: true),
+            ['string', 'string', 'currency', 'string', 'string'],
+        );
+    }
 }; ?>
 
 <div>
@@ -167,12 +217,15 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <x-ui.stat label="Total Outstanding" value="Rs {{ number_format($totalDue, 2) }}" sub="Across all customers who currently owe money" />
 
-        <x-ui.button wire:click="openAddTransaction" class="shrink-0">
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Add Transaction
-        </x-ui.button>
+        <div class="flex items-center gap-2">
+            <x-ui.export-dropdown />
+            <x-ui.button wire:click="openAddTransaction" class="shrink-0">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Add Transaction
+            </x-ui.button>
+        </div>
     </div>
 
     @if ($rows->isEmpty())

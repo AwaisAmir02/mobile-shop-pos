@@ -6,11 +6,14 @@ use App\Models\Sale;
 use App\Models\SimSale;
 use App\Models\UdhaarTransaction;
 use App\Services\ShopReportService;
+use App\Services\TableExportService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
 {
@@ -66,7 +69,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
      * every row below carries them as two separate figures, matching the
      * same separation already enforced on the customer profile screen.
      */
-    public function with(ShopReportService $reports): array
+    protected function buildData(ShopReportService $reports): array
     {
         [$start, $end] = $this->periodRange();
 
@@ -110,11 +113,89 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
             'commission' => $commission,
         ];
     }
+
+    public function with(ShopReportService $reports): array
+    {
+        return $this->buildData($reports);
+    }
+
+    protected function exportSections(ShopReportService $reports, bool $forExcel): array
+    {
+        $data = $this->buildData($reports);
+
+        $earningsRows = collect([
+            ['Sales Revenue', $data['salesRevenue']],
+            ['Commission', $data['commission']],
+            ['Sales Outstanding', $data['totalSalesOutstanding']],
+            ['Udhaar Outstanding', $data['totalUdhaarOutstanding']],
+        ]);
+
+        $balanceRows = collect([[
+            'label' => 'Walk-in (no customer)',
+            'salesOutstanding' => $data['walkInSalesOutstanding'],
+            'udhaarBalance' => null,
+            'udhaarStatus' => null,
+        ]])->concat($data['rows']->map(fn (array $row) => [
+            'label' => $row['customer']->name,
+            'salesOutstanding' => $row['salesOutstanding'],
+            'udhaarBalance' => $row['udhaarBalance'],
+            'udhaarStatus' => $row['udhaarStatus'],
+        ]));
+
+        return [
+            [
+                'title' => "Earnings — {$data['periodLabel']}",
+                'headers' => ['Metric', 'Amount'],
+                'rows' => $earningsRows->map(fn (array $row) => $forExcel
+                    ? [$row[0], (float) $row[1]]
+                    : [$row[0], 'Rs '.number_format($row[1], 2)])->all(),
+                'columnTypes' => ['string', 'currency'],
+            ],
+            [
+                'title' => 'Per-Customer Balances',
+                'headers' => ['Customer', 'Sales Outstanding', 'Udhaar Balance', 'Udhaar Status'],
+                'rows' => $balanceRows->map(function (array $row) use ($forExcel) {
+                    $customer = TableExportService::sanitizeCell($row['label']);
+                    $status = $row['udhaarStatus'] ? ucfirst($row['udhaarStatus']) : '—';
+
+                    return $forExcel
+                        ? [$customer, (float) $row['salesOutstanding'], $row['udhaarBalance'] !== null ? (float) abs($row['udhaarBalance']) : null, $status]
+                        : [$customer, 'Rs '.number_format($row['salesOutstanding'], 2), $row['udhaarBalance'] !== null ? 'Rs '.number_format(abs($row['udhaarBalance']), 2) : '—', $status];
+                })->all(),
+                'columnTypes' => ['string', 'currency', 'currency', 'string'],
+            ],
+        ];
+    }
+
+    public function exportPdf(ShopReportService $reports, TableExportService $exportService): StreamedResponse
+    {
+        $sections = $this->exportSections($reports, forExcel: false);
+
+        return $exportService->toPdfSections(
+            'Party Ledger',
+            Auth::user()->shop->name,
+            'Period: '.$this->periodLabel().' ('.ucfirst($this->periodType).')',
+            array_map(fn (array $s) => ['title' => $s['title'], 'headers' => $s['headers'], 'rows' => $s['rows']], $sections),
+        );
+    }
+
+    public function exportExcel(ShopReportService $reports, TableExportService $exportService): BinaryFileResponse
+    {
+        return $exportService->toExcelSections(
+            'Party Ledger',
+            Auth::user()->shop->name,
+            'Period: '.$this->periodLabel().' ('.ucfirst($this->periodType).')',
+            $this->exportSections($reports, forExcel: true),
+        );
+    }
 }; ?>
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Party Ledger</h1>
+        <div class="flex items-center justify-between">
+            <h1 class="text-xl font-semibold text-slate-900">Party Ledger</h1>
+            <x-ui.export-dropdown />
+        </div>
     </x-slot>
 
     <div class="mb-6 flex flex-wrap items-end gap-4">

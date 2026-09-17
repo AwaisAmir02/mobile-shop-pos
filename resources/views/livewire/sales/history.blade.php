@@ -1,8 +1,10 @@
 <?php
 
+use App\Exports\TableExport;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Sale;
 use App\Services\InvoicePdfService;
+use App\Services\TableExportService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -30,17 +32,20 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
         $this->resetPage();
     }
 
+    protected function filteredQuery()
+    {
+        return Sale::query()
+            ->withCount('items')
+            ->withSum('payments', 'amount')
+            ->with('customer')
+            ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
+            ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to));
+    }
+
     public function with(): array
     {
         return [
-            'sales' => Sale::query()
-                ->withCount('items')
-                ->withSum('payments', 'amount')
-                ->with('customer')
-                ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
-                ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
-                ->latest()
-                ->paginate(15),
+            'sales' => $this->filteredQuery()->latest()->paginate(15),
             // A running balance, like Udhaar's own Total Outstanding — deliberately
             // not scoped to the from/to filters above, which describe which sales
             // to list, not which sales still owe money.
@@ -49,6 +54,58 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
                 ->get()
                 ->sum(fn (Sale $sale) => $sale->amountDue()),
         ];
+    }
+
+    protected function exportFiltersSummary(): string
+    {
+        if (! $this->from && ! $this->to) {
+            return 'All records';
+        }
+
+        $from = $this->from ? \Carbon\Carbon::parse($this->from)->format('d M Y') : 'earliest';
+        $to = $this->to ? \Carbon\Carbon::parse($this->to)->format('d M Y') : 'latest';
+
+        return "Date range: {$from} – {$to}";
+    }
+
+    protected function exportHeaders(): array
+    {
+        return ['Invoice', 'Date', 'Customer', 'Items', 'Total', 'Paid', 'Status'];
+    }
+
+    protected function exportRows(bool $forExcel): array
+    {
+        return $this->filteredQuery()->latest()->get()->map(function (Sale $sale) use ($forExcel) {
+            $customer = TableExportService::sanitizeCell($sale->customer?->name ?? 'Walk-in');
+            $status = ucfirst($sale->paymentStatus());
+
+            return $forExcel
+                ? [$sale->invoiceNumber(), TableExport::excelDate($sale->created_at), $customer, (int) $sale->items_count, (float) $sale->total, (float) $sale->amountPaid(), $status]
+                : [$sale->invoiceNumber(), $sale->created_at->format('d M Y, h:i A'), $customer, (string) $sale->items_count, 'Rs '.number_format($sale->total, 2), 'Rs '.number_format($sale->amountPaid(), 2), $status];
+        })->all();
+    }
+
+    public function exportPdf(TableExportService $exportService): StreamedResponse
+    {
+        return $exportService->toPdf(
+            'Sales History',
+            Auth::user()->shop->name,
+            $this->exportFiltersSummary(),
+            $this->exportHeaders(),
+            $this->exportRows(forExcel: false),
+        );
+    }
+
+    public function exportExcel(TableExportService $exportService): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        return $exportService->toExcel(
+            'Sales History',
+            Auth::user()->shop->name,
+            $this->exportFiltersSummary(),
+            $this->exportHeaders(),
+            $this->exportRows(forExcel: true),
+            ['string', 'date', 'string', 'integer', 'currency', 'currency', 'string'],
+        );
     }
 
     public function clearDateFilters(): void
@@ -99,9 +156,12 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold text-slate-900">Sales History</h1>
-            <a href="{{ route('sales.index') }}" wire:navigate>
-                <x-ui.button size="sm">New Sale</x-ui.button>
-            </a>
+            <div class="flex items-center gap-2">
+                <x-ui.export-dropdown />
+                <a href="{{ route('sales.index') }}" wire:navigate>
+                    <x-ui.button size="sm">New Sale</x-ui.button>
+                </a>
+            </div>
         </div>
     </x-slot>
 

@@ -3,6 +3,7 @@
 use App\Actions\CreateUdhaarTransaction;
 use App\Actions\RecordModulePayment;
 use App\Actions\RecordSalePayment;
+use App\Exports\TableExport;
 use App\Livewire\Concerns\Toasts;
 use App\Models\BalanceLoad;
 use App\Models\BillPayment;
@@ -13,12 +14,15 @@ use App\Models\Sale;
 use App\Models\SimSale;
 use App\Models\UdhaarTransaction;
 use App\Models\WalletLoad;
+use App\Services\TableExportService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 {
@@ -294,6 +298,79 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 
         $this->toastSuccess('Transaction reversed.');
     }
+
+    protected function ledgerExportRows(bool $forExcel): array
+    {
+        $running = 0.0;
+
+        return $this->customer->udhaarTransactions->map(function (UdhaarTransaction $transaction) use (&$running, $forExcel) {
+            $running += $transaction->signedAmount();
+            $note = TableExportService::sanitizeCell($transaction->note ?? '');
+            $enteredBy = TableExportService::sanitizeCell($transaction->user?->name ?? '—');
+
+            $sign = $transaction->type->sign() > 0 ? '+' : '−';
+
+            return $forExcel
+                ? [TableExport::excelDate($transaction->transaction_date), $transaction->type->label(), (float) $transaction->signedAmount(), (float) $running, $note, $enteredBy]
+                : [$transaction->transaction_date->format('d M Y'), $transaction->type->label(), $sign.' Rs '.number_format($transaction->amount, 2), 'Rs '.number_format(abs($running), 2), $note ?: '—', $enteredBy];
+        })->values()->all();
+    }
+
+    protected function duesExportRows(bool $forExcel): array
+    {
+        return $this->duesForCustomer()->map(function (array $due) use ($forExcel) {
+            $description = TableExportService::sanitizeCell($due['description']);
+
+            return $forExcel
+                ? [$due['sourceLabel'], $description, TableExport::excelDate($due['date']), (float) $due['amountDue']]
+                : [$due['sourceLabel'], $description, $due['date']->format('d M Y'), 'Rs '.number_format($due['amountDue'], 2)];
+        })->all();
+    }
+
+    protected function exportSections(bool $forExcel): array
+    {
+        $sections = [
+            [
+                'title' => 'Udhaar Ledger',
+                'headers' => ['Date', 'Type', 'Amount', 'Running Balance', 'Note', 'Entered By'],
+                'rows' => $this->ledgerExportRows($forExcel),
+                'columnTypes' => ['date', 'string', 'currency', 'currency', 'string', 'string'],
+            ],
+            [
+                'title' => 'Other Amounts Owed',
+                'headers' => ['Source', 'Description', 'Date', 'Amount Due'],
+                'rows' => $this->duesExportRows($forExcel),
+                'columnTypes' => ['string', 'string', 'date', 'currency'],
+            ],
+        ];
+
+        if (! $forExcel) {
+            // The PDF view doesn't use columnTypes — trim it for clarity.
+            return array_map(fn (array $s) => ['title' => $s['title'], 'headers' => $s['headers'], 'rows' => $s['rows']], $sections);
+        }
+
+        return $sections;
+    }
+
+    public function exportPdf(TableExportService $exportService): StreamedResponse
+    {
+        return $exportService->toPdfSections(
+            $this->customer->name.' — Udhaar History',
+            Auth::user()->shop->name,
+            'All records',
+            $this->exportSections(forExcel: false),
+        );
+    }
+
+    public function exportExcel(TableExportService $exportService): BinaryFileResponse
+    {
+        return $exportService->toExcelSections(
+            $this->customer->name.' — Udhaar History',
+            Auth::user()->shop->name,
+            'All records',
+            $this->exportSections(forExcel: true),
+        );
+    }
 }; ?>
 
 <div>
@@ -309,7 +386,8 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <x-ui.stat label="Current Balance" value="Rs {{ number_format(abs($balance), 2) }}" />
         <x-ui.stat label="Status" :value="ucfirst($status)" />
-        <div class="flex items-center justify-end">
+        <div class="flex items-center justify-end gap-2">
+            <x-ui.export-dropdown />
             <x-ui.button wire:click="openAddTransaction">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
