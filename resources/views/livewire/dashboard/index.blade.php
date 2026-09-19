@@ -269,7 +269,7 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
                     />
                 </template>
 
-                <template x-if="hovered !== null">
+                <template x-if="hovered !== null && points[hovered]">
                     <g class="pointer-events-none">
                         <line :x1="points[hovered].x" :x2="points[hovered].x" y1="{{ $chart['padding']['top'] }}" y2="{{ $chart['baselineY'] }}" stroke="#94a3b8" stroke-width="1" />
                         <circle :cx="points[hovered].x" :cy="points[hovered].y" r="5" fill="#049669" stroke="white" stroke-width="2" />
@@ -278,12 +278,12 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
             </svg>
 
             <div
-                x-show="hovered !== null" x-cloak
+                x-show="hovered !== null && points[hovered]" x-cloak
                 class="pointer-events-none absolute rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs whitespace-nowrap text-white shadow-lg"
-                :style="hovered !== null ? `left:` + (points[hovered].x / {{ $chart['width'] }} * 100) + `%; top:` + (points[hovered].y / {{ $chart['height'] }} * 100) + `%; transform: translate(-50%, -140%)` : ''"
+                :style="hovered !== null && points[hovered] ? `left:` + (points[hovered].x / {{ $chart['width'] }} * 100) + `%; top:` + (points[hovered].y / {{ $chart['height'] }} * 100) + `%; transform: translate(-50%, -140%)` : ''"
             >
-                <span x-text="hovered !== null ? points[hovered].label : ''"></span>:
-                <span class="font-semibold" x-text="hovered !== null ? 'Rs ' + Number(points[hovered].value).toLocaleString() : ''"></span>
+                <span x-text="hovered !== null && points[hovered] ? points[hovered].label : ''"></span>:
+                <span class="font-semibold" x-text="hovered !== null && points[hovered] ? 'Rs ' + Number(points[hovered].value).toLocaleString() : ''"></span>
             </div>
         </div>
     </x-ui.card>
