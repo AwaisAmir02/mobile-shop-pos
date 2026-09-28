@@ -157,6 +157,19 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $this->toastSuccess('Module access updated.');
     }
 
+    /**
+     * A deliberately separate control from Module Access above — this is
+     * an opt-in capability flag (shops.import_enabled), not a ShopScreen,
+     * and nothing in the shop's own UI can flip it. Only reachable here.
+     */
+    public function toggleImportEnabled(): void
+    {
+        $this->shop->update(['import_enabled' => ! $this->shop->import_enabled]);
+        $this->shop->refresh();
+
+        $this->toastSuccess($this->shop->import_enabled ? 'Products Import enabled for this shop.' : 'Products Import disabled for this shop.');
+    }
+
     protected function periodRange(): array
     {
         if ($this->periodType === 'month') {
@@ -425,6 +438,35 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                 </x-ui.table-row>
             @endforeach
         </x-ui.table>
+    </x-ui.card>
+
+    <x-ui.card title="Products Import" description="A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet." class="mt-8">
+        <div class="flex items-center justify-between gap-3">
+            <span class="text-sm font-medium text-slate-900">
+                {{ $shop->import_enabled ? 'Enabled for this shop' : 'Disabled for this shop' }}
+            </span>
+            <button
+                type="button"
+                role="switch"
+                aria-checked="{{ $shop->import_enabled ? 'true' : 'false' }}"
+                aria-label="{{ $shop->import_enabled ? 'Disable' : 'Enable' }} Products Import"
+                wire:click="toggleImportEnabled"
+                wire:confirm="{{ $shop->import_enabled ? 'Disable' : 'Enable' }} Products Import for this shop?"
+                @class([
+                    'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                    'bg-emerald-500' => $shop->import_enabled,
+                    'bg-slate-300' => ! $shop->import_enabled,
+                ])
+            >
+                <span
+                    @class([
+                        'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                        'translate-x-6' => $shop->import_enabled,
+                        'translate-x-1' => ! $shop->import_enabled,
+                    ])
+                ></span>
+            </button>
+        </div>
     </x-ui.card>
 
     <x-ui.card title="Module Access" description="Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role." class="mt-8">

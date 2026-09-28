@@ -63,4 +63,17 @@ class User extends Authenticatable
 
         return $this->role?->hasAccess($screen) ?? false;
     }
+
+    /**
+     * Products Excel import is gated by two independent things: the shop
+     * must have it turned on by Super Admin (shops.import_enabled — opt-in,
+     * off by default, and nothing in this app lets a shop turn it on for
+     * itself), AND the user must already have ordinary Products access.
+     * There is no separate Role permission for this — see
+     * ProductImportAccessTest for why holding 'products' is enough.
+     */
+    public function canImportProducts(): bool
+    {
+        return (bool) ($this->shop?->import_enabled) && $this->hasAccessTo(ShopScreen::Products);
+    }
 }

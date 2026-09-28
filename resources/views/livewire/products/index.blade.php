@@ -160,6 +160,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                         'image' => $option->imageUrl(),
                     ])
             )->all(),
+            'canImportProducts' => Auth::user()->canImportProducts(),
         ];
     }
 
@@ -167,6 +168,32 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     {
         $this->resetForm();
         $this->dispatch('open-modal', name: 'product-form');
+    }
+
+    /**
+     * Products Import is a separate opt-in capability (shops.import_enabled,
+     * off by default) on top of ordinary Products access — this gate is
+     * only the button's own convenience layer; the import component's own
+     * actions (upload, preview, confirm, template download) each guard
+     * themselves independently, since a tampered request could call them
+     * directly without ever going through this method. Dispatches a
+     * request event rather than 'open-modal' directly so the always-mounted
+     * <livewire:products.import /> component resets its own state (any
+     * leftover file/step from a previous import) before showing itself —
+     * dispatching 'open-modal' straight from here would just reveal
+     * whatever state it was last left in.
+     */
+    public function openImportModal(): void
+    {
+        abort_unless(Auth::user()->canImportProducts(), 403);
+
+        $this->dispatch('request-open-product-import');
+    }
+
+    #[On('product-import-finished')]
+    public function onProductImportFinished(): void
+    {
+        $this->resetPage();
     }
 
     public function openEdit(int $id): void
@@ -303,6 +330,14 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
         <div class="flex items-center gap-2">
             <x-ui.export-dropdown />
+            @if ($canImportProducts)
+                <x-ui.button type="button" variant="secondary" wire:click="openImportModal" class="shrink-0">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 7.5L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                    Import
+                </x-ui.button>
+            @endif
             <x-ui.button wire:click="openCreate" class="shrink-0">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -473,4 +508,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     <livewire:accessory-categories.quick-create :default-main-category-slug="$type" />
     <livewire:main-categories.quick-create />
     <livewire:brands.quick-create />
+    @if ($canImportProducts)
+        <livewire:products.import />
+    @endif
 </div>
