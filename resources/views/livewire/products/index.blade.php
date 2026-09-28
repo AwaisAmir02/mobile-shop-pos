@@ -1,21 +1,28 @@
 <?php
 
 use App\Actions\CreateProduct;
+use App\Livewire\Concerns\GuardsExportSize;
 use App\Livewire\Concerns\Toasts;
 use App\Livewire\Concerns\UploadsImages;
 use App\Models\AccessoryCategoryOption;
+use App\Models\Brand;
 use App\Models\MainCategory;
 use App\Models\Product;
+use App\ReportQueries\ProductReport;
+use App\Services\TableExportService;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 {
-    use Toasts, UploadsImages, WithFileUploads, WithPagination;
+    use GuardsExportSize, Toasts, UploadsImages, WithFileUploads, WithPagination;
 
     public string $search = '';
     public string $typeFilter = '';
@@ -81,6 +88,29 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->category = '';
     }
 
+    protected string $brandBeforeCreate = '';
+
+    public function updatingBrand(string $value): void
+    {
+        if ($value === '__create__') {
+            $this->brandBeforeCreate = $this->brand;
+        }
+    }
+
+    public function updatedBrand(): void
+    {
+        if ($this->brand === '__create__') {
+            $this->brand = $this->brandBeforeCreate;
+            $this->dispatch('open-modal', name: 'quick-create-brand');
+        }
+    }
+
+    #[On('brand-created')]
+    public function onBrandCreated(string $name): void
+    {
+        $this->brand = $name;
+    }
+
     public function updatedCategory(): void
     {
         if ($this->category === '__create__') {
@@ -95,18 +125,22 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->category = $categoryName;
     }
 
+    protected function report(): ProductReport
+    {
+        return new ProductReport($this->search, $this->typeFilter);
+    }
+
     public function with(): array
     {
         $mainCategories = MainCategory::query()->orderBy('name')->get();
         $currentMainCategory = $mainCategories->firstWhere('slug', $this->type);
 
         return [
-            'products' => Product::query()
-                ->when($this->search, fn ($query) => $query->where('name', 'like', "%{$this->search}%"))
-                ->when($this->typeFilter, fn ($query) => $query->where('type', $this->typeFilter))
+            'products' => $this->report()->query()
                 ->latest()
                 ->paginate(10),
             'mainCategories' => $mainCategories,
+            'brands' => Brand::query()->orderBy('name')->get(),
             'typeFilterOptions' => $mainCategories
                 ->map(fn (MainCategory $category) => ['value' => $category->slug, 'label' => $category->name])
                 ->when(
@@ -200,6 +234,33 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->resetForm();
     }
 
+    public function exportPdf(TableExportService $exportService): ?StreamedResponse
+    {
+        $report = $this->report();
+
+        return $this->guardExportSize(fn () => $exportService->toPdf(
+            'Products',
+            Auth::user()->shop->name,
+            $report->filtersSummary(),
+            $report->tableHeaders(),
+            $report->tableRows(forExcel: false),
+        ));
+    }
+
+    public function exportExcel(TableExportService $exportService): ?BinaryFileResponse
+    {
+        $report = $this->report();
+
+        return $this->guardExportSize(fn () => $exportService->toExcel(
+            'Products',
+            Auth::user()->shop->name,
+            $report->filtersSummary(),
+            $report->tableHeaders(),
+            $report->tableRows(forExcel: true),
+            $report->columnTypes(),
+        ));
+    }
+
     protected function rules(): array
     {
         return CreateProduct::rules(auth()->user()->shop_id, $this->type);
@@ -240,12 +301,15 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             </x-ui.select>
         </div>
 
-        <x-ui.button wire:click="openCreate" class="shrink-0">
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Add Product
-        </x-ui.button>
+        <div class="flex items-center gap-2">
+            <x-ui.export-dropdown />
+            <x-ui.button wire:click="openCreate" class="shrink-0">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Add Product
+            </x-ui.button>
+        </div>
     </div>
 
     @if ($products->isEmpty())
@@ -346,10 +410,16 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 @if ($type === 'mobile')
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-ui.field label="Brand" name="brand" for="brand">
-                            <x-ui.input wire:model="brand" id="brand" placeholder="e.g. Samsung" />
+                            <x-ui.select wire:model.live="brand" id="brand">
+                                <option value="">Select a brand</option>
+                                <option value="__create__">+ New Brand</option>
+                                @foreach ($brands as $option)
+                                    <option value="{{ $option->name }}">{{ $option->name }}</option>
+                                @endforeach
+                            </x-ui.select>
                         </x-ui.field>
 
-                        <x-ui.field label="Model" name="model" for="model">
+                        <x-ui.field label="Model" name="model" for="model" help="Optional">
                             <x-ui.input wire:model="model" id="model" placeholder="e.g. Galaxy A15" />
                         </x-ui.field>
                     </div>
@@ -402,4 +472,5 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
     <livewire:accessory-categories.quick-create :default-main-category-slug="$type" />
     <livewire:main-categories.quick-create />
+    <livewire:brands.quick-create />
 </div>

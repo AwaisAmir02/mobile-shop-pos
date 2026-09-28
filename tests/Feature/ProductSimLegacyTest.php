@@ -156,11 +156,18 @@ class ProductSimLegacyTest extends TestCase
         $this->assertSame(100.0, (float) $saleItem->line_total);
     }
 
-    public function test_historical_sim_sales_revenue_still_appears_in_the_sales_by_category_report(): void
+    /**
+     * The old Reports screen's "Sales by Category" revenue-per-category
+     * breakdown was retired along with its whole dashboard when Reports
+     * was reworked into a per-screen picker (see ReportsScreenTest) — no
+     * surviving screen renders per-category revenue as visible text, so
+     * this now verifies the underlying figure directly via
+     * ShopReportService::summary(), which is unchanged.
+     */
+    public function test_historical_sim_sales_revenue_still_appears_in_the_sales_by_category_breakdown(): void
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
-        $today = now()->toDateString();
 
         $sale = Sale::create(['shop_id' => $shop->id, 'user_id' => $owner->id, 'subtotal' => 500, 'discount_amount' => 0, 'total' => 500]);
         SaleItem::create([
@@ -174,11 +181,11 @@ class ProductSimLegacyTest extends TestCase
             'line_total' => 500,
         ]);
 
-        $this->actingAs($owner);
+        $summary = app(\App\Services\ShopReportService::class)->summary($shop, now()->startOfDay(), now()->endOfDay());
+        $simCategory = collect($summary['categories'])->firstWhere('slug', 'sim');
 
-        Livewire::test('reports.index')
-            ->set('day', $today)
-            ->assertSee('SIM / eSIM')
-            ->assertSee('Rs 500.00');
+        $this->assertNotNull($simCategory);
+        $this->assertSame('SIM / eSIM (Legacy)', $simCategory['label']);
+        $this->assertSame(500.0, $simCategory['revenue']);
     }
 }

@@ -1,10 +1,11 @@
 <?php
 
 use App\Enums\PaymentStatus;
-use App\Exports\TableExport;
+use App\Livewire\Concerns\GuardsExportSize;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Product;
 use App\Models\StockIn;
+use App\ReportQueries\StockInReport;
 use App\Services\TableExportService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -17,7 +18,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Component
 {
-    use Toasts, WithPagination;
+    use GuardsExportSize, Toasts, WithPagination;
 
     public string $from = '';
     public string $to = '';
@@ -47,90 +48,49 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
         $this->resetPage();
     }
 
-    protected function filteredQuery()
+    protected function report(): StockInReport
     {
-        return StockIn::query()
-            ->when($this->from, fn ($query) => $query->whereDate('stock_date', '>=', $this->from))
-            ->when($this->to, fn ($query) => $query->whereDate('stock_date', '<=', $this->to))
-            ->when($this->productFilter, fn ($query) => $query->where('product_id', $this->productFilter))
-            ->when($this->paymentStatusFilter, fn ($query) => $query->where('payment_status', $this->paymentStatusFilter));
+        return new StockInReport($this->from, $this->to, $this->productFilter, $this->paymentStatusFilter);
     }
 
     public function with(): array
     {
+        $report = $this->report();
+
         return [
-            'entries' => $this->filteredQuery()->latest('stock_date')->latest('id')->paginate(15),
-            'totalUnits' => $this->filteredQuery()->sum('quantity'),
-            'totalOwed' => StockIn::query()
-                ->where('payment_status', '!=', PaymentStatus::Paid->value)
-                ->get()
-                ->sum(fn (StockIn $entry) => $entry->amountOwed()),
+            'entries' => $report->query()->latest('stock_date')->latest('id')->paginate(15),
+            'totalUnits' => $report->totalUnits(),
+            'totalOwed' => $report->totalOwed(),
             'products' => Product::query()->orderBy('name')->get(),
             'paymentStatuses' => PaymentStatus::cases(),
         ];
     }
 
-    protected function exportFiltersSummary(): array
+    public function exportPdf(TableExportService $exportService): ?StreamedResponse
     {
-        $parts = [];
+        $report = $this->report();
 
-        if ($this->from || $this->to) {
-            $from = $this->from ? \Carbon\Carbon::parse($this->from)->format('d M Y') : 'earliest';
-            $to = $this->to ? \Carbon\Carbon::parse($this->to)->format('d M Y') : 'latest';
-            $parts[] = "Date range: {$from} – {$to}";
-        }
-
-        if ($this->productFilter) {
-            $parts[] = 'Product: '.(Product::find($this->productFilter)?->name ?? 'Unknown');
-        }
-
-        if ($this->paymentStatusFilter) {
-            $parts[] = 'Payment Status: '.PaymentStatus::from($this->paymentStatusFilter)->label();
-        }
-
-        return $parts ?: ['All records'];
-    }
-
-    protected function exportHeaders(): array
-    {
-        return ['Date', 'Product', 'Quantity', 'Payment', 'Owed', 'Note', 'Entered By'];
-    }
-
-    protected function exportRows(bool $forExcel): array
-    {
-        return $this->filteredQuery()->latest('stock_date')->latest('id')->get()->map(function (StockIn $entry) use ($forExcel) {
-            $product = TableExportService::sanitizeCell($entry->product_name);
-            $status = $entry->payment_status->label();
-            $note = TableExportService::sanitizeCell($entry->note ?? '');
-            $enteredBy = TableExportService::sanitizeCell($entry->user?->name ?? '—');
-
-            return $forExcel
-                ? [TableExport::excelDate($entry->stock_date), $product, (int) $entry->quantity, $status, (float) $entry->amountOwed(), $note, $enteredBy]
-                : [$entry->stock_date->format('d M Y'), $product, (string) $entry->quantity, $status, $entry->amountOwed() > 0 ? 'Rs '.number_format($entry->amountOwed(), 2) : '—', $note ?: '—', $enteredBy];
-        })->all();
-    }
-
-    public function exportPdf(TableExportService $exportService): StreamedResponse
-    {
-        return $exportService->toPdf(
+        return $this->guardExportSize(fn () => $exportService->toPdf(
             'Stock In History',
             Auth::user()->shop->name,
-            implode('; ', $this->exportFiltersSummary()),
-            $this->exportHeaders(),
-            $this->exportRows(forExcel: false),
-        );
+            $report->filtersSummary(),
+            $report->tableHeaders(),
+            $report->tableRows(forExcel: false),
+        ));
     }
 
-    public function exportExcel(TableExportService $exportService): BinaryFileResponse
+    public function exportExcel(TableExportService $exportService): ?BinaryFileResponse
     {
-        return $exportService->toExcel(
+        $report = $this->report();
+
+        return $this->guardExportSize(fn () => $exportService->toExcel(
             'Stock In History',
             Auth::user()->shop->name,
-            implode('; ', $this->exportFiltersSummary()),
-            $this->exportHeaders(),
-            $this->exportRows(forExcel: true),
-            ['date', 'string', 'integer', 'string', 'currency', 'string', 'string'],
-        );
+            $report->filtersSummary(),
+            $report->tableHeaders(),
+            $report->tableRows(forExcel: true),
+            $report->columnTypes(),
+        ));
     }
 
     public function clearFilters(): void
@@ -190,12 +150,9 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold text-slate-900">Stock In History</h1>
-            <div class="flex items-center gap-2">
-                <x-ui.export-dropdown />
-                <a href="{{ route('stock-ins.index') }}" wire:navigate>
-                    <x-ui.button size="sm">Add Stock</x-ui.button>
-                </a>
-            </div>
+            <a href="{{ route('stock-ins.index') }}" wire:navigate>
+                <x-ui.button size="sm">Add Stock</x-ui.button>
+            </a>
         </div>
     </x-slot>
 
@@ -236,7 +193,9 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             @endif
         </div>
 
-        <div class="flex gap-4">
+        <div class="flex items-center gap-4">
+            <x-ui.export-dropdown />
+
             <x-ui.card :padding="false">
                 <div class="px-5 py-3 text-right">
                     <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Units</p>

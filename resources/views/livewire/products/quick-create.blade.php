@@ -4,6 +4,7 @@ use App\Actions\CreateProduct;
 use App\Livewire\Concerns\Toasts;
 use App\Livewire\Concerns\UploadsImages;
 use App\Models\AccessoryCategoryOption;
+use App\Models\Brand;
 use App\Models\MainCategory;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
@@ -78,6 +79,29 @@ new class extends Component
         $this->category = '';
     }
 
+    protected string $brandBeforeCreate = '';
+
+    public function updatingBrand(string $value): void
+    {
+        if ($value === '__create__') {
+            $this->brandBeforeCreate = $this->brand;
+        }
+    }
+
+    public function updatedBrand(): void
+    {
+        if ($this->brand === '__create__') {
+            $this->brand = $this->brandBeforeCreate;
+            $this->dispatch('open-modal', name: 'quick-create-brand');
+        }
+    }
+
+    #[On('brand-created')]
+    public function onBrandCreated(string $name): void
+    {
+        $this->brand = $name;
+    }
+
     public function updatedCategory(): void
     {
         if ($this->category === '__create__') {
@@ -99,6 +123,7 @@ new class extends Component
 
         return [
             'mainCategories' => $mainCategories,
+            'brands' => Brand::query()->orderBy('name')->get(),
             'accessoryCategoryOptions' => collect([
                 ['value' => '__create__', 'label' => 'New Sub-Category', 'image' => null, 'special' => true, 'modal' => 'quick-create-accessory-category'],
             ])->concat(
@@ -183,10 +208,16 @@ new class extends Component
                 @if ($type === 'mobile')
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-ui.field label="Brand" name="brand" for="quickProductBrand">
-                            <x-ui.input wire:model="brand" id="quickProductBrand" placeholder="e.g. Samsung" />
+                            <x-ui.select wire:model.live="brand" id="quickProductBrand">
+                                <option value="">Select a brand</option>
+                                <option value="__create__">+ New Brand</option>
+                                @foreach ($brands as $option)
+                                    <option value="{{ $option->name }}">{{ $option->name }}</option>
+                                @endforeach
+                            </x-ui.select>
                         </x-ui.field>
 
-                        <x-ui.field label="Model" name="model" for="quickProductModel">
+                        <x-ui.field label="Model" name="model" for="quickProductModel" help="Optional">
                             <x-ui.input wire:model="model" id="quickProductModel" placeholder="e.g. Galaxy A15" />
                         </x-ui.field>
                     </div>

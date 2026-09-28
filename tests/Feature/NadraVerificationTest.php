@@ -195,7 +195,13 @@ class NadraVerificationTest extends TestCase
         $this->get(route('nadra-verifications.index'))->assertForbidden();
     }
 
-    public function test_nadra_revenue_appears_as_its_own_line_in_reports(): void
+    /**
+     * Reports was reworked into a per-screen picker (see ReportsScreenTest)
+     * and no longer computes this cross-module aggregate — the Dashboard
+     * is the surviving screen that still shows every module's revenue via
+     * the same, unchanged ShopReportService::summary().
+     */
+    public function test_nadra_revenue_appears_as_its_own_line_on_the_dashboard(): void
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
@@ -205,7 +211,7 @@ class NadraVerificationTest extends TestCase
 
         $this->actingAs($owner);
 
-        Livewire::test('reports.index')
+        Livewire::test('dashboard.index')
             ->set('day', $today)
             ->assertViewHas('totalNadraRevenue', 300.0)
             ->assertViewHas('totalNadraVerifications', 1)

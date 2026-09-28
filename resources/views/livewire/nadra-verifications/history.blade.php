@@ -3,6 +3,7 @@
 use App\Enums\PaymentStatus;
 use App\Livewire\Concerns\Toasts;
 use App\Models\NadraVerification;
+use App\ReportQueries\NadraVerificationReport;
 use App\Services\NadraVerificationReceiptPdfService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -36,23 +37,19 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
         $this->resetPage();
     }
 
-    protected function filteredQuery()
+    protected function report(): NadraVerificationReport
     {
-        return NadraVerification::query()
-            ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
-            ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
-            ->when($this->paymentStatusFilter, fn ($query) => $query->where('payment_status', $this->paymentStatusFilter));
+        return new NadraVerificationReport($this->from, $this->to, $this->paymentStatusFilter);
     }
 
     public function with(): array
     {
+        $report = $this->report();
+
         return [
-            'verifications' => $this->filteredQuery()->with('customer')->latest()->paginate(15),
-            'totalCollected' => $this->filteredQuery()->sum('total'),
-            'totalOwed' => NadraVerification::query()
-                ->where('payment_status', '!=', PaymentStatus::Paid->value)
-                ->get()
-                ->sum(fn (NadraVerification $verification) => $verification->amountOwed()),
+            'verifications' => $report->query()->with('customer')->latest()->paginate(15),
+            'totalCollected' => $report->totalCollected(),
+            'totalOwed' => $report->totalOwed(),
             'paymentStatuses' => PaymentStatus::cases(),
         ];
     }

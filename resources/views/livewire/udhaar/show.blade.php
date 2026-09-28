@@ -4,6 +4,7 @@ use App\Actions\CreateUdhaarTransaction;
 use App\Actions\RecordModulePayment;
 use App\Actions\RecordSalePayment;
 use App\Exports\TableExport;
+use App\Livewire\Concerns\GuardsExportSize;
 use App\Livewire\Concerns\Toasts;
 use App\Models\BalanceLoad;
 use App\Models\BillPayment;
@@ -26,7 +27,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 {
-    use Toasts;
+    use GuardsExportSize, Toasts;
 
     public Customer $customer;
 
@@ -59,25 +60,36 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
             ];
         })->reverse()->values();
 
+        $dues = $this->duesForCustomer();
+
+        // The headline balance is the real Udhaar loan PLUS everything in
+        // "Other Amounts Owed" below — the customer's one true combined
+        // number, per the standing rule that this customer's headline
+        // balance means everything they currently owe, not just the loan.
+        // The ledger table's own per-transaction running balance above
+        // ($running, captured per row before this addition) is untouched —
+        // that column describes the loan's own history, not this headline.
+        $balance = $running + $dues->sum('amountDue');
+
         return [
             'rows' => $rows,
-            'balance' => $running,
+            'balance' => $balance,
             'status' => match (true) {
-                $running > 0 => 'due',
-                $running < 0 => 'advance',
+                $balance > 0 => 'due',
+                $balance < 0 => 'advance',
                 default => 'settled',
             },
-            'dues' => $this->duesForCustomer(),
+            'dues' => $dues,
         ];
     }
 
     /**
-     * Everything else this customer still owes across other modules — a
-     * consolidated CHECKLIST, not a merged balance. Each row stays
-     * individually labeled and individually payable, and this list is
-     * deliberately kept separate from the Udhaar ledger above: it never
-     * feeds into $balance/$status, and settling a row here only ever
-     * updates that row's own source record, never anything Udhaar-related.
+     * Everything else this customer still owes across other modules. Each
+     * row stays individually labeled and individually payable — settling a
+     * row here only ever updates that row's own source record, never the
+     * Udhaar ledger itself — but its total now feeds into the headline
+     * balance/status above (see with()), rather than being a plain
+     * separate checklist.
      *
      * Wallet Load Cash Out is intentionally excluded — its "owed" amount
      * means the shop still owes the customer cash, the opposite direction
@@ -352,24 +364,24 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
         return $sections;
     }
 
-    public function exportPdf(TableExportService $exportService): StreamedResponse
+    public function exportPdf(TableExportService $exportService): ?StreamedResponse
     {
-        return $exportService->toPdfSections(
+        return $this->guardExportSize(fn () => $exportService->toPdfSections(
             $this->customer->name.' — Udhaar History',
             Auth::user()->shop->name,
             'All records',
             $this->exportSections(forExcel: false),
-        );
+        ));
     }
 
-    public function exportExcel(TableExportService $exportService): BinaryFileResponse
+    public function exportExcel(TableExportService $exportService): ?BinaryFileResponse
     {
-        return $exportService->toExcelSections(
+        return $this->guardExportSize(fn () => $exportService->toExcelSections(
             $this->customer->name.' — Udhaar History',
             Auth::user()->shop->name,
             'All records',
             $this->exportSections(forExcel: true),
-        );
+        ));
     }
 }; ?>
 

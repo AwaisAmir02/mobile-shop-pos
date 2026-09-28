@@ -27,8 +27,8 @@ class CreateProduct
         ];
 
         if ($type === 'mobile') {
-            $rules['brand'] = ['required', 'string', 'max:255'];
-            $rules['model'] = ['required', 'string', 'max:255'];
+            $rules['brand'] = ['required', 'string', 'max:255', Rule::exists('brands', 'name')->where('shop_id', $shopId)];
+            $rules['model'] = ['nullable', 'string', 'max:255'];
             $rules['imei'] = ['nullable', 'string', 'max:50'];
         }
 
@@ -42,7 +42,7 @@ class CreateProduct
         if ($type === 'mobile') {
             $details = [
                 'brand' => $brand,
-                'model' => $model,
+                'model' => $model !== '' ? $model : null,
                 'imei' => $imei !== '' ? $imei : null,
                 ...$details,
             ];

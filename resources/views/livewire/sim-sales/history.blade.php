@@ -4,6 +4,7 @@ use App\Enums\PaymentStatus;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Network;
 use App\Models\SimSale;
+use App\ReportQueries\SimSaleReport;
 use App\Services\SimSaleReceiptPdfService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -43,24 +44,19 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
         $this->resetPage();
     }
 
-    protected function filteredQuery()
+    protected function report(): SimSaleReport
     {
-        return SimSale::query()
-            ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
-            ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
-            ->when($this->network, fn ($query) => $query->where('network', $this->network))
-            ->when($this->paymentStatusFilter, fn ($query) => $query->where('payment_status', $this->paymentStatusFilter));
+        return new SimSaleReport($this->from, $this->to, $this->network, $this->paymentStatusFilter);
     }
 
     public function with(): array
     {
+        $report = $this->report();
+
         return [
-            'sales' => $this->filteredQuery()->with('customer')->latest()->paginate(15),
-            'totalRevenue' => $this->filteredQuery()->sum('total'),
-            'totalOwed' => SimSale::query()
-                ->where('payment_status', '!=', PaymentStatus::Paid->value)
-                ->get()
-                ->sum(fn (SimSale $sale) => $sale->amountOwed()),
+            'sales' => $report->query()->with('customer')->latest()->paginate(15),
+            'totalRevenue' => $report->totalRevenue(),
+            'totalOwed' => $report->totalOwed(),
             'allNetworks' => Network::query()->orderBy('name')->pluck('name'),
             'networksByName' => Network::query()->get()->keyBy('name'),
             'paymentStatuses' => PaymentStatus::cases(),

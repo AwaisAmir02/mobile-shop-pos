@@ -4,6 +4,7 @@ use App\Enums\PaymentStatus;
 use App\Livewire\Concerns\Toasts;
 use App\Models\BalanceLoad;
 use App\Models\Network;
+use App\ReportQueries\BalanceLoadReport;
 use App\Services\BalanceLoadReceiptPdfService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -37,24 +38,20 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
         $this->resetPage();
     }
 
-    protected function filteredQuery()
+    protected function report(): BalanceLoadReport
     {
-        return BalanceLoad::query()
-            ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
-            ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
-            ->when($this->paymentStatusFilter, fn ($query) => $query->where('payment_status', $this->paymentStatusFilter));
+        return new BalanceLoadReport($this->from, $this->to, $this->paymentStatusFilter);
     }
 
     public function with(): array
     {
+        $report = $this->report();
+
         return [
-            'loads' => $this->filteredQuery()->with('customer')->latest()->paginate(15),
-            'totalLoaded' => $this->filteredQuery()->sum('amount'),
-            'totalFees' => $this->filteredQuery()->sum('fee') - $this->filteredQuery()->sum('discount'),
-            'totalOwed' => BalanceLoad::query()
-                ->where('payment_status', '!=', PaymentStatus::Paid->value)
-                ->get()
-                ->sum(fn (BalanceLoad $load) => $load->amountOwed()),
+            'loads' => $report->query()->with('customer')->latest()->paginate(15),
+            'totalLoaded' => $report->totalLoaded(),
+            'totalFees' => $report->totalFees(),
+            'totalOwed' => $report->totalOwed(),
             'networksByName' => Network::query()->get()->keyBy('name'),
             'paymentStatuses' => PaymentStatus::cases(),
         ];

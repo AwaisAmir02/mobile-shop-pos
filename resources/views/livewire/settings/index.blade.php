@@ -11,6 +11,7 @@ use App\Models\BalanceLoad;
 use App\Models\BillCategory;
 use App\Models\BillPayment;
 use App\Models\BillProvider;
+use App\Models\Brand;
 use App\Models\MainCategory;
 use App\Models\Network;
 use App\Models\Product;
@@ -42,6 +43,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public string $accessoryCategoryMainCategoryId = '';
     public $accessoryCategoryImage = null;
     public ?string $accessoryCategoryExistingImageUrl = null;
+
+    // Brands
+    public ?int $brandEditingId = null;
+    public string $brandName = '';
 
     // Networks
     public ?int $networkEditingId = null;
@@ -110,6 +115,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             $tabs[] = 'accessory-categories';
         }
 
+        if (Auth::user()->hasAccessTo('settings-brands')) {
+            $tabs[] = 'brands';
+        }
+
         if (Auth::user()->hasAccessTo('settings-networks')) {
             $tabs[] = 'networks';
         }
@@ -157,6 +166,9 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 : collect(),
             'accessoryCategories' => in_array('accessory-categories', $accessible, true)
                 ? AccessoryCategoryOption::query()->with('mainCategory')->orderBy('name')->get()
+                : collect(),
+            'brands' => in_array('brands', $accessible, true)
+                ? Brand::query()->orderBy('name')->get()
                 : collect(),
             'networks' => in_array('networks', $accessible, true)
                 ? Network::query()->orderBy('name')->get()
@@ -342,6 +354,69 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     {
         $this->dispatch('close-modal', name: 'accessory-category-form');
         $this->reset(['accessoryCategoryEditingId', 'accessoryCategoryName', 'accessoryCategoryMainCategoryId', 'accessoryCategoryImage', 'accessoryCategoryExistingImageUrl']);
+    }
+
+    // ── Brands ───────────────────────────────────────────────────────
+
+    public function openBrandCreate(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings-brands'), 403);
+
+        $this->reset(['brandEditingId', 'brandName']);
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'brand-form');
+    }
+
+    public function openBrandEdit(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings-brands'), 403);
+
+        $brand = Brand::findOrFail($id);
+
+        $this->brandEditingId = $brand->id;
+        $this->brandName = $brand->name;
+
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'brand-form');
+    }
+
+    public function saveBrand(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings-brands'), 403);
+
+        $this->validate([
+            'brandName' => ['required', 'string', 'max:255', Rule::unique('brands', 'name')->where('shop_id', Auth::user()->shop_id)->ignore($this->brandEditingId)],
+        ]);
+
+        $brand = $this->brandEditingId ? Brand::findOrFail($this->brandEditingId) : new Brand;
+        $brand->name = $this->brandName;
+        $brand->save();
+
+        $this->toastSuccess($this->brandEditingId ? 'Brand updated.' : 'Brand added.');
+        $this->dispatch('close-modal', name: 'brand-form');
+        $this->reset(['brandEditingId', 'brandName']);
+    }
+
+    public function deleteBrand(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings-brands'), 403);
+
+        $brand = Brand::findOrFail($id);
+
+        if (Product::where('details->brand', $brand->name)->exists()) {
+            $this->toastError("Cannot delete \"{$brand->name}\" — it's used on existing products.");
+
+            return;
+        }
+
+        $brand->delete();
+        $this->toastSuccess('Brand deleted.');
+    }
+
+    public function closeBrandForm(): void
+    {
+        $this->dispatch('close-modal', name: 'brand-form');
+        $this->reset(['brandEditingId', 'brandName']);
     }
 
     // ── Networks ─────────────────────────────────────────────────────
@@ -736,6 +811,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     @php
         $tabLabels = [
             'accessory-categories' => 'Categories',
+            'brands' => 'Brands',
             'networks' => 'Networks',
             'shop-accounts' => 'Shop Accounts',
             'bills' => 'Bills',
@@ -862,6 +938,52 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 @endif
             </x-ui.card>
         </div>
+    @elseif ($tab === 'brands')
+        <x-ui.card title="Brands" description="Manage the brands available when adding a Mobile Phone product.">
+            <x-slot name="actions">
+                <x-ui.button size="sm" wire:click="openBrandCreate">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Add Brand
+                </x-ui.button>
+            </x-slot>
+
+            @if ($brands->isEmpty())
+                <x-ui.empty-state
+                    title="No brands yet"
+                    description="Add Samsung, Apple, Infinix, or any other brand your shop sells."
+                >
+                    <x-slot name="action">
+                        <x-ui.button wire:click="openBrandCreate">Add Brand</x-ui.button>
+                    </x-slot>
+                </x-ui.empty-state>
+            @else
+                <x-ui.table :headers="['Brand', '']">
+                    @foreach ($brands as $brand)
+                        <x-ui.table-row wire:key="brand-{{ $brand->id }}">
+                            <x-ui.table-cell class="font-medium text-slate-900">{{ $brand->name }}</x-ui.table-cell>
+                            <x-ui.table-cell align="right">
+                                <div class="flex justify-end gap-2">
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openBrandEdit({{ $brand->id }})">
+                                        Edit
+                                    </x-ui.button>
+                                    <x-ui.button
+                                        size="sm"
+                                        variant="ghost"
+                                        wire:click="deleteBrand({{ $brand->id }})"
+                                        wire:confirm="Delete {{ $brand->name }}?"
+                                        class="text-red-600 hover:bg-red-50"
+                                    >
+                                        Delete
+                                    </x-ui.button>
+                                </div>
+                            </x-ui.table-cell>
+                        </x-ui.table-row>
+                    @endforeach
+                </x-ui.table>
+            @endif
+        </x-ui.card>
     @elseif ($tab === 'networks')
         <x-ui.card title="Networks" description="Manage the networks available on the Balance Load screen.">
             <x-slot name="actions">
@@ -1232,6 +1354,30 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveAccessoryCategory">
                     {{ $accessoryCategoryEditingId ? 'Save Changes' : 'Add Sub-Category' }}
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="brand-form" max-width="sm">
+        <form wire:submit="saveBrand" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">
+                {{ $brandEditingId ? 'Edit Brand' : 'Add Brand' }}
+            </h2>
+
+            <div class="mt-5 space-y-5">
+                <x-ui.field label="Brand Name" name="brandName" for="brandName">
+                    <x-ui.input wire:model="brandName" id="brandName" placeholder="e.g. Samsung" autofocus />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeBrandForm">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveBrand">
+                    {{ $brandEditingId ? 'Save Changes' : 'Add Brand' }}
                 </x-ui.button>
             </div>
         </form>

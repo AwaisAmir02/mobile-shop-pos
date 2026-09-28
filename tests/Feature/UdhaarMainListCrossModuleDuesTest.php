@@ -24,8 +24,10 @@ use Tests\TestCase;
  * has, say, a partial Sale was unreachable from this screen entirely —
  * even though their per-customer page's "Other Amounts Owed" section
  * already knew how to show and settle it. These tests confirm every
- * source now makes a customer reachable here, while the "Total
- * Outstanding" figure stays scoped to real Udhaar balances only.
+ * source now makes a customer reachable here, and that the headline
+ * "Balance"/"Total Outstanding" figures combine the real Udhaar loan
+ * balance with every other-source due, exactly like the per-customer
+ * page's own headline balance.
  */
 class UdhaarMainListCrossModuleDuesTest extends TestCase
 {
@@ -48,10 +50,14 @@ class UdhaarMainListCrossModuleDuesTest extends TestCase
         $sale = Sale::create(['shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $customer->id, 'subtotal' => 1000, 'discount_amount' => 0, 'total' => 1000]);
         $sale->payments()->create(['user_id' => $owner->id, 'amount' => 200, 'payment_date' => now()->toDateString()]);
 
+        // No real Udhaar loan, but Rs 800 still owed on the sale — the
+        // combined headline balance now reflects that as "Due", not
+        // "Settled" (settled would incorrectly suggest nothing is owed).
         Livewire::test('udhaar.index')
             ->assertSee('Bilal Khan')
             ->assertSee('Other Dues')
-            ->assertSee('Settled');
+            ->assertViewHas('rows', fn ($rows) => $rows->firstWhere('customer.id', $customer->id)['balance'] === 800.0
+                && $rows->firstWhere('customer.id', $customer->id)['status'] === 'due');
     }
 
     public function test_a_customer_with_no_udhaar_activity_but_a_partial_sim_sale_appears_on_the_main_list(): void
@@ -174,7 +180,7 @@ class UdhaarMainListCrossModuleDuesTest extends TestCase
             ->assertViewHas('rows', fn ($rows) => ! $rows->pluck('customer.id')->contains($customer->id));
     }
 
-    public function test_total_outstanding_stays_scoped_to_actual_udhaar_loans_and_is_unaffected_by_cross_module_dues(): void
+    public function test_total_outstanding_combines_real_udhaar_loans_with_every_customers_cross_module_dues(): void
     {
         [$shop, $owner, $customer] = $this->shopAndCustomer();
         $otherCustomer = Customer::create(['shop_id' => $shop->id, 'name' => 'Sana Malik']);
@@ -185,19 +191,18 @@ class UdhaarMainListCrossModuleDuesTest extends TestCase
             'user_id' => $owner->id, 'type' => 'given', 'amount' => 5000, 'transaction_date' => now()->toDateString(),
         ]);
 
-        // ...and a large cross-module due for a different customer, which
-        // must never leak into the Udhaar-only total.
+        // ...and a cross-module due for a different customer — both now
+        // count toward the combined Total Outstanding figure.
         BalanceLoad::create([
             'shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $otherCustomer->id,
-            'network' => 'Jazz', 'load_type' => 'balance', 'amount' => 999999, 'total' => 999999,
+            'network' => 'Jazz', 'load_type' => 'balance', 'amount' => 1000, 'total' => 1000,
             'payment_status' => 'unpaid', 'amount_paid' => 0,
         ]);
 
         Livewire::test('udhaar.index')
             ->assertSee('Bilal Khan')
             ->assertSee('Sana Malik')
-            ->assertViewHas('totalDue', 5000.0)
-            ->assertDontSee('Rs 1,004,999.00');
+            ->assertViewHas('totalDue', 6000.0);
     }
 
     public function test_a_customer_with_other_dues_still_links_to_their_full_per_customer_page(): void

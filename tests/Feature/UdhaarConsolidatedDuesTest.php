@@ -154,9 +154,10 @@ class UdhaarConsolidatedDuesTest extends TestCase
             ->assertSee('Rs 700.00');
     }
 
-    // ── No combined figure is ever rendered ──────────────────────────
+    // ── The headline balance combines the loan with every other due,
+    //    while the itemized list below it still shows each one separately ──
 
-    public function test_no_combined_total_across_sources_is_rendered(): void
+    public function test_the_headline_balance_combines_other_modules_dues_when_there_is_no_real_udhaar_loan(): void
     {
         [$shop, $owner, $customer] = $this->shopAndCustomer();
 
@@ -165,9 +166,15 @@ class UdhaarConsolidatedDuesTest extends TestCase
 
         $this->actingAs($owner);
 
-        // 300 + 200 = 500 — this combined figure must never appear anywhere.
+        // 300 + 200 = 500 is now the headline Current Balance, while the
+        // itemized list below still shows each of the two sources on its
+        // own row with its own amount, never merged into a single line.
         Livewire::test('udhaar.show', ['customer' => $customer])
-            ->assertDontSee('Rs 500.00');
+            ->assertViewHas('balance', 500.0)
+            ->assertViewHas('status', 'due')
+            ->assertSee('Balance Load')
+            ->assertSee('Wallet Load')
+            ->assertViewHas('dues', fn ($dues) => $dues->sum('amountDue') === 500.0 && $dues->count() === 2);
     }
 
     // ── Settling a due item updates the real underlying record ───────
@@ -274,7 +281,7 @@ class UdhaarConsolidatedDuesTest extends TestCase
 
     // ── Coexistence with the Udhaar ledger itself ────────────────────
 
-    public function test_the_udhaar_ledger_balance_is_unaffected_by_other_modules_dues(): void
+    public function test_the_headline_balance_combines_a_real_udhaar_loan_with_other_modules_dues(): void
     {
         [$shop, $owner, $customer] = $this->shopAndCustomer();
 
@@ -289,9 +296,56 @@ class UdhaarConsolidatedDuesTest extends TestCase
             'payment_status' => 'unpaid', 'amount_paid' => 0,
         ]);
 
+        // 9,000 real loan + 500 other-source due = 9,500 headline balance —
+        // the ledger table's own per-transaction running balance (still
+        // 9,000, since it's the loan alone) is untouched by this.
         Livewire::test('udhaar.show', ['customer' => $customer])
-            ->assertViewHas('balance', 9000.0)
+            ->assertViewHas('balance', 9500.0)
+            ->assertSee('Rs 9,500.00')
             ->assertSee('Rs 9,000.00')
             ->assertSee('Other Amounts Owed');
+    }
+
+    public function test_settling_the_other_modules_due_reduces_the_headline_balance_by_exactly_that_amount(): void
+    {
+        [$shop, $owner, $customer] = $this->shopAndCustomer();
+        $load = BalanceLoad::create([
+            'shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $customer->id,
+            'network' => 'Jazz', 'load_type' => 'balance', 'amount' => 500, 'total' => 500,
+            'payment_status' => 'unpaid', 'amount_paid' => 0,
+        ]);
+
+        $this->actingAs($owner);
+
+        $customer->udhaarTransactions()->create([
+            'user_id' => $owner->id, 'type' => 'given', 'amount' => 1000, 'transaction_date' => now()->toDateString(),
+        ]);
+
+        Livewire::test('udhaar.show', ['customer' => $customer])
+            ->assertViewHas('balance', 1500.0)
+            ->call('openSettleDue', 'balance_load', $load->id)
+            ->set('dueSettleAmount', '500')
+            ->call('submitDueSettlement')
+            ->assertHasNoErrors();
+
+        Livewire::test('udhaar.show', ['customer' => $customer])
+            ->assertViewHas('balance', 1000.0);
+    }
+
+    public function test_a_customer_with_zero_udhaar_loan_activity_still_shows_the_correct_combined_balance(): void
+    {
+        [$shop, $owner, $customer] = $this->shopAndCustomer();
+
+        BalanceLoad::create([
+            'shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $customer->id,
+            'network' => 'Jazz', 'load_type' => 'balance', 'amount' => 500, 'total' => 500,
+            'payment_status' => 'unpaid', 'amount_paid' => 0,
+        ]);
+
+        $this->actingAs($owner);
+
+        Livewire::test('udhaar.show', ['customer' => $customer])
+            ->assertViewHas('balance', 500.0)
+            ->assertViewHas('status', 'due');
     }
 }

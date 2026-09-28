@@ -26,6 +26,7 @@ enum ShopScreen: string
     case SettingsNetworks = 'settings-networks';
     case SettingsBillConfig = 'settings-bill-config';
     case SettingsPercentage = 'settings-percentage';
+    case SettingsBrands = 'settings-brands';
 
     public function label(): string
     {
@@ -52,6 +53,7 @@ enum ShopScreen: string
             self::SettingsNetworks => 'Settings: Networks',
             self::SettingsBillConfig => 'Settings: Bill Providers',
             self::SettingsPercentage => 'Settings: Percentage',
+            self::SettingsBrands => 'Settings: Brands',
         };
     }
 
@@ -80,6 +82,7 @@ enum ShopScreen: string
             self::SettingsNetworks => 'settings.index',
             self::SettingsBillConfig => 'settings.index',
             self::SettingsPercentage => 'settings.index',
+            self::SettingsBrands => 'settings.index',
         };
     }
 
@@ -98,7 +101,7 @@ enum ShopScreen: string
             'Inventory & Sales' => [self::StockIns, self::Sales, self::SimSales],
             'Financial Services' => [self::BalanceLoads, self::WalletLoads, self::Bills, self::Repairs, self::NadraVerifications, self::Udhaar, self::Expenses],
             'Administration' => [self::Users, self::ShopAccounts],
-            'Settings' => [self::Settings, self::SettingsCategories, self::SettingsNetworks, self::SettingsBillConfig, self::SettingsPercentage],
+            'Settings' => [self::Settings, self::SettingsCategories, self::SettingsNetworks, self::SettingsBillConfig, self::SettingsPercentage, self::SettingsBrands],
         ];
     }
 }

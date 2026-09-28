@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\Sale;
 use App\Models\Shop;
 use App\Models\User;
+use App\ReportQueries\SalesReport;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -23,19 +24,15 @@ use Tests\TestCase;
  * classes — these prove the mechanism itself is correct. Per-screen tests
  * only need to confirm each screen wires its own filters/columns in
  * correctly, not re-prove the export machinery.
+ *
+ * Row/summary building lives in App\ReportQueries\SalesReport (shared with
+ * the Reports screen) rather than on the sales.history component itself,
+ * so these are constructed directly instead of via reflection into the
+ * Livewire component.
  */
 class TableExportTest extends TestCase
 {
     use RefreshDatabase;
-
-    /** Invokes a protected/private method on a Livewire component instance directly. */
-    protected function callProtected(object $instance, string $method, array $args = [])
-    {
-        $reflection = new \ReflectionMethod($instance, $method);
-        $reflection->setAccessible(true);
-
-        return $reflection->invokeArgs($instance, $args);
-    }
 
     public function test_sales_history_export_with_a_date_filter_only_includes_matching_rows(): void
     {
@@ -54,16 +51,13 @@ class TableExportTest extends TestCase
 
         $this->actingAs($owner);
 
-        $component = Livewire::test('sales.history')
-            ->set('from', '2026-09-01')
-            ->set('to', '2026-09-30');
-
-        $rows = $this->callProtected($component->instance(), 'exportRows', [false]);
+        $report = new SalesReport('2026-09-01', '2026-09-30');
+        $rows = $report->tableRows(forExcel: false);
 
         $this->assertCount(1, $rows);
         $this->assertSame('Rs 100.00', $rows[0][4]);
 
-        $summary = $this->callProtected($component->instance(), 'exportFiltersSummary');
+        $summary = $report->filtersSummary();
         $this->assertStringContainsString('01 Sep 2026', $summary);
         $this->assertStringContainsString('30 Sep 2026', $summary);
     }
@@ -78,13 +72,11 @@ class TableExportTest extends TestCase
 
         $this->actingAs($owner);
 
-        $component = Livewire::test('sales.history');
-
-        $rows = $this->callProtected($component->instance(), 'exportRows', [false]);
+        $report = new SalesReport;
+        $rows = $report->tableRows(forExcel: false);
         $this->assertCount(2, $rows);
 
-        $summary = $this->callProtected($component->instance(), 'exportFiltersSummary');
-        $this->assertSame('All records', $summary);
+        $this->assertSame('All records', $report->filtersSummary());
     }
 
     public function test_exporting_to_pdf_and_excel_produces_a_downloadable_response(): void
@@ -150,8 +142,7 @@ class TableExportTest extends TestCase
 
         $this->actingAs($ownerA);
 
-        $component = Livewire::test('sales.history');
-        $rows = $this->callProtected($component->instance(), 'exportRows', [false]);
+        $rows = (new SalesReport)->tableRows(forExcel: false);
 
         $this->assertCount(1, $rows);
         $this->assertSame('Rs 100.00', $rows[0][4]);
@@ -187,7 +178,7 @@ class TableExportTest extends TestCase
         $this->actingAs($owner);
 
         $component = Livewire::test('sales.history');
-        $rows = $this->callProtected($component->instance(), 'exportRows', [false]);
+        $rows = (new SalesReport)->tableRows(forExcel: false);
         $this->assertCount(150, $rows);
 
         $pdfResponse = $component->call('exportPdf');

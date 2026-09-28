@@ -275,7 +275,13 @@ class BillPaymentTest extends TestCase
         $this->get(route('bills.index'))->assertForbidden();
     }
 
-    public function test_bills_revenue_appears_as_its_own_line_in_reports(): void
+    /**
+     * Reports was reworked into a per-screen picker (see ReportsScreenTest)
+     * and no longer computes this cross-module aggregate — the Dashboard
+     * is the surviving screen that still shows every module's revenue via
+     * the same, unchanged ShopReportService::summary().
+     */
+    public function test_bills_revenue_appears_as_its_own_line_on_the_dashboard(): void
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
@@ -287,7 +293,7 @@ class BillPaymentTest extends TestCase
 
         $this->actingAs($owner);
 
-        Livewire::test('reports.index')
+        Livewire::test('dashboard.index')
             ->set('day', $today)
             ->assertViewHas('totalBillsCollected', 5000.0)
             ->assertViewHas('totalBillsFeeRevenue', 100.0)

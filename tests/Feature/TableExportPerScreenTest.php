@@ -9,6 +9,8 @@ use App\Models\Sale;
 use App\Models\Shop;
 use App\Models\StockIn;
 use App\Models\User;
+use App\ReportQueries\StockInReport;
+use App\ReportQueries\UdhaarReport;
 use App\Services\ShopReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -45,8 +47,7 @@ class TableExportPerScreenTest extends TestCase
 
         $this->actingAs($owner);
 
-        $component = Livewire::test('stock-ins.history')->set('paymentStatusFilter', 'unpaid');
-        $rows = $this->callProtected($component->instance(), 'exportRows', [false]);
+        $rows = (new StockInReport(paymentStatusFilter: 'unpaid'))->tableRows(forExcel: false);
 
         $this->assertCount(1, $rows);
         $this->assertSame('Unpaid Item', $rows[0][1]);
@@ -62,12 +63,12 @@ class TableExportPerScreenTest extends TestCase
 
         $this->actingAs($owner);
 
-        $component = Livewire::test('stock-ins.history');
-        $rows = $this->callProtected($component->instance(), 'exportRows', [false]);
-        $summary = $this->callProtected($component->instance(), 'exportFiltersSummary');
+        $report = new StockInReport;
+        $rows = $report->tableRows(forExcel: false);
+        $summary = $report->filtersSummary();
 
         $this->assertCount(2, $rows);
-        $this->assertSame(['All records'], $summary);
+        $this->assertSame('All records', $summary);
     }
 
     public function test_a_role_without_stock_ins_access_cannot_reach_stock_in_history(): void
@@ -93,8 +94,7 @@ class TableExportPerScreenTest extends TestCase
 
         $customer->udhaarTransactions()->create(['user_id' => $owner->id, 'type' => 'given', 'amount' => 5000, 'transaction_date' => now()->toDateString()]);
 
-        $component = Livewire::test('udhaar.index');
-        $rows = $this->callProtected($component->instance(), 'exportRows', [false]);
+        $rows = (new UdhaarReport)->tableRows(forExcel: false);
 
         $this->assertCount(1, $rows);
         $this->assertSame('Bilal Khan', $rows[0][0]);

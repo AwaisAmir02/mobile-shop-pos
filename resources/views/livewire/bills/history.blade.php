@@ -5,6 +5,7 @@ use App\Livewire\Concerns\Toasts;
 use App\Models\BillCategory;
 use App\Models\BillPayment;
 use App\Models\BillProvider;
+use App\ReportQueries\BillReport;
 use App\Services\BillPaymentReceiptPdfService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -51,25 +52,19 @@ new #[Layout('layouts.app')] #[Title('Bill Payment History')] class extends Comp
         $this->resetPage();
     }
 
-    protected function filteredQuery()
+    protected function report(): BillReport
     {
-        return BillPayment::query()
-            ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
-            ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
-            ->when($this->billCategoryId, fn ($query) => $query->where('bill_category_id', $this->billCategoryId))
-            ->when($this->billProviderId, fn ($query) => $query->where('bill_provider_id', $this->billProviderId))
-            ->when($this->paymentStatusFilter, fn ($query) => $query->where('payment_status', $this->paymentStatusFilter));
+        return new BillReport($this->from, $this->to, $this->billCategoryId, $this->billProviderId, $this->paymentStatusFilter);
     }
 
     public function with(): array
     {
+        $report = $this->report();
+
         return [
-            'payments' => $this->filteredQuery()->with(['billCategory', 'billProvider', 'customer', 'shopAccount'])->latest()->paginate(15),
-            'totalCollected' => $this->filteredQuery()->sum('total'),
-            'totalOwed' => BillPayment::query()
-                ->where('payment_status', '!=', PaymentStatus::Paid->value)
-                ->get()
-                ->sum(fn (BillPayment $payment) => $payment->amountOwed()),
+            'payments' => $report->query()->with(['billCategory', 'billProvider', 'customer', 'shopAccount'])->latest()->paginate(15),
+            'totalCollected' => $report->totalCollected(),
+            'totalOwed' => $report->totalOwed(),
             'allCategories' => BillCategory::query()->orderBy('name')->get(),
             'allProviders' => BillProvider::query()
                 ->when($this->billCategoryId, fn ($query) => $query->where('bill_category_id', $this->billCategoryId))

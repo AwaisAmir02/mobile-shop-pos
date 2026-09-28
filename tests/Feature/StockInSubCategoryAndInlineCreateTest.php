@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AccessoryCategoryOption;
+use App\Models\Brand;
 use App\Models\MainCategory;
 use App\Models\Product;
 use App\Models\Shop;
@@ -188,6 +189,7 @@ class StockInSubCategoryAndInlineCreateTest extends TestCase
         $shopA = Shop::create(['name' => 'Shop A']);
         $shopB = Shop::create(['name' => 'Shop B']);
         $ownerA = User::factory()->create(['shop_id' => $shopA->id]);
+        Brand::create(['shop_id' => $shopA->id, 'name' => 'Samsung']);
 
         $this->actingAs($ownerA);
 

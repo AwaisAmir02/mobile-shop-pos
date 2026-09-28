@@ -259,5 +259,6 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
 
     <livewire:main-categories.quick-create />
     <livewire:accessory-categories.quick-create :default-main-category-slug="$categoryFilter" />
+    <livewire:brands.quick-create />
     <livewire:products.quick-create :default-main-category-slug="$categoryFilter" />
 </div>

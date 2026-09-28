@@ -5,6 +5,7 @@ use App\Enums\WalletLoadDirection;
 use App\Livewire\Concerns\Toasts;
 use App\Models\ShopAccount;
 use App\Models\WalletLoad;
+use App\ReportQueries\WalletLoadReport;
 use App\Services\WalletLoadReceiptPdfService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -61,39 +62,21 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
         $this->resetPage();
     }
 
-    protected function filteredQuery()
+    protected function report(): WalletLoadReport
     {
-        return WalletLoad::query()
-            ->where('direction', $this->tab)
-            ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
-            ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
-            ->when($this->provider, fn ($query) => $query->where('provider', $this->provider))
-            ->when($this->shopAccountId, fn ($query) => $query->where('shop_account_id', $this->shopAccountId))
-            ->when($this->paymentStatusFilter, fn ($query) => $query->where('payment_status', $this->paymentStatusFilter));
+        return new WalletLoadReport($this->tab, $this->from, $this->to, $this->provider, $this->shopAccountId, $this->paymentStatusFilter);
     }
 
     public function with(): array
     {
+        $report = $this->report();
+
         return [
-            'loads' => $this->filteredQuery()->latest()->paginate(15),
-            'totalLoaded' => $this->filteredQuery()->sum('amount'),
-            'totalFees' => $this->filteredQuery()->sum('fee') - $this->filteredQuery()->sum('discount'),
-            // A running balance, like every other module's "Total Owed" —
-            // deliberately not scoped to the from/to/provider/account
-            // filters above (those describe which rows to list, not which
-            // ones still owe money), but IS scoped to the active tab: Cash
-            // Out's shortfall is a shop liability, not a customer
-            // receivable, and must never be summed together with Cash In's.
-            'totalOwed' => WalletLoad::query()
-                ->where('direction', $this->tab)
-                ->where('payment_status', '!=', PaymentStatus::Paid->value)
-                ->get()
-                ->sum(fn (WalletLoad $load) => $load->amountOwed()),
-            'providerTotals' => $this->filteredQuery()
-                ->selectRaw('provider, SUM(amount) as total')
-                ->groupBy('provider')
-                ->orderByDesc('total')
-                ->get(),
+            'loads' => $report->query()->latest()->paginate(15),
+            'totalLoaded' => $report->totalLoaded(),
+            'totalFees' => $report->totalFees(),
+            'totalOwed' => $report->totalOwed(),
+            'providerTotals' => $report->providerTotals(),
             'allProviders' => WalletLoad::query()
                 ->where('direction', $this->tab)
                 ->whereNotNull('provider')

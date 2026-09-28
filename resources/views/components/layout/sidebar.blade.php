@@ -20,7 +20,7 @@
             ['label' => 'Stock In', 'route' => 'stock-ins.index', 'icon' => 'stock-in', 'permission' => 'stock-ins'],
             ['label' => 'Customers', 'route' => 'customers.index', 'icon' => 'customers', 'permission' => 'customers'],
             ['label' => 'Repairs', 'route' => 'repairs.index', 'icon' => 'wrench', 'permission' => 'repairs'],
-            // ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'permission' => 'reports'],
+            ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'permission' => 'reports'],
             ['label' => 'Party Ledger', 'route' => 'party-ledger.index', 'icon' => 'ledger', 'permission' => 'party-ledger'],
             ['label' => 'Team', 'route' => 'users.index', 'icon' => 'users', 'permission' => 'users'],
             ['label' => 'Settings', 'route' => 'settings.index', 'icon' => 'cog', 'permission' => ['settings', 'users']],

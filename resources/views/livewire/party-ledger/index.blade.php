@@ -1,5 +1,7 @@
 <?php
 
+use App\Livewire\Concerns\GuardsExportSize;
+use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\Models\NadraVerification;
 use App\Models\Sale;
@@ -17,6 +19,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
 {
+    use GuardsExportSize, Toasts;
+
     public string $periodType = 'day';
     public string $day = '';
     public string $month = '';
@@ -167,90 +171,93 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
         ];
     }
 
-    public function exportPdf(ShopReportService $reports, TableExportService $exportService): StreamedResponse
+    public function exportPdf(ShopReportService $reports, TableExportService $exportService): ?StreamedResponse
     {
-        $sections = $this->exportSections($reports, forExcel: false);
+        return $this->guardExportSize(function () use ($reports, $exportService) {
+            $sections = $this->exportSections($reports, forExcel: false);
 
-        return $exportService->toPdfSections(
-            'Party Ledger',
-            Auth::user()->shop->name,
-            'Period: '.$this->periodLabel().' ('.ucfirst($this->periodType).')',
-            array_map(fn (array $s) => ['title' => $s['title'], 'headers' => $s['headers'], 'rows' => $s['rows']], $sections),
-        );
+            return $exportService->toPdfSections(
+                'Party Ledger',
+                Auth::user()->shop->name,
+                'Period: '.$this->periodLabel().' ('.ucfirst($this->periodType).')',
+                array_map(fn (array $s) => ['title' => $s['title'], 'headers' => $s['headers'], 'rows' => $s['rows']], $sections),
+            );
+        });
     }
 
-    public function exportExcel(ShopReportService $reports, TableExportService $exportService): BinaryFileResponse
+    public function exportExcel(ShopReportService $reports, TableExportService $exportService): ?BinaryFileResponse
     {
-        return $exportService->toExcelSections(
+        return $this->guardExportSize(fn () => $exportService->toExcelSections(
             'Party Ledger',
             Auth::user()->shop->name,
             'Period: '.$this->periodLabel().' ('.ucfirst($this->periodType).')',
             $this->exportSections($reports, forExcel: true),
-        );
+        ));
     }
 }; ?>
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Party Ledger</h1>
-            <x-ui.export-dropdown />
-        </div>
+        <h1 class="text-xl font-semibold text-slate-900">Party Ledger</h1>
     </x-slot>
 
-    <div class="mb-6 flex flex-wrap items-end gap-4">
-        <div>
-            <x-ui.label value="Period" />
-            <div class="mt-1.5 inline-flex rounded-lg border border-slate-300 p-1">
-                <button
-                    type="button"
-                    wire:click="setPeriodType('day')"
-                    @class([
-                        'rounded-md px-3 py-1.5 text-sm font-medium transition',
-                        'bg-brand-600 text-white' => $periodType === 'day',
-                        'text-slate-600 hover:text-slate-900' => $periodType !== 'day',
-                    ])
-                >
-                    Day
-                </button>
-                <button
-                    type="button"
-                    wire:click="setPeriodType('month')"
-                    @class([
-                        'rounded-md px-3 py-1.5 text-sm font-medium transition',
-                        'bg-brand-600 text-white' => $periodType === 'month',
-                        'text-slate-600 hover:text-slate-900' => $periodType !== 'month',
-                    ])
-                >
-                    Month
-                </button>
-                <button
-                    type="button"
-                    wire:click="setPeriodType('year')"
-                    @class([
-                        'rounded-md px-3 py-1.5 text-sm font-medium transition',
-                        'bg-brand-600 text-white' => $periodType === 'year',
-                        'text-slate-600 hover:text-slate-900' => $periodType !== 'year',
-                    ])
-                >
-                    Year
-                </button>
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div class="flex flex-wrap items-end gap-4">
+            <div>
+                <x-ui.label value="Period" />
+                <div class="mt-1.5 inline-flex rounded-lg border border-slate-300 p-1">
+                    <button
+                        type="button"
+                        wire:click="setPeriodType('day')"
+                        @class([
+                            'rounded-md px-3 py-1.5 text-sm font-medium transition',
+                            'bg-brand-600 text-white' => $periodType === 'day',
+                            'text-slate-600 hover:text-slate-900' => $periodType !== 'day',
+                        ])
+                    >
+                        Day
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="setPeriodType('month')"
+                        @class([
+                            'rounded-md px-3 py-1.5 text-sm font-medium transition',
+                            'bg-brand-600 text-white' => $periodType === 'month',
+                            'text-slate-600 hover:text-slate-900' => $periodType !== 'month',
+                        ])
+                    >
+                        Month
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="setPeriodType('year')"
+                        @class([
+                            'rounded-md px-3 py-1.5 text-sm font-medium transition',
+                            'bg-brand-600 text-white' => $periodType === 'year',
+                            'text-slate-600 hover:text-slate-900' => $periodType !== 'year',
+                        ])
+                    >
+                        Year
+                    </button>
+                </div>
             </div>
+
+            @if ($periodType === 'day')
+                <x-ui.field label="Date" name="day" for="day">
+                    <x-ui.input wire:model.live="day" id="day" type="date" />
+                </x-ui.field>
+            @elseif ($periodType === 'month')
+                <x-ui.field label="Month" name="month" for="month">
+                    <x-ui.input wire:model.live="month" id="month" type="month" />
+                </x-ui.field>
+            @else
+                <x-ui.field label="Year" name="year" for="year">
+                    <x-ui.input wire:model.live="year" id="year" type="number" min="2000" max="2100" class="w-28" />
+                </x-ui.field>
+            @endif
         </div>
 
-        @if ($periodType === 'day')
-            <x-ui.field label="Date" name="day" for="day">
-                <x-ui.input wire:model.live="day" id="day" type="date" />
-            </x-ui.field>
-        @elseif ($periodType === 'month')
-            <x-ui.field label="Month" name="month" for="month">
-                <x-ui.input wire:model.live="month" id="month" type="month" />
-            </x-ui.field>
-        @else
-            <x-ui.field label="Year" name="year" for="year">
-                <x-ui.input wire:model.live="year" id="year" type="number" min="2000" max="2100" class="w-28" />
-            </x-ui.field>
-        @endif
+        <x-ui.export-dropdown />
     </div>
 
     <h2 class="mb-3 text-sm font-semibold text-slate-700">Earnings — {{ $periodLabel }}</h2>

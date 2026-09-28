@@ -210,7 +210,13 @@ class SimSaleTest extends TestCase
         $this->get(route('sim-sales.index'))->assertForbidden();
     }
 
-    public function test_sim_sale_revenue_appears_as_its_own_line_in_reports_separate_from_regular_sales(): void
+    /**
+     * Reports was reworked into a per-screen picker (see ReportsScreenTest)
+     * and no longer computes this cross-module aggregate — the Dashboard
+     * is the surviving screen that still shows every module's revenue via
+     * the same, unchanged ShopReportService::summary().
+     */
+    public function test_sim_sale_revenue_appears_as_its_own_line_on_the_dashboard_separate_from_regular_sales(): void
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
@@ -220,7 +226,7 @@ class SimSaleTest extends TestCase
 
         $this->actingAs($owner);
 
-        Livewire::test('reports.index')
+        Livewire::test('dashboard.index')
             ->set('day', $today)
             ->assertViewHas('totalSimSaleRevenue', 300.0)
             ->assertViewHas('totalSimSalesSold', 1)

@@ -4,6 +4,7 @@ use App\Enums\PaymentStatus;
 use App\Livewire\Concerns\Toasts;
 use App\Models\MainCategory;
 use App\Models\Repair;
+use App\ReportQueries\RepairReport;
 use App\Services\RepairReceiptPdfService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -43,24 +44,19 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
         $this->resetPage();
     }
 
-    protected function filteredQuery()
+    protected function report(): RepairReport
     {
-        return Repair::query()
-            ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
-            ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
-            ->when($this->category, fn ($query) => $query->where('category', $this->category))
-            ->when($this->paymentStatusFilter, fn ($query) => $query->where('payment_status', $this->paymentStatusFilter));
+        return new RepairReport($this->from, $this->to, $this->category, $this->paymentStatusFilter);
     }
 
     public function with(): array
     {
+        $report = $this->report();
+
         return [
-            'repairs' => $this->filteredQuery()->with(['customer', 'mainCategory'])->latest()->paginate(15),
-            'totalCollected' => $this->filteredQuery()->sum('total'),
-            'totalOwed' => Repair::query()
-                ->where('payment_status', '!=', PaymentStatus::Paid->value)
-                ->get()
-                ->sum(fn (Repair $repair) => $repair->amountOwed()),
+            'repairs' => $report->query()->with(['customer', 'mainCategory'])->latest()->paginate(15),
+            'totalCollected' => $report->totalCollected(),
+            'totalOwed' => $report->totalOwed(),
             'categories' => MainCategory::query()->orderBy('name')->get(),
             'paymentStatuses' => PaymentStatus::cases(),
         ];

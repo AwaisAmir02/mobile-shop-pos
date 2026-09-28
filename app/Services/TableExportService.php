@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\ExportTooLargeException;
 use App\Exports\MultiTableExport;
 use App\Exports\TableExport;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -23,6 +24,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class TableExportService
 {
     /**
+     * Above this many rows, rendering a PDF (dompdf) or building an
+     * in-memory spreadsheet (PhpSpreadsheet) synchronously inside a single
+     * web request risks running long/heavy enough to tie up a PHP-FPM
+     * worker and starve unrelated concurrent requests.
+     */
+    public const MAX_ROWS = 5000;
+
+    /**
      * @param  array<int, string>  $headers
      * @param  array<int, array<int, string>>  $rows  Already display-formatted strings — a PDF is purely visual.
      */
@@ -34,6 +43,8 @@ class TableExportService
         array $rows,
         string $orientation = 'landscape',
     ): StreamedResponse {
+        $this->assertWithinLimit(count($rows));
+
         $pdf = Pdf::loadView('pdf.table-export', [
             'title' => $title,
             'shopName' => $shopName,
@@ -62,6 +73,8 @@ class TableExportService
         array $rows,
         array $columnTypes,
     ): BinaryFileResponse {
+        $this->assertWithinLimit(count($rows));
+
         $filename = $this->filename($title, 'xlsx');
 
         return Excel::download(
@@ -84,6 +97,8 @@ class TableExportService
         array $sections,
         string $orientation = 'landscape',
     ): StreamedResponse {
+        $this->assertWithinLimit($this->totalSectionRows($sections));
+
         $pdf = Pdf::loadView('pdf.multi-table-export', [
             'title' => $title,
             'shopName' => $shopName,
@@ -106,6 +121,8 @@ class TableExportService
         string $filtersSummary,
         array $sections,
     ): BinaryFileResponse {
+        $this->assertWithinLimit($this->totalSectionRows($sections));
+
         $filename = $this->filename($title, 'xlsx');
 
         return Excel::download(
@@ -130,5 +147,18 @@ class TableExportService
     protected function filename(string $title, string $extension): string
     {
         return Str::slug($title).'-'.now()->format('Y-m-d-His').'.'.$extension;
+    }
+
+    protected function assertWithinLimit(int $rowCount): void
+    {
+        if ($rowCount > self::MAX_ROWS) {
+            throw ExportTooLargeException::forRowCount($rowCount, self::MAX_ROWS);
+        }
+    }
+
+    /** @param  array<int, array{rows: array<int, mixed>}>  $sections */
+    protected function totalSectionRows(array $sections): int
+    {
+        return array_sum(array_map(fn (array $section) => count($section['rows']), $sections));
     }
 }

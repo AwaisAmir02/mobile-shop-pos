@@ -1,19 +1,11 @@
 <?php
 
 use App\Actions\CreateUdhaarTransaction;
-use App\Enums\PaymentStatus;
+use App\Livewire\Concerns\GuardsExportSize;
 use App\Livewire\Concerns\Toasts;
-use App\Models\BalanceLoad;
-use App\Models\BillPayment;
 use App\Models\Customer;
-use App\Models\NadraVerification;
-use App\Models\Repair;
-use App\Models\Sale;
-use App\Models\SimSale;
-use App\Models\UdhaarTransaction;
-use App\Models\WalletLoad;
+use App\ReportQueries\UdhaarReport;
 use App\Services\TableExportService;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -25,7 +17,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
 {
-    use Toasts;
+    use GuardsExportSize, Toasts;
 
     public string $customerId = '';
     public string $type = 'given';
@@ -38,87 +30,18 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
         $this->transaction_date = now()->toDateString();
     }
 
-    /**
-     * Customer IDs with an outstanding item in any of the non-Udhaar
-     * sources also surfaced on each customer's own consolidated "Other
-     * Amounts Owed" view. A customer who never took an actual Udhaar loan
-     * but has, say, a partial Sale must still be reachable from this list
-     * — otherwise the shop has no way to find their way to the page where
-     * that balance can actually be settled.
-     *
-     * Wallet Load Cash Out is intentionally excluded — its "owed" amount
-     * means the shop owes the customer, not the other way around, matching
-     * the same exclusion already enforced in the per-customer view.
-     *
-     * `payment_status != 'paid'` is used instead of loading every record
-     * and calling amountOwed(): Unpaid rows always have amount_paid = 0
-     * with a positive total, and Partial rows always have amount_paid <
-     * total by construction (the settle actions flip to Paid as soon as
-     * amount_paid reaches total), so the two are equivalent here.
-     */
-    protected function otherDueCustomerIds(): Collection
+    protected function report(): UdhaarReport
     {
-        $unpaidOrPartial = fn ($query) => $query
-            ->whereNotNull('customer_id')
-            ->where('payment_status', '!=', PaymentStatus::Paid->value);
-
-        return collect()
-            ->merge($unpaidOrPartial(WalletLoad::query()->where('direction', 'cash_in'))->pluck('customer_id'))
-            ->merge($unpaidOrPartial(BalanceLoad::query())->pluck('customer_id'))
-            ->merge($unpaidOrPartial(BillPayment::query())->pluck('customer_id'))
-            ->merge($unpaidOrPartial(Repair::query())->pluck('customer_id'))
-            ->merge($unpaidOrPartial(NadraVerification::query())->pluck('customer_id'))
-            ->merge($unpaidOrPartial(SimSale::query())->pluck('customer_id'))
-            ->merge(
-                Sale::query()
-                    ->whereNotNull('customer_id')
-                    ->withSum('payments', 'amount')
-                    ->get()
-                    ->filter(fn (Sale $sale) => $sale->amountDue() > 0)
-                    ->pluck('customer_id')
-            )
-            ->unique()
-            ->values();
-    }
-
-    protected function buildRows(): Collection
-    {
-        $balances = UdhaarTransaction::balancesByCustomer();
-        $otherDueCustomerIds = $this->otherDueCustomerIds();
-        $customerIds = $balances->keys()->merge($otherDueCustomerIds)->unique();
-
-        return Customer::query()
-            ->whereIn('id', $customerIds)
-            ->orderBy('name')
-            ->get()
-            ->map(function (Customer $customer) use ($balances, $otherDueCustomerIds) {
-                $balance = $balances[$customer->id] ?? 0.0;
-
-                return [
-                    'customer' => $customer,
-                    'balance' => $balance,
-                    'status' => match (true) {
-                        $balance > 0 => 'due',
-                        $balance < 0 => 'advance',
-                        default => 'settled',
-                    },
-                    'hasOtherDues' => $otherDueCustomerIds->contains($customer->id),
-                ];
-            })
-            ->sortByDesc('balance')
-            ->values();
+        return new UdhaarReport;
     }
 
     public function with(): array
     {
-        $rows = $this->buildRows();
+        $report = $this->report();
 
         return [
-            'rows' => $rows,
-            // Scoped to actual Udhaar loan balances only, exactly as before —
-            // cross-module dues never feed into this figure, per the
-            // standing rule against combining different kinds of owed money.
-            'totalDue' => $rows->sum(fn ($row) => max($row['balance'], 0)),
+            'rows' => $report->rows(),
+            'totalDue' => $report->totalDue(),
             'customers' => Customer::query()->orderBy('name')->get(),
         ];
     }
@@ -167,45 +90,31 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
         $this->dispatch('close-modal', name: 'quick-transaction-form');
     }
 
-    protected function exportHeaders(): array
+    public function exportPdf(TableExportService $exportService): ?StreamedResponse
     {
-        return ['Customer', 'Phone', 'Balance', 'Status', 'Other Dues'];
-    }
+        $report = $this->report();
 
-    protected function exportRows(bool $forExcel): array
-    {
-        return $this->buildRows()->map(function (array $row) use ($forExcel) {
-            $balance = abs($row['balance']);
-            $status = ucfirst($row['status']);
-            $phone = TableExportService::sanitizeCell($row['customer']->phone ?? '');
-
-            return $forExcel
-                ? [$row['customer']->name, $phone, (float) $balance, $status, $row['hasOtherDues'] ? 'Yes' : 'No']
-                : [$row['customer']->name, $phone ?: '—', 'Rs '.number_format($balance, 2), $status, $row['hasOtherDues'] ? 'Yes' : 'No'];
-        })->all();
-    }
-
-    public function exportPdf(TableExportService $exportService): StreamedResponse
-    {
-        return $exportService->toPdf(
+        return $this->guardExportSize(fn () => $exportService->toPdf(
             'Udhaar',
             Auth::user()->shop->name,
-            'All records',
-            $this->exportHeaders(),
-            $this->exportRows(forExcel: false),
-        );
+            $report->filtersSummary(),
+            $report->tableHeaders(),
+            $report->tableRows(forExcel: false),
+        ));
     }
 
-    public function exportExcel(TableExportService $exportService): BinaryFileResponse
+    public function exportExcel(TableExportService $exportService): ?BinaryFileResponse
     {
-        return $exportService->toExcel(
+        $report = $this->report();
+
+        return $this->guardExportSize(fn () => $exportService->toExcel(
             'Udhaar',
             Auth::user()->shop->name,
-            'All records',
-            $this->exportHeaders(),
-            $this->exportRows(forExcel: true),
-            ['string', 'string', 'currency', 'string', 'string'],
-        );
+            $report->filtersSummary(),
+            $report->tableHeaders(),
+            $report->tableRows(forExcel: true),
+            $report->columnTypes(),
+        ));
     }
 }; ?>
 
