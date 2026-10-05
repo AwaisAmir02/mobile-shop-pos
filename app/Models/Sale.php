@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\SaleStatus;
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Scopes\ExcludesCancelledSalesScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,7 +20,16 @@ class Sale extends Model
         'subtotal',
         'discount_amount',
         'total',
+        'status',
+        'cancelled_at',
+        'cancelled_by',
+        'cancel_reason',
     ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new ExcludesCancelledSalesScope);
+    }
 
     protected function casts(): array
     {
@@ -26,6 +37,8 @@ class Sale extends Model
             'subtotal' => 'decimal:2',
             'discount_amount' => 'decimal:2',
             'total' => 'decimal:2',
+            'status' => SaleStatus::class,
+            'cancelled_at' => 'datetime',
         ];
     }
 
@@ -39,6 +52,11 @@ class Sale extends Model
         return $this->hasMany(SalePayment::class);
     }
 
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(SaleRevision::class)->latest();
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -47,6 +65,30 @@ class Sale extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === SaleStatus::Cancelled;
+    }
+
+    /**
+     * Route-model binding must still find a cancelled sale (the show page
+     * and invoice download both need to render it, with a CANCELLED stamp)
+     * — only the tenant ShopScope stays enforced here. Each route decides
+     * for itself whether a cancelled sale is actually allowed past that
+     * point (e.g. the edit screen explicitly rejects it after loading).
+     */
+    public function resolveRouteBinding($value, $field = null): ?self
+    {
+        return $this->withoutGlobalScope(ExcludesCancelledSalesScope::class)
+            ->where($field ?? $this->getRouteKeyName(), $value)
+            ->first();
     }
 
     public function invoiceNumber(): string

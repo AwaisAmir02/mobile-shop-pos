@@ -5,6 +5,7 @@ namespace App\ReportQueries;
 use App\Exports\TableExport;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\Scopes\ExcludesCancelledSalesScope;
 use App\Services\TableExportService;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -13,21 +14,39 @@ class SalesReport implements ScreenReport
     public function __construct(
         protected string $from = '',
         protected string $to = '',
+        protected bool $includeCancelled = false,
     ) {}
 
-    public function query(): Builder
+    /**
+     * Summary totals (totalRevenue/totalDiscount/totalOutstanding) always
+     * go through this with $excludeCancelled left true, regardless of
+     * $includeCancelled — a cancelled sale never contributes to a total
+     * even on the one screen (Sales History) that lists it on screen.
+     */
+    protected function baseQuery(bool $excludeCancelled): Builder
     {
-        return Sale::query()
+        $query = Sale::query()
             ->withCount('items')
             ->withSum('payments', 'amount')
             ->with('customer')
-            ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
-            ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to));
+            ->when($this->from, fn ($q) => $q->whereDate('created_at', '>=', $this->from))
+            ->when($this->to, fn ($q) => $q->whereDate('created_at', '<=', $this->to));
+
+        if (! $excludeCancelled) {
+            $query->withoutGlobalScope(ExcludesCancelledSalesScope::class);
+        }
+
+        return $query;
+    }
+
+    public function query(): Builder
+    {
+        return $this->baseQuery(excludeCancelled: ! $this->includeCancelled);
     }
 
     public function totalRevenue(): float
     {
-        return (float) $this->query()->sum('total');
+        return (float) $this->baseQuery(excludeCancelled: true)->sum('total');
     }
 
     /**
@@ -39,7 +58,7 @@ class SalesReport implements ScreenReport
      */
     public function totalDiscount(): float
     {
-        $invoiceDiscount = (float) $this->query()->sum('discount_amount');
+        $invoiceDiscount = (float) $this->baseQuery(excludeCancelled: true)->sum('discount_amount');
 
         $itemDiscount = (float) SaleItem::query()
             ->whereHas('sale', fn ($query) => $query
@@ -89,7 +108,7 @@ class SalesReport implements ScreenReport
     {
         return $this->query()->latest()->get()->map(function (Sale $sale) use ($forExcel) {
             $customer = TableExportService::sanitizeCell($sale->customer?->name ?? 'Walk-in');
-            $status = ucfirst($sale->paymentStatus());
+            $status = $sale->isCancelled() ? 'Cancelled' : ucfirst($sale->paymentStatus());
 
             return $forExcel
                 ? [$sale->invoiceNumber(), TableExport::excelDate($sale->created_at), $customer, (int) $sale->items_count, (float) $sale->total, (float) $sale->amountPaid(), $status]

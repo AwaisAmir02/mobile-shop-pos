@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Scopes\ExcludesCancelledSalesScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -90,12 +91,15 @@ class Customer extends Model
     /**
      * Whether this customer has any financial history (sales, udhaar, etc.)
      * that should block deletion. Extended by later modules as they add
-     * their own customer-linked records.
+     * their own customer-linked records. A cancelled sale still counts —
+     * it's deliberately not excluded here the way it is from totals/reports,
+     * since it's still a real historical record tying this customer to the
+     * shop's data.
      */
     public function hasFinancialHistory(): bool
     {
         return $this->udhaarTransactions()->exists()
-            || $this->sales()->exists()
+            || Sale::withoutGlobalScope(ExcludesCancelledSalesScope::class)->where('customer_id', $this->id)->exists()
             || $this->walletLoads()->exists()
             || $this->balanceLoads()->exists()
             || $this->billPayments()->exists()

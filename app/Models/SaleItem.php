@@ -19,6 +19,7 @@ class SaleItem extends Model
         'product_name',
         'product_type',
         'unit_price',
+        'list_price',
         'quantity',
         'discount_amount',
         'line_total',
@@ -28,10 +29,16 @@ class SaleItem extends Model
     {
         return [
             'unit_price' => 'decimal:2',
+            'list_price' => 'decimal:2',
             'quantity' => 'integer',
             'discount_amount' => 'decimal:2',
             'line_total' => 'decimal:2',
         ];
+    }
+
+    public function wasPriceOverridden(): bool
+    {
+        return $this->list_price !== null && (float) $this->list_price !== (float) $this->unit_price;
     }
 
     public function sale(): BelongsTo

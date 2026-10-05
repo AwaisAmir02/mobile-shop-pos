@@ -14,6 +14,7 @@ class StockIn extends Model
     protected $fillable = [
         'shop_id',
         'product_id',
+        'vendor_id',
         'product_name',
         'user_id',
         'quantity',
@@ -43,6 +44,11 @@ class StockIn extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function vendor(): BelongsTo
+    {
+        return $this->belongsTo(Vendor::class);
     }
 
     public function amountOwed(): float

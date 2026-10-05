@@ -13,14 +13,14 @@
             padding: 24px;
         }
         .header {
-            border-bottom: 2px solid #049669;
+            border-bottom: 2px solid #0033a9;
             padding-bottom: 10px;
             margin-bottom: 12px;
         }
         .shop-name {
             font-size: 15px;
             font-weight: bold;
-            color: #037a56;
+            color: #022157;
         }
         .report-title {
             font-size: 13px;

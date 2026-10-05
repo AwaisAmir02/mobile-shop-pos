@@ -14,6 +14,7 @@ use App\Models\Shop;
 use App\Models\SimSale;
 use App\Models\StockIn;
 use App\Models\User;
+use App\Models\Vendor;
 use App\Models\WalletLoad;
 use App\ReportQueries\BalanceLoadReport;
 use App\ReportQueries\BillReport;
@@ -92,6 +93,38 @@ class ReportQueriesTest extends TestCase
 
         $this->assertSame(5, $report->totalUnits());
         $this->assertGreaterThan(0, $report->totalOwed());
+    }
+
+    public function test_stock_in_report_can_be_filtered_by_vendor_and_shows_it_in_the_table(): void
+    {
+        $shop = $this->shop();
+        $vendorA = Vendor::create(['shop_id' => $shop->id, 'name' => 'Vendor A']);
+        $vendorB = Vendor::create(['shop_id' => $shop->id, 'name' => 'Vendor B']);
+
+        StockIn::create(['shop_id' => $shop->id, 'vendor_id' => $vendorA->id, 'product_name' => 'A', 'quantity' => 5, 'stock_date' => now()->toDateString(), 'payment_status' => 'unpaid', 'amount_paid' => 0, 'total_cost' => 500]);
+        StockIn::create(['shop_id' => $shop->id, 'vendor_id' => $vendorB->id, 'product_name' => 'B', 'quantity' => 3, 'stock_date' => now()->toDateString(), 'payment_status' => 'unpaid', 'amount_paid' => 0, 'total_cost' => 300]);
+        StockIn::create(['shop_id' => $shop->id, 'vendor_id' => null, 'product_name' => 'C', 'quantity' => 1, 'stock_date' => now()->toDateString(), 'payment_status' => 'unpaid', 'amount_paid' => 0, 'total_cost' => 100]);
+
+        $report = new StockInReport(vendorFilter: (string) $vendorA->id);
+
+        $this->assertSame(5, $report->totalUnits());
+        $this->assertSame(['Date', 'Product', 'Vendor', 'Quantity', 'Payment', 'Owed', 'Note', 'Entered By'], $report->tableHeaders());
+
+        $rows = $report->tableRows(forExcel: false);
+        $this->assertCount(1, $rows);
+        $this->assertSame('Vendor A', $rows[0][2]);
+        $this->assertStringContainsString('Vendor: Vendor A', $report->filtersSummary());
+    }
+
+    public function test_stock_in_report_shows_a_dash_for_entries_with_no_vendor(): void
+    {
+        $shop = $this->shop();
+        StockIn::create(['shop_id' => $shop->id, 'vendor_id' => null, 'product_name' => 'Legacy Entry', 'quantity' => 2, 'stock_date' => now()->toDateString(), 'payment_status' => 'unpaid', 'amount_paid' => 0, 'total_cost' => 200]);
+
+        $report = new StockInReport;
+        $rows = $report->tableRows(forExcel: false);
+
+        $this->assertSame('—', $rows[0][2]);
     }
 
     public function test_wallet_load_report_totals_are_scoped_to_the_active_tab(): void

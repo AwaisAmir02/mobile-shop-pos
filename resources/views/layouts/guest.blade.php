@@ -7,6 +7,11 @@
 
         <title>{{ config('app.name') }}</title>
 
+        <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
+        <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
+        <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
@@ -16,11 +21,13 @@
     </head>
     <body class="font-sans text-slate-900 antialiased">
         <div class="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-10">
-            <a href="/" wire:navigate class="flex items-center gap-2.5">
-                <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-white">
-                    <x-application-logo class="h-5 w-5" />
-                </span>
-                <span class="text-lg font-semibold text-slate-900">{{ config('app.name') }}</span>
+            <a href="/" wire:navigate class="flex items-center">
+                <img
+                    src="{{ asset(config('branding.logo_horizontal')) }}"
+                    srcset="{{ asset(config('branding.logo_horizontal')) }} 1x, {{ asset(config('branding.logo_horizontal_2x')) }} 2x"
+                    alt="{{ config('branding.name') }}"
+                    class="h-10 w-auto"
+                >
             </a>
 
             <div class="mt-6 w-full sm:max-w-md">

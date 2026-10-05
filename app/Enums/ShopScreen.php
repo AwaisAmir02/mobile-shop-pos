@@ -7,8 +7,10 @@ enum ShopScreen: string
     case Dashboard = 'dashboard';
     case Products = 'products';
     case StockIns = 'stock-ins';
+    case Vendors = 'vendors';
     case Customers = 'customers';
     case Sales = 'sales';
+    case SalesEditCancel = 'sales-edit-cancel';
     case SimSales = 'sim-sales';
     case Udhaar = 'udhaar';
     case BalanceLoads = 'balance-loads';
@@ -34,8 +36,10 @@ enum ShopScreen: string
             self::Dashboard => 'Dashboard',
             self::Products => 'Products',
             self::StockIns => 'Stock In',
+            self::Vendors => 'Vendors',
             self::Customers => 'Customers',
             self::Sales => 'Sales',
+            self::SalesEditCancel => 'Sales: Edit / Cancel',
             self::SimSales => 'SIM Sale',
             self::Udhaar => 'Udhaar',
             self::BalanceLoads => 'Balance Loads',
@@ -63,8 +67,10 @@ enum ShopScreen: string
             self::Dashboard => 'dashboard',
             self::Products => 'products.index',
             self::StockIns => 'stock-ins.index',
+            self::Vendors => 'vendors.index',
             self::Customers => 'customers.index',
             self::Sales => 'sales.index',
+            self::SalesEditCancel => 'sales.index',
             self::SimSales => 'sim-sales.index',
             self::Udhaar => 'udhaar.index',
             self::BalanceLoads => 'balance-loads.index',
@@ -98,7 +104,7 @@ enum ShopScreen: string
     {
         return [
             'Core' => [self::Dashboard, self::Products, self::Customers, self::Reports, self::PartyLedger],
-            'Inventory & Sales' => [self::StockIns, self::Sales, self::SimSales],
+            'Inventory & Sales' => [self::StockIns, self::Vendors, self::Sales, self::SalesEditCancel, self::SimSales],
             'Financial Services' => [self::BalanceLoads, self::WalletLoads, self::Bills, self::Repairs, self::NadraVerifications, self::Udhaar, self::Expenses],
             'Administration' => [self::Users, self::ShopAccounts],
             'Settings' => [self::Settings, self::SettingsCategories, self::SettingsNetworks, self::SettingsBillConfig, self::SettingsPercentage, self::SettingsBrands],

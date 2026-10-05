@@ -10,6 +10,7 @@ use App\Models\MainCategory;
 use App\Models\Network;
 use App\Models\Product;
 use App\Models\ShopAccount;
+use App\Models\Vendor;
 use App\Models\WalletLoad;
 use App\ReportQueries\BalanceLoadReport;
 use App\ReportQueries\BillReport;
@@ -72,6 +73,7 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
 
     // Stock In
     public string $productFilter = '';
+    public string $vendorFilter = '';
 
     // Wallet Loads
     public string $tab = 'cash_in';
@@ -118,7 +120,7 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
         }
 
         $this->reset([
-            'from', 'to', 'paymentStatusFilter', 'search', 'typeFilter', 'productFilter',
+            'from', 'to', 'paymentStatusFilter', 'search', 'typeFilter', 'productFilter', 'vendorFilter',
             'provider', 'shopAccountId', 'network', 'billCategoryId', 'billProviderId', 'category',
         ]);
         $this->tab = 'cash_in';
@@ -134,7 +136,10 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
         return match ($this->screen) {
             ShopScreen::Products->value => new ProductReport($this->search, $this->typeFilter),
             ShopScreen::Sales->value => new SalesReport($this->from, $this->to),
-            ShopScreen::StockIns->value => new StockInReport($this->from, $this->to, $this->productFilter, $this->paymentStatusFilter),
+            ShopScreen::StockIns->value => new StockInReport(
+                $this->from, $this->to, $this->productFilter, $this->paymentStatusFilter,
+                Auth::user()->hasAccessTo('vendors') ? $this->vendorFilter : '',
+            ),
             ShopScreen::WalletLoads->value => new WalletLoadReport($this->tab, $this->from, $this->to, $this->provider, $this->shopAccountId, $this->paymentStatusFilter),
             ShopScreen::NadraVerifications->value => new NadraVerificationReport($this->from, $this->to, $this->paymentStatusFilter),
             ShopScreen::SimSales->value => new SimSaleReport($this->from, $this->to, $this->network, $this->paymentStatusFilter),
@@ -180,6 +185,7 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
                 ->orderBy('provider')
                 ->pluck('provider'),
             'allShopAccounts' => ShopAccount::query()->orderBy('name')->get(),
+            'allVendors' => Auth::user()->hasAccessTo('vendors') ? Vendor::query()->orderBy('name')->get() : collect(),
             'allNetworks' => Network::query()->orderBy('name')->pluck('name'),
             'allBillCategories' => BillCategory::query()->orderBy('name')->get(),
             'allBillProviders' => BillProvider::query()
@@ -276,6 +282,17 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
                             @endforeach
                         </x-ui.select>
                     </x-ui.field>
+
+                    @if (auth()->user()->hasAccessTo('vendors'))
+                        <x-ui.field label="Vendor" name="vendorFilter" for="vendorFilter" class="sm:max-w-[12rem]">
+                            <x-ui.select wire:model.live="vendorFilter" id="vendorFilter">
+                                <option value="">All Vendors</option>
+                                @foreach ($allVendors as $vendor)
+                                    <option value="{{ $vendor->id }}">{{ $vendor->name }}</option>
+                                @endforeach
+                            </x-ui.select>
+                        </x-ui.field>
+                    @endif
                 @endif
 
                 @if ($screen === ShopScreen::WalletLoads->value)

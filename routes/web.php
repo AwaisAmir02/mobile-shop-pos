@@ -29,12 +29,16 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('stock-ins', 'stock-ins.create')->name('stock-ins.index')->middleware('shop.access:stock-ins');
         Volt::route('stock-ins/history', 'stock-ins.history')->name('stock-ins.history')->middleware('shop.access:stock-ins');
 
+        Volt::route('vendors', 'vendors.index')->name('vendors.index')->middleware('shop.access:vendors');
+        Volt::route('vendors/{vendor}', 'vendors.show')->name('vendors.show')->middleware('shop.access:vendors');
+
         Volt::route('customers', 'customers.index')->name('customers.index')->middleware('shop.access:customers');
         Volt::route('customers/{customer}', 'customers.show')->name('customers.show')->middleware('shop.access:customers');
 
         Volt::route('sales', 'sales.create')->name('sales.index')->middleware('shop.access:sales');
         Volt::route('sales/history', 'sales.history')->name('sales.history')->middleware('shop.access:sales');
         Volt::route('sales/{sale}', 'sales.show')->name('sales.show')->middleware('shop.access:sales');
+        Volt::route('sales/{sale}/edit', 'sales.edit')->name('sales.edit')->middleware('shop.access:sales-edit-cancel');
 
         Volt::route('sim-sales', 'sim-sales.create')->name('sim-sales.index')->middleware('shop.access:sim-sales');
         Volt::route('sim-sales/history', 'sim-sales.history')->name('sim-sales.history')->middleware('shop.access:sim-sales');

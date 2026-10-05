@@ -13,14 +13,14 @@
             padding: 20px;
         }
         .header {
-            border-bottom: 2px solid #049669;
+            border-bottom: 2px solid #0033a9;
             padding-bottom: 10px;
             margin-bottom: 14px;
         }
         .shop-name {
             font-size: 16px;
             font-weight: bold;
-            color: #037a56;
+            color: #022157;
         }
         .receipt-title {
             font-size: 13px;
@@ -54,7 +54,7 @@
         .amount-row td {
             font-size: 18px;
             border-bottom: none;
-            border-top: 2px solid #049669;
+            border-top: 2px solid #0033a9;
             padding-top: 12px;
         }
         .footer {
@@ -62,6 +62,11 @@
             text-align: center;
             font-size: 10px;
             color: #94a3b8;
+        }
+        .powered-by {
+            margin-top: 4px;
+            font-size: 9px;
+            color: #cbd5e1;
         }
     </style>
 </head>
@@ -112,6 +117,7 @@
         @if ($sale->user)
             &middot; Served by {{ $sale->user->name }}
         @endif
+        <div class="powered-by">{{ config('branding.powered_by') }}</div>
     </div>
 </body>
 </html>

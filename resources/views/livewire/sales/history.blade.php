@@ -1,8 +1,10 @@
 <?php
 
+use App\Actions\CancelSale;
 use App\Livewire\Concerns\GuardsExportSize;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Sale;
+use App\Models\Scopes\ExcludesCancelledSalesScope;
 use App\ReportQueries\SalesReport;
 use App\Services\InvoicePdfService;
 use App\Services\TableExportService;
@@ -24,6 +26,9 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
     public ?int $payingId = null;
     public string $paymentAmount = '';
 
+    public ?int $cancelingId = null;
+    public string $cancelReason = '';
+
     public function updatingFrom(): void
     {
         $this->resetPage();
@@ -36,7 +41,7 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
 
     protected function report(): SalesReport
     {
-        return new SalesReport($this->from, $this->to);
+        return new SalesReport($this->from, $this->to, includeCancelled: true);
     }
 
     public function with(): array
@@ -83,11 +88,14 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
 
     public function downloadInvoice(int $saleId, InvoicePdfService $pdf): StreamedResponse
     {
-        return $pdf->download(Sale::findOrFail($saleId));
+        return $pdf->download(Sale::withoutGlobalScope(ExcludesCancelledSalesScope::class)->findOrFail($saleId));
     }
 
     public function openRecordPayment(int $saleId): void
     {
+        $sale = Sale::withoutGlobalScope(ExcludesCancelledSalesScope::class)->findOrFail($saleId);
+        abort_if($sale->isCancelled(), 403);
+
         $this->payingId = $saleId;
         $this->paymentAmount = '';
         $this->resetErrorBag();
@@ -96,7 +104,8 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
 
     public function submitPayment(): void
     {
-        $sale = Sale::findOrFail($this->payingId);
+        $sale = Sale::withoutGlobalScope(ExcludesCancelledSalesScope::class)->findOrFail($this->payingId);
+        abort_if($sale->isCancelled(), 403);
 
         $this->validate([
             'paymentAmount' => ['required', 'numeric', 'min:0.01', 'max:'.$sale->amountDue()],
@@ -117,6 +126,39 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
     {
         $this->dispatch('close-modal', name: 'record-payment-form');
         $this->reset(['payingId', 'paymentAmount']);
+    }
+
+    public function openCancel(int $saleId): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('sales-edit-cancel'), 403);
+
+        $this->cancelingId = $saleId;
+        $this->cancelReason = '';
+        $this->dispatch('open-modal', name: 'cancel-sale-form');
+    }
+
+    public function cancelSale(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('sales-edit-cancel'), 403);
+
+        $sale = Sale::findOrFail($this->cancelingId);
+        $result = CancelSale::handle($sale, Auth::id(), $this->cancelReason);
+
+        $this->dispatch('close-modal', name: 'cancel-sale-form');
+        $this->reset(['cancelingId', 'cancelReason']);
+
+        $message = 'Sale cancelled and stock restored.';
+        if (! empty($result['skipped'])) {
+            $message .= ' Could not restock (product deleted): '.implode(', ', $result['skipped']).'.';
+        }
+
+        $this->toastSuccess($message);
+    }
+
+    public function closeCancelForm(): void
+    {
+        $this->dispatch('close-modal', name: 'cancel-sale-form');
+        $this->reset(['cancelingId', 'cancelReason']);
     }
 }; ?>
 
@@ -175,7 +217,7 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
     @else
         <x-ui.table :headers="['Invoice', 'Date', 'Customer', 'Items', 'Total', 'Paid', 'Status', '']">
             @foreach ($sales as $sale)
-                <x-ui.table-row wire:key="sale-{{ $sale->id }}">
+                <x-ui.table-row wire:key="sale-{{ $sale->id }}" @class(['opacity-50' => $sale->isCancelled()])>
                     <x-ui.table-cell class="font-medium text-slate-900">
                         <a href="{{ route('sales.show', $sale) }}" wire:navigate class="hover:text-brand-700">
                             {{ $sale->invoiceNumber() }}
@@ -187,7 +229,9 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
                     <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($sale->total, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell>Rs {{ number_format($sale->amountPaid(), 2) }}</x-ui.table-cell>
                     <x-ui.table-cell>
-                        @if ($sale->paymentStatus() === 'paid')
+                        @if ($sale->isCancelled())
+                            <x-ui.badge variant="danger">Cancelled</x-ui.badge>
+                        @elseif ($sale->paymentStatus() === 'paid')
                             <x-ui.badge variant="success">Paid</x-ui.badge>
                         @elseif ($sale->paymentStatus() === 'partial')
                             <x-ui.badge variant="warning">Partial</x-ui.badge>
@@ -197,10 +241,20 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
                     </x-ui.table-cell>
                     <x-ui.table-cell align="right">
                         <div class="flex justify-end gap-2">
-                            @if ($sale->amountDue() > 0)
-                                <x-ui.button size="sm" variant="ghost" wire:click="openRecordPayment({{ $sale->id }})">
-                                    Record Payment
-                                </x-ui.button>
+                            @if (! $sale->isCancelled())
+                                @if ($sale->amountDue() > 0)
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openRecordPayment({{ $sale->id }})">
+                                        Record Payment
+                                    </x-ui.button>
+                                @endif
+                                @if (auth()->user()->hasAccessTo('sales-edit-cancel'))
+                                    <a href="{{ route('sales.edit', $sale) }}" wire:navigate>
+                                        <x-ui.button size="sm" variant="ghost">Edit</x-ui.button>
+                                    </a>
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $sale->id }})" class="text-red-600 hover:bg-red-50">
+                                        Delete
+                                    </x-ui.button>
+                                @endif
                             @endif
                             <x-ui.button size="sm" variant="ghost" wire:click="downloadInvoice({{ $sale->id }})">
                                 Download
@@ -233,6 +287,31 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
 
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="submitPayment">
                     Save Payment
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="cancel-sale-form" max-width="sm">
+        <form wire:submit="cancelSale" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Cancel This Sale?</h2>
+            <p class="mt-2 text-sm text-slate-600">
+                This sale will be marked <strong>Cancelled</strong> and its stock will be restored. It will no longer count toward any total, report, or outstanding balance. This cannot be undone.
+            </p>
+
+            <div class="mt-5">
+                <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
+                    <x-ui.input wire:model="cancelReason" id="cancelReason" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeCancelForm">
+                    Keep Sale
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelSale" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                    Cancel Sale
                 </x-ui.button>
             </div>
         </form>

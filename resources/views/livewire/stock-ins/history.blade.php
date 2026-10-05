@@ -5,12 +5,14 @@ use App\Livewire\Concerns\GuardsExportSize;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Product;
 use App\Models\StockIn;
+use App\Models\Vendor;
 use App\ReportQueries\StockInReport;
 use App\Services\TableExportService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -24,6 +26,9 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
     public string $to = '';
     public string $productFilter = '';
     public string $paymentStatusFilter = '';
+
+    #[Url]
+    public string $vendorFilter = '';
 
     public ?int $payingId = null;
     public string $paymentAmount = '';
@@ -48,9 +53,20 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
         $this->resetPage();
     }
 
+    public function updatingVendorFilter(): void
+    {
+        $this->resetPage();
+    }
+
     protected function report(): StockInReport
     {
-        return new StockInReport($this->from, $this->to, $this->productFilter, $this->paymentStatusFilter);
+        return new StockInReport(
+            $this->from,
+            $this->to,
+            $this->productFilter,
+            $this->paymentStatusFilter,
+            Auth::user()->hasAccessTo('vendors') ? $this->vendorFilter : '',
+        );
     }
 
     public function with(): array
@@ -63,6 +79,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'totalOwed' => $report->totalOwed(),
             'products' => Product::query()->orderBy('name')->get(),
             'paymentStatuses' => PaymentStatus::cases(),
+            'vendors' => Auth::user()->hasAccessTo('vendors') ? Vendor::query()->orderBy('name')->get() : collect(),
         ];
     }
 
@@ -95,7 +112,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     public function clearFilters(): void
     {
-        $this->reset(['from', 'to', 'productFilter', 'paymentStatusFilter']);
+        $this->reset(['from', 'to', 'productFilter', 'paymentStatusFilter', 'vendorFilter']);
     }
 
     public function markAsPaid(int $id): void
@@ -184,7 +201,18 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                 </x-ui.select>
             </x-ui.field>
 
-            @if ($from || $to || $productFilter || $paymentStatusFilter)
+            @if (auth()->user()->hasAccessTo('vendors'))
+                <x-ui.field label="Vendor" name="vendorFilter" for="vendorFilter" class="sm:max-w-[12rem]">
+                    <x-ui.select wire:model.live="vendorFilter" id="vendorFilter">
+                        <option value="">All Vendors</option>
+                        @foreach ($vendors as $vendor)
+                            <option value="{{ $vendor->id }}">{{ $vendor->name }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </x-ui.field>
+            @endif
+
+            @if ($from || $to || $productFilter || $paymentStatusFilter || $vendorFilter)
                 <div class="sm:pb-1">
                     <x-ui.button type="button" variant="ghost" wire:click="clearFilters">
                         Clear
@@ -224,11 +252,15 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             </x-slot>
         </x-ui.empty-state>
     @else
-        <x-ui.table :headers="['Date', 'Product', 'Quantity', 'Payment', 'Owed', 'Note', 'Entered By', '']">
+        @php $showVendorColumn = auth()->user()->hasAccessTo('vendors'); @endphp
+        <x-ui.table :headers="$showVendorColumn ? ['Date', 'Product', 'Vendor', 'Quantity', 'Payment', 'Owed', 'Note', 'Entered By', ''] : ['Date', 'Product', 'Quantity', 'Payment', 'Owed', 'Note', 'Entered By', '']">
             @foreach ($entries as $entry)
                 <x-ui.table-row wire:key="stock-in-{{ $entry->id }}">
                     <x-ui.table-cell>{{ $entry->stock_date->format('d M Y') }}</x-ui.table-cell>
                     <x-ui.table-cell class="font-medium text-slate-900">{{ $entry->product_name }}</x-ui.table-cell>
+                    @if ($showVendorColumn)
+                        <x-ui.table-cell>{{ $entry->vendor?->name ?? '—' }}</x-ui.table-cell>
+                    @endif
                     <x-ui.table-cell class="font-semibold text-emerald-600">+{{ number_format($entry->quantity) }}</x-ui.table-cell>
                     <x-ui.table-cell>
                         @if ($entry->payment_status->value === 'paid')

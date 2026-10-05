@@ -1,7 +1,10 @@
 <?php
 
+use App\Actions\CancelSale;
+use App\Livewire\Concerns\Toasts;
 use App\Models\Sale;
 use App\Services\InvoicePdfService;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
@@ -9,7 +12,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
 {
+    use Toasts;
+
     public Sale $sale;
+
+    public string $cancelReason = '';
 
     public function mount(Sale $sale): void
     {
@@ -19,6 +26,37 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
     public function downloadInvoice(InvoicePdfService $pdf): StreamedResponse
     {
         return $pdf->download($this->sale);
+    }
+
+    public function openCancel(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('sales-edit-cancel'), 403);
+
+        $this->cancelReason = '';
+        $this->dispatch('open-modal', name: 'cancel-sale-form');
+    }
+
+    public function closeCancelForm(): void
+    {
+        $this->dispatch('close-modal', name: 'cancel-sale-form');
+        $this->cancelReason = '';
+    }
+
+    public function cancelSale(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('sales-edit-cancel'), 403);
+
+        $result = CancelSale::handle($this->sale, Auth::id(), $this->cancelReason);
+
+        $this->sale = $this->sale->fresh(['items', 'customer', 'payments']);
+        $this->dispatch('close-modal', name: 'cancel-sale-form');
+
+        $message = 'Sale cancelled and stock restored.';
+        if (! empty($result['skipped'])) {
+            $message .= ' Could not restock (product deleted): '.implode(', ', $result['skipped']).'.';
+        }
+
+        $this->toastSuccess($message);
     }
 }; ?>
 
@@ -33,11 +71,31 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
     </x-slot>
 
     <div class="mx-auto max-w-2xl">
+        @if ($sale->isCancelled())
+            <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                <p class="font-semibold">This sale was cancelled{{ $sale->cancelled_at ? ' on '.$sale->cancelled_at->format('d M Y, h:i A') : '' }}.</p>
+                @if ($sale->cancel_reason)
+                    <p class="mt-1">Reason: {{ $sale->cancel_reason }}</p>
+                @endif
+                <p class="mt-1">Stock was restored and this sale no longer counts toward any total.</p>
+            </div>
+        @endif
+
         <x-ui.card>
             <x-slot name="actions">
-                <x-ui.button wire:click="downloadInvoice" variant="secondary" size="sm">
-                    Download PDF
-                </x-ui.button>
+                <div class="flex gap-2">
+                    @if (! $sale->isCancelled() && auth()->user()->hasAccessTo('sales-edit-cancel'))
+                        <a href="{{ route('sales.edit', $sale) }}" wire:navigate>
+                            <x-ui.button variant="secondary" size="sm">Edit</x-ui.button>
+                        </a>
+                        <x-ui.button wire:click="openCancel" variant="secondary" size="sm" class="text-red-600 hover:bg-red-50">
+                            Delete
+                        </x-ui.button>
+                    @endif
+                    <x-ui.button wire:click="downloadInvoice" variant="secondary" size="sm">
+                        Download PDF
+                    </x-ui.button>
+                </div>
             </x-slot>
 
             <div class="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -105,7 +163,9 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                         <p class="font-semibold text-slate-900">Rs {{ number_format($sale->amountDue(), 2) }}</p>
                     </div>
                 </div>
-                @if ($sale->paymentStatus() === 'paid')
+                @if ($sale->isCancelled())
+                    <x-ui.badge variant="danger">Cancelled</x-ui.badge>
+                @elseif ($sale->paymentStatus() === 'paid')
                     <x-ui.badge variant="success">Paid</x-ui.badge>
                 @elseif ($sale->paymentStatus() === 'partial')
                     <x-ui.badge variant="warning">Partial</x-ui.badge>
@@ -114,6 +174,31 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                 @endif
             </div>
         </x-ui.card>
+
+        <x-ui.modal name="cancel-sale-form" max-width="sm">
+            <form wire:submit="cancelSale" class="p-6">
+                <h2 class="text-lg font-semibold text-slate-900">Cancel This Sale?</h2>
+                <p class="mt-2 text-sm text-slate-600">
+                    This sale will be marked <strong>Cancelled</strong> and its stock will be restored. It will no longer count toward any total, report, or outstanding balance. This cannot be undone.
+                </p>
+
+                <div class="mt-5">
+                    <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
+                        <x-ui.input wire:model="cancelReason" id="cancelReason" />
+                    </x-ui.field>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <x-ui.button type="button" variant="secondary" wire:click="closeCancelForm">
+                        Keep Sale
+                    </x-ui.button>
+
+                    <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelSale" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                        Cancel Sale
+                    </x-ui.button>
+                </div>
+            </form>
+        </x-ui.modal>
 
         <div class="mt-4 text-center">
             <a href="{{ route('sales.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">

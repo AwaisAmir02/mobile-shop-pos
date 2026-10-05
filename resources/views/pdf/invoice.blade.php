@@ -14,14 +14,14 @@
         }
         .header {
             width: 100%;
-            border-bottom: 2px solid #049669;
+            border-bottom: 2px solid #0033a9;
             padding-bottom: 12px;
             margin-bottom: 16px;
         }
         .shop-name {
             font-size: 20px;
             font-weight: bold;
-            color: #037a56;
+            color: #022157;
         }
         .shop-meta {
             font-size: 10px;
@@ -74,7 +74,7 @@
         .totals .total-row td {
             font-size: 15px;
             font-weight: bold;
-            border-top: 2px solid #049669;
+            border-top: 2px solid #0033a9;
             padding-top: 8px;
         }
         .footer {
@@ -83,9 +83,33 @@
             font-size: 10px;
             color: #94a3b8;
         }
+        .powered-by {
+            margin-top: 4px;
+            font-size: 9px;
+            color: #cbd5e1;
+        }
+        .overridden-hint {
+            display: block;
+            font-size: 8px;
+            color: #d65002;
+        }
+        .watermark {
+            position: fixed;
+            top: 260px;
+            left: 60px;
+            font-size: 64px;
+            font-weight: bold;
+            color: #ef4444;
+            opacity: 0.25;
+            transform: rotate(-25deg);
+            z-index: 100;
+        }
     </style>
 </head>
 <body>
+    @if ($sale->isCancelled())
+        <div class="watermark">CANCELLED</div>
+    @endif
     <table class="layout header">
         <tr>
             <td>
@@ -119,7 +143,12 @@
                 <tr>
                     <td>{{ $item->product_name }}</td>
                     <td class="text-right">{{ $item->quantity }}</td>
-                    <td class="text-right">Rs {{ number_format($item->unit_price, 2) }}</td>
+                    <td class="text-right">
+                        Rs {{ number_format($item->unit_price, 2) }}
+                        @if ($item->wasPriceOverridden())
+                            <span class="overridden-hint">overridden</span>
+                        @endif
+                    </td>
                     <td class="text-right">{{ $item->discount_amount > 0 ? 'Rs '.number_format($item->discount_amount, 2) : '—' }}</td>
                     <td class="text-right">Rs {{ number_format($item->line_total, 2) }}</td>
                 </tr>
@@ -157,6 +186,7 @@
         @if ($sale->user)
             &middot; Served by {{ $sale->user->name }}
         @endif
+        <div class="powered-by">{{ config('branding.powered_by') }}</div>
     </div>
 </body>
 </html>

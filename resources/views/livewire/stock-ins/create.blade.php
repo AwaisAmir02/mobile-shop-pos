@@ -6,6 +6,7 @@ use App\Models\AccessoryCategoryOption;
 use App\Models\MainCategory;
 use App\Models\Product;
 use App\Models\StockIn;
+use App\Models\Vendor;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -21,6 +22,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
     public string $categoryFilter = '';
     public string $subCategoryFilter = '';
     public string $productId = '';
+    public string $vendorId = '';
     public string $quantity = '';
     public string $paymentStatus = 'paid';
     public string $amountPaid = '';
@@ -98,6 +100,20 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
         $this->productId = (string) $productId;
     }
 
+    public function updatedVendorId(): void
+    {
+        if ($this->vendorId === '__create__') {
+            $this->vendorId = '';
+            $this->dispatch('open-modal', name: 'quick-create-vendor');
+        }
+    }
+
+    #[On('vendor-created')]
+    public function onVendorCreated(int $vendorId): void
+    {
+        $this->vendorId = (string) $vendorId;
+    }
+
     public function updatedPaymentStatus(): void
     {
         if ($this->paymentStatus !== 'partial') {
@@ -130,13 +146,17 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                 ->orderBy('name')
                 ->get(),
             'paymentStatuses' => PaymentStatus::cases(),
+            'vendors' => Auth::user()->hasAccessTo('vendors') ? Vendor::query()->orderBy('name')->get() : collect(),
         ];
     }
 
     public function save(): void
     {
+        $canUseVendors = Auth::user()->hasAccessTo('vendors');
+
         $this->validate([
             'productId' => ['required', 'integer', Rule::exists('products', 'id')->where('shop_id', auth()->user()->shop_id)],
+            'vendorId' => ['nullable', 'integer', Rule::exists('vendors', 'id')->where('shop_id', auth()->user()->shop_id)],
             'quantity' => ['required', 'integer', 'min:1'],
             'paymentStatus' => ['required', Rule::enum(PaymentStatus::class)],
             'amountPaid' => ['nullable', 'numeric', 'min:0', 'required_if:paymentStatus,partial'],
@@ -144,7 +164,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
             'note' => ['nullable', 'string', 'max:255'],
         ]);
 
-        DB::transaction(function () {
+        DB::transaction(function () use ($canUseVendors) {
             $product = Product::whereKey($this->productId)->lockForUpdate()->firstOrFail();
 
             $product->increment('stock_quantity', (int) $this->quantity);
@@ -159,6 +179,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
 
             StockIn::create([
                 'product_id' => $product->id,
+                'vendor_id' => $canUseVendors && $this->vendorId !== '' ? $this->vendorId : null,
                 'product_name' => $product->name,
                 'user_id' => Auth::id(),
                 'quantity' => $this->quantity,
@@ -245,6 +266,18 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                         <x-ui.input wire:model="stock_date" id="stock_date" type="date" />
                     </x-ui.field>
 
+                    @if (auth()->user()->hasAccessTo('vendors'))
+                        <x-ui.field label="Vendor" name="vendorId" for="vendorId" help="Optional">
+                            <x-ui.select wire:model="vendorId" id="vendorId">
+                                <option value="">No vendor</option>
+                                <option value="__create__">+ New Vendor</option>
+                                @foreach ($vendors as $vendor)
+                                    <option value="{{ $vendor->id }}">{{ $vendor->name }}</option>
+                                @endforeach
+                            </x-ui.select>
+                        </x-ui.field>
+                    @endif
+
                     <x-ui.field label="Note" name="note" for="note" help="Optional — e.g. supplier name or reference">
                         <x-ui.input wire:model="note" id="note" />
                     </x-ui.field>
@@ -261,4 +294,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
     <livewire:accessory-categories.quick-create :default-main-category-slug="$categoryFilter" />
     <livewire:brands.quick-create />
     <livewire:products.quick-create :default-main-category-slug="$categoryFilter" />
+    @if (auth()->user()->hasAccessTo('vendors'))
+        <livewire:vendors.quick-create />
+    @endif
 </div>

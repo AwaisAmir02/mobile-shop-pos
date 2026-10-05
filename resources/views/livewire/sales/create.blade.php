@@ -4,6 +4,7 @@ use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Support\SaleCartMath;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -16,6 +17,8 @@ use Livewire\Volt\Component;
 new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 {
     use Toasts;
+
+    const MAX_LINE_PRICE = 9999999.99;
 
     public string $search = '';
     public array $cart = [];
@@ -77,7 +80,9 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                 'product_id' => $product->id,
                 'name' => $product->name,
                 'category' => $product->typeLabel(),
-                'unit_price' => (string) $product->price,
+                'list_price' => (string) $product->price,
+                'cost_price' => $product->cost_price,
+                'custom_price' => '',
                 'quantity' => 1,
                 'discount' => '0',
                 'max_stock' => $product->stock_quantity,
@@ -92,19 +97,39 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         unset($this->cart[$productId]);
     }
 
+    public function effectivePrice(array $item): float
+    {
+        return $item['custom_price'] !== '' && $item['custom_price'] !== null
+            ? (float) $item['custom_price']
+            : (float) $item['list_price'];
+    }
+
     public function lineTotal(array $item): float
     {
-        return max(0, ((float) $item['quantity'] * (float) $item['unit_price']) - (float) $item['discount']);
+        return SaleCartMath::lineTotal([
+            'unit_price' => $this->effectivePrice($item),
+            'quantity' => $item['quantity'],
+            'discount' => $item['discount'],
+        ]);
+    }
+
+    protected function normalizedCart(): array
+    {
+        return collect($this->cart)->map(fn (array $item) => [
+            'unit_price' => $this->effectivePrice($item),
+            'quantity' => $item['quantity'],
+            'discount' => $item['discount'],
+        ])->all();
     }
 
     public function subtotal(): float
     {
-        return collect($this->cart)->sum(fn ($item) => $this->lineTotal($item));
+        return SaleCartMath::subtotal($this->normalizedCart());
     }
 
     public function total(): float
     {
-        return max(0, $this->subtotal() - (float) $this->invoiceDiscount);
+        return SaleCartMath::total($this->normalizedCart(), (float) $this->invoiceDiscount);
     }
 
     public function completeSale(): void
@@ -132,6 +157,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         foreach ($this->cart as $id => $item) {
             $rules["cart.$id.quantity"] = ['required', 'integer', 'min:1'];
             $rules["cart.$id.discount"] = ['required', 'numeric', 'min:0'];
+            $rules["cart.$id.custom_price"] = ['nullable', 'numeric', 'min:0', 'max:'.self::MAX_LINE_PRICE];
         }
 
         $this->validate($rules);
@@ -169,7 +195,8 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                     'product_id' => $line['product']->id,
                     'product_name' => $line['product']->name,
                     'product_type' => $line['product']->type,
-                    'unit_price' => $line['item']['unit_price'],
+                    'unit_price' => $this->effectivePrice($line['item']),
+                    'list_price' => $line['item']['list_price'],
                     'quantity' => $line['item']['quantity'],
                     'discount_amount' => $line['item']['discount'],
                     'line_total' => $line['lineTotal'],
@@ -266,7 +293,25 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                                             <p class="text-sm font-medium text-slate-900">{{ $item['name'] }}</p>
                                             <p class="text-xs text-slate-400">{{ $item['category'] }}</p>
                                         </td>
-                                        <td class="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-600">Rs {{ number_format($item['unit_price'], 2) }}</td>
+                                        <td class="whitespace-nowrap px-4 py-3 text-right">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                placeholder="{{ number_format($item['list_price'], 2) }}"
+                                                wire:model.live="cart.{{ $productId }}.custom_price"
+                                                class="w-24 rounded-lg border-slate-300 py-1.5 text-right text-sm focus:border-brand-500 focus:ring-brand-500"
+                                            />
+                                            @if ($item['custom_price'] !== '' && (float) $item['custom_price'] !== (float) $item['list_price'])
+                                                <p class="mt-1 text-xs font-medium text-accent-600">Price overridden</p>
+                                                @if ($item['cost_price'] !== null && (float) $item['custom_price'] < (float) $item['cost_price'])
+                                                    <p class="mt-0.5 text-xs text-amber-600">Below cost price</p>
+                                                @endif
+                                            @endif
+                                            @error("cart.$productId.custom_price")
+                                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                            @enderror
+                                        </td>
                                         <td class="whitespace-nowrap px-4 py-3">
                                             <input
                                                 type="number"
