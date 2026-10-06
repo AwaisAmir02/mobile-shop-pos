@@ -4,11 +4,14 @@ namespace App\Actions;
 
 use App\Models\MainCategory;
 use App\Models\Product;
+use App\Models\Shop;
+use App\Services\BarcodeService;
+use Closure;
 use Illuminate\Validation\Rule;
 
 class CreateProduct
 {
-    public static function rules(int $shopId, string $type): array
+    public static function rules(int $shopId, string $type, ?int $ignoreProductId = null): array
     {
         $mainCategoryId = MainCategory::where('slug', $type)->where('shop_id', $shopId)->value('id');
 
@@ -32,7 +35,32 @@ class CreateProduct
             $rules['imei'] = ['nullable', 'string', 'max:50'];
         }
 
+        if (Shop::whereKey($shopId)->value('barcode_enabled')) {
+            $rules['barcode'] = ['nullable', 'string', 'max:64', self::barcodeRule($shopId, $ignoreProductId)];
+        }
+
         return $rules;
+    }
+
+    public static function barcodeRule(int $shopId, ?int $ignoreProductId = null): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) use ($shopId, $ignoreProductId) {
+            if ($value === null || $value === '') {
+                return;
+            }
+
+            if (! preg_match('/^[\x20-\x7E]+$/', (string) $value)) {
+                $fail('Barcode may only contain plain letters, digits and symbols.');
+
+                return;
+            }
+
+            $message = BarcodeService::duplicateMessageFor($shopId, (string) $value, $ignoreProductId);
+
+            if ($message !== null) {
+                $fail($message);
+            }
+        };
     }
 
     public static function detailsForType(string $type, string $category, string $brand = '', string $model = '', string $imei = ''): array

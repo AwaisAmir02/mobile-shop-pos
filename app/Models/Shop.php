@@ -28,6 +28,7 @@ class Shop extends Model
         'sales_allowed',
         'disabled_screens',
         'import_enabled',
+        'barcode_enabled',
         'sim_sale_commission_percent',
         'balance_load_commission_percent',
         'wallet_load_commission_percent',
@@ -43,6 +44,7 @@ class Shop extends Model
             'subscription_start_date' => 'date',
             'disabled_screens' => 'array',
             'import_enabled' => 'boolean',
+            'barcode_enabled' => 'boolean',
             'sim_sale_commission_percent' => 'decimal:2',
             'balance_load_commission_percent' => 'decimal:2',
             'wallet_load_commission_percent' => 'decimal:2',
@@ -89,6 +91,11 @@ class Shop extends Model
     public function stockIns(): HasMany
     {
         return $this->hasMany(StockIn::class);
+    }
+
+    public function subscriptionInvoices(): HasMany
+    {
+        return $this->hasMany(SubscriptionInvoice::class);
     }
 
     /**

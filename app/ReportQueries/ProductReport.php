@@ -6,6 +6,7 @@ use App\Models\MainCategory;
 use App\Models\Product;
 use App\Services\TableExportService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class ProductReport implements ScreenReport
 {
@@ -14,10 +15,17 @@ class ProductReport implements ScreenReport
         protected string $typeFilter = '',
     ) {}
 
+    protected function barcodesEnabled(): bool
+    {
+        return (bool) Auth::user()?->canUseBarcodes();
+    }
+
     public function query(): Builder
     {
         return Product::query()
-            ->when($this->search, fn ($query) => $query->where('name', 'like', "%{$this->search}%"))
+            ->when($this->search, fn ($query) => $query->where(fn ($q) => $q
+                ->where('name', 'like', "%{$this->search}%")
+                ->when($this->barcodesEnabled(), fn ($inner) => $inner->orWhere('barcode', 'like', "%{$this->search}%"))))
             ->when($this->typeFilter, fn ($query) => $query->where('type', $this->typeFilter));
     }
 
@@ -66,7 +74,7 @@ class ProductReport implements ScreenReport
 
     public function tableHeaders(): array
     {
-        return ['Product', 'Category', 'Details', 'Price', 'Cost Price', 'Stock'];
+        return collect(['Product', 'Category', 'Details', ...($this->barcodesEnabled() ? ['Barcode'] : []), 'Price', 'Cost Price', 'Stock'])->all();
     }
 
     public function tableRows(bool $forExcel): array
@@ -75,15 +83,18 @@ class ProductReport implements ScreenReport
             $name = TableExportService::sanitizeCell($product->name);
             $category = TableExportService::sanitizeCell($product->typeLabel());
             $details = TableExportService::sanitizeCell($product->summaryLine());
+            $barcode = TableExportService::sanitizeCell((string) ($product->barcode ?? ''));
+
+            $barcodeCell = $this->barcodesEnabled() ? [$forExcel ? $barcode : ($barcode ?: '—')] : [];
 
             return $forExcel
-                ? [$name, $category, $details, (float) $product->price, $product->cost_price !== null ? (float) $product->cost_price : null, (int) $product->stock_quantity]
-                : [$name, $category, $details ?: '—', 'Rs '.number_format($product->price, 2), $product->cost_price !== null ? 'Rs '.number_format($product->cost_price, 2) : '—', (string) $product->stock_quantity];
+                ? [$name, $category, $details, ...$barcodeCell, (float) $product->price, $product->cost_price !== null ? (float) $product->cost_price : null, (int) $product->stock_quantity]
+                : [$name, $category, $details ?: '—', ...$barcodeCell, 'Rs '.number_format($product->price, 2), $product->cost_price !== null ? 'Rs '.number_format($product->cost_price, 2) : '—', (string) $product->stock_quantity];
         })->all();
     }
 
     public function columnTypes(): array
     {
-        return ['string', 'string', 'string', 'currency', 'currency', 'integer'];
+        return collect(['string', 'string', 'string', ...($this->barcodesEnabled() ? ['string'] : []), 'currency', 'currency', 'integer'])->all();
     }
 }

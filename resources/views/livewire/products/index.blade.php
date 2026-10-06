@@ -9,8 +9,13 @@ use App\Models\Brand;
 use App\Models\MainCategory;
 use App\Models\Product;
 use App\ReportQueries\ProductReport;
+use App\Services\BarcodeService;
+use App\Services\ProductLabelPdfService;
 use App\Services\TableExportService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
@@ -42,6 +47,13 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public string $imei = '';
 
     public string $category = '';
+
+    public string $barcode = '';
+
+    public ?int $printingId = null;
+    public string $printCopies = '1';
+    public string $printLayout = ProductLabelPdfService::LAYOUT_ROLL;
+    public bool $printShowPrice = true;
 
     public function mount(): void
     {
@@ -161,7 +173,20 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     ])
             )->all(),
             'canImportProducts' => Auth::user()->canImportProducts(),
+            'barcodeEnabled' => Auth::user()->canUseBarcodes(),
+            'barcodePreview' => $this->barcodePreview(),
+            'missingBarcodeCount' => Auth::user()->canUseBarcodes() ? Product::whereNull('barcode')->count() : 0,
+            'printingProduct' => $this->printingId ? Product::find($this->printingId) : null,
         ];
+    }
+
+    protected function barcodePreview(): ?string
+    {
+        if (! Auth::user()->canUseBarcodes() || ! BarcodeService::isPrintable(trim($this->barcode))) {
+            return null;
+        }
+
+        return BarcodeService::imageDataUri(trim($this->barcode));
     }
 
     public function openCreate(): void
@@ -215,6 +240,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->model = $product->details['model'] ?? '';
         $this->imei = $product->details['imei'] ?? '';
         $this->category = $product->details['category'] ?? '';
+        $this->barcode = (string) ($product->barcode ?? '');
 
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'product-form');
@@ -222,6 +248,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
     public function save(): void
     {
+        $this->barcode = trim($this->barcode);
         $this->validate($this->rules());
 
         $product = $this->editingId ? Product::findOrFail($this->editingId) : new Product;
@@ -235,15 +262,111 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             'details' => $this->detailsForType(),
         ]);
 
+        if (Auth::user()->canUseBarcodes()) {
+            $product->barcode = $this->barcode !== '' ? $this->barcode : null;
+        }
+
         if ($this->image) {
             $product->image_path = $this->storeImage($this->image, 'products', $product->image_path);
         }
 
-        $product->save();
+        try {
+            $product->save();
+        } catch (QueryException $e) {
+            if (($e->errorInfo[1] ?? null) !== 1062) {
+                throw $e;
+            }
+
+            throw ValidationException::withMessages([
+                'barcode' => BarcodeService::duplicateMessageFor(Auth::user()->shop_id, $this->barcode, $this->editingId) ?? 'This barcode is already in use.',
+            ]);
+        }
 
         $this->toastSuccess($this->editingId ? 'Product updated.' : 'Product added.');
         $this->dispatch('close-modal', name: 'product-form');
         $this->resetForm();
+    }
+
+    public function generateBarcode(): void
+    {
+        abort_unless(Auth::user()->canUseBarcodes(), 403);
+
+        $this->barcode = BarcodeService::generateUniqueFor(Auth::user()->shop_id, $this->editingId);
+        $this->resetErrorBag('barcode');
+    }
+
+    public function runBulkBarcodeGeneration(): void
+    {
+        abort_unless(Auth::user()->canUseBarcodes(), 403);
+
+        $result = BarcodeService::assignMissing(Auth::user()->shop_id);
+
+        $this->toastSuccess($result['remaining'] > 0
+            ? "Generated {$result['assigned']} barcodes. {$result['remaining']} products still need one — run this again to continue."
+            : "Generated {$result['assigned']} barcodes. Every product now has one.");
+    }
+
+    public function generateBarcodeFor(int $id): void
+    {
+        abort_unless(Auth::user()->canUseBarcodes(), 403);
+
+        $product = Product::findOrFail($id);
+
+        if ($product->barcode === null || $product->barcode === '') {
+            BarcodeService::assignToProduct($product->id);
+        }
+
+        $this->toastSuccess('Barcode generated. You can print the label now.');
+    }
+
+    public function openPrintLabel(int $id): void
+    {
+        abort_unless(Auth::user()->canUseBarcodes(), 403);
+
+        $product = Product::findOrFail($id);
+
+        $this->printingId = $product->id;
+        $this->printCopies = '1';
+        $this->printLayout = ProductLabelPdfService::LAYOUT_ROLL;
+        $this->printShowPrice = true;
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'print-label-form');
+    }
+
+    public function closePrintLabel(): void
+    {
+        $this->dispatch('close-modal', name: 'print-label-form');
+        $this->reset(['printingId', 'printCopies', 'printLayout', 'printShowPrice']);
+    }
+
+    public function printLabels(ProductLabelPdfService $labels): ?StreamedResponse
+    {
+        abort_unless(Auth::user()->canUseBarcodes(), 403);
+
+        $this->validate([
+            'printCopies' => ['required', 'integer', 'min:1', 'max:'.BarcodeService::MAX_LABEL_COPIES],
+            'printLayout' => ['required', Rule::in([ProductLabelPdfService::LAYOUT_ROLL, ProductLabelPdfService::LAYOUT_A4])],
+        ], [
+            'printCopies.max' => 'You can print up to '.BarcodeService::MAX_LABEL_COPIES.' labels per request. Print in batches for more.',
+        ]);
+
+        $product = Product::findOrFail($this->printingId);
+
+        if ($product->barcode === null || $product->barcode === '') {
+            $this->toastError('This product has no barcode yet. Generate one first.');
+
+            return null;
+        }
+
+        $this->dispatch('close-modal', name: 'print-label-form');
+
+        return $labels->download(
+            $product,
+            (int) $this->printCopies,
+            $this->printLayout,
+            $this->printShowPrice,
+            Auth::user()->shop->name,
+        );
     }
 
     public function delete(int $id): void
@@ -290,7 +413,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
     protected function rules(): array
     {
-        return CreateProduct::rules(auth()->user()->shop_id, $this->type);
+        return CreateProduct::rules(auth()->user()->shop_id, $this->type, $this->editingId);
     }
 
     protected function detailsForType(): array
@@ -302,7 +425,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     {
         $this->reset([
             'editingId', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
-            'brand', 'model', 'imei', 'category',
+            'brand', 'model', 'imei', 'category', 'barcode',
         ]);
 
         $this->type = 'mobile';
@@ -330,6 +453,17 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
         <div class="flex items-center gap-2">
             <x-ui.export-dropdown />
+            @if ($barcodeEnabled && $missingBarcodeCount > 0)
+                <x-ui.button
+                    type="button"
+                    variant="secondary"
+                    wire:click="runBulkBarcodeGeneration"
+                    wire:confirm="Generate barcodes for up to {{ \App\Services\BarcodeService::BULK_RUN_LIMIT }} products that don't have one yet?"
+                    class="shrink-0"
+                >
+                    Generate missing barcodes ({{ $missingBarcodeCount }})
+                </x-ui.button>
+            @endif
             @if ($canImportProducts)
                 <x-ui.button type="button" variant="secondary" wire:click="openImportModal" class="shrink-0">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -357,7 +491,12 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             </x-slot>
         </x-ui.empty-state>
     @else
-        <x-ui.table :headers="['Product', 'Category', 'Price', 'Stock', '']">
+        @php
+            $productHeaders = $barcodeEnabled
+                ? ['Product', 'Category', 'Barcode', 'Price', 'Stock', '']
+                : ['Product', 'Category', 'Price', 'Stock', ''];
+        @endphp
+        <x-ui.table :headers="$productHeaders">
             @foreach ($products as $product)
                 <x-ui.table-row wire:key="product-{{ $product->id }}">
                     <x-ui.table-cell class="font-medium text-slate-900">
@@ -379,6 +518,9 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                             @endif
                         </div>
                     </x-ui.table-cell>
+                    @if ($barcodeEnabled)
+                        <x-ui.table-cell class="font-mono text-xs text-slate-600">{{ $product->barcode ?? '—' }}</x-ui.table-cell>
+                    @endif
                     <x-ui.table-cell>Rs {{ number_format($product->price, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell>
                         @if ($product->isOutOfStock())
@@ -391,6 +533,11 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     </x-ui.table-cell>
                     <x-ui.table-cell align="right">
                         <div class="flex justify-end gap-2">
+                            @if ($barcodeEnabled && $product->type !== 'sim')
+                                <x-ui.button size="sm" variant="ghost" wire:click="openPrintLabel({{ $product->id }})">
+                                    Print Label
+                                </x-ui.button>
+                            @endif
                             @if ($product->type !== 'sim')
                                 <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $product->id }})">
                                     Edit
@@ -491,6 +638,29 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                         <x-ui.input wire:model="stock_quantity" id="stock_quantity" type="number" step="1" min="0" />
                     </x-ui.field>
                 </div>
+
+                @if ($barcodeEnabled)
+                    <x-ui.field label="Barcode" name="barcode" for="barcode" help="Optional — type or scan one, or generate a unique one">
+                        <div class="flex gap-2">
+                            <x-ui.input
+                                wire:model="barcode"
+                                id="barcode"
+                                autocomplete="off"
+                                class="font-mono"
+                                x-on:keydown.enter.prevent
+                            />
+                            <x-ui.button type="button" variant="secondary" wire:click="generateBarcode" wire:loading.attr="disabled" wire:target="generateBarcode" class="shrink-0">
+                                Generate
+                            </x-ui.button>
+                        </div>
+                    </x-ui.field>
+
+                    @if ($barcodePreview)
+                        <div class="rounded-lg border border-slate-200 bg-white p-3">
+                            <img src="{{ $barcodePreview }}" alt="Barcode {{ $barcode }}" class="h-16 max-w-full" />
+                        </div>
+                    @endif
+                @endif
             </div>
 
             <div class="mt-6 flex justify-end gap-3">
@@ -501,6 +671,56 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="save">
                     {{ $editingId ? 'Save Changes' : 'Add Product' }}
                 </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="print-label-form" max-width="sm">
+        <form wire:submit="printLabels" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Print Label</h2>
+
+            @if ($printingProduct)
+                <p class="mt-1 text-sm text-slate-500">{{ $printingProduct->name }}</p>
+
+                @if (! $printingProduct->barcode)
+                    <div class="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        This product has no barcode yet.
+                        <div class="mt-3">
+                            <x-ui.button type="button" variant="secondary" size="sm" wire:click="generateBarcodeFor({{ $printingProduct->id }})">
+                                Generate barcode
+                            </x-ui.button>
+                        </div>
+                    </div>
+                @else
+                    <div class="mt-5 space-y-5">
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <x-ui.field label="Copies" name="printCopies" for="printCopies" help="Up to {{ \App\Services\BarcodeService::MAX_LABEL_COPIES }} per request">
+                                <x-ui.input wire:model="printCopies" id="printCopies" type="number" min="1" max="{{ \App\Services\BarcodeService::MAX_LABEL_COPIES }}" step="1" />
+                            </x-ui.field>
+
+                            <x-ui.field label="Layout" name="printLayout" for="printLayout">
+                                <x-ui.select wire:model="printLayout" id="printLayout">
+                                    <option value="{{ \App\Services\ProductLabelPdfService::LAYOUT_ROLL }}">Single label roll (50 × 30 mm)</option>
+                                    <option value="{{ \App\Services\ProductLabelPdfService::LAYOUT_A4 }}">A4 sheet (3 × 8 grid)</option>
+                                </x-ui.select>
+                            </x-ui.field>
+                        </div>
+
+                        <x-ui.checkbox wire:model="printShowPrice" label="Show selling price on the label" />
+                    </div>
+                @endif
+            @endif
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closePrintLabel">
+                    Cancel
+                </x-ui.button>
+
+                @if ($printingProduct && $printingProduct->barcode)
+                    <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="printLabels">
+                        Download PDF
+                    </x-ui.button>
+                @endif
             </div>
         </form>
     </x-ui.modal>

@@ -9,6 +9,7 @@ use App\Models\AccessoryCategoryOption;
 use App\Models\Brand;
 use App\Models\MainCategory;
 use App\Models\Product;
+use App\Models\Shop;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -34,7 +35,7 @@ class ProductImportService
     /** Canonical, lowercase header names this importer understands. */
     protected const REQUIRED_HEADERS = ['name', 'main category', 'selling price'];
 
-    protected const OPTIONAL_HEADERS = ['cost price', 'stock qty', 'sub-category', 'brand', 'model', 'imei/serial'];
+    protected const OPTIONAL_HEADERS = ['cost price', 'stock qty', 'sub-category', 'brand', 'model', 'imei/serial', 'barcode'];
 
     /** A small-edit-distance flag against the shop's own existing names — cheap (php levenshtein()), not exhaustive. */
     protected const SIMILARITY_THRESHOLD = 2;
@@ -152,6 +153,7 @@ class ProductImportService
                 $product->fill([
                     'type' => $typeSlug,
                     'name' => $row['name'],
+                    'barcode' => $row['barcode'],
                     'price' => $row['price'],
                     'cost_price' => $row['costPrice'],
                     'stock_quantity' => $row['stockQuantity'],
@@ -239,8 +241,18 @@ class ProductImportService
         // Existing products for this shop, for the name+IMEI duplicate check — done in PHP
         // rather than a JSON-column SQL comparison, which can silently ignore the app's
         // collation depending on the MySQL version.
-        $existingProducts = Product::where('shop_id', $shopId)->get(['name', 'details']);
+        $existingProducts = Product::where('shop_id', $shopId)->get(['name', 'details', 'barcode']);
         $existingKeys = $existingProducts->map(fn (Product $p) => $this->normalize($p->name).'|'.$this->normalize((string) ($p->details['imei'] ?? '')))->flip();
+
+        $barcodesEnabled = (bool) Shop::whereKey($shopId)->value('barcode_enabled');
+        $existingBarcodeOwners = $existingProducts
+            ->filter(fn (Product $p) => $p->barcode !== null && $p->barcode !== '')
+            ->mapWithKeys(fn (Product $p) => [$this->normalize($p->barcode) => $p->name]);
+
+        $notices = [];
+        if (isset($headerIndex['barcode']) && ! $barcodesEnabled) {
+            $notices[] = 'The Barcode column was ignored because barcode support is turned off for this shop.';
+        }
 
         $existingMainCategoryNames = MainCategory::query()->pluck('name')->all();
         $existingBrandNames = Brand::query()->pluck('name')->all();
@@ -262,6 +274,7 @@ class ProductImportService
             ->mapWithKeys(fn (MainCategory $c) => [$this->normalize($c->name) => $c->slug]);
 
         $rows = [];
+        $seenBarcodes = []; // normalized barcode => first excel row number, rows that will be created only
         $seenInSheet = []; // "name|imei" => first excel row number
         $pendingMainCategories = []; // normalized name => original-cased name
         $pendingSubCategories = []; // "mainKey|subKey" => ['main' => name, 'sub' => name]
@@ -294,6 +307,7 @@ class ProductImportService
             $brandName = trim($cellAt($cells, 'brand'));
             $model = trim($cellAt($cells, 'model'));
             $imei = trim($cellAt($cells, 'imei/serial'));
+            $barcode = $barcodesEnabled ? trim($cellAt($cells, 'barcode')) : '';
 
             $rowHadError = false;
             $addError = function (string $message) use (&$rowHadError, &$rowErrors, $excelRow) {
@@ -372,6 +386,29 @@ class ProductImportService
 
             $skip = isset($existingKeys[$dupKey]);
 
+            $barcodeKey = $this->normalize($barcode);
+            if (! $skip && $barcode !== '') {
+                if (! preg_match('/^[\x20-\x7E]+$/', $barcode)) {
+                    $rowErrors[] = "Row {$excelRow}: Barcode may only contain plain letters, digits and symbols.";
+
+                    continue;
+                }
+
+                if (isset($seenBarcodes[$barcodeKey])) {
+                    $rowErrors[] = "Row {$excelRow}: Barcode \"{$barcode}\" is also on row {$seenBarcodes[$barcodeKey]}.";
+
+                    continue;
+                }
+
+                if (isset($existingBarcodeOwners[$barcodeKey])) {
+                    $rowErrors[] = "Row {$excelRow}: Barcode \"{$barcode}\" is already used by \"{$existingBarcodeOwners[$barcodeKey]}\".";
+
+                    continue;
+                }
+
+                $seenBarcodes[$barcodeKey] = $excelRow;
+            }
+
             if (! $skip) {
                 $mainKey = $this->normalize($mainCategoryName);
                 if (! in_array($mainKey, array_map($this->normalize(...), $existingMainCategoryNames), true)) {
@@ -402,6 +439,7 @@ class ProductImportService
                 'brandName' => $brandName !== '' ? $brandName : null,
                 'model' => $model !== '' ? $model : null,
                 'imei' => $imei !== '' ? $imei : null,
+                'barcode' => $barcode !== '' ? $barcode : null,
                 'price' => $price,
                 'costPrice' => $costPrice,
                 'stockQuantity' => $stockQuantity,
@@ -414,6 +452,7 @@ class ProductImportService
 
         return [
             'valid' => $valid,
+            'notices' => $notices,
             'fileErrors' => $fileErrors,
             'rowErrors' => $rowErrors,
             'rows' => $valid ? $rows : [],
@@ -428,6 +467,7 @@ class ProductImportService
     {
         return [
             'valid' => false,
+            'notices' => [],
             'fileErrors' => $fileErrors,
             'rowErrors' => [],
             'rows' => [],
@@ -448,6 +488,7 @@ class ProductImportService
 
         return [
             'valid' => $result['valid'],
+            'notices' => $result['notices'],
             'fileErrors' => array_slice($result['fileErrors'], 0, $cap),
             'fileErrorsMore' => max(0, count($result['fileErrors']) - $cap),
             'rowErrors' => array_slice($result['rowErrors'], 0, $cap),
@@ -518,31 +559,46 @@ class ProductImportService
      * worked row and the required/optional notes — the importer only ever
      * reads the first sheet.
      */
-    public function templateResponse(): StreamedResponse
+    public function templateResponse(bool $withBarcode = true): StreamedResponse
     {
         $headers = ['Name', 'Main Category', 'Sub-Category', 'Brand', 'Model', 'IMEI/Serial', 'Selling Price', 'Cost Price', 'Stock Qty'];
+        if ($withBarcode) {
+            $headers[] = 'Barcode';
+        }
+
+        $lastColumn = chr(ord('A') + count($headers) - 1);
+        $columns = range('A', $lastColumn);
+        $barcodeColumn = $withBarcode ? $lastColumn : null;
 
         $spreadsheet = new Spreadsheet;
 
         $products = $spreadsheet->getActiveSheet();
         $products->setTitle('Products');
         $products->fromArray($headers, null, 'A1');
-        $products->getStyle('A1:I1')->getFont()->setBold(true);
+        $products->getStyle("A1:{$lastColumn}1")->getFont()->setBold(true);
         $products->getStyle('F:F')->getNumberFormat()->setFormatCode('@'); // IMEI/Serial as Text
-        foreach (range('A', 'I') as $letter) {
+        if ($barcodeColumn) {
+            $products->getStyle("{$barcodeColumn}:{$barcodeColumn}")->getNumberFormat()->setFormatCode('@');
+        }
+        foreach ($columns as $letter) {
             $products->getColumnDimension($letter)->setWidth(18);
         }
 
         $example = $spreadsheet->createSheet();
         $example->setTitle('Example');
         $example->fromArray($headers, null, 'A1');
-        $example->getStyle('A1:I1')->getFont()->setBold(true);
+        $example->getStyle("A1:{$lastColumn}1")->getFont()->setBold(true);
         $example->getStyle('F:F')->getNumberFormat()->setFormatCode('@');
+        if ($barcodeColumn) {
+            $example->getStyle("{$barcodeColumn}:{$barcodeColumn}")->getNumberFormat()->setFormatCode('@');
+        }
         $example->fromArray([
             'Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523999', '45000', '39000', '5',
+            ...($withBarcode ? ['2000000000015'] : []),
         ], null, 'A2');
         $example->fromArray([
             'USB-C Cable', 'Accessory', 'Cable', '', '', '', '500', '300', '20',
+            ...($withBarcode ? [''] : []),
         ], null, 'A3');
 
         $notes = [
@@ -556,13 +612,14 @@ class ProductImportService
             ['Selling Price', 'Required', 'Numbers only ("Rs"/commas are stripped automatically).'],
             ['Cost Price', 'Optional', ''],
             ['Stock Qty', 'Optional', 'Whole number. Defaults to 0 if left blank.'],
+            ...($withBarcode ? [['Barcode', 'Optional', 'Kept as text. Must be unique in your shop — a barcode already used by another product, or repeated on another row, is an error. Leave blank if the product has none.']] : []),
             ['', '', ''],
             ['Note:', '', 'Images cannot be imported from a spreadsheet — add product photos afterwards from the Products screen.'],
             ['Note:', '', 'A row whose Name and IMEI/Serial exactly match an existing product is skipped, not overwritten.'],
         ];
         $example->fromArray($notes, null, 'A6');
         $example->getStyle('A6:C6')->getFont()->setBold(true);
-        foreach (range('A', 'I') as $letter) {
+        foreach ($columns as $letter) {
             $example->getColumnDimension($letter)->setWidth(22);
         }
 

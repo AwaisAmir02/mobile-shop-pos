@@ -52,6 +52,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                     ->get()
                 : collect(),
             'customers' => Customer::query()->orderBy('name')->get(),
+            'barcodeEnabled' => Auth::user()->canUseBarcodes(),
         ];
     }
 
@@ -76,20 +77,79 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
             $this->cart[$productId]['quantity'] = $newQuantity;
         } else {
-            $this->cart[$productId] = [
-                'product_id' => $product->id,
-                'name' => $product->name,
-                'category' => $product->typeLabel(),
-                'list_price' => (string) $product->price,
-                'cost_price' => $product->cost_price,
-                'custom_price' => '',
-                'quantity' => 1,
-                'discount' => '0',
-                'max_stock' => $product->stock_quantity,
-            ];
+            $this->cart[$productId] = $this->cartLineFor($product);
         }
 
         $this->search = '';
+    }
+
+    protected function cartLineFor(Product $product): array
+    {
+        return [
+            'product_id' => $product->id,
+            'name' => $product->name,
+            'category' => $product->typeLabel(),
+            'list_price' => (string) $product->price,
+            'cost_price' => $product->cost_price,
+            'custom_price' => '',
+            'quantity' => 1,
+            'discount' => '0',
+            'max_stock' => $product->stock_quantity,
+        ];
+    }
+
+    public function scanBarcode(string $raw): void
+    {
+        if (! Auth::user()->canUseBarcodes()) {
+            return;
+        }
+
+        $code = trim($raw);
+
+        if ($code === '') {
+            $this->search = '';
+
+            return;
+        }
+
+        $product = Product::where('barcode', $code)->first();
+
+        if ($product === null) {
+            if (Product::where('name', 'like', "%{$code}%")->exists()) {
+                return;
+            }
+
+            $this->toastError("No product found for barcode {$code}.");
+            $this->search = '';
+            $this->dispatch('focus-scan');
+
+            return;
+        }
+
+        $this->search = '';
+        $this->dispatch('focus-scan');
+
+        if ($product->stock_quantity < 1) {
+            $this->toastError("{$product->name} is out of stock.");
+
+            return;
+        }
+
+        $inCart = $this->cart[$product->id]['quantity'] ?? 0;
+
+        if ($inCart + 1 > $product->stock_quantity) {
+            $this->toastError("Only {$product->stock_quantity} in stock — already in cart.");
+
+            return;
+        }
+
+        if (isset($this->cart[$product->id])) {
+            $this->cart[$product->id]['quantity'] = $inCart + 1;
+        } else {
+            $this->cart[$product->id] = $this->cartLineFor($product);
+        }
+
+        $this->toastSuccess("{$product->name} — now {$this->cart[$product->id]['quantity']} in cart.");
     }
 
     public function removeFromCart(int $productId): void
@@ -235,9 +295,13 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                 <div class="p-5">
                     <x-ui.input
                         wire:model.live.debounce.250ms="search"
+                        wire:keydown.enter.prevent="scanBarcode($event.target.value)"
+                        x-ref="scanInput"
+                        x-on:focus-scan.window="$refs.scanInput.focus()"
                         type="search"
-                        placeholder="Search by product name…"
+                        placeholder="{{ $barcodeEnabled ? 'Search by name, or scan a barcode…' : 'Search by product name…' }}"
                         autofocus
+                        autocomplete="off"
                         class="text-base"
                     />
 

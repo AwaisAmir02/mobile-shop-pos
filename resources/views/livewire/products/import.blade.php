@@ -57,6 +57,8 @@ new class extends Component
 
     public array $similarWarnings = [];
 
+    public array $notices = [];
+
     // Result summary, shown after a successful confirm.
     public int $createdCount = 0;
 
@@ -89,7 +91,7 @@ new class extends Component
             'importFile', 'storedPath', 'processing',
             'fileErrors', 'fileErrorsMore', 'rowErrors', 'rowErrorsMore',
             'toCreateCount', 'toSkipCount', 'skippedLines', 'skippedLinesMore',
-            'newMainCategoryNames', 'newSubCategoryNames', 'newBrandNames', 'similarWarnings',
+            'newMainCategoryNames', 'newSubCategoryNames', 'newBrandNames', 'similarWarnings', 'notices',
             'createdCount', 'skippedCount', 'createdMainCategories', 'createdSubCategories', 'createdBrands',
         ]);
         $this->step = 'upload';
@@ -147,6 +149,7 @@ new class extends Component
         $this->newSubCategoryNames = $preview['newSubCategoryNames'];
         $this->newBrandNames = $preview['newBrandNames'];
         $this->similarWarnings = $preview['similarWarnings'];
+        $this->notices = $preview['notices'];
     }
 
     public function confirmImport(): void
@@ -205,7 +208,7 @@ new class extends Component
     {
         $this->guard();
 
-        return app(ProductImportService::class)->templateResponse();
+        return app(ProductImportService::class)->templateResponse(Auth::user()->canUseBarcodes());
     }
 }; ?>
 
@@ -225,7 +228,7 @@ new class extends Component
                 <div class="mt-5 space-y-5">
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                         <p class="mb-2 font-medium text-slate-900">Required columns: Name, Main Category, Selling Price.</p>
-                        <p class="mb-2">Optional: Cost Price, Stock Qty. Sub-Category is required only when Main Category is Accessory. Brand is required only when Main Category is Mobile Phone (Model and IMEI/Serial are optional and only apply to Mobile Phone).</p>
+                        <p class="mb-2">Optional: Cost Price, Stock Qty, Barcode (when barcode support is on for your shop — must be unique). Sub-Category is required only when Main Category is Accessory. Brand is required only when Main Category is Mobile Phone (Model and IMEI/Serial are optional and only apply to Mobile Phone).</p>
                         <p>A Main Category, Sub-Category, or Brand name that doesn't exist yet is created automatically. Images cannot be imported — add photos afterwards from the Products screen.</p>
                     </div>
 
@@ -246,6 +249,14 @@ new class extends Component
                     <div wire:loading wire:target="importFile" class="text-sm text-slate-500">
                         Uploading and checking your file…
                     </div>
+
+                    @if (! empty($notices))
+                        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                            @foreach ($notices as $notice)
+                                <p>{{ $notice }}</p>
+                            @endforeach
+                        </div>
+                    @endif
 
                     @if (! empty($fileErrors) || ! empty($rowErrors))
                         <div class="rounded-lg border border-red-200 bg-red-50 p-4">
@@ -273,6 +284,10 @@ new class extends Component
                 </div>
             @elseif ($step === 'preview')
                 <div class="mt-5 space-y-5">
+                    @foreach ($notices as $notice)
+                        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{{ $notice }}</div>
+                    @endforeach
+
                     <div class="grid grid-cols-2 gap-4">
                         <x-ui.stat label="Products to Add" :value="number_format($toCreateCount)" />
                         <x-ui.stat label="Skipped (Already Exist)" :value="number_format($toSkipCount)" />

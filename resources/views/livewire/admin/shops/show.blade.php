@@ -170,6 +170,14 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $this->toastSuccess($this->shop->import_enabled ? 'Products Import enabled for this shop.' : 'Products Import disabled for this shop.');
     }
 
+    public function toggleBarcodeEnabled(): void
+    {
+        $this->shop->update(['barcode_enabled' => ! $this->shop->barcode_enabled]);
+        $this->shop->refresh();
+
+        $this->toastSuccess($this->shop->barcode_enabled ? 'Barcodes enabled for this shop.' : 'Barcodes disabled for this shop.');
+    }
+
     protected function periodRange(): array
     {
         if ($this->periodType === 'month') {
@@ -312,6 +320,8 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                     </div>
                 </form>
             </x-ui.card>
+
+            <livewire:admin.shops.billing :shop-id="$shop->id" />
         </div>
 
         <div class="space-y-6">
@@ -505,6 +515,39 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                     </div>
                 </div>
             @endforeach
+
+            <div>
+                <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Shop Features</h3>
+                <div class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                    <div class="flex items-center justify-between gap-3 px-4 py-2.5">
+                        <div>
+                            <span class="text-sm font-medium text-slate-900">Barcodes</span>
+                            <p class="text-xs text-slate-500">Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off.</p>
+                        </div>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked="{{ $shop->barcode_enabled ? 'true' : 'false' }}"
+                            aria-label="{{ $shop->barcode_enabled ? 'Disable' : 'Enable' }} Barcodes"
+                            wire:click="toggleBarcodeEnabled"
+                            wire:confirm="{{ $shop->barcode_enabled ? 'Disable' : 'Enable' }} Barcodes for this shop?"
+                            @class([
+                                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                                'bg-emerald-500' => $shop->barcode_enabled,
+                                'bg-slate-300' => ! $shop->barcode_enabled,
+                            ])
+                        >
+                            <span
+                                @class([
+                                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                                    'translate-x-6' => $shop->barcode_enabled,
+                                    'translate-x-1' => ! $shop->barcode_enabled,
+                                ])
+                            ></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </x-ui.card>
 </div>

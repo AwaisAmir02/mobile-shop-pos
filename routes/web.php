@@ -76,6 +76,10 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('/', 'admin.dashboard')->name('dashboard');
         Volt::route('shops/create', 'admin.shops.create')->name('shops.create');
         Volt::route('shops/{shop}', 'admin.shops.show')->name('shops.show');
+
+        Route::get('shops/{shop}/billing/invoices/{invoice}/pdf', function (\App\Models\Shop $shop, int $invoice, \App\Services\SubscriptionInvoicePdfService $pdf) {
+            return $pdf->download(\App\Models\SubscriptionInvoice::where('shop_id', $shop->id)->findOrFail($invoice));
+        })->name('shops.billing.invoices.pdf');
     });
 });
 

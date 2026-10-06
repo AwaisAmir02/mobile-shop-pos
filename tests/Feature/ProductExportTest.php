@@ -101,9 +101,11 @@ class ProductExportTest extends TestCase
 
         $this->actingAs($owner);
 
-        $rows = (new ProductReport)->tableRows(forExcel: true);
+        $report = new ProductReport;
+        $rows = $report->tableRows(forExcel: true);
+        $costIndex = array_search('Cost Price', $report->tableHeaders(), true);
 
-        $this->assertNull($rows[0][4]);
+        $this->assertNull($rows[0][$costIndex]);
     }
 
     public function test_a_shop_can_only_export_its_own_products(): void

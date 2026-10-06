@@ -6,7 +6,10 @@ use App\Livewire\Concerns\UploadsImages;
 use App\Models\AccessoryCategoryOption;
 use App\Models\Brand;
 use App\Models\MainCategory;
+use App\Services\BarcodeService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
 use Livewire\Volt\Component;
@@ -25,6 +28,7 @@ new class extends Component
     public string $price = '';
     public string $cost_price = '';
     public string $stock_quantity = '0';
+    public string $barcode = '';
 
     public string $brand = '';
     public string $model = '';
@@ -142,16 +146,33 @@ new class extends Component
 
     public function save(): void
     {
+        $this->barcode = trim($this->barcode);
         $this->validate(CreateProduct::rules(Auth::user()->shop_id, $this->type));
 
-        $product = CreateProduct::handle([
+        $attributes = [
             'type' => $this->type,
             'name' => $this->name,
             'price' => $this->price,
             'cost_price' => $this->cost_price !== '' ? $this->cost_price : null,
             'stock_quantity' => $this->stock_quantity,
             'details' => CreateProduct::detailsForType($this->type, $this->category, $this->brand, $this->model, $this->imei),
-        ]);
+        ];
+
+        if (Auth::user()->canUseBarcodes()) {
+            $attributes['barcode'] = $this->barcode !== '' ? $this->barcode : null;
+        }
+
+        try {
+            $product = CreateProduct::handle($attributes);
+        } catch (QueryException $e) {
+            if (($e->errorInfo[1] ?? null) !== 1062) {
+                throw $e;
+            }
+
+            throw ValidationException::withMessages([
+                'barcode' => BarcodeService::duplicateMessageFor(Auth::user()->shop_id, $this->barcode) ?? 'This barcode is already in use.',
+            ]);
+        }
 
         if ($this->image) {
             $product->image_path = $this->storeImage($this->image, 'products', $product->image_path);
@@ -166,14 +187,22 @@ new class extends Component
             mainCategorySlug: $product->type,
             subCategoryName: $product->details['category'] ?? '',
         );
-        $this->reset(['name', 'image', 'price', 'cost_price', 'brand', 'model', 'imei', 'category']);
+        $this->reset(['name', 'image', 'price', 'cost_price', 'brand', 'model', 'imei', 'category', 'barcode']);
         $this->stock_quantity = '0';
+    }
+
+    public function generateBarcode(): void
+    {
+        abort_unless(Auth::user()->canUseBarcodes(), 403);
+
+        $this->barcode = BarcodeService::generateUniqueFor(Auth::user()->shop_id);
+        $this->resetErrorBag('barcode');
     }
 
     public function close(): void
     {
         $this->dispatch('close-modal', name: 'quick-create-product');
-        $this->reset(['name', 'image', 'price', 'cost_price', 'brand', 'model', 'imei', 'category']);
+        $this->reset(['name', 'image', 'price', 'cost_price', 'brand', 'model', 'imei', 'category', 'barcode']);
         $this->stock_quantity = '0';
         $this->syncDefaultType();
         $this->resetErrorBag();
@@ -254,6 +283,23 @@ new class extends Component
                         <x-ui.input wire:model="stock_quantity" id="quickProductStockQuantity" type="number" step="1" min="0" />
                     </x-ui.field>
                 </div>
+
+                @if (auth()->user()->canUseBarcodes())
+                    <x-ui.field label="Barcode" name="barcode" for="quickProductBarcode" help="Optional — type or scan one, or generate a unique one">
+                        <div class="flex gap-2">
+                            <x-ui.input
+                                wire:model="barcode"
+                                id="quickProductBarcode"
+                                autocomplete="off"
+                                class="font-mono"
+                                x-on:keydown.enter.prevent
+                            />
+                            <x-ui.button type="button" variant="secondary" wire:click="generateBarcode" wire:loading.attr="disabled" wire:target="generateBarcode" class="shrink-0">
+                                Generate
+                            </x-ui.button>
+                        </div>
+                    </x-ui.field>
+                @endif
             </div>
 
             <div class="mt-6 flex justify-end gap-3">

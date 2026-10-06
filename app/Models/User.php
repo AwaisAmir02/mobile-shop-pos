@@ -76,4 +76,16 @@ class User extends Authenticatable
     {
         return (bool) ($this->shop?->import_enabled) && $this->hasAccessTo(ShopScreen::Products);
     }
+
+    /**
+     * Barcode support is a shop-wide capability switch (shops.barcode_enabled,
+     * on by default, flipped only by Super Admin), deliberately not a
+     * ShopScreen: a screen entry would appear as a per-Role checkbox, and
+     * existing cashiers hold no such permission yet, so scanning would
+     * silently stop working for them the day this ships.
+     */
+    public function canUseBarcodes(): bool
+    {
+        return (bool) ($this->shop?->barcode_enabled);
+    }
 }

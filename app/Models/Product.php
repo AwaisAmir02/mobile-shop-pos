@@ -19,6 +19,7 @@ class Product extends Model
         'shop_id',
         'type',
         'name',
+        'barcode',
         'image_path',
         'price',
         'cost_price',
