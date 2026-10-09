@@ -1,7 +1,10 @@
 <?php
 
+use App\Actions\CancelExpense;
+use App\Actions\UpdateExpense;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Expense;
+use App\Models\Scopes\ExcludesCancelledScope;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -18,6 +21,14 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
 
     public string $from = '';
     public string $to = '';
+
+    public ?int $editingId = null;
+    public string $editDescription = '';
+    public string $editAmount = '';
+    public string $editExpenseDate = '';
+
+    public ?int $cancelingId = null;
+    public string $cancelReason = '';
 
     public function mount(): void
     {
@@ -36,7 +47,7 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
 
     protected function filteredQuery()
     {
-        return Expense::query()
+        return Expense::withoutGlobalScope(ExcludesCancelledScope::class)
             ->when($this->from, fn ($query) => $query->whereDate('expense_date', '>=', $this->from))
             ->when($this->to, fn ($query) => $query->whereDate('expense_date', '<=', $this->to));
     }
@@ -45,7 +56,7 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
     {
         return [
             'expenses' => $this->filteredQuery()->latest('expense_date')->latest('id')->paginate(10),
-            'totalExpenses' => $this->filteredQuery()->sum('amount'),
+            'totalExpenses' => $this->filteredQuery()->where('status', '!=', 'cancelled')->sum('amount'),
         ];
     }
 
@@ -75,11 +86,71 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
         $this->reset(['from', 'to']);
     }
 
-    public function delete(int $expenseId): void
+    public function openEdit(int $expenseId): void
     {
-        Expense::findOrFail($expenseId)->delete();
+        abort_unless(Auth::user()->hasAccessTo('expenses-edit-cancel'), 403);
 
-        $this->toastSuccess('Expense deleted.');
+        $expense = Expense::findOrFail($expenseId);
+
+        $this->editingId = $expense->id;
+        $this->editDescription = $expense->description;
+        $this->editAmount = (string) $expense->amount;
+        $this->editExpenseDate = $expense->expense_date->toDateString();
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'edit-expense-form');
+    }
+
+    public function saveEdit(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('expenses-edit-cancel'), 403);
+
+        $this->validate([
+            'editDescription' => ['required', 'string', 'max:255'],
+            'editAmount' => ['required', 'numeric', 'min:0.01'],
+            'editExpenseDate' => ['required', 'date'],
+        ]);
+
+        $expense = Expense::findOrFail($this->editingId);
+
+        UpdateExpense::handle($expense, $this->editDescription, (float) $this->editAmount, $this->editExpenseDate, Auth::id());
+
+        $this->toastSuccess('Expense updated.');
+        $this->dispatch('close-modal', name: 'edit-expense-form');
+        $this->reset(['editingId', 'editDescription', 'editAmount', 'editExpenseDate']);
+    }
+
+    public function closeEditForm(): void
+    {
+        $this->dispatch('close-modal', name: 'edit-expense-form');
+        $this->reset(['editingId', 'editDescription', 'editAmount', 'editExpenseDate']);
+    }
+
+    public function openCancel(int $expenseId): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('expenses-edit-cancel'), 403);
+
+        $this->cancelingId = $expenseId;
+        $this->cancelReason = '';
+        $this->dispatch('open-modal', name: 'cancel-expense-form');
+    }
+
+    public function cancelExpense(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('expenses-edit-cancel'), 403);
+
+        $expense = Expense::findOrFail($this->cancelingId);
+        CancelExpense::handle($expense, Auth::id(), $this->cancelReason);
+
+        $this->dispatch('close-modal', name: 'cancel-expense-form');
+        $this->reset(['cancelingId', 'cancelReason']);
+
+        $this->toastSuccess('Expense cancelled.');
+    }
+
+    public function closeCancelForm(): void
+    {
+        $this->dispatch('close-modal', name: 'cancel-expense-form');
+        $this->reset(['cancelingId', 'cancelReason']);
     }
 }; ?>
 
@@ -143,22 +214,30 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
             description="Expenses you log above will show up here."
         />
     @else
-        <x-ui.table :headers="['Date', 'Description', 'Amount', '']">
+        <x-ui.table :headers="['Date', 'Description', 'Amount', 'Status', '']">
             @foreach ($expenses as $expense)
-                <x-ui.table-row wire:key="expense-{{ $expense->id }}">
+                <x-ui.table-row wire:key="expense-{{ $expense->id }}" @class(['opacity-50' => $expense->isCancelled()])>
                     <x-ui.table-cell>{{ $expense->expense_date->format('d M Y') }}</x-ui.table-cell>
                     <x-ui.table-cell class="font-medium text-slate-900">{{ $expense->description }}</x-ui.table-cell>
                     <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($expense->amount, 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell>
+                        @if ($expense->isCancelled())
+                            <x-ui.badge variant="danger">Cancelled</x-ui.badge>
+                        @else
+                            <x-ui.badge variant="success">Active</x-ui.badge>
+                        @endif
+                    </x-ui.table-cell>
                     <x-ui.table-cell align="right">
-                        <x-ui.button
-                            size="sm"
-                            variant="ghost"
-                            wire:click="delete({{ $expense->id }})"
-                            wire:confirm="Delete this expense?"
-                            class="text-red-600 hover:bg-red-50"
-                        >
-                            Delete
-                        </x-ui.button>
+                        @if (! $expense->isCancelled() && auth()->user()->hasAccessTo('expenses-edit-cancel'))
+                            <div class="flex justify-end gap-2">
+                                <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $expense->id }})">
+                                    Edit
+                                </x-ui.button>
+                                <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $expense->id }})" class="text-red-600 hover:bg-red-50">
+                                    Delete
+                                </x-ui.button>
+                            </div>
+                        @endif
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
@@ -168,4 +247,59 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
             {{ $expenses->links() }}
         </div>
     @endif
+
+    <x-ui.modal name="edit-expense-form" max-width="sm">
+        <form wire:submit="saveEdit" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Edit Expense</h2>
+
+            <div class="mt-5 space-y-5">
+                <x-ui.field label="Description" name="editDescription" for="editDescription">
+                    <x-ui.input wire:model="editDescription" id="editDescription" autofocus />
+                </x-ui.field>
+
+                <x-ui.field label="Amount" name="editAmount" for="editAmount">
+                    <x-ui.input wire:model="editAmount" id="editAmount" type="number" min="0.01" step="0.01" />
+                </x-ui.field>
+
+                <x-ui.field label="Date" name="editExpenseDate" for="editExpenseDate">
+                    <x-ui.input wire:model="editExpenseDate" id="editExpenseDate" type="date" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeEditForm">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveEdit">
+                    Save Changes
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="cancel-expense-form" max-width="sm">
+        <form wire:submit="cancelExpense" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Cancel This Expense?</h2>
+            <p class="mt-2 text-sm text-slate-600">
+                This expense will be marked <strong>Cancelled</strong> and will no longer count toward the total. This cannot be undone.
+            </p>
+
+            <div class="mt-5">
+                <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
+                    <x-ui.input wire:model="cancelReason" id="cancelReason" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeCancelForm">
+                    Keep Expense
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelExpense" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                    Cancel Expense
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
 </div>

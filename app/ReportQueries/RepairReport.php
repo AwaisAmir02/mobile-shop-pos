@@ -6,6 +6,7 @@ use App\Enums\PaymentStatus;
 use App\Exports\TableExport;
 use App\Models\MainCategory;
 use App\Models\Repair;
+use App\Models\Scopes\ExcludesCancelledScope;
 use App\Services\TableExportService;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -16,23 +17,31 @@ class RepairReport implements ScreenReport
         protected string $to = '',
         protected string $category = '',
         protected string $paymentStatusFilter = '',
+        protected bool $includeCancelled = false,
     ) {}
 
     public function query(): Builder
     {
-        return Repair::query()
+        $query = Repair::query()
             ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
             ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
             ->when($this->category, fn ($query) => $query->where('category', $this->category))
             ->when($this->paymentStatusFilter, fn ($query) => $query->where('payment_status', $this->paymentStatusFilter));
+
+        if ($this->includeCancelled) {
+            $query->withoutGlobalScope(ExcludesCancelledScope::class);
+        }
+
+        return $query;
     }
 
+    /** Totals always exclude cancelled repairs, regardless of $includeCancelled — a cancelled repair never contributes even on the one screen that lists it. */
     public function totalCollected(): float
     {
-        return (float) $this->query()->sum('total');
+        return (float) $this->query()->where('repairs.status', '!=', 'cancelled')->sum('total');
     }
 
-    /** Deliberately unfiltered — a running balance of everything still owed, not scoped to the date range being viewed. */
+    /** Deliberately unfiltered by date — a running balance of everything still owed, not scoped to the date range being viewed. */
     public function totalOwed(): float
     {
         return (float) Repair::query()
@@ -80,7 +89,7 @@ class RepairReport implements ScreenReport
         return $this->query()->with(['customer', 'mainCategory'])->latest()->get()->map(function (Repair $repair) use ($forExcel) {
             $description = TableExportService::sanitizeCell($repair->description);
             $customer = TableExportService::sanitizeCell($repair->customer?->name ?? 'Walk-in');
-            $status = $repair->payment_status->label();
+            $status = $repair->isCancelled() ? 'Cancelled' : $repair->payment_status->label();
 
             return $forExcel
                 ? [$repair->receiptNumber(), TableExport::excelDate($repair->created_at), $repair->categoryLabel(), $description, $customer, (float) $repair->total, $status, (float) $repair->amountOwed()]

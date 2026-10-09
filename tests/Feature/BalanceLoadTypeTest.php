@@ -53,6 +53,14 @@ class BalanceLoadTypeTest extends TestCase
             ->assertSee('Package');
     }
 
+    /**
+     * "Package"/"Balance" are now also rendered as static dropdown options
+     * inside the Edit modal (Edit/Cancel work), which lists every
+     * BalanceLoadType case regardless of shop since the enum itself isn't
+     * tenant data — so asserting the type *label* no longer isolates
+     * anything. Asserting on the row's own amount (genuine per-shop data)
+     * is the correct tenant-isolation check instead.
+     */
     public function test_the_type_is_tenant_scoped_and_isolated_between_shops(): void
     {
         $shopA = Shop::create(['name' => 'Shop A']);
@@ -72,7 +80,7 @@ class BalanceLoadTypeTest extends TestCase
         $this->actingAs($ownerA);
 
         Livewire::test('balance-loads.history')
-            ->assertSee('Balance')
-            ->assertDontSee('Package');
+            ->assertSee('Rs 100.00')
+            ->assertDontSee('Rs 200.00');
     }
 }

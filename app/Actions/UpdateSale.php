@@ -8,17 +8,18 @@ use App\Models\Sale;
 use App\Models\SaleRevision;
 use App\Models\Scopes\ExcludesCancelledSalesScope;
 use App\Support\SaleCartMath;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class UpdateSale
 {
     /**
-     * @param  array<int, array{product_id: int, product_name: string, product_type: string, unit_price: float, list_price: float, quantity: int, discount: float}>  $lines
+     * @param  array<int, array{product_id: ?int, product_name: string, product_type: string, quantity: int, discount: float, custom_price: ?float}>  $lines
      */
-    public static function handle(Sale $sale, array $lines, float $invoiceDiscount, ?int $customerId, ?int $userId): Sale
+    public static function handle(Sale $sale, array $lines, float $invoiceDiscount, ?int $customerId, ?int $userId, string $saleDate): Sale
     {
-        return DB::transaction(function () use ($sale, $lines, $invoiceDiscount, $customerId, $userId) {
+        return DB::transaction(function () use ($sale, $lines, $invoiceDiscount, $customerId, $userId, $saleDate) {
             $sale = Sale::withoutGlobalScope(ExcludesCancelledSalesScope::class)->whereKey($sale->id)->lockForUpdate()->firstOrFail();
 
             if ($sale->isCancelled()) {
@@ -29,9 +30,91 @@ class UpdateSale
 
             $alreadyPaid = (float) $sale->payments()->sum('amount');
 
-            $subtotal = SaleCartMath::subtotal(collect($lines)->map(fn ($l) => [
-                'unit_price' => $l['unit_price'], 'quantity' => $l['quantity'], 'discount' => $l['discount'],
-            ])->all());
+            $snapshot = [
+                'subtotal' => (float) $sale->subtotal,
+                'discount_amount' => (float) $sale->discount_amount,
+                'total' => (float) $sale->total,
+                'customer_id' => $sale->customer_id,
+                'created_at' => $sale->created_at->toIso8601String(),
+                'items' => $sale->items->map(fn ($item) => [
+                    'product_id' => $item->product_id,
+                    'stock_in_id' => $item->stock_in_id,
+                    'product_name' => $item->product_name,
+                    'product_type' => $item->product_type,
+                    'unit_price' => (float) $item->unit_price,
+                    'list_price' => $item->list_price !== null ? (float) $item->list_price : null,
+                    'cost_price' => $item->cost_price !== null ? (float) $item->cost_price : null,
+                    'quantity' => (int) $item->quantity,
+                    'discount_amount' => (float) $item->discount_amount,
+                    'line_total' => (float) $item->line_total,
+                ])->all(),
+            ];
+
+            RestoreStockFifo::handle($sale->items);
+
+            $subtotal = 0.0;
+            $newItemsData = [];
+
+            foreach ($lines as $line) {
+                if ($line['product_id'] === null) {
+                    $unitPrice = (float) $line['custom_price'];
+                    $discount = (float) $line['discount'];
+                    $lineTotal = SaleCartMath::lineTotal(['unit_price' => $unitPrice, 'quantity' => $line['quantity'], 'discount' => $discount]);
+                    $subtotal += $lineTotal;
+
+                    $newItemsData[] = [
+                        'product_id' => null,
+                        'stock_in_id' => null,
+                        'product_name' => $line['product_name'],
+                        'product_type' => $line['product_type'],
+                        'unit_price' => $unitPrice,
+                        'list_price' => $unitPrice,
+                        'cost_price' => null,
+                        'quantity' => $line['quantity'],
+                        'discount_amount' => $discount,
+                        'line_total' => $lineTotal,
+                    ];
+
+                    continue;
+                }
+
+                $product = Product::whereKey($line['product_id'])->lockForUpdate()->first();
+
+                if ($product === null) {
+                    throw ValidationException::withMessages([
+                        'lines' => "A product on this sale no longer exists and cannot have its quantity set.",
+                    ]);
+                }
+
+                if ($product->stock_quantity < $line['quantity']) {
+                    throw ValidationException::withMessages([
+                        'lines' => "Only {$product->stock_quantity} left in stock for {$product->name}.",
+                    ]);
+                }
+
+                $allocations = ConsumeStockFifo::handle($product, $line['quantity']);
+                $overridePrice = $line['custom_price'] !== null ? (float) $line['custom_price'] : null;
+                $subLines = SaleCartMath::allocateLines($overridePrice, (float) $line['discount'], $allocations);
+
+                foreach ($subLines as $subLine) {
+                    $subtotal += $subLine['line_total'];
+                    $newItemsData[] = [
+                        'product_id' => $product->id,
+                        'stock_in_id' => $subLine['stock_in_id'],
+                        'product_name' => $line['product_name'],
+                        'product_type' => $line['product_type'],
+                        'unit_price' => $subLine['unit_price'],
+                        'list_price' => $subLine['list_price'],
+                        'cost_price' => $subLine['cost_price'],
+                        'quantity' => $subLine['quantity'],
+                        'discount_amount' => $subLine['discount_amount'],
+                        'line_total' => $subLine['line_total'],
+                    ];
+                }
+
+                $product->decrement('stock_quantity', $line['quantity']);
+            }
+
             $clampedDiscount = min($invoiceDiscount, $subtotal);
             $newTotal = max(0.0, $subtotal - $clampedDiscount);
 
@@ -49,90 +132,20 @@ class UpdateSale
                 ]);
             }
 
-            $snapshot = [
-                'subtotal' => (float) $sale->subtotal,
-                'discount_amount' => (float) $sale->discount_amount,
-                'total' => (float) $sale->total,
-                'customer_id' => $sale->customer_id,
-                'items' => $sale->items->map(fn ($item) => [
-                    'product_id' => $item->product_id,
-                    'product_name' => $item->product_name,
-                    'product_type' => $item->product_type,
-                    'unit_price' => (float) $item->unit_price,
-                    'list_price' => $item->list_price !== null ? (float) $item->list_price : null,
-                    'quantity' => (int) $item->quantity,
-                    'discount_amount' => (float) $item->discount_amount,
-                    'line_total' => (float) $item->line_total,
-                ])->all(),
-            ];
-
-            $oldQuantities = [];
-            foreach ($sale->items as $item) {
-                if ($item->product_id !== null) {
-                    $oldQuantities[$item->product_id] = ($oldQuantities[$item->product_id] ?? 0) + $item->quantity;
-                }
-            }
-
-            $newQuantities = [];
-            foreach ($lines as $line) {
-                $newQuantities[$line['product_id']] = ($newQuantities[$line['product_id']] ?? 0) + $line['quantity'];
-            }
-
-            $productIds = array_unique([...array_keys($oldQuantities), ...array_keys($newQuantities)]);
-
-            foreach ($productIds as $productId) {
-                $delta = ($newQuantities[$productId] ?? 0) - ($oldQuantities[$productId] ?? 0);
-
-                if ($delta === 0) {
-                    continue;
-                }
-
-                $product = Product::whereKey($productId)->lockForUpdate()->first();
-
-                if ($product === null) {
-                    if ($delta > 0) {
-                        throw ValidationException::withMessages([
-                            'lines' => "A product on this sale no longer exists and cannot have its quantity increased.",
-                        ]);
-                    }
-
-                    continue;
-                }
-
-                if ($delta > 0 && $product->stock_quantity < $delta) {
-                    throw ValidationException::withMessages([
-                        'lines' => "Only {$product->stock_quantity} left in stock for {$product->name}.",
-                    ]);
-                }
-
-                $product->decrement('stock_quantity', $delta);
-            }
-
             $sale->items()->delete();
 
-            foreach ($lines as $line) {
-                $lineTotal = SaleCartMath::lineTotal([
-                    'unit_price' => $line['unit_price'], 'quantity' => $line['quantity'], 'discount' => $line['discount'],
-                ]);
-
-                $sale->items()->create([
-                    'product_id' => $line['product_id'],
-                    'product_name' => $line['product_name'],
-                    'product_type' => $line['product_type'],
-                    'unit_price' => $line['unit_price'],
-                    'list_price' => $line['list_price'],
-                    'quantity' => $line['quantity'],
-                    'discount_amount' => $line['discount'],
-                    'line_total' => $lineTotal,
-                ]);
+            foreach ($newItemsData as $itemData) {
+                $sale->items()->create($itemData);
             }
 
-            $sale->update([
+            $sale->fill([
                 'customer_id' => $customerId,
                 'subtotal' => $subtotal,
                 'discount_amount' => $clampedDiscount,
                 'total' => $newTotal,
             ]);
+            $sale->created_at = Carbon::parse($saleDate)->setTimeFrom($sale->created_at);
+            $sale->save();
 
             SaleRevision::create([
                 'sale_id' => $sale->id,

@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\ConsumeStockFifo;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\Models\Product;
@@ -25,6 +26,12 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
     public string $invoiceDiscount = '0';
     public string $customerId = '';
     public string $amountPaidNow = '';
+    public string $saleDate = '';
+
+    public function mount(): void
+    {
+        $this->saleDate = now()->toDateString();
+    }
 
     public function updatedCustomerId(): void
     {
@@ -89,8 +96,8 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             'product_id' => $product->id,
             'name' => $product->name,
             'category' => $product->typeLabel(),
-            'list_price' => (string) $product->price,
-            'cost_price' => $product->cost_price,
+            'list_price' => (string) $product->currentSellingPrice(),
+            'cost_price' => Auth::user()->hasAccessTo('sales-view-cost-price') ? $product->currentCostPrice() : null,
             'custom_price' => '',
             'quantity' => 1,
             'discount' => '0',
@@ -166,30 +173,29 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
     public function lineTotal(array $item): float
     {
-        return SaleCartMath::lineTotal([
-            'unit_price' => $this->effectivePrice($item),
-            'quantity' => $item['quantity'],
-            'discount' => $item['discount'],
-        ]);
-    }
+        $product = Product::find($item['product_id']);
 
-    protected function normalizedCart(): array
-    {
-        return collect($this->cart)->map(fn (array $item) => [
-            'unit_price' => $this->effectivePrice($item),
-            'quantity' => $item['quantity'],
-            'discount' => $item['discount'],
-        ])->all();
+        if ($product === null) {
+            return 0.0;
+        }
+
+        $allocations = ConsumeStockFifo::preview($product, (int) $item['quantity']);
+        $overridePrice = $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null;
+        $subLines = SaleCartMath::allocateLines($overridePrice, (float) $item['discount'], $allocations);
+
+        return array_sum(array_column($subLines, 'line_total'));
     }
 
     public function subtotal(): float
     {
-        return SaleCartMath::subtotal($this->normalizedCart());
+        return array_sum(array_map(fn (array $item) => $this->lineTotal($item), $this->cart));
     }
 
     public function total(): float
     {
-        return SaleCartMath::total($this->normalizedCart(), (float) $this->invoiceDiscount);
+        $subtotal = $this->subtotal();
+
+        return max(0.0, $subtotal - min((float) $this->invoiceDiscount, $subtotal));
     }
 
     public function completeSale(): void
@@ -205,6 +211,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         $isFullyPaid = $paidNow >= $total;
 
         $rules = [
+            'saleDate' => ['required', 'date', 'before_or_equal:today'],
             'invoiceDiscount' => ['required', 'numeric', 'min:0'],
             'amountPaidNow' => ['nullable', 'numeric', 'min:0', 'max:'.$total],
             'customerId' => [
@@ -224,45 +231,48 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
         $sale = DB::transaction(function () use ($paidNow) {
             $subtotal = 0;
-            $lines = [];
+            $allItemsData = [];
 
             foreach ($this->cart as $productId => $item) {
                 $product = Product::whereKey($productId)->lockForUpdate()->firstOrFail();
+                $quantity = (int) $item['quantity'];
 
-                if ($product->stock_quantity < (int) $item['quantity']) {
+                if ($product->stock_quantity < $quantity) {
                     throw ValidationException::withMessages([
                         "cart.$productId.quantity" => "Only {$product->stock_quantity} left in stock for {$product->name}.",
                     ]);
                 }
 
-                $lineTotal = $this->lineTotal($item);
-                $subtotal += $lineTotal;
-                $lines[] = compact('product', 'item', 'lineTotal');
+                $allocations = ConsumeStockFifo::handle($product, $quantity);
+                $overridePrice = $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null;
+                $subLines = SaleCartMath::allocateLines($overridePrice, (float) $item['discount'], $allocations);
+
+                foreach ($subLines as $subLine) {
+                    $subtotal += $subLine['line_total'];
+                    $allItemsData[] = array_merge($subLine, [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'product_type' => $product->type,
+                    ]);
+                }
+
+                $product->decrement('stock_quantity', $quantity);
             }
 
             $invoiceDiscount = min((float) $this->invoiceDiscount, $subtotal);
 
-            $sale = Sale::create([
+            $sale = new Sale([
                 'user_id' => Auth::id(),
                 'customer_id' => $this->customerId !== '' ? $this->customerId : null,
                 'subtotal' => $subtotal,
                 'discount_amount' => $invoiceDiscount,
                 'total' => $subtotal - $invoiceDiscount,
             ]);
+            $sale->created_at = \Carbon\Carbon::parse($this->saleDate)->setTimeFrom(now());
+            $sale->save();
 
-            foreach ($lines as $line) {
-                $sale->items()->create([
-                    'product_id' => $line['product']->id,
-                    'product_name' => $line['product']->name,
-                    'product_type' => $line['product']->type,
-                    'unit_price' => $this->effectivePrice($line['item']),
-                    'list_price' => $line['item']['list_price'],
-                    'quantity' => $line['item']['quantity'],
-                    'discount_amount' => $line['item']['discount'],
-                    'line_total' => $line['lineTotal'],
-                ]);
-
-                $line['product']->decrement('stock_quantity', (int) $line['item']['quantity']);
+            foreach ($allItemsData as $itemData) {
+                $sale->items()->create($itemData);
             }
 
             $sale->payments()->create([
@@ -321,7 +331,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                                             <p class="text-xs text-slate-400">{{ $product->typeLabel() }} · {{ $product->stock_quantity }} in stock</p>
                                         </div>
                                     </div>
-                                    <span class="text-sm font-semibold text-slate-700">Rs {{ number_format($product->price, 2) }}</span>
+                                    <span class="text-sm font-semibold text-slate-700">Rs {{ number_format($product->currentSellingPrice(), 2) }}</span>
                                 </button>
                             @empty
                                 <p class="px-4 py-3 text-sm text-slate-400">No in-stock products match "{{ $search }}".</p>
@@ -354,7 +364,12 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                                 @foreach ($cart as $productId => $item)
                                     <tr wire:key="cart-{{ $productId }}">
                                         <td class="whitespace-nowrap px-4 py-3">
-                                            <p class="text-sm font-medium text-slate-900">{{ $item['name'] }}</p>
+                                            <div class="flex items-center gap-1.5">
+                                                <p class="text-sm font-medium text-slate-900">{{ $item['name'] }}</p>
+                                                @if ($item['cost_price'] !== null)
+                                                    <x-ui.info-tooltip :text="'Cost: Rs '.number_format($item['cost_price'], 2)" />
+                                                @endif
+                                            </div>
                                             <p class="text-xs text-slate-400">{{ $item['category'] }}</p>
                                         </td>
                                         <td class="whitespace-nowrap px-4 py-3 text-right">
@@ -423,6 +438,10 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                         <span class="text-slate-500">Subtotal</span>
                         <span class="font-medium text-slate-900">Rs {{ number_format($this->subtotal(), 2) }}</span>
                     </div>
+
+                    <x-ui.field label="Sale Date" name="saleDate" for="saleDate">
+                        <x-ui.input wire:model="saleDate" id="saleDate" type="date" max="{{ now()->toDateString() }}" />
+                    </x-ui.field>
 
                     <x-ui.field label="Invoice Discount" name="invoiceDiscount" for="invoiceDiscount">
                         <x-ui.input wire:model.live="invoiceDiscount" id="invoiceDiscount" type="number" min="0" step="0.01" />

@@ -3,14 +3,16 @@
 namespace App\Models;
 
 use App\Enums\PaymentStatus;
+use App\Enums\RecordStatus;
 use App\Enums\WalletLoadDirection;
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Concerns\HasCancellation;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WalletLoad extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, HasCancellation;
 
     protected $fillable = [
         'shop_id',
@@ -29,6 +31,10 @@ class WalletLoad extends Model
         'total',
         'payment_status',
         'amount_paid',
+        'status',
+        'cancelled_at',
+        'cancelled_by',
+        'cancel_reason',
     ];
 
     protected function casts(): array
@@ -43,6 +49,8 @@ class WalletLoad extends Model
             'total' => 'decimal:2',
             'payment_status' => PaymentStatus::class,
             'amount_paid' => 'decimal:2',
+            'status' => RecordStatus::class,
+            'cancelled_at' => 'datetime',
         ];
     }
 

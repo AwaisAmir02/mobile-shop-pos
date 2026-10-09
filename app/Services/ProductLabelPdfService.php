@@ -28,7 +28,7 @@ class ProductLabelPdfService
                 'name' => $product->name,
                 'barcode' => $product->barcode,
                 'barcodeImage' => BarcodeService::imageDataUri($product->barcode),
-                'price' => $showPrice ? 'Rs '.number_format($product->price, 2) : null,
+                'price' => $showPrice ? 'Rs '.number_format($product->currentSellingPrice(), 2) : null,
             ],
         ])->setPaper($layout === self::LAYOUT_ROLL ? [0, 0, 141.73, 85.04] : 'a4');
 

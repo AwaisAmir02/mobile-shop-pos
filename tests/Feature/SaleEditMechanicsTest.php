@@ -35,8 +35,8 @@ class SaleEditMechanicsTest extends TestCase
         SaleItem::create(['shop_id' => $shop->id, 'sale_id' => $sale->id, 'product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'unit_price' => 100, 'list_price' => 100, 'quantity' => 2, 'discount_amount' => 0, 'line_total' => 200]);
 
         UpdateSale::handle($sale, [
-            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'unit_price' => 100, 'list_price' => 100, 'quantity' => 5, 'discount' => 0],
-        ], 0.0, $customer->id, $owner->id);
+            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'quantity' => 5, 'discount' => 0, 'custom_price' => 100],
+        ], 0.0, $customer->id, $owner->id, '2026-10-01');
 
         // product.stock_quantity started at 8 (not yet reduced, since this test seeds the SaleItem directly rather than through a real sale save); quantity 2 -> 5 is a delta of +3 to decrement.
         $this->assertSame(5, $product->fresh()->stock_quantity);
@@ -52,8 +52,8 @@ class SaleEditMechanicsTest extends TestCase
         SaleItem::create(['shop_id' => $shop->id, 'sale_id' => $sale->id, 'product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'unit_price' => 100, 'list_price' => 100, 'quantity' => 5, 'discount_amount' => 0, 'line_total' => 500]);
 
         UpdateSale::handle($sale, [
-            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'unit_price' => 100, 'list_price' => 100, 'quantity' => 2, 'discount' => 0],
-        ], 0.0, $customer->id, $owner->id);
+            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'quantity' => 2, 'discount' => 0, 'custom_price' => 100],
+        ], 0.0, $customer->id, $owner->id, '2026-10-01');
 
         $this->assertSame(11, $product->fresh()->stock_quantity);
     }
@@ -68,8 +68,8 @@ class SaleEditMechanicsTest extends TestCase
         SaleItem::create(['shop_id' => $shop->id, 'sale_id' => $sale->id, 'product_id' => $productA->id, 'product_name' => 'A', 'product_type' => 'accessory', 'unit_price' => 100, 'list_price' => 100, 'quantity' => 2, 'discount_amount' => 0, 'line_total' => 200]);
 
         UpdateSale::handle($sale, [
-            ['product_id' => $productB->id, 'product_name' => 'B', 'product_type' => 'accessory', 'unit_price' => 50, 'list_price' => 50, 'quantity' => 3, 'discount' => 0],
-        ], 0.0, $customer->id, $owner->id);
+            ['product_id' => $productB->id, 'product_name' => 'B', 'product_type' => 'accessory', 'quantity' => 3, 'discount' => 0, 'custom_price' => 50],
+        ], 0.0, $customer->id, $owner->id, '2026-10-01');
 
         $this->assertSame(10, $productA->fresh()->stock_quantity);
         $this->assertSame(7, $productB->fresh()->stock_quantity);
@@ -85,8 +85,8 @@ class SaleEditMechanicsTest extends TestCase
 
         try {
             UpdateSale::handle($sale, [
-                ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'unit_price' => 100, 'list_price' => 100, 'quantity' => 100, 'discount' => 0],
-            ], 0.0, $customer->id, $owner->id);
+                ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'quantity' => 100, 'discount' => 0, 'custom_price' => 100],
+            ], 0.0, $customer->id, $owner->id, '2026-10-01');
             $this->fail('Expected a ValidationException for insufficient stock.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('lines', $e->errors());
@@ -104,8 +104,8 @@ class SaleEditMechanicsTest extends TestCase
         $this->expectException(ValidationException::class);
 
         UpdateSale::handle($sale, [
-            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'unit_price' => 100, 'list_price' => 100, 'quantity' => 2, 'discount' => 0],
-        ], 0.0, null, $owner->id);
+            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'quantity' => 2, 'discount' => 0, 'custom_price' => 100],
+        ], 0.0, null, $owner->id, '2026-10-01');
     }
 
     public function test_removing_the_customer_while_a_due_balance_remains_is_blocked(): void
@@ -120,8 +120,8 @@ class SaleEditMechanicsTest extends TestCase
         $this->expectException(ValidationException::class);
 
         UpdateSale::handle($sale, [
-            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'unit_price' => 100, 'list_price' => 100, 'quantity' => 5, 'discount' => 0],
-        ], 0.0, null, $owner->id);
+            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'quantity' => 5, 'discount' => 0, 'custom_price' => 100],
+        ], 0.0, null, $owner->id, '2026-10-01');
     }
 
     public function test_removing_the_customer_is_allowed_once_the_sale_is_fully_paid(): void
@@ -134,8 +134,8 @@ class SaleEditMechanicsTest extends TestCase
         $sale->payments()->create(['user_id' => $owner->id, 'amount' => 500, 'payment_date' => now()->toDateString()]);
 
         $updated = UpdateSale::handle($sale, [
-            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'unit_price' => 100, 'list_price' => 100, 'quantity' => 5, 'discount' => 0],
-        ], 0.0, null, $owner->id);
+            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'quantity' => 5, 'discount' => 0, 'custom_price' => 100],
+        ], 0.0, null, $owner->id, '2026-10-01');
 
         $this->assertNull($updated->customer_id);
     }
@@ -150,8 +150,8 @@ class SaleEditMechanicsTest extends TestCase
         $before = $sale->invoiceNumber();
 
         $updated = UpdateSale::handle($sale, [
-            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'unit_price' => 100, 'list_price' => 100, 'quantity' => 2, 'discount' => 0],
-        ], 0.0, $customer->id, $owner->id);
+            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'quantity' => 2, 'discount' => 0, 'custom_price' => 100],
+        ], 0.0, $customer->id, $owner->id, '2026-10-01');
 
         $this->assertSame($before, $updated->invoiceNumber());
     }
@@ -167,8 +167,8 @@ class SaleEditMechanicsTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         UpdateSale::handle($sale->fresh(['items']), [
-            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'unit_price' => 100, 'list_price' => 100, 'quantity' => 1, 'discount' => 0],
-        ], 0.0, null, $owner->id);
+            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'quantity' => 1, 'discount' => 0, 'custom_price' => 100],
+        ], 0.0, null, $owner->id, '2026-10-01');
     }
 
     public function test_an_edit_writes_one_sale_revision_with_a_snapshot_of_the_previous_state(): void
@@ -180,8 +180,8 @@ class SaleEditMechanicsTest extends TestCase
         SaleItem::create(['shop_id' => $shop->id, 'sale_id' => $sale->id, 'product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'unit_price' => 100, 'list_price' => 100, 'quantity' => 1, 'discount_amount' => 0, 'line_total' => 100]);
 
         UpdateSale::handle($sale, [
-            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'unit_price' => 100, 'list_price' => 100, 'quantity' => 2, 'discount' => 0],
-        ], 0.0, $customer->id, $owner->id);
+            ['product_id' => $product->id, 'product_name' => 'A', 'product_type' => 'accessory', 'quantity' => 2, 'discount' => 0, 'custom_price' => 100],
+        ], 0.0, $customer->id, $owner->id, '2026-10-01');
 
         $revision = \App\Models\SaleRevision::where('sale_id', $sale->id)->first();
         $this->assertNotNull($revision);

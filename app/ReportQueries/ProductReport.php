@@ -4,12 +4,16 @@ namespace App\ReportQueries;
 
 use App\Models\MainCategory;
 use App\Models\Product;
+use App\Models\StockIn;
 use App\Services\TableExportService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class ProductReport implements ScreenReport
 {
+    /** @var array{selling: float, cost: float}|null */
+    protected ?array $valuationCache = null;
+
     public function __construct(
         protected string $search = '',
         protected string $typeFilter = '',
@@ -34,16 +38,56 @@ class ProductReport implements ScreenReport
         return $this->query()->count();
     }
 
+    /**
+     * Each product's stock is valued batch by batch (a product with two
+     * batches at two different prices is not one blended figure), with any
+     * quantity not covered by a batch — legacy stock that predates batch
+     * tracking — valued at the product's own price/cost as a fallback.
+     *
+     * @return array{selling: float, cost: float}
+     */
+    protected function batchAwareValuation(): array
+    {
+        if ($this->valuationCache !== null) {
+            return $this->valuationCache;
+        }
+
+        $products = $this->query()->get();
+
+        $batchesByProduct = StockIn::query()
+            ->whereIn('product_id', $products->pluck('id'))
+            ->where('quantity_remaining', '>', 0)
+            ->get()
+            ->groupBy('product_id');
+
+        $sellingTotal = 0.0;
+        $costTotal = 0.0;
+
+        foreach ($products as $product) {
+            $batches = $batchesByProduct->get($product->id, collect());
+            $remainingInBatches = (int) $batches->sum('quantity_remaining');
+
+            $sellingTotal += (float) $batches->sum(fn (StockIn $batch) => $batch->quantity_remaining * (float) ($batch->selling_price ?? $product->price));
+            $costTotal += (float) $batches->sum(fn (StockIn $batch) => $batch->quantity_remaining * (float) ($batch->cost_price ?? $product->cost_price ?? 0));
+
+            $uncovered = max(0, $product->stock_quantity - $remainingInBatches);
+            $sellingTotal += $uncovered * (float) $product->price;
+            $costTotal += $uncovered * (float) ($product->cost_price ?? 0);
+        }
+
+        return $this->valuationCache = ['selling' => $sellingTotal, 'cost' => $costTotal];
+    }
+
     /** Current stock valued at selling price — what the shop's on-hand inventory would bring in if sold at list price. */
     public function totalStockValue(): float
     {
-        return (float) $this->query()->get()->sum(fn (Product $product) => $product->stock_quantity * $product->price);
+        return $this->batchAwareValuation()['selling'];
     }
 
     /** Current stock valued at cost price — what the shop actually has tied up in on-hand inventory. */
     public function totalCostValue(): float
     {
-        return (float) $this->query()->get()->sum(fn (Product $product) => $product->stock_quantity * (float) ($product->cost_price ?? 0));
+        return $this->batchAwareValuation()['cost'];
     }
 
     public function filtersSummary(): string

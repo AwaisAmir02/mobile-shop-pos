@@ -1,9 +1,12 @@
 <?php
 
+use App\Actions\CancelStockIn;
+use App\Actions\UpdateStockIn;
 use App\Enums\PaymentStatus;
 use App\Livewire\Concerns\GuardsExportSize;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Product;
+use App\Models\Scopes\ExcludesCancelledScope;
 use App\Models\StockIn;
 use App\Models\Vendor;
 use App\ReportQueries\StockInReport;
@@ -32,6 +35,17 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     public ?int $payingId = null;
     public string $paymentAmount = '';
+
+    public ?int $editingId = null;
+    public string $editQuantity = '';
+    public string $editVendorId = '';
+    public string $editStockDate = '';
+    public string $editNote = '';
+    public string $editCostPrice = '';
+    public string $editSellingPrice = '';
+
+    public ?int $cancelingId = null;
+    public string $cancelReason = '';
 
     public function updatingFrom(): void
     {
@@ -66,6 +80,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             $this->productFilter,
             $this->paymentStatusFilter,
             Auth::user()->hasAccessTo('vendors') ? $this->vendorFilter : '',
+            includeCancelled: true,
         );
     }
 
@@ -117,7 +132,8 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     public function markAsPaid(int $id): void
     {
-        $entry = StockIn::findOrFail($id);
+        $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($id);
+        abort_if($entry->isCancelled(), 403);
 
         $entry->update([
             'payment_status' => PaymentStatus::Paid,
@@ -129,6 +145,9 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     public function openAddPayment(int $id): void
     {
+        $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($id);
+        abort_if($entry->isCancelled(), 403);
+
         $this->payingId = $id;
         $this->paymentAmount = '';
         $this->resetErrorBag();
@@ -137,11 +156,13 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     public function submitPayment(): void
     {
+        $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($this->payingId);
+        abort_if($entry->isCancelled(), 403);
+
         $this->validate([
             'paymentAmount' => ['required', 'numeric', 'min:0.01'],
         ]);
 
-        $entry = StockIn::findOrFail($this->payingId);
         $newAmountPaid = (float) $entry->amount_paid + (float) $this->paymentAmount;
 
         $entry->update([
@@ -160,6 +181,90 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
     {
         $this->dispatch('close-modal', name: 'add-payment-form');
         $this->reset(['payingId', 'paymentAmount']);
+    }
+
+    public function openEdit(int $entryId): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('stock-ins-edit-cancel'), 403);
+
+        $entry = StockIn::findOrFail($entryId);
+
+        $this->editingId = $entry->id;
+        $this->editQuantity = (string) $entry->quantity;
+        $this->editVendorId = $entry->vendor_id !== null ? (string) $entry->vendor_id : '';
+        $this->editStockDate = $entry->stock_date->toDateString();
+        $this->editNote = $entry->note ?? '';
+        $this->editCostPrice = $entry->cost_price !== null ? (string) $entry->cost_price : '';
+        $this->editSellingPrice = $entry->selling_price !== null ? (string) $entry->selling_price : '';
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'edit-stock-in-form');
+    }
+
+    public function saveEdit(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('stock-ins-edit-cancel'), 403);
+
+        $this->validate([
+            'editQuantity' => ['required', 'integer', 'min:1'],
+            'editVendorId' => ['nullable', 'integer'],
+            'editStockDate' => ['required', 'date', 'before_or_equal:today'],
+            'editNote' => ['nullable', 'string', 'max:255'],
+            'editCostPrice' => ['nullable', 'numeric', 'min:0'],
+            'editSellingPrice' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $entry = StockIn::findOrFail($this->editingId);
+
+        UpdateStockIn::handle($entry, [
+            'quantity' => (int) $this->editQuantity,
+            'vendor_id' => $this->editVendorId !== '' ? (int) $this->editVendorId : null,
+            'stock_date' => $this->editStockDate,
+            'note' => $this->editNote !== '' ? $this->editNote : null,
+            'cost_price' => $this->editCostPrice !== '' ? (float) $this->editCostPrice : null,
+            'selling_price' => $this->editSellingPrice !== '' ? (float) $this->editSellingPrice : null,
+        ], Auth::id());
+
+        $this->toastSuccess('Stock-in entry updated.');
+        $this->dispatch('close-modal', name: 'edit-stock-in-form');
+        $this->reset(['editingId', 'editQuantity', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice']);
+    }
+
+    public function closeEditForm(): void
+    {
+        $this->dispatch('close-modal', name: 'edit-stock-in-form');
+        $this->reset(['editingId', 'editQuantity', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice']);
+    }
+
+    public function openCancel(int $entryId): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('stock-ins-edit-cancel'), 403);
+
+        $this->cancelingId = $entryId;
+        $this->cancelReason = '';
+        $this->dispatch('open-modal', name: 'cancel-stock-in-form');
+    }
+
+    public function cancelEntry(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('stock-ins-edit-cancel'), 403);
+
+        $entry = StockIn::findOrFail($this->cancelingId);
+        $result = CancelStockIn::handle($entry, Auth::id(), $this->cancelReason);
+
+        $this->dispatch('close-modal', name: 'cancel-stock-in-form');
+        $this->reset(['cancelingId', 'cancelReason']);
+
+        $message = $result['reversed']
+            ? 'Stock-in entry cancelled and stock reduced back.'
+            : 'Stock-in entry cancelled. Could not reduce stock (product deleted).';
+
+        $this->toastSuccess($message);
+    }
+
+    public function closeCancelForm(): void
+    {
+        $this->dispatch('close-modal', name: 'cancel-stock-in-form');
+        $this->reset(['cancelingId', 'cancelReason']);
     }
 }; ?>
 
@@ -253,17 +358,25 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
         </x-ui.empty-state>
     @else
         @php $showVendorColumn = auth()->user()->hasAccessTo('vendors'); @endphp
-        <x-ui.table :headers="$showVendorColumn ? ['Date', 'Product', 'Vendor', 'Quantity', 'Payment', 'Owed', 'Note', 'Entered By', ''] : ['Date', 'Product', 'Quantity', 'Payment', 'Owed', 'Note', 'Entered By', '']">
+        <x-ui.table :headers="$showVendorColumn ? ['Date', 'Product', 'Vendor', 'Quantity', 'Remaining', 'Cost / Sell', 'Payment', 'Owed', 'Note', 'Entered By', ''] : ['Date', 'Product', 'Quantity', 'Remaining', 'Cost / Sell', 'Payment', 'Owed', 'Note', 'Entered By', '']">
             @foreach ($entries as $entry)
-                <x-ui.table-row wire:key="stock-in-{{ $entry->id }}">
+                <x-ui.table-row wire:key="stock-in-{{ $entry->id }}" @class(['opacity-50' => $entry->isCancelled()])>
                     <x-ui.table-cell>{{ $entry->stock_date->format('d M Y') }}</x-ui.table-cell>
                     <x-ui.table-cell class="font-medium text-slate-900">{{ $entry->product_name }}</x-ui.table-cell>
                     @if ($showVendorColumn)
                         <x-ui.table-cell>{{ $entry->vendor?->name ?? '—' }}</x-ui.table-cell>
                     @endif
                     <x-ui.table-cell class="font-semibold text-emerald-600">+{{ number_format($entry->quantity) }}</x-ui.table-cell>
+                    <x-ui.table-cell>{{ $entry->isCancelled() ? '—' : number_format($entry->quantity_remaining) }}</x-ui.table-cell>
                     <x-ui.table-cell>
-                        @if ($entry->payment_status->value === 'paid')
+                        {{ $entry->cost_price !== null ? 'Rs '.number_format($entry->cost_price, 2) : '—' }}
+                        /
+                        {{ $entry->selling_price !== null ? 'Rs '.number_format($entry->selling_price, 2) : '—' }}
+                    </x-ui.table-cell>
+                    <x-ui.table-cell>
+                        @if ($entry->isCancelled())
+                            <x-ui.badge variant="danger">Cancelled</x-ui.badge>
+                        @elseif ($entry->payment_status->value === 'paid')
                             <x-ui.badge variant="success">Paid</x-ui.badge>
                         @elseif ($entry->payment_status->value === 'partial')
                             <x-ui.badge variant="warning">Partial</x-ui.badge>
@@ -272,7 +385,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                         @endif
                     </x-ui.table-cell>
                     <x-ui.table-cell class="font-semibold text-slate-900">
-                        @if ($entry->amountOwed() > 0)
+                        @if (! $entry->isCancelled() && $entry->amountOwed() > 0)
                             Rs {{ number_format($entry->amountOwed(), 2) }}
                         @else
                             —
@@ -281,21 +394,31 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                     <x-ui.table-cell>{{ $entry->note ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $entry->user?->name ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell align="right">
-                        @if ($entry->payment_status->value !== 'paid')
-                            <div class="flex justify-end gap-2">
-                                <x-ui.button size="sm" variant="ghost" wire:click="openAddPayment({{ $entry->id }})">
-                                    Add Payment
-                                </x-ui.button>
-                                <x-ui.button
-                                    size="sm"
-                                    variant="ghost"
-                                    wire:click="markAsPaid({{ $entry->id }})"
-                                    wire:confirm="Mark this stock-in as fully paid?"
-                                >
-                                    Mark as Paid
-                                </x-ui.button>
-                            </div>
-                        @endif
+                        <div class="flex justify-end gap-2">
+                            @if (! $entry->isCancelled())
+                                @if ($entry->payment_status->value !== 'paid')
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openAddPayment({{ $entry->id }})">
+                                        Add Payment
+                                    </x-ui.button>
+                                    <x-ui.button
+                                        size="sm"
+                                        variant="ghost"
+                                        wire:click="markAsPaid({{ $entry->id }})"
+                                        wire:confirm="Mark this stock-in as fully paid?"
+                                    >
+                                        Mark as Paid
+                                    </x-ui.button>
+                                @endif
+                                @if (auth()->user()->hasAccessTo('stock-ins-edit-cancel'))
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $entry->id }})">
+                                        Edit
+                                    </x-ui.button>
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $entry->id }})" class="text-red-600 hover:bg-red-50">
+                                        Delete
+                                    </x-ui.button>
+                                @endif
+                            @endif
+                        </div>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
@@ -323,6 +446,81 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="submitPayment">
                     Save Payment
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="edit-stock-in-form" max-width="sm">
+        <form wire:submit="saveEdit" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Edit Stock-In Entry</h2>
+            <p class="mt-2 text-sm text-slate-600">The product on this entry cannot be changed. Changing the quantity adjusts the product's current stock by the difference.</p>
+
+            <div class="mt-5 space-y-5">
+                <x-ui.field label="Quantity" name="editQuantity" for="editQuantity">
+                    <x-ui.input wire:model="editQuantity" id="editQuantity" type="number" min="1" step="1" />
+                </x-ui.field>
+
+                @if (auth()->user()->hasAccessTo('vendors'))
+                    <x-ui.field label="Vendor" name="editVendorId" for="editVendorId" help="Optional">
+                        <x-ui.select wire:model="editVendorId" id="editVendorId">
+                            <option value="">No vendor</option>
+                            @foreach ($vendors as $vendor)
+                                <option value="{{ $vendor->id }}">{{ $vendor->name }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                @endif
+
+                <x-ui.field label="Date Received" name="editStockDate" for="editStockDate">
+                    <x-ui.input wire:model="editStockDate" id="editStockDate" type="date" max="{{ now()->toDateString() }}" />
+                </x-ui.field>
+
+                <x-ui.field label="Note" name="editNote" for="editNote" help="Optional">
+                    <x-ui.input wire:model="editNote" id="editNote" />
+                </x-ui.field>
+
+                <x-ui.field label="Cost Price (per unit)" name="editCostPrice" for="editCostPrice" help="Optional">
+                    <x-ui.input wire:model="editCostPrice" id="editCostPrice" type="number" min="0" step="0.01" />
+                </x-ui.field>
+
+                <x-ui.field label="Selling Price (per unit)" name="editSellingPrice" for="editSellingPrice" help="Optional">
+                    <x-ui.input wire:model="editSellingPrice" id="editSellingPrice" type="number" min="0" step="0.01" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeEditForm">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveEdit">
+                    Save Changes
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="cancel-stock-in-form" max-width="sm">
+        <form wire:submit="cancelEntry" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Cancel This Stock-In Entry?</h2>
+            <p class="mt-2 text-sm text-slate-600">
+                This entry will be marked <strong>Cancelled</strong> and its quantity will be removed from the product's current stock. It will no longer count toward any total, report, or outstanding balance. This cannot be undone.
+            </p>
+
+            <div class="mt-5">
+                <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
+                    <x-ui.input wire:model="cancelReason" id="cancelReason" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeCancelForm">
+                    Keep Entry
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelEntry" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                    Cancel Entry
                 </x-ui.button>
             </div>
         </form>

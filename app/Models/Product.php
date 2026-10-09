@@ -8,6 +8,7 @@ use App\Models\Concerns\BelongsToShop;
 use App\Models\Concerns\HasImage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
@@ -40,6 +41,39 @@ class Product extends Model
     public function mainCategory(): BelongsTo
     {
         return $this->belongsTo(MainCategory::class, 'type', 'slug');
+    }
+
+    public function stockIns(): HasMany
+    {
+        return $this->hasMany(StockIn::class);
+    }
+
+    public function oldestAvailableBatch(): ?StockIn
+    {
+        return StockIn::availableBatchesFor($this->id)->first();
+    }
+
+    public function hasBatches(): bool
+    {
+        return $this->stockIns()->exists();
+    }
+
+    public function currentSellingPrice(): float
+    {
+        $batch = $this->oldestAvailableBatch();
+
+        return $batch?->selling_price !== null ? (float) $batch->selling_price : (float) $this->price;
+    }
+
+    public function currentCostPrice(): ?float
+    {
+        $batch = $this->oldestAvailableBatch();
+
+        if ($batch !== null) {
+            return $batch->cost_price !== null ? (float) $batch->cost_price : null;
+        }
+
+        return $this->cost_price !== null ? (float) $this->cost_price : null;
     }
 
     public function isOutOfStock(): bool

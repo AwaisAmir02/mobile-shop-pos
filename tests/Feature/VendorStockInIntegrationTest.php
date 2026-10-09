@@ -33,8 +33,10 @@ class VendorStockInIntegrationTest extends TestCase
 
         Livewire::test('stock-ins.create')
             ->set('productId', (string) $product->id)
-            ->set('vendorId', (string) $vendor->id)
             ->set('quantity', '5')
+            ->set('sellingPrice', '100')
+            ->call('addLine')
+            ->set('vendorId', (string) $vendor->id)
             ->set('paymentStatus', 'paid')
             ->set('stock_date', now()->toDateString())
             ->call('save');
@@ -49,6 +51,8 @@ class VendorStockInIntegrationTest extends TestCase
         Livewire::test('stock-ins.create')
             ->set('productId', (string) $product->id)
             ->set('quantity', '5')
+            ->set('sellingPrice', '100')
+            ->call('addLine')
             ->set('paymentStatus', 'paid')
             ->set('stock_date', now()->toDateString())
             ->call('save')
@@ -73,8 +77,10 @@ class VendorStockInIntegrationTest extends TestCase
 
         Livewire::test('stock-ins.create')
             ->set('productId', (string) $product->id)
-            ->set('vendorId', (string) $theirVendor->id)
             ->set('quantity', '5')
+            ->set('sellingPrice', '100')
+            ->call('addLine')
+            ->set('vendorId', (string) $theirVendor->id)
             ->set('paymentStatus', 'paid')
             ->set('stock_date', now()->toDateString())
             ->call('save')

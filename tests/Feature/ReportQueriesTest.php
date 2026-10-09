@@ -62,6 +62,31 @@ class ReportQueriesTest extends TestCase
         $this->assertSame(600.0, $report->totalCostValue());   // 10 * 60
     }
 
+    public function test_product_report_values_each_batch_at_its_own_price_not_one_blended_figure(): void
+    {
+        $shop = $this->shop();
+        $product = Product::create(['shop_id' => $shop->id, 'type' => 'accessory', 'name' => 'Cable', 'price' => 999, 'cost_price' => 999, 'stock_quantity' => 7, 'details' => ['category' => 'Cable']]);
+        \App\Models\StockIn::create(['shop_id' => $shop->id, 'product_id' => $product->id, 'product_name' => 'Cable', 'quantity' => 5, 'cost_price' => 300, 'selling_price' => 500, 'quantity_remaining' => 5, 'stock_date' => '2026-01-01']);
+        \App\Models\StockIn::create(['shop_id' => $shop->id, 'product_id' => $product->id, 'product_name' => 'Cable', 'quantity' => 2, 'cost_price' => 400, 'selling_price' => 700, 'quantity_remaining' => 2, 'stock_date' => '2026-01-10']);
+
+        $report = new ProductReport(search: 'Cable');
+
+        $this->assertSame(3900.0, $report->totalStockValue()); // 5*500 + 2*700
+        $this->assertSame(2300.0, $report->totalCostValue());  // 5*300 + 2*400
+    }
+
+    public function test_product_report_values_stock_beyond_batch_coverage_at_the_products_own_price(): void
+    {
+        $shop = $this->shop();
+        $product = Product::create(['shop_id' => $shop->id, 'type' => 'accessory', 'name' => 'Cable', 'price' => 250, 'cost_price' => 150, 'stock_quantity' => 8, 'details' => ['category' => 'Cable']]);
+        \App\Models\StockIn::create(['shop_id' => $shop->id, 'product_id' => $product->id, 'product_name' => 'Cable', 'quantity' => 3, 'cost_price' => 200, 'selling_price' => 500, 'quantity_remaining' => 3, 'stock_date' => '2026-01-01']);
+
+        $report = new ProductReport(search: 'Cable');
+
+        $this->assertSame(1500.0 + 1250.0, $report->totalStockValue()); // 3*500 (batch) + 5*250 (uncovered)
+        $this->assertSame(600.0 + 750.0, $report->totalCostValue());    // 3*200 (batch) + 5*150 (uncovered)
+    }
+
     public function test_sales_report_revenue_and_discount_are_date_scoped_but_outstanding_is_not(): void
     {
         $shop = $this->shop();
@@ -108,7 +133,7 @@ class ReportQueriesTest extends TestCase
         $report = new StockInReport(vendorFilter: (string) $vendorA->id);
 
         $this->assertSame(5, $report->totalUnits());
-        $this->assertSame(['Date', 'Product', 'Vendor', 'Quantity', 'Payment', 'Owed', 'Note', 'Entered By'], $report->tableHeaders());
+        $this->assertSame(['Date', 'Product', 'Vendor', 'Quantity', 'Remaining', 'Cost Price', 'Selling Price', 'Payment', 'Owed', 'Note', 'Entered By'], $report->tableHeaders());
 
         $rows = $report->tableRows(forExcel: false);
         $this->assertCount(1, $rows);

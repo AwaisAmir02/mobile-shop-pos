@@ -4,6 +4,7 @@ namespace App\ReportQueries;
 
 use App\Enums\PaymentStatus;
 use App\Exports\TableExport;
+use App\Models\Scopes\ExcludesCancelledScope;
 use App\Models\SimSale;
 use App\Services\TableExportService;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,20 +16,28 @@ class SimSaleReport implements ScreenReport
         protected string $to = '',
         protected string $network = '',
         protected string $paymentStatusFilter = '',
+        protected bool $includeCancelled = false,
     ) {}
 
     public function query(): Builder
     {
-        return SimSale::query()
+        $query = SimSale::query()
             ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
             ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
             ->when($this->network, fn ($query) => $query->where('network', $this->network))
             ->when($this->paymentStatusFilter, fn ($query) => $query->where('payment_status', $this->paymentStatusFilter));
+
+        if ($this->includeCancelled) {
+            $query->withoutGlobalScope(ExcludesCancelledScope::class);
+        }
+
+        return $query;
     }
 
+    /** Totals always exclude cancelled sales, regardless of $includeCancelled. */
     public function totalRevenue(): float
     {
-        return (float) $this->query()->sum('total');
+        return (float) $this->query()->where('sim_sales.status', '!=', 'cancelled')->sum('total');
     }
 
     /** Deliberately unfiltered — a running balance of everything still owed, not scoped to the date range being viewed. */
@@ -79,7 +88,7 @@ class SimSaleReport implements ScreenReport
         return $this->query()->with('customer')->latest()->get()->map(function (SimSale $sale) use ($forExcel) {
             $plan = $sale->sim_type->label().' · '.$sale->sim_form->label();
             $customer = TableExportService::sanitizeCell($sale->customer?->name ?? 'Walk-in');
-            $status = $sale->payment_status->label();
+            $status = $sale->isCancelled() ? 'Cancelled' : $sale->payment_status->label();
 
             return $forExcel
                 ? [$sale->receiptNumber(), TableExport::excelDate($sale->created_at), $sale->network, $plan, $sale->sim_number, $customer, (float) $sale->total, $status, (float) $sale->amountOwed()]

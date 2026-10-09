@@ -5,6 +5,7 @@ namespace App\ReportQueries;
 use App\Enums\PaymentStatus;
 use App\Exports\TableExport;
 use App\Models\BalanceLoad;
+use App\Models\Scopes\ExcludesCancelledScope;
 use App\Services\TableExportService;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -14,24 +15,34 @@ class BalanceLoadReport implements ScreenReport
         protected string $from = '',
         protected string $to = '',
         protected string $paymentStatusFilter = '',
+        protected bool $includeCancelled = false,
     ) {}
 
     public function query(): Builder
     {
-        return BalanceLoad::query()
+        $query = BalanceLoad::query()
             ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
             ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
             ->when($this->paymentStatusFilter, fn ($query) => $query->where('payment_status', $this->paymentStatusFilter));
+
+        if ($this->includeCancelled) {
+            $query->withoutGlobalScope(ExcludesCancelledScope::class);
+        }
+
+        return $query;
     }
 
+    /** Totals always exclude cancelled loads, regardless of $includeCancelled. */
     public function totalLoaded(): float
     {
-        return (float) $this->query()->sum('amount');
+        return (float) $this->query()->where('balance_loads.status', '!=', 'cancelled')->sum('amount');
     }
 
     public function totalFees(): float
     {
-        return (float) $this->query()->sum('fee') - (float) $this->query()->sum('discount');
+        $filtered = $this->query()->where('balance_loads.status', '!=', 'cancelled');
+
+        return (float) $filtered->sum('fee') - (float) $this->query()->where('balance_loads.status', '!=', 'cancelled')->sum('discount');
     }
 
     /** Deliberately unfiltered — a running balance of everything still owed, not scoped to the date range being viewed. */
@@ -78,7 +89,7 @@ class BalanceLoadReport implements ScreenReport
     {
         return $this->query()->with('customer')->latest()->get()->map(function (BalanceLoad $load) use ($forExcel) {
             $customer = TableExportService::sanitizeCell($load->customer?->name ?? 'Walk-in');
-            $status = $load->payment_status->label();
+            $status = $load->isCancelled() ? 'Cancelled' : $load->payment_status->label();
 
             return $forExcel
                 ? [$load->receiptNumber(), TableExport::excelDate($load->created_at), $load->network, $load->load_type->label(), $load->phone_number, $customer, (float) $load->amount, (float) $load->fee, (float) $load->discount, (float) $load->total, $status, (float) $load->amountOwed()]

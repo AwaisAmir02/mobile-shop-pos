@@ -63,12 +63,19 @@ class ExpenseTenantIsolationTest extends TestCase
         $this->assertEquals(250, $expense->amount);
     }
 
-    public function test_a_shop_cannot_delete_another_shops_expense(): void
+    /**
+     * "Delete" is now "Cancel" (this expense keeps its row, marked
+     * Cancelled, as part of the Edit/Cancel work added across all 8
+     * modules) — updated from the old hard-delete() method accordingly.
+     * The tenant-isolation guarantee itself is unchanged: the global
+     * ShopScope still hides shop B's expense from shop A entirely.
+     */
+    public function test_a_shop_cannot_cancel_another_shops_expense(): void
     {
         $shopA = Shop::create(['name' => 'Shop A']);
         $shopB = Shop::create(['name' => 'Shop B']);
 
-        $userA = User::factory()->create(['shop_id' => $shopA->id]);
+        $userA = User::factory()->create(['shop_id' => $shopA->id, 'is_owner' => true]);
 
         $expenseB = Expense::create([
             'shop_id' => $shopB->id,
@@ -80,12 +87,14 @@ class ExpenseTenantIsolationTest extends TestCase
         $this->actingAs($userA);
 
         try {
-            Livewire::test('expenses.index')->call('delete', $expenseB->id);
-            $this->fail('Expected a ModelNotFoundException when deleting another shop\'s expense.');
+            Livewire::test('expenses.index')
+                ->set('cancelingId', $expenseB->id)
+                ->call('cancelExpense');
+            $this->fail('Expected a ModelNotFoundException when cancelling another shop\'s expense.');
         } catch (ModelNotFoundException) {
             // Expected: the global scope hides shop B's expense from shop A entirely.
         }
 
-        $this->assertNotNull(Expense::withoutGlobalScopes()->find($expenseB->id));
+        $this->assertFalse(Expense::withoutGlobalScopes()->find($expenseB->id)->isCancelled());
     }
 }

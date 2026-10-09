@@ -4,7 +4,6 @@ namespace App\Actions;
 
 use App\Enums\SaleRevisionAction;
 use App\Enums\SaleStatus;
-use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleRevision;
 use Illuminate\Support\Facades\DB;
@@ -32,37 +31,27 @@ class CancelSale
                 'customer_id' => $sale->customer_id,
                 'items' => $sale->items->map(fn ($item) => [
                     'product_id' => $item->product_id,
+                    'stock_in_id' => $item->stock_in_id,
                     'product_name' => $item->product_name,
                     'product_type' => $item->product_type,
                     'unit_price' => (float) $item->unit_price,
                     'list_price' => $item->list_price !== null ? (float) $item->list_price : null,
+                    'cost_price' => $item->cost_price !== null ? (float) $item->cost_price : null,
                     'quantity' => (int) $item->quantity,
                     'discount_amount' => (float) $item->discount_amount,
                     'line_total' => (float) $item->line_total,
                 ])->all(),
             ];
 
-            $restocked = [];
-            $skipped = [];
+            $skipped = RestoreStockFifo::handle($sale->items);
+            $skippedNames = array_unique($skipped);
 
-            foreach ($sale->items as $item) {
-                if ($item->product_id === null) {
-                    $skipped[] = $item->product_name;
-
-                    continue;
-                }
-
-                $product = Product::whereKey($item->product_id)->lockForUpdate()->first();
-
-                if ($product === null) {
-                    $skipped[] = $item->product_name;
-
-                    continue;
-                }
-
-                $product->increment('stock_quantity', $item->quantity);
-                $restocked[] = $item->product_name;
-            }
+            $restocked = $sale->items
+                ->filter(fn ($item) => $item->product_id !== null && ! in_array($item->product_name, $skippedNames, true))
+                ->pluck('product_name')
+                ->unique()
+                ->values()
+                ->all();
 
             $sale->update([
                 'status' => SaleStatus::Cancelled,
@@ -80,7 +69,7 @@ class CancelSale
                 'created_at' => now(),
             ]);
 
-            return ['restocked' => $restocked, 'skipped' => $skipped];
+            return ['restocked' => $restocked, 'skipped' => $skippedNames];
         });
     }
 }

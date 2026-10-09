@@ -5,6 +5,7 @@ namespace App\ReportQueries;
 use App\Enums\PaymentStatus;
 use App\Exports\TableExport;
 use App\Models\NadraVerification;
+use App\Models\Scopes\ExcludesCancelledScope;
 use App\Services\TableExportService;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -14,19 +15,27 @@ class NadraVerificationReport implements ScreenReport
         protected string $from = '',
         protected string $to = '',
         protected string $paymentStatusFilter = '',
+        protected bool $includeCancelled = false,
     ) {}
 
     public function query(): Builder
     {
-        return NadraVerification::query()
+        $query = NadraVerification::query()
             ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
             ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
             ->when($this->paymentStatusFilter, fn ($query) => $query->where('payment_status', $this->paymentStatusFilter));
+
+        if ($this->includeCancelled) {
+            $query->withoutGlobalScope(ExcludesCancelledScope::class);
+        }
+
+        return $query;
     }
 
+    /** Totals always exclude cancelled verifications, regardless of $includeCancelled. */
     public function totalCollected(): float
     {
-        return (float) $this->query()->sum('total');
+        return (float) $this->query()->where('nadra_verifications.status', '!=', 'cancelled')->sum('total');
     }
 
     /** Deliberately unfiltered — a running balance of everything still owed, not scoped to the date range being viewed. */
@@ -72,7 +81,7 @@ class NadraVerificationReport implements ScreenReport
     {
         return $this->query()->with('customer')->latest()->get()->map(function (NadraVerification $verification) use ($forExcel) {
             $customer = TableExportService::sanitizeCell($verification->customer?->name ?? 'Walk-in');
-            $status = $verification->payment_status->label();
+            $status = $verification->isCancelled() ? 'Cancelled' : $verification->payment_status->label();
 
             return $forExcel
                 ? [$verification->receiptNumber(), TableExport::excelDate($verification->created_at), $verification->phone_number, $verification->cnic_number, $customer, (float) $verification->total, $status, (float) $verification->amountOwed()]

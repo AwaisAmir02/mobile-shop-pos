@@ -1,11 +1,18 @@
 <?php
 
+use App\Actions\CancelSimSale;
+use App\Actions\UpdateSimSale;
 use App\Enums\PaymentStatus;
+use App\Enums\SimForm;
+use App\Enums\SimType;
 use App\Livewire\Concerns\Toasts;
+use App\Models\Customer;
 use App\Models\Network;
+use App\Models\Scopes\ExcludesCancelledScope;
 use App\Models\SimSale;
 use App\ReportQueries\SimSaleReport;
 use App\Services\SimSaleReceiptPdfService;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
@@ -23,6 +30,20 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
 
     public ?int $payingId = null;
     public string $paymentAmount = '';
+
+    public ?int $editingId = null;
+    public string $editNetwork = '';
+    public string $editSimType = '';
+    public string $editSimForm = '';
+    public bool $editIsDuplicate = false;
+    public string $editSimNumber = '';
+    public string $editCustomerId = '';
+    public string $editAmount = '';
+    public string $editFee = '';
+    public string $editDiscount = '';
+
+    public ?int $cancelingId = null;
+    public string $cancelReason = '';
 
     public function updatingFrom(): void
     {
@@ -46,7 +67,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
 
     protected function report(): SimSaleReport
     {
-        return new SimSaleReport($this->from, $this->to, $this->network, $this->paymentStatusFilter);
+        return new SimSaleReport($this->from, $this->to, $this->network, $this->paymentStatusFilter, includeCancelled: true);
     }
 
     public function with(): array
@@ -59,7 +80,10 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
             'totalOwed' => $report->totalOwed(),
             'allNetworks' => Network::query()->orderBy('name')->pluck('name'),
             'networksByName' => Network::query()->get()->keyBy('name'),
+            'customers' => Customer::query()->orderBy('name')->get(),
             'paymentStatuses' => PaymentStatus::cases(),
+            'simTypes' => SimType::cases(),
+            'simForms' => SimForm::cases(),
         ];
     }
 
@@ -70,12 +94,13 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
 
     public function downloadReceipt(int $saleId, SimSaleReceiptPdfService $pdf): StreamedResponse
     {
-        return $pdf->download(SimSale::findOrFail($saleId));
+        return $pdf->download(SimSale::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($saleId));
     }
 
     public function markAsPaid(int $id): void
     {
-        $sale = SimSale::findOrFail($id);
+        $sale = SimSale::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($id);
+        abort_if($sale->isCancelled(), 403);
 
         $sale->update([
             'payment_status' => PaymentStatus::Paid,
@@ -87,6 +112,9 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
 
     public function openAddPayment(int $id): void
     {
+        $sale = SimSale::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($id);
+        abort_if($sale->isCancelled(), 403);
+
         $this->payingId = $id;
         $this->paymentAmount = '';
         $this->resetErrorBag();
@@ -95,11 +123,13 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
 
     public function submitPayment(): void
     {
+        $sale = SimSale::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($this->payingId);
+        abort_if($sale->isCancelled(), 403);
+
         $this->validate([
             'paymentAmount' => ['required', 'numeric', 'min:0.01'],
         ]);
 
-        $sale = SimSale::findOrFail($this->payingId);
         $newAmountPaid = (float) $sale->amount_paid + (float) $this->paymentAmount;
 
         $sale->update([
@@ -118,6 +148,94 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
     {
         $this->dispatch('close-modal', name: 'add-payment-form');
         $this->reset(['payingId', 'paymentAmount']);
+    }
+
+    public function openEdit(int $saleId): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('sim-sales-edit-cancel'), 403);
+
+        $sale = SimSale::findOrFail($saleId);
+
+        $this->editingId = $sale->id;
+        $this->editNetwork = $sale->network;
+        $this->editSimType = $sale->sim_type->value;
+        $this->editSimForm = $sale->sim_form->value;
+        $this->editIsDuplicate = $sale->is_duplicate;
+        $this->editSimNumber = $sale->sim_number;
+        $this->editCustomerId = $sale->customer_id !== null ? (string) $sale->customer_id : '';
+        $this->editAmount = (string) $sale->amount;
+        $this->editFee = (string) $sale->fee;
+        $this->editDiscount = (string) $sale->discount;
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'edit-sim-sale-form');
+    }
+
+    public function saveEdit(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('sim-sales-edit-cancel'), 403);
+
+        $this->validate([
+            'editNetwork' => ['required', 'string', 'max:255'],
+            'editSimType' => ['required', 'string'],
+            'editSimForm' => ['required', 'string'],
+            'editSimNumber' => ['required', 'string', 'max:255'],
+            'editCustomerId' => ['nullable', 'integer'],
+            'editAmount' => ['required', 'numeric', 'min:0'],
+            'editFee' => ['required', 'numeric', 'min:0'],
+            'editDiscount' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $sale = SimSale::findOrFail($this->editingId);
+
+        UpdateSimSale::handle($sale, [
+            'network' => $this->editNetwork,
+            'sim_type' => $this->editSimType,
+            'sim_form' => $this->editSimForm,
+            'is_duplicate' => $this->editIsDuplicate,
+            'sim_number' => $this->editSimNumber,
+            'amount' => (float) $this->editAmount,
+            'fee' => (float) $this->editFee,
+            'discount' => (float) $this->editDiscount,
+            'customer_id' => $this->editCustomerId !== '' ? (int) $this->editCustomerId : null,
+        ], Auth::id());
+
+        $this->toastSuccess('SIM sale updated.');
+        $this->dispatch('close-modal', name: 'edit-sim-sale-form');
+        $this->reset(['editingId', 'editNetwork', 'editSimType', 'editSimForm', 'editIsDuplicate', 'editSimNumber', 'editCustomerId', 'editAmount', 'editFee', 'editDiscount']);
+    }
+
+    public function closeEditForm(): void
+    {
+        $this->dispatch('close-modal', name: 'edit-sim-sale-form');
+        $this->reset(['editingId', 'editNetwork', 'editSimType', 'editSimForm', 'editIsDuplicate', 'editSimNumber', 'editCustomerId', 'editAmount', 'editFee', 'editDiscount']);
+    }
+
+    public function openCancel(int $saleId): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('sim-sales-edit-cancel'), 403);
+
+        $this->cancelingId = $saleId;
+        $this->cancelReason = '';
+        $this->dispatch('open-modal', name: 'cancel-sim-sale-form');
+    }
+
+    public function cancelSale(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('sim-sales-edit-cancel'), 403);
+
+        $sale = SimSale::findOrFail($this->cancelingId);
+        CancelSimSale::handle($sale, Auth::id(), $this->cancelReason);
+
+        $this->dispatch('close-modal', name: 'cancel-sim-sale-form');
+        $this->reset(['cancelingId', 'cancelReason']);
+
+        $this->toastSuccess('SIM sale cancelled.');
+    }
+
+    public function closeCancelForm(): void
+    {
+        $this->dispatch('close-modal', name: 'cancel-sim-sale-form');
+        $this->reset(['cancelingId', 'cancelReason']);
     }
 }; ?>
 
@@ -199,7 +317,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
     @else
         <x-ui.table :headers="['Receipt', 'Date', 'Network', 'Plan', 'SIM Number', 'Customer', 'Total', 'Payment', 'Owed', '']">
             @foreach ($sales as $sale)
-                <x-ui.table-row wire:key="sim-sale-{{ $sale->id }}">
+                <x-ui.table-row wire:key="sim-sale-{{ $sale->id }}" @class(['opacity-50' => $sale->isCancelled()])>
                     <x-ui.table-cell class="font-medium text-slate-900">{{ $sale->receiptNumber() }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $sale->created_at->format('d M Y, h:i A') }}</x-ui.table-cell>
                     <x-ui.table-cell>
@@ -222,7 +340,9 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
                     <x-ui.table-cell>{{ $sale->customer?->name ?? 'Walk-in' }}</x-ui.table-cell>
                     <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($sale->total, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell>
-                        @if ($sale->payment_status->value === 'paid')
+                        @if ($sale->isCancelled())
+                            <x-ui.badge variant="danger">Cancelled</x-ui.badge>
+                        @elseif ($sale->payment_status->value === 'paid')
                             <x-ui.badge variant="success">Paid</x-ui.badge>
                         @elseif ($sale->payment_status->value === 'partial')
                             <x-ui.badge variant="warning">Partial</x-ui.badge>
@@ -231,7 +351,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
                         @endif
                     </x-ui.table-cell>
                     <x-ui.table-cell class="font-semibold text-slate-900">
-                        @if ($sale->amountOwed() > 0)
+                        @if (! $sale->isCancelled() && $sale->amountOwed() > 0)
                             Rs {{ number_format($sale->amountOwed(), 2) }}
                         @else
                             —
@@ -239,18 +359,28 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
                     </x-ui.table-cell>
                     <x-ui.table-cell align="right">
                         <div class="flex justify-end gap-2">
-                            @if ($sale->payment_status->value !== 'paid')
-                                <x-ui.button size="sm" variant="ghost" wire:click="openAddPayment({{ $sale->id }})">
-                                    Add Payment
-                                </x-ui.button>
-                                <x-ui.button
-                                    size="sm"
-                                    variant="ghost"
-                                    wire:click="markAsPaid({{ $sale->id }})"
-                                    wire:confirm="Mark this SIM sale as fully paid?"
-                                >
-                                    Mark as Paid
-                                </x-ui.button>
+                            @if (! $sale->isCancelled())
+                                @if ($sale->payment_status->value !== 'paid')
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openAddPayment({{ $sale->id }})">
+                                        Add Payment
+                                    </x-ui.button>
+                                    <x-ui.button
+                                        size="sm"
+                                        variant="ghost"
+                                        wire:click="markAsPaid({{ $sale->id }})"
+                                        wire:confirm="Mark this SIM sale as fully paid?"
+                                    >
+                                        Mark as Paid
+                                    </x-ui.button>
+                                @endif
+                                @if (auth()->user()->hasAccessTo('sim-sales-edit-cancel'))
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $sale->id }})">
+                                        Edit
+                                    </x-ui.button>
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $sale->id }})" class="text-red-600 hover:bg-red-50">
+                                        Delete
+                                    </x-ui.button>
+                                @endif
                             @endif
                             <x-ui.button size="sm" variant="ghost" wire:click="downloadReceipt({{ $sale->id }})">
                                 Download
@@ -283,6 +413,102 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
 
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="submitPayment">
                     Save Payment
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="edit-sim-sale-form" max-width="lg">
+        <form wire:submit="saveEdit" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Edit SIM Sale</h2>
+
+            <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <x-ui.field label="Network" name="editNetwork" for="editNetwork">
+                    <x-ui.select wire:model="editNetwork" id="editNetwork">
+                        @foreach ($allNetworks as $name)
+                            <option value="{{ $name }}">{{ $name }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </x-ui.field>
+
+                <x-ui.field label="SIM Type" name="editSimType" for="editSimType">
+                    <x-ui.select wire:model="editSimType" id="editSimType">
+                        @foreach ($simTypes as $type)
+                            <option value="{{ $type->value }}">{{ $type->label() }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </x-ui.field>
+
+                <x-ui.field label="SIM Form" name="editSimForm" for="editSimForm">
+                    <x-ui.select wire:model="editSimForm" id="editSimForm">
+                        @foreach ($simForms as $form)
+                            <option value="{{ $form->value }}">{{ $form->label() }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </x-ui.field>
+
+                <x-ui.field label="SIM Number" name="editSimNumber" for="editSimNumber">
+                    <x-ui.input wire:model="editSimNumber" id="editSimNumber" />
+                </x-ui.field>
+
+                <x-ui.field label="Customer" name="editCustomerId" for="editCustomerId" help="Optional — leave blank for a walk-in">
+                    <x-ui.select wire:model="editCustomerId" id="editCustomerId">
+                        <option value="">Walk-in (no customer)</option>
+                        @foreach ($customers as $customer)
+                            <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </x-ui.field>
+
+                <x-ui.field label="Amount" name="editAmount" for="editAmount">
+                    <x-ui.input wire:model="editAmount" id="editAmount" type="number" min="0" step="0.01" />
+                </x-ui.field>
+
+                <x-ui.field label="Fee" name="editFee" for="editFee">
+                    <x-ui.input wire:model="editFee" id="editFee" type="number" min="0" step="0.01" />
+                </x-ui.field>
+
+                <x-ui.field label="Discount" name="editDiscount" for="editDiscount" help="Optional">
+                    <x-ui.input wire:model="editDiscount" id="editDiscount" type="number" min="0" step="0.01" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-4">
+                <x-ui.checkbox wire:model="editIsDuplicate" label="This is a duplicate SIM" />
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeEditForm">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveEdit">
+                    Save Changes
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="cancel-sim-sale-form" max-width="sm">
+        <form wire:submit="cancelSale" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Cancel This SIM Sale?</h2>
+            <p class="mt-2 text-sm text-slate-600">
+                This SIM sale will be marked <strong>Cancelled</strong>. It will no longer count toward any total, report, or outstanding balance. This cannot be undone.
+            </p>
+
+            <div class="mt-5">
+                <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
+                    <x-ui.input wire:model="cancelReason" id="cancelReason" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeCancelForm">
+                    Keep SIM Sale
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelSale" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                    Cancel SIM Sale
                 </x-ui.button>
             </div>
         </form>

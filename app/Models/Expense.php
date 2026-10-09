@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\RecordStatus;
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Concerns\HasCancellation;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Expense extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, HasCancellation;
 
     protected $fillable = [
         'shop_id',
@@ -16,6 +18,10 @@ class Expense extends Model
         'description',
         'amount',
         'expense_date',
+        'status',
+        'cancelled_at',
+        'cancelled_by',
+        'cancel_reason',
     ];
 
     protected function casts(): array
@@ -23,6 +29,8 @@ class Expense extends Model
         return [
             'amount' => 'decimal:2',
             'expense_date' => 'date',
+            'status' => RecordStatus::class,
+            'cancelled_at' => 'datetime',
         ];
     }
 

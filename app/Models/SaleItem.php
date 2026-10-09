@@ -16,10 +16,12 @@ class SaleItem extends Model
         'shop_id',
         'sale_id',
         'product_id',
+        'stock_in_id',
         'product_name',
         'product_type',
         'unit_price',
         'list_price',
+        'cost_price',
         'quantity',
         'discount_amount',
         'line_total',
@@ -30,6 +32,7 @@ class SaleItem extends Model
         return [
             'unit_price' => 'decimal:2',
             'list_price' => 'decimal:2',
+            'cost_price' => 'decimal:2',
             'quantity' => 'integer',
             'discount_amount' => 'decimal:2',
             'line_total' => 'decimal:2',
@@ -49,5 +52,10 @@ class SaleItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function stockIn(): BelongsTo
+    {
+        return $this->belongsTo(StockIn::class);
     }
 }

@@ -33,6 +33,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public string $typeFilter = '';
 
     public ?int $editingId = null;
+    public bool $editingHasBatches = false;
 
     public string $type = 'mobile';
     public string $name = '';
@@ -228,6 +229,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         abort_if($product->type === 'sim', 403, 'Legacy SIM products cannot be edited.');
 
         $this->editingId = $product->id;
+        $this->editingHasBatches = $product->hasBatches();
         $this->type = $product->type;
         $this->name = $product->name;
         $this->image = null;
@@ -256,11 +258,14 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $product->fill([
             'type' => $this->type,
             'name' => $this->name,
-            'price' => $this->price,
-            'cost_price' => $this->cost_price !== '' ? $this->cost_price : null,
             'stock_quantity' => $this->stock_quantity,
             'details' => $this->detailsForType(),
         ]);
+
+        if (! $this->editingHasBatches) {
+            $product->price = $this->price;
+            $product->cost_price = $this->cost_price !== '' ? $this->cost_price : null;
+        }
 
         if (Auth::user()->canUseBarcodes()) {
             $product->barcode = $this->barcode !== '' ? $this->barcode : null;
@@ -424,7 +429,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     protected function resetForm(): void
     {
         $this->reset([
-            'editingId', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
+            'editingId', 'editingHasBatches', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
             'brand', 'model', 'imei', 'category', 'barcode',
         ]);
 
@@ -625,13 +630,19 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     </x-ui.field>
                 </div>
 
+                @if ($editingHasBatches)
+                    <p class="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                        Price now comes from this product's Stock In batches. To correct a price, edit the specific Stock In entry instead.
+                    </p>
+                @endif
+
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <x-ui.field label="Selling Price" name="price" for="price">
-                        <x-ui.input wire:model="price" id="price" type="number" step="0.01" min="0" />
+                        <x-ui.input wire:model="price" id="price" type="number" step="0.01" min="0" :disabled="$editingHasBatches" />
                     </x-ui.field>
 
                     <x-ui.field label="Cost Price" name="cost_price" for="cost_price" help="Optional">
-                        <x-ui.input wire:model="cost_price" id="cost_price" type="number" step="0.01" min="0" />
+                        <x-ui.input wire:model="cost_price" id="cost_price" type="number" step="0.01" min="0" :disabled="$editingHasBatches" />
                     </x-ui.field>
 
                     <x-ui.field label="Stock Qty" name="stock_quantity" for="stock_quantity">

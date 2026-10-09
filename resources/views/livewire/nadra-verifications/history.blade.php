@@ -1,10 +1,15 @@
 <?php
 
+use App\Actions\CancelNadraVerification;
+use App\Actions\UpdateNadraVerification;
 use App\Enums\PaymentStatus;
 use App\Livewire\Concerns\Toasts;
+use App\Models\Customer;
 use App\Models\NadraVerification;
+use App\Models\Scopes\ExcludesCancelledScope;
 use App\ReportQueries\NadraVerificationReport;
 use App\Services\NadraVerificationReceiptPdfService;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
@@ -21,6 +26,17 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
 
     public ?int $payingId = null;
     public string $paymentAmount = '';
+
+    public ?int $editingId = null;
+    public string $editCustomerId = '';
+    public string $editPhoneNumber = '';
+    public string $editCnicNumber = '';
+    public string $editAmount = '';
+    public string $editFee = '';
+    public string $editDiscount = '';
+
+    public ?int $cancelingId = null;
+    public string $cancelReason = '';
 
     public function updatingFrom(): void
     {
@@ -39,7 +55,7 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
 
     protected function report(): NadraVerificationReport
     {
-        return new NadraVerificationReport($this->from, $this->to, $this->paymentStatusFilter);
+        return new NadraVerificationReport($this->from, $this->to, $this->paymentStatusFilter, includeCancelled: true);
     }
 
     public function with(): array
@@ -50,6 +66,7 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
             'verifications' => $report->query()->with('customer')->latest()->paginate(15),
             'totalCollected' => $report->totalCollected(),
             'totalOwed' => $report->totalOwed(),
+            'customers' => Customer::query()->orderBy('name')->get(),
             'paymentStatuses' => PaymentStatus::cases(),
         ];
     }
@@ -61,12 +78,13 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
 
     public function downloadReceipt(int $verificationId, NadraVerificationReceiptPdfService $pdf): StreamedResponse
     {
-        return $pdf->download(NadraVerification::findOrFail($verificationId));
+        return $pdf->download(NadraVerification::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($verificationId));
     }
 
     public function markAsPaid(int $id): void
     {
-        $verification = NadraVerification::findOrFail($id);
+        $verification = NadraVerification::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($id);
+        abort_if($verification->isCancelled(), 403);
 
         $verification->update([
             'payment_status' => PaymentStatus::Paid,
@@ -78,6 +96,9 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
 
     public function openAddPayment(int $id): void
     {
+        $verification = NadraVerification::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($id);
+        abort_if($verification->isCancelled(), 403);
+
         $this->payingId = $id;
         $this->paymentAmount = '';
         $this->resetErrorBag();
@@ -86,11 +107,13 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
 
     public function submitPayment(): void
     {
+        $verification = NadraVerification::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($this->payingId);
+        abort_if($verification->isCancelled(), 403);
+
         $this->validate([
             'paymentAmount' => ['required', 'numeric', 'min:0.01'],
         ]);
 
-        $verification = NadraVerification::findOrFail($this->payingId);
         $newAmountPaid = (float) $verification->amount_paid + (float) $this->paymentAmount;
 
         $verification->update([
@@ -109,6 +132,86 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
     {
         $this->dispatch('close-modal', name: 'add-payment-form');
         $this->reset(['payingId', 'paymentAmount']);
+    }
+
+    public function openEdit(int $verificationId): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('nadra-verifications-edit-cancel'), 403);
+
+        $verification = NadraVerification::findOrFail($verificationId);
+
+        $this->editingId = $verification->id;
+        $this->editCustomerId = $verification->customer_id !== null ? (string) $verification->customer_id : '';
+        $this->editPhoneNumber = $verification->phone_number;
+        $this->editCnicNumber = $verification->cnic_number;
+        $this->editAmount = (string) $verification->amount;
+        $this->editFee = (string) $verification->fee;
+        $this->editDiscount = (string) $verification->discount;
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'edit-verification-form');
+    }
+
+    public function saveEdit(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('nadra-verifications-edit-cancel'), 403);
+
+        $this->validate([
+            'editCustomerId' => ['nullable', 'integer'],
+            'editPhoneNumber' => ['required', 'string', 'max:20'],
+            'editCnicNumber' => ['required', 'string', 'max:20'],
+            'editAmount' => ['required', 'numeric', 'min:0'],
+            'editFee' => ['required', 'numeric', 'min:0'],
+            'editDiscount' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $verification = NadraVerification::findOrFail($this->editingId);
+
+        UpdateNadraVerification::handle($verification, [
+            'phone_number' => $this->editPhoneNumber,
+            'cnic_number' => $this->editCnicNumber,
+            'amount' => (float) $this->editAmount,
+            'fee' => (float) $this->editFee,
+            'discount' => (float) $this->editDiscount,
+            'customer_id' => $this->editCustomerId !== '' ? (int) $this->editCustomerId : null,
+        ], Auth::id());
+
+        $this->toastSuccess('Verification updated.');
+        $this->dispatch('close-modal', name: 'edit-verification-form');
+        $this->reset(['editingId', 'editCustomerId', 'editPhoneNumber', 'editCnicNumber', 'editAmount', 'editFee', 'editDiscount']);
+    }
+
+    public function closeEditForm(): void
+    {
+        $this->dispatch('close-modal', name: 'edit-verification-form');
+        $this->reset(['editingId', 'editCustomerId', 'editPhoneNumber', 'editCnicNumber', 'editAmount', 'editFee', 'editDiscount']);
+    }
+
+    public function openCancel(int $verificationId): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('nadra-verifications-edit-cancel'), 403);
+
+        $this->cancelingId = $verificationId;
+        $this->cancelReason = '';
+        $this->dispatch('open-modal', name: 'cancel-verification-form');
+    }
+
+    public function cancelVerification(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('nadra-verifications-edit-cancel'), 403);
+
+        $verification = NadraVerification::findOrFail($this->cancelingId);
+        CancelNadraVerification::handle($verification, Auth::id(), $this->cancelReason);
+
+        $this->dispatch('close-modal', name: 'cancel-verification-form');
+        $this->reset(['cancelingId', 'cancelReason']);
+
+        $this->toastSuccess('Verification cancelled.');
+    }
+
+    public function closeCancelForm(): void
+    {
+        $this->dispatch('close-modal', name: 'cancel-verification-form');
+        $this->reset(['cancelingId', 'cancelReason']);
     }
 }; ?>
 
@@ -181,7 +284,7 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
     @else
         <x-ui.table :headers="['Receipt', 'Date', 'Phone', 'CNIC', 'Customer', 'Total', 'Payment', 'Owed', '']">
             @foreach ($verifications as $verification)
-                <x-ui.table-row wire:key="nadra-verification-{{ $verification->id }}">
+                <x-ui.table-row wire:key="nadra-verification-{{ $verification->id }}" @class(['opacity-50' => $verification->isCancelled()])>
                     <x-ui.table-cell class="font-medium text-slate-900">{{ $verification->receiptNumber() }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $verification->created_at->format('d M Y, h:i A') }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $verification->phone_number }}</x-ui.table-cell>
@@ -189,7 +292,9 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
                     <x-ui.table-cell>{{ $verification->customer?->name ?? 'Walk-in' }}</x-ui.table-cell>
                     <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($verification->total, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell>
-                        @if ($verification->payment_status->value === 'paid')
+                        @if ($verification->isCancelled())
+                            <x-ui.badge variant="danger">Cancelled</x-ui.badge>
+                        @elseif ($verification->payment_status->value === 'paid')
                             <x-ui.badge variant="success">Paid</x-ui.badge>
                         @elseif ($verification->payment_status->value === 'partial')
                             <x-ui.badge variant="warning">Partial</x-ui.badge>
@@ -198,7 +303,7 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
                         @endif
                     </x-ui.table-cell>
                     <x-ui.table-cell class="font-semibold text-slate-900">
-                        @if ($verification->amountOwed() > 0)
+                        @if (! $verification->isCancelled() && $verification->amountOwed() > 0)
                             Rs {{ number_format($verification->amountOwed(), 2) }}
                         @else
                             —
@@ -206,18 +311,28 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
                     </x-ui.table-cell>
                     <x-ui.table-cell align="right">
                         <div class="flex justify-end gap-2">
-                            @if ($verification->payment_status->value !== 'paid')
-                                <x-ui.button size="sm" variant="ghost" wire:click="openAddPayment({{ $verification->id }})">
-                                    Add Payment
-                                </x-ui.button>
-                                <x-ui.button
-                                    size="sm"
-                                    variant="ghost"
-                                    wire:click="markAsPaid({{ $verification->id }})"
-                                    wire:confirm="Mark this verification as fully paid?"
-                                >
-                                    Mark as Paid
-                                </x-ui.button>
+                            @if (! $verification->isCancelled())
+                                @if ($verification->payment_status->value !== 'paid')
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openAddPayment({{ $verification->id }})">
+                                        Add Payment
+                                    </x-ui.button>
+                                    <x-ui.button
+                                        size="sm"
+                                        variant="ghost"
+                                        wire:click="markAsPaid({{ $verification->id }})"
+                                        wire:confirm="Mark this verification as fully paid?"
+                                    >
+                                        Mark as Paid
+                                    </x-ui.button>
+                                @endif
+                                @if (auth()->user()->hasAccessTo('nadra-verifications-edit-cancel'))
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $verification->id }})">
+                                        Edit
+                                    </x-ui.button>
+                                    <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $verification->id }})" class="text-red-600 hover:bg-red-50">
+                                        Delete
+                                    </x-ui.button>
+                                @endif
                             @endif
                             <x-ui.button size="sm" variant="ghost" wire:click="downloadReceipt({{ $verification->id }})">
                                 Download
@@ -250,6 +365,78 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
 
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="submitPayment">
                     Save Payment
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="edit-verification-form" max-width="lg">
+        <form wire:submit="saveEdit" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Edit Verification</h2>
+
+            <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <x-ui.field label="Customer" name="editCustomerId" for="editCustomerId" help="Optional — leave blank for a walk-in customer">
+                    <x-ui.select wire:model="editCustomerId" id="editCustomerId">
+                        <option value="">Walk-in (no customer)</option>
+                        @foreach ($customers as $customer)
+                            <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </x-ui.field>
+
+                <x-ui.field label="Phone Number" name="editPhoneNumber" for="editPhoneNumber">
+                    <x-ui.input wire:model="editPhoneNumber" id="editPhoneNumber" type="tel" />
+                </x-ui.field>
+
+                <x-ui.field label="CNIC Number" name="editCnicNumber" for="editCnicNumber">
+                    <x-ui.input wire:model="editCnicNumber" id="editCnicNumber" />
+                </x-ui.field>
+
+                <x-ui.field label="Amount" name="editAmount" for="editAmount">
+                    <x-ui.input wire:model="editAmount" id="editAmount" type="number" min="0" step="0.01" />
+                </x-ui.field>
+
+                <x-ui.field label="Service Fee" name="editFee" for="editFee">
+                    <x-ui.input wire:model="editFee" id="editFee" type="number" min="0" step="0.01" />
+                </x-ui.field>
+
+                <x-ui.field label="Discount" name="editDiscount" for="editDiscount" help="Optional">
+                    <x-ui.input wire:model="editDiscount" id="editDiscount" type="number" min="0" step="0.01" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeEditForm">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveEdit">
+                    Save Changes
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="cancel-verification-form" max-width="sm">
+        <form wire:submit="cancelVerification" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Cancel This Verification?</h2>
+            <p class="mt-2 text-sm text-slate-600">
+                This verification will be marked <strong>Cancelled</strong>. It will no longer count toward any total, report, or outstanding balance. This cannot be undone.
+            </p>
+
+            <div class="mt-5">
+                <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
+                    <x-ui.input wire:model="cancelReason" id="cancelReason" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeCancelForm">
+                    Keep Verification
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelVerification" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                    Cancel Verification
                 </x-ui.button>
             </div>
         </form>

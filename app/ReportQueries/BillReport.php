@@ -7,6 +7,7 @@ use App\Exports\TableExport;
 use App\Models\BillCategory;
 use App\Models\BillPayment;
 use App\Models\BillProvider;
+use App\Models\Scopes\ExcludesCancelledScope;
 use App\Services\TableExportService;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -18,21 +19,29 @@ class BillReport implements ScreenReport
         protected string $billCategoryId = '',
         protected string $billProviderId = '',
         protected string $paymentStatusFilter = '',
+        protected bool $includeCancelled = false,
     ) {}
 
     public function query(): Builder
     {
-        return BillPayment::query()
+        $query = BillPayment::query()
             ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
             ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
             ->when($this->billCategoryId, fn ($query) => $query->where('bill_category_id', $this->billCategoryId))
             ->when($this->billProviderId, fn ($query) => $query->where('bill_provider_id', $this->billProviderId))
             ->when($this->paymentStatusFilter, fn ($query) => $query->where('payment_status', $this->paymentStatusFilter));
+
+        if ($this->includeCancelled) {
+            $query->withoutGlobalScope(ExcludesCancelledScope::class);
+        }
+
+        return $query;
     }
 
+    /** Totals always exclude cancelled payments, regardless of $includeCancelled. */
     public function totalCollected(): float
     {
-        return (float) $this->query()->sum('total');
+        return (float) $this->query()->where('bill_payments.status', '!=', 'cancelled')->sum('total');
     }
 
     /** Deliberately unfiltered — a running balance of everything still owed, not scoped to the date range being viewed. */
@@ -88,7 +97,7 @@ class BillReport implements ScreenReport
             ->map(function (BillPayment $payment) use ($forExcel) {
                 $consumer = TableExportService::sanitizeCell($payment->consumer_name).' · '.$payment->consumer_number;
                 $customer = TableExportService::sanitizeCell($payment->customer?->name ?? 'Walk-in');
-                $status = $payment->payment_status->label();
+                $status = $payment->isCancelled() ? 'Cancelled' : $payment->payment_status->label();
 
                 return $forExcel
                     ? [$payment->receiptNumber(), TableExport::excelDate($payment->created_at), $payment->billCategory?->name, $payment->billProvider?->name, $consumer, $customer, $payment->shopAccount?->name, (float) $payment->total, $status, (float) $payment->amountOwed()]

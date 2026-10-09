@@ -33,6 +33,8 @@ class StockInTest extends TestCase
         Livewire::test('stock-ins.create')
             ->set('productId', (string) $product->id)
             ->set('quantity', '10')
+            ->set('sellingPrice', '42000')
+            ->call('addLine')
             ->set('stock_date', '2026-08-20')
             ->set('note', 'Supplier: ABC Traders')
             ->call('save')
@@ -45,6 +47,7 @@ class StockInTest extends TestCase
         $this->assertSame($product->id, $entry->product_id);
         $this->assertSame('Galaxy A15', $entry->product_name);
         $this->assertSame(10, $entry->quantity);
+        $this->assertSame(10, $entry->quantity_remaining);
         $this->assertSame('Supplier: ABC Traders', $entry->note);
         $this->assertSame($owner->id, $entry->user_id);
     }
@@ -65,11 +68,13 @@ class StockInTest extends TestCase
         $this->actingAs($owner);
 
         Livewire::test('stock-ins.create')
-            ->set('productId', (string) $product->id)->set('quantity', '20')->set('stock_date', '2026-08-01')
+            ->set('productId', (string) $product->id)->set('quantity', '20')->set('sellingPrice', '1500')->call('addLine')
+            ->set('stock_date', '2026-08-01')
             ->call('save');
 
         Livewire::test('stock-ins.create')
-            ->set('productId', (string) $product->id)->set('quantity', '15')->set('stock_date', '2026-08-10')
+            ->set('productId', (string) $product->id)->set('quantity', '15')->set('sellingPrice', '1500')->call('addLine')
+            ->set('stock_date', '2026-08-10')
             ->call('save');
 
         $this->assertSame(35, $product->fresh()->stock_quantity);
@@ -96,8 +101,8 @@ class StockInTest extends TestCase
         Livewire::test('stock-ins.create')
             ->set('productId', (string) $productB->id)
             ->set('quantity', '5')
-            ->set('stock_date', '2026-08-01')
-            ->call('save')
+            ->set('sellingPrice', '1500')
+            ->call('addLine')
             ->assertHasErrors(['productId']);
 
         $this->assertSame(10, $productB->fresh()->stock_quantity);

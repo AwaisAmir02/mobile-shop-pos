@@ -5,6 +5,7 @@ namespace App\ReportQueries;
 use App\Enums\PaymentStatus;
 use App\Exports\TableExport;
 use App\Models\ShopAccount;
+use App\Models\Scopes\ExcludesCancelledScope;
 use App\Models\WalletLoad;
 use App\Services\TableExportService;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,27 +19,37 @@ class WalletLoadReport implements ScreenReport
         protected string $provider = '',
         protected string $shopAccountId = '',
         protected string $paymentStatusFilter = '',
+        protected bool $includeCancelled = false,
     ) {}
 
     public function query(): Builder
     {
-        return WalletLoad::query()
+        $query = WalletLoad::query()
             ->where('direction', $this->tab)
             ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
             ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
             ->when($this->provider, fn ($query) => $query->where('provider', $this->provider))
             ->when($this->shopAccountId, fn ($query) => $query->where('shop_account_id', $this->shopAccountId))
             ->when($this->paymentStatusFilter, fn ($query) => $query->where('payment_status', $this->paymentStatusFilter));
+
+        if ($this->includeCancelled) {
+            $query->withoutGlobalScope(ExcludesCancelledScope::class);
+        }
+
+        return $query;
     }
 
+    /** Totals always exclude cancelled loads, regardless of $includeCancelled. */
     public function totalLoaded(): float
     {
-        return (float) $this->query()->sum('amount');
+        return (float) $this->query()->where('wallet_loads.status', '!=', 'cancelled')->sum('amount');
     }
 
     public function totalFees(): float
     {
-        return (float) $this->query()->sum('fee') - (float) $this->query()->sum('discount');
+        $query = $this->query()->where('wallet_loads.status', '!=', 'cancelled');
+
+        return (float) $query->sum('fee') - (float) $this->query()->where('wallet_loads.status', '!=', 'cancelled')->sum('discount');
     }
 
     /**
@@ -59,6 +70,7 @@ class WalletLoadReport implements ScreenReport
     public function providerTotals()
     {
         return $this->query()
+            ->where('wallet_loads.status', '!=', 'cancelled')
             ->selectRaw('provider, SUM(amount) as total')
             ->groupBy('provider')
             ->orderByDesc('total')
@@ -115,7 +127,7 @@ class WalletLoadReport implements ScreenReport
                 ? TableExportService::sanitizeCell($load->customer?->name ?? $load->account_name ?? '—')
                 : TableExportService::sanitizeCell($load->customer?->name ?? 'Walk-in');
             $shopAccount = $shopAccountsById->get($load->shop_account_id)?->name;
-            $status = $load->payment_status->label();
+            $status = $load->isCancelled() ? 'Cancelled' : $load->payment_status->label();
 
             return $forExcel
                 ? [$load->receiptNumber(), TableExport::excelDate($load->created_at), $load->provider, $recipient, (float) $load->amount, (float) $load->fee, (float) $load->discount, (float) $load->total, $shopAccount, $status, (float) $load->amountOwed()]
