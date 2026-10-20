@@ -31,7 +31,7 @@ class RepairCategoryAndPaymentStatusTest extends TestCase
             ->set('mainCategorySlug', 'accessory')
             ->set('subCategoryName', 'Charger')
             ->set('description', 'Charger not powering on')
-            ->set('amount', '200')
+            ->set('serviceCharges', '200')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -52,7 +52,7 @@ class RepairCategoryAndPaymentStatusTest extends TestCase
         Livewire::test('repairs.create')
             ->set('mainCategorySlug', 'laptops')
             ->set('description', 'Dell XPS, keyboard replacement')
-            ->set('amount', '3000')
+            ->set('serviceCharges', '3000')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -151,7 +151,7 @@ class RepairCategoryAndPaymentStatusTest extends TestCase
 
         Livewire::test('repairs.create')
             ->set('description', 'Screen replacement')
-            ->set('amount', '1000')
+            ->set('serviceCharges', '1000')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -170,14 +170,14 @@ class RepairCategoryAndPaymentStatusTest extends TestCase
 
         Livewire::test('repairs.create')
             ->set('description', 'Screen replacement')
-            ->set('amount', '1000')
+            ->set('serviceCharges', '1000')
             ->set('paymentStatus', 'partial')
             ->call('save')
             ->assertHasErrors(['amountPaid']);
 
         Livewire::test('repairs.create')
             ->set('description', 'Screen replacement')
-            ->set('amount', '1000')
+            ->set('serviceCharges', '1000')
             ->set('paymentStatus', 'partial')
             ->set('amountPaid', '400')
             ->call('save')

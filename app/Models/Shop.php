@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
 
 class Shop extends Model
 {
@@ -29,6 +30,10 @@ class Shop extends Model
         'disabled_screens',
         'import_enabled',
         'barcode_enabled',
+        'branding_enabled',
+        'invoice_display_name',
+        'logo_path',
+        'services_enabled',
         'sim_sale_commission_percent',
         'balance_load_commission_percent',
         'wallet_load_commission_percent',
@@ -45,6 +50,8 @@ class Shop extends Model
             'disabled_screens' => 'array',
             'import_enabled' => 'boolean',
             'barcode_enabled' => 'boolean',
+            'branding_enabled' => 'boolean',
+            'services_enabled' => 'boolean',
             'sim_sale_commission_percent' => 'decimal:2',
             'balance_load_commission_percent' => 'decimal:2',
             'wallet_load_commission_percent' => 'decimal:2',
@@ -125,5 +132,46 @@ class Shop extends Model
     public function isSubscriptionActive(): bool
     {
         return $this->subscription_status === SubscriptionStatus::Active;
+    }
+
+    /**
+     * Branding-aware on purpose: a shop with branding_enabled off must show
+     * its plain name even if invoice_display_name is still sitting in the
+     * column from a previous opt-in — zero behavior change while off.
+     */
+    public function invoiceDisplayName(): string
+    {
+        if ($this->branding_enabled && $this->invoice_display_name) {
+            return $this->invoice_display_name;
+        }
+
+        return $this->name;
+    }
+
+    public function logoUrl(): ?string
+    {
+        return $this->logo_path ? Storage::disk('public')->url($this->logo_path) : null;
+    }
+
+    /**
+     * DomPDF can't fetch our own /storage URLs back over HTTP, so the logo
+     * is embedded as a base64 data URI, matching the pattern already used
+     * for HisabOKitab's own logo in SubscriptionInvoicePdfService.
+     */
+    public function logoDataUri(): ?string
+    {
+        if (! $this->logo_path) {
+            return null;
+        }
+
+        $disk = Storage::disk('public');
+
+        if (! $disk->exists($this->logo_path)) {
+            return null;
+        }
+
+        $mime = $disk->mimeType($this->logo_path) ?: 'image/png';
+
+        return 'data:'.$mime.';base64,'.base64_encode((string) $disk->get($this->logo_path));
     }
 }

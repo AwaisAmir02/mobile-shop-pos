@@ -25,7 +25,8 @@ class RepairTest extends TestCase
         Livewire::test('repairs.create')
             ->set('mainCategorySlug', 'mobile')
             ->set('description', 'iPhone 13, screen cracked')
-            ->set('amount', '3000')
+            ->set('serviceCharges', '2000')
+            ->set('productsCharges', '1000')
             ->set('discount', '500')
             ->assertViewHas('totalCollected', 2500.0)
             ->call('save')
@@ -36,6 +37,8 @@ class RepairTest extends TestCase
         $this->assertSame('mobile', $repair->category);
         $this->assertSame('iPhone 13, screen cracked', $repair->description);
         $this->assertEquals(3000, $repair->amount);
+        $this->assertEquals(2000, $repair->service_charges);
+        $this->assertEquals(1000, $repair->products_charges);
         $this->assertEquals(500, $repair->discount);
         $this->assertEquals(2500, $repair->total);
     }
@@ -49,7 +52,7 @@ class RepairTest extends TestCase
 
         Livewire::test('repairs.create')
             ->set('description', 'Charger not powering on')
-            ->set('amount', '100')
+            ->set('serviceCharges', '100')
             ->set('discount', '9999')
             ->call('save')
             ->assertHasNoErrors();
@@ -67,7 +70,7 @@ class RepairTest extends TestCase
         Livewire::test('repairs.create')
             ->set('mainCategorySlug', 'accessory')
             ->set('description', 'Samsung charger, not powering on')
-            ->set('amount', '200')
+            ->set('serviceCharges', '200')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -85,7 +88,7 @@ class RepairTest extends TestCase
         Livewire::test('repairs.create')
             ->set('customerId', (string) $customer->id)
             ->set('description', 'Screen replacement')
-            ->set('amount', '1000')
+            ->set('serviceCharges', '1000')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -116,7 +119,7 @@ class RepairTest extends TestCase
         Livewire::test('repairs.create')
             ->set('customerId', (string) $customerB->id)
             ->set('description', 'Screen replacement')
-            ->set('amount', '1000')
+            ->set('serviceCharges', '1000')
             ->call('save')
             ->assertHasErrors(['customerId']);
 

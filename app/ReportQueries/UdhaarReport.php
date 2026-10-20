@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\NadraVerification;
 use App\Models\Repair;
 use App\Models\Sale;
+use App\Models\ServicePayment;
 use App\Models\SimSale;
 use App\Models\UdhaarTransaction;
 use App\Models\WalletLoad;
@@ -72,6 +73,7 @@ class UdhaarReport implements ScreenReport
         $accumulate($unpaidOrPartial(Repair::query())->get(), fn (Repair $m) => $m->amountOwed());
         $accumulate($unpaidOrPartial(NadraVerification::query())->get(), fn (NadraVerification $m) => $m->amountOwed());
         $accumulate($unpaidOrPartial(SimSale::query())->get(), fn (SimSale $m) => $m->amountOwed());
+        $accumulate($unpaidOrPartial(ServicePayment::query())->get(), fn (ServicePayment $m) => $m->amountOwed());
         $accumulate(
             Sale::query()->whereNotNull('customer_id')->withSum('payments', 'amount')->get(),
             fn (Sale $m) => $m->amountDue()

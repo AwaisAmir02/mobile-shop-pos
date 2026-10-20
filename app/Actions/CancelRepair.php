@@ -25,6 +25,8 @@ class CancelRepair
                 'sub_category' => $repair->sub_category,
                 'description' => $repair->description,
                 'amount' => (float) $repair->amount,
+                'service_charges' => $repair->service_charges !== null ? (float) $repair->service_charges : null,
+                'products_charges' => $repair->products_charges !== null ? (float) $repair->products_charges : null,
                 'discount' => (float) $repair->discount,
                 'total' => (float) $repair->total,
                 'customer_id' => $repair->customer_id,

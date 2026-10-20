@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 class UpdateRepair
 {
     /**
-     * @param  array{category: string, sub_category: ?string, description: string, amount: float, discount: float, customer_id: ?int}  $fields
+     * @param  array{category: string, sub_category: ?string, description: string, service_charges: float, products_charges: float, discount: float, customer_id: ?int}  $fields
      */
     public static function handle(Repair $repair, array $fields, ?int $userId): Repair
     {
@@ -23,7 +23,8 @@ class UpdateRepair
                 throw new \RuntimeException('A cancelled repair cannot be edited.');
             }
 
-            $newTotal = max(0.0, $fields['amount'] - $fields['discount']);
+            $newAmount = $fields['service_charges'] + $fields['products_charges'];
+            $newTotal = max(0.0, $newAmount - $fields['discount']);
 
             if ($newTotal < (float) $repair->amount_paid) {
                 throw ValidationException::withMessages([
@@ -42,6 +43,8 @@ class UpdateRepair
                 'sub_category' => $repair->sub_category,
                 'description' => $repair->description,
                 'amount' => (float) $repair->amount,
+                'service_charges' => $repair->service_charges !== null ? (float) $repair->service_charges : null,
+                'products_charges' => $repair->products_charges !== null ? (float) $repair->products_charges : null,
                 'discount' => (float) $repair->discount,
                 'total' => (float) $repair->total,
                 'customer_id' => $repair->customer_id,
@@ -51,7 +54,9 @@ class UpdateRepair
                 'category' => $fields['category'],
                 'sub_category' => $fields['sub_category'],
                 'description' => $fields['description'],
-                'amount' => $fields['amount'],
+                'amount' => $newAmount,
+                'service_charges' => $fields['service_charges'],
+                'products_charges' => $fields['products_charges'],
                 'discount' => $fields['discount'],
                 'total' => $newTotal,
                 'customer_id' => $fields['customer_id'],

@@ -72,7 +72,7 @@
 </head>
 <body>
     <div class="header">
-        <div class="shop-name">{{ $verification->shop->name }}</div>
+        @include('pdf.partials.branded-shop-name', ['shop' => $verification->shop])
         <div class="receipt-title">NADRA Verification Receipt</div>
         <div class="receipt-meta">{{ $verification->receiptNumber() }} &middot; {{ $verification->created_at->format('d M Y, h:i A') }}</div>
     </div>

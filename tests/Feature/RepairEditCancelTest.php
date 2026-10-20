@@ -94,7 +94,8 @@ class RepairEditCancelTest extends TestCase
             'category' => 'mobile',
             'sub_category' => 'Screen',
             'description' => 'Screen replacement (corrected)',
-            'amount' => 1200,
+            'service_charges' => 1200,
+            'products_charges' => 0,
             'discount' => 100,
             'customer_id' => $customer->id,
         ], $owner->id);
@@ -117,7 +118,8 @@ class RepairEditCancelTest extends TestCase
             'category' => 'mobile',
             'sub_category' => null,
             'description' => 'x',
-            'amount' => 500,
+            'service_charges' => 500,
+            'products_charges' => 0,
             'discount' => 0,
             'customer_id' => null,
         ], $owner->id);
@@ -133,7 +135,8 @@ class RepairEditCancelTest extends TestCase
             'category' => 'mobile',
             'sub_category' => null,
             'description' => 'x',
-            'amount' => 1000,
+            'service_charges' => 1000,
+            'products_charges' => 0,
             'discount' => 0,
             'customer_id' => null,
         ], $owner->id);
@@ -149,7 +152,8 @@ class RepairEditCancelTest extends TestCase
             'category' => 'mobile',
             'sub_category' => null,
             'description' => 'x',
-            'amount' => 1000,
+            'service_charges' => 1000,
+            'products_charges' => 0,
             'discount' => 0,
             'customer_id' => null,
         ], $owner->id);

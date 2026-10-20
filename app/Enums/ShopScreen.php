@@ -38,6 +38,10 @@ enum ShopScreen: string
     case SettingsBillConfig = 'settings-bill-config';
     case SettingsPercentage = 'settings-percentage';
     case SettingsBrands = 'settings-brands';
+    case SettingsBranding = 'settings-branding';
+    case Services = 'services';
+    case ServicesEditCancel = 'services-edit-cancel';
+    case SettingsServices = 'settings-services';
 
     public function label(): string
     {
@@ -76,6 +80,10 @@ enum ShopScreen: string
             self::SettingsBillConfig => 'Settings: Bill Providers',
             self::SettingsPercentage => 'Settings: Percentage',
             self::SettingsBrands => 'Settings: Brands',
+            self::SettingsBranding => 'Settings: Branding',
+            self::Services => 'Services',
+            self::ServicesEditCancel => 'Services: Edit / Cancel',
+            self::SettingsServices => 'Settings: Services',
         };
     }
 
@@ -116,6 +124,10 @@ enum ShopScreen: string
             self::SettingsBillConfig => 'settings.index',
             self::SettingsPercentage => 'settings.index',
             self::SettingsBrands => 'settings.index',
+            self::SettingsBranding => 'settings.index',
+            self::Services => 'services.index',
+            self::ServicesEditCancel => 'services.index',
+            self::SettingsServices => 'settings.index',
         };
     }
 
@@ -132,9 +144,9 @@ enum ShopScreen: string
         return [
             'Core' => [self::Dashboard, self::Products, self::Customers, self::Reports, self::PartyLedger],
             'Inventory & Sales' => [self::StockIns, self::StockInsEditCancel, self::Vendors, self::Sales, self::SalesEditCancel, self::SalesViewCostPrice, self::SimSales, self::SimSalesEditCancel],
-            'Financial Services' => [self::BalanceLoads, self::BalanceLoadsEditCancel, self::WalletLoads, self::WalletLoadsEditCancel, self::Bills, self::BillsEditCancel, self::Repairs, self::RepairsEditCancel, self::NadraVerifications, self::NadraVerificationsEditCancel, self::Udhaar, self::Expenses, self::ExpensesEditCancel],
+            'Financial Services' => [self::BalanceLoads, self::BalanceLoadsEditCancel, self::WalletLoads, self::WalletLoadsEditCancel, self::Bills, self::BillsEditCancel, self::Repairs, self::RepairsEditCancel, self::NadraVerifications, self::NadraVerificationsEditCancel, self::Udhaar, self::Expenses, self::ExpensesEditCancel, self::Services, self::ServicesEditCancel],
             'Administration' => [self::Users, self::ShopAccounts],
-            'Settings' => [self::Settings, self::SettingsCategories, self::SettingsNetworks, self::SettingsBillConfig, self::SettingsPercentage, self::SettingsBrands],
+            'Settings' => [self::Settings, self::SettingsCategories, self::SettingsNetworks, self::SettingsBillConfig, self::SettingsPercentage, self::SettingsBrands, self::SettingsBranding, self::SettingsServices],
         ];
     }
 }

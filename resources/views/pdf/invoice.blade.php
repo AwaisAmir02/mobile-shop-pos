@@ -113,7 +113,7 @@
     <table class="layout header">
         <tr>
             <td>
-                <div class="shop-name">{{ $sale->shop->name }}</div>
+                @include('pdf.partials.branded-shop-name', ['shop' => $sale->shop])
                 @if ($sale->shop->phone || $sale->shop->address)
                     <div class="shop-meta">
                         {{ collect([$sale->shop->address, $sale->shop->phone])->filter()->implode(' · ') }}

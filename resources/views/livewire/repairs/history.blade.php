@@ -34,7 +34,8 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
     public string $editSubCategory = '';
     public string $editCustomerId = '';
     public string $editDescription = '';
-    public string $editAmount = '';
+    public string $editServiceCharges = '';
+    public string $editProductsCharges = '';
     public string $editDiscount = '';
 
     public ?int $cancelingId = null;
@@ -73,6 +74,8 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
             'repairs' => $report->query()->with(['customer', 'mainCategory'])->latest()->paginate(15),
             'totalCollected' => $report->totalCollected(),
             'totalOwed' => $report->totalOwed(),
+            'totalServiceCharges' => $report->totalServiceCharges(),
+            'totalProductsCharges' => $report->totalProductsCharges(),
             'categories' => MainCategory::query()->orderBy('name')->get(),
             'customers' => Customer::query()->orderBy('name')->get(),
             'paymentStatuses' => PaymentStatus::cases(),
@@ -153,7 +156,8 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
         $this->editSubCategory = $repair->sub_category ?? '';
         $this->editCustomerId = $repair->customer_id !== null ? (string) $repair->customer_id : '';
         $this->editDescription = $repair->description;
-        $this->editAmount = (string) $repair->amount;
+        $this->editServiceCharges = (string) ($repair->service_charges ?? $repair->amount);
+        $this->editProductsCharges = (string) ($repair->products_charges ?? 0);
         $this->editDiscount = (string) $repair->discount;
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'edit-repair-form');
@@ -168,7 +172,8 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
             'editSubCategory' => ['nullable', 'string', 'max:255'],
             'editCustomerId' => ['nullable', 'integer'],
             'editDescription' => ['required', 'string', 'max:1000'],
-            'editAmount' => ['required', 'numeric', 'min:0'],
+            'editServiceCharges' => ['required', 'numeric', 'min:0'],
+            'editProductsCharges' => ['required', 'numeric', 'min:0'],
             'editDiscount' => ['required', 'numeric', 'min:0'],
         ]);
 
@@ -178,20 +183,21 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
             'category' => $this->editCategory,
             'sub_category' => $this->editSubCategory !== '' ? $this->editSubCategory : null,
             'description' => $this->editDescription,
-            'amount' => (float) $this->editAmount,
+            'service_charges' => (float) $this->editServiceCharges,
+            'products_charges' => (float) $this->editProductsCharges,
             'discount' => (float) $this->editDiscount,
             'customer_id' => $this->editCustomerId !== '' ? (int) $this->editCustomerId : null,
         ], Auth::id());
 
         $this->toastSuccess('Repair updated.');
         $this->dispatch('close-modal', name: 'edit-repair-form');
-        $this->reset(['editingId', 'editCategory', 'editSubCategory', 'editCustomerId', 'editDescription', 'editAmount', 'editDiscount']);
+        $this->reset(['editingId', 'editCategory', 'editSubCategory', 'editCustomerId', 'editDescription', 'editServiceCharges', 'editProductsCharges', 'editDiscount']);
     }
 
     public function closeEditForm(): void
     {
         $this->dispatch('close-modal', name: 'edit-repair-form');
-        $this->reset(['editingId', 'editCategory', 'editSubCategory', 'editCustomerId', 'editDescription', 'editAmount', 'editDiscount']);
+        $this->reset(['editingId', 'editCategory', 'editSubCategory', 'editCustomerId', 'editDescription', 'editServiceCharges', 'editProductsCharges', 'editDiscount']);
     }
 
     public function openCancel(int $repairId): void
@@ -284,6 +290,20 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
                     <p class="text-display-sm text-slate-900">Rs {{ number_format($totalOwed, 2) }}</p>
                 </div>
             </x-ui.card>
+
+            <x-ui.card :padding="false" class="w-full sm:w-auto">
+                <div class="px-5 py-3 text-right">
+                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Service Charges</p>
+                    <p class="text-display-sm text-slate-900">Rs {{ number_format($totalServiceCharges, 2) }}</p>
+                </div>
+            </x-ui.card>
+
+            <x-ui.card :padding="false" class="w-full sm:w-auto">
+                <div class="px-5 py-3 text-right">
+                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Products Charges</p>
+                    <p class="text-display-sm text-slate-900">Rs {{ number_format($totalProductsCharges, 2) }}</p>
+                </div>
+            </x-ui.card>
         </div>
     </div>
 
@@ -299,7 +319,7 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
             </x-slot>
         </x-ui.empty-state>
     @else
-        <x-ui.table :headers="['Receipt', 'Date', 'Category', 'Description', 'Customer', 'Total', 'Payment', 'Owed', '']">
+        <x-ui.table :headers="['Receipt', 'Date', 'Category', 'Description', 'Customer', 'Service Charges', 'Products Charges', 'Total', 'Payment', 'Owed', '']">
             @foreach ($repairs as $repair)
                 <x-ui.table-row wire:key="repair-{{ $repair->id }}" @class(['opacity-50' => $repair->isCancelled()])>
                     <x-ui.table-cell class="font-medium text-slate-900">{{ $repair->receiptNumber() }}</x-ui.table-cell>
@@ -307,6 +327,8 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
                     <x-ui.table-cell>{{ $repair->categoryLabel() }}</x-ui.table-cell>
                     <x-ui.table-cell class="max-w-xs truncate">{{ $repair->description }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $repair->customer?->name ?? 'Walk-in' }}</x-ui.table-cell>
+                    <x-ui.table-cell>{{ $repair->service_charges !== null ? 'Rs '.number_format($repair->service_charges, 2) : '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell>{{ $repair->products_charges !== null ? 'Rs '.number_format($repair->products_charges, 2) : '—' }}</x-ui.table-cell>
                     <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($repair->total, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell>
                         @if ($repair->isCancelled())
@@ -413,8 +435,12 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
                     </x-ui.select>
                 </x-ui.field>
 
-                <x-ui.field label="Amount" name="editAmount" for="editAmount">
-                    <x-ui.input wire:model="editAmount" id="editAmount" type="number" min="0" step="0.01" />
+                <x-ui.field label="Service Charges" name="editServiceCharges" for="editServiceCharges">
+                    <x-ui.input wire:model="editServiceCharges" id="editServiceCharges" type="number" min="0" step="0.01" />
+                </x-ui.field>
+
+                <x-ui.field label="Products Charges" name="editProductsCharges" for="editProductsCharges" help="Optional">
+                    <x-ui.input wire:model="editProductsCharges" id="editProductsCharges" type="number" min="0" step="0.01" />
                 </x-ui.field>
 
                 <x-ui.field label="Discount" name="editDiscount" for="editDiscount" help="Optional">

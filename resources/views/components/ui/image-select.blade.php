@@ -9,11 +9,17 @@
 <div
     x-data="{
         open: false,
+        query: '',
         highlighted: -1,
         options: @js($options),
         withColor: @js($withColor),
         get selected() {
             return this.options.find((o) => o.value === $wire.{{ $wireModel }}) ?? null;
+        },
+        get filtered() {
+            if (! this.query) return this.options;
+            const q = this.query.toLowerCase();
+            return this.options.filter((o) => o.special || o.label.toLowerCase().includes(q));
         },
         select(option) {
             this.close();
@@ -31,8 +37,12 @@
         },
         openList() {
             this.open = true;
-            this.highlighted = this.options.findIndex((o) => o.value === $wire.{{ $wireModel }});
-            this.$nextTick(() => this.$refs.panel?.querySelector('[data-highlighted=true]')?.scrollIntoView({ block: 'nearest' }));
+            this.query = '';
+            this.highlighted = this.filtered.findIndex((o) => o.value === $wire.{{ $wireModel }});
+            this.$nextTick(() => {
+                this.$refs.search?.focus();
+                this.$refs.panel?.querySelector('[data-highlighted=true]')?.scrollIntoView({ block: 'nearest' });
+            });
         },
         close() {
             this.open = false;
@@ -40,14 +50,15 @@
         },
         move(step) {
             if (! this.open) { this.openList(); return; }
-            const count = this.options.length;
-            if (! count) return;
-            this.highlighted = (this.highlighted + step + count) % count;
+            const list = this.filtered;
+            if (! list.length) return;
+            this.highlighted = (this.highlighted + step + list.length) % list.length;
             this.$nextTick(() => this.$refs.panel?.querySelector('[data-highlighted=true]')?.scrollIntoView({ block: 'nearest' }));
         },
         chooseHighlighted() {
-            if (this.open && this.highlighted >= 0) {
-                this.select(this.options[this.highlighted]);
+            const list = this.filtered;
+            if (this.open && this.highlighted >= 0 && this.highlighted < list.length) {
+                this.select(list[this.highlighted]);
             }
         },
     }"
@@ -103,10 +114,26 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
-        class="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg focus:outline-none"
+        class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg focus:outline-none"
         role="listbox"
     >
-        <template x-for="(option, index) in options" :key="option.value">
+        <div class="border-b border-slate-100 p-2">
+            <input
+                type="text"
+                x-ref="search"
+                x-model="query"
+                x-on:input="highlighted = filtered.findIndex((o) => !o.special)"
+                x-on:keydown.arrow-down.prevent="move(1)"
+                x-on:keydown.arrow-up.prevent="move(-1)"
+                x-on:keydown.enter.prevent="chooseHighlighted()"
+                x-on:keydown.escape="close()"
+                placeholder="Search…"
+                class="block w-full rounded-md border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+            >
+        </div>
+
+        <div class="max-h-60 overflow-auto py-1">
+        <template x-for="(option, index) in filtered" :key="option.value">
             <button
                 type="button"
                 role="option"
@@ -115,7 +142,7 @@
                 x-on:mouseenter="highlighted = index"
                 class="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm"
                 :class="{
-                    'bg-slate-50': highlighted === index && !(withColor && option.color),
+                    'bg-accent-500 text-slate-900': highlighted === index && !(withColor && option.color),
                     'mt-1 border-t border-slate-100 pt-2.5 font-medium text-brand-700': option.special,
                 }"
                 :style="withColor && option.color ? `background-color: ${option.color}${highlighted === index ? '2a' : '14'}` : ''"
@@ -147,5 +174,9 @@
         <template x-if="options.length === 0">
             <p class="px-3.5 py-2 text-sm text-slate-400">No options available.</p>
         </template>
+        <template x-if="options.length > 0 && filtered.length === 0">
+            <p class="px-3.5 py-2 text-sm text-slate-400">No matches.</p>
+        </template>
+        </div>
     </div>
 </div>

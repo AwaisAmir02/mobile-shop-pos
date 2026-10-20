@@ -76,7 +76,7 @@
     @endphp
 
     <div class="header">
-        <div class="shop-name">{{ $load->shop->name }}</div>
+        @include('pdf.partials.branded-shop-name', ['shop' => $load->shop])
         <div class="receipt-title">Wallet {{ $load->direction->label() }} Receipt</div>
         <div class="receipt-meta">{{ $load->receiptNumber() }} &middot; {{ $load->created_at->format('d M Y, h:i A') }}</div>
     </div>

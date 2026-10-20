@@ -178,6 +178,34 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $this->toastSuccess($this->shop->barcode_enabled ? 'Barcodes enabled for this shop.' : 'Barcodes disabled for this shop.');
     }
 
+    /**
+     * Also a separate opt-in capability flag (shops.branding_enabled), not a
+     * ShopScreen — it decides whether the shop's Settings → Branding tab and
+     * its receipt/invoice branding exist at all. A shop with this off keeps
+     * seeing today's plain shop-name header on every receipt, unchanged.
+     */
+    public function toggleBrandingEnabled(): void
+    {
+        $this->shop->update(['branding_enabled' => ! $this->shop->branding_enabled]);
+        $this->shop->refresh();
+
+        $this->toastSuccess($this->shop->branding_enabled ? 'Custom branding enabled for this shop.' : 'Custom branding disabled for this shop.');
+    }
+
+    /**
+     * Also a separate opt-in capability flag (shops.services_enabled), not a
+     * ShopScreen — it decides whether the Services sidebar entry, Settings
+     * tab, and the services.* routes exist for this shop at all. A shop
+     * with this off sees no Services anywhere, regardless of role.
+     */
+    public function toggleServicesEnabled(): void
+    {
+        $this->shop->update(['services_enabled' => ! $this->shop->services_enabled]);
+        $this->shop->refresh();
+
+        $this->toastSuccess($this->shop->services_enabled ? 'Services enabled for this shop.' : 'Services disabled for this shop.');
+    }
+
     protected function periodRange(): array
     {
         if ($this->periodType === 'month') {
@@ -542,6 +570,60 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                                     'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
                                     'translate-x-6' => $shop->barcode_enabled,
                                     'translate-x-1' => ! $shop->barcode_enabled,
+                                ])
+                            ></span>
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 px-4 py-2.5">
+                        <div>
+                            <span class="text-sm font-medium text-slate-900">Branding</span>
+                            <p class="text-xs text-slate-500">Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name.</p>
+                        </div>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked="{{ $shop->branding_enabled ? 'true' : 'false' }}"
+                            aria-label="{{ $shop->branding_enabled ? 'Disable' : 'Enable' }} Branding"
+                            wire:click="toggleBrandingEnabled"
+                            wire:confirm="{{ $shop->branding_enabled ? 'Disable' : 'Enable' }} Branding for this shop?"
+                            @class([
+                                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                                'bg-emerald-500' => $shop->branding_enabled,
+                                'bg-slate-300' => ! $shop->branding_enabled,
+                            ])
+                        >
+                            <span
+                                @class([
+                                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                                    'translate-x-6' => $shop->branding_enabled,
+                                    'translate-x-1' => ! $shop->branding_enabled,
+                                ])
+                            ></span>
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 px-4 py-2.5">
+                        <div>
+                            <span class="text-sm font-medium text-slate-900">Services</span>
+                            <p class="text-xs text-slate-500">A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop.</p>
+                        </div>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked="{{ $shop->services_enabled ? 'true' : 'false' }}"
+                            aria-label="{{ $shop->services_enabled ? 'Disable' : 'Enable' }} Services"
+                            wire:click="toggleServicesEnabled"
+                            wire:confirm="{{ $shop->services_enabled ? 'Disable' : 'Enable' }} Services for this shop?"
+                            @class([
+                                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                                'bg-emerald-500' => $shop->services_enabled,
+                                'bg-slate-300' => ! $shop->services_enabled,
+                            ])
+                        >
+                            <span
+                                @class([
+                                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                                    'translate-x-6' => $shop->services_enabled,
+                                    'translate-x-1' => ! $shop->services_enabled,
                                 ])
                             ></span>
                         </button>

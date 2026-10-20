@@ -23,7 +23,8 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
     public string $mainCategorySlug = 'mobile';
     public string $subCategoryName = '';
     public string $description = '';
-    public string $amount = '';
+    public string $serviceCharges = '';
+    public string $productsCharges = '0';
     public string $discount = '0';
     public string $paymentStatus = 'paid';
     public string $amountPaid = '';
@@ -35,6 +36,7 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
     public function mount(): void
     {
         MainCategory::ensureDefaultsExist();
+        $this->amountPaid = '0';
     }
 
     public function updatingMainCategorySlug(string $value): void
@@ -93,14 +95,55 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
 
     public function updatedPaymentStatus(): void
     {
-        if ($this->paymentStatus !== 'partial') {
-            $this->amountPaid = '';
+        $this->amountPaid = match ($this->paymentStatus) {
+            'paid' => (string) $this->totalCollected(),
+            'unpaid' => '0',
+            default => '',
+        };
+    }
+
+    public function updatedAmountPaid(): void
+    {
+        $amount = $this->amountPaid !== '' ? (float) $this->amountPaid : 0.0;
+        $total = $this->totalCollected();
+
+        $this->paymentStatus = match (true) {
+            $amount <= 0 => 'unpaid',
+            $total <= 0 || $amount >= $total => 'paid',
+            default => 'partial',
+        };
+    }
+
+    protected function refreshAmountPaidForTotalChange(): void
+    {
+        if ($this->paymentStatus === 'paid') {
+            $this->amountPaid = (string) $this->totalCollected();
         }
+    }
+
+    public function updatedServiceCharges(): void
+    {
+        $this->refreshAmountPaidForTotalChange();
+    }
+
+    public function updatedProductsCharges(): void
+    {
+        $this->refreshAmountPaidForTotalChange();
+    }
+
+    public function updatedDiscount(): void
+    {
+        $this->refreshAmountPaidForTotalChange();
+    }
+
+    public function combinedAmount(): float
+    {
+        return (float) ($this->serviceCharges !== '' ? $this->serviceCharges : 0) + (float) ($this->productsCharges !== '' ? $this->productsCharges : 0);
     }
 
     public function totalCollected(): float
     {
-        return max(0.0, (float) ($this->amount !== '' ? $this->amount : 0) - (float) $this->discount);
+        return max(0.0, $this->combinedAmount() - (float) $this->discount);
     }
 
     public function with(): array
@@ -137,7 +180,8 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
             'subCategoryName' => ['nullable', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:1000'],
             'customerId' => ['nullable', 'integer', Rule::exists('customers', 'id')->where('shop_id', Auth::user()->shop_id)],
-            'amount' => ['required', 'numeric', 'min:0'],
+            'serviceCharges' => ['required', 'numeric', 'min:0'],
+            'productsCharges' => ['required', 'numeric', 'min:0'],
             'discount' => ['required', 'numeric', 'min:0'],
             'paymentStatus' => ['required', Rule::enum(PaymentStatus::class)],
             'amountPaid' => ['nullable', 'numeric', 'min:0', 'required_if:paymentStatus,partial'],
@@ -157,7 +201,9 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
             'category' => $this->mainCategorySlug,
             'sub_category' => $this->subCategoryName !== '' ? $this->subCategoryName : null,
             'description' => $this->description,
-            'amount' => $this->amount,
+            'amount' => $this->combinedAmount(),
+            'service_charges' => $this->serviceCharges,
+            'products_charges' => $this->productsCharges,
             'discount' => $this->discount,
             'total' => $total,
             'payment_status' => $this->paymentStatus,
@@ -166,9 +212,10 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
 
         $this->toastSuccess('Repair recorded.');
         $this->lastRepairId = $repair->id;
-        $this->reset(['customerId', 'subCategoryName', 'description', 'amount', 'discount', 'amountPaid']);
+        $this->reset(['customerId', 'subCategoryName', 'description', 'serviceCharges', 'productsCharges', 'discount', 'amountPaid']);
         $this->mainCategorySlug = 'mobile';
         $this->paymentStatus = 'paid';
+        $this->amountPaid = '0';
     }
 
     public function logAnother(): void
@@ -262,8 +309,12 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
                     </x-ui.field>
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <x-ui.field label="Amount" name="amount" for="amount">
-                            <x-ui.input wire:model.live="amount" id="amount" type="number" min="0" step="0.01" class="text-lg" />
+                        <x-ui.field label="Service Charges" name="serviceCharges" for="serviceCharges" help="Labor/service fee">
+                            <x-ui.input wire:model.live="serviceCharges" id="serviceCharges" type="number" min="0" step="0.01" class="text-lg" />
+                        </x-ui.field>
+
+                        <x-ui.field label="Products Charges" name="productsCharges" for="productsCharges" help="Cost of any part used — optional">
+                            <x-ui.input wire:model.live="productsCharges" id="productsCharges" type="number" min="0" step="0.01" />
                         </x-ui.field>
 
                         <x-ui.field label="Discount" name="discount" for="discount" help="Optional">
@@ -278,11 +329,9 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
                             </x-ui.select>
                         </x-ui.field>
 
-                        @if ($paymentStatus === 'partial')
-                            <x-ui.field label="Amount Paid" name="amountPaid" for="amountPaid">
-                                <x-ui.input wire:model="amountPaid" id="amountPaid" type="number" min="0" step="0.01" />
-                            </x-ui.field>
-                        @endif
+                        <x-ui.field label="Amount Paid" name="amountPaid" for="amountPaid" help="How much the customer actually paid">
+                            <x-ui.input wire:model.live="amountPaid" id="amountPaid" type="number" min="0" step="0.01" />
+                        </x-ui.field>
                     </div>
 
                     <div class="flex items-center justify-between rounded-lg bg-brand-50 px-4 py-3">

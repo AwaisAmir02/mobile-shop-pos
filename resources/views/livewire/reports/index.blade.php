@@ -19,6 +19,7 @@ use App\ReportQueries\ProductReport;
 use App\ReportQueries\RepairReport;
 use App\ReportQueries\SalesReport;
 use App\ReportQueries\ScreenReport;
+use App\ReportQueries\ServiceReport;
 use App\ReportQueries\SimSaleReport;
 use App\ReportQueries\StockInReport;
 use App\ReportQueries\UdhaarReport;
@@ -58,6 +59,7 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
         ShopScreen::BalanceLoads,
         ShopScreen::Bills,
         ShopScreen::Repairs,
+        ShopScreen::Services,
     ];
 
     public string $screen = '';
@@ -147,6 +149,7 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
             ShopScreen::BalanceLoads->value => new BalanceLoadReport($this->from, $this->to, $this->paymentStatusFilter),
             ShopScreen::Bills->value => new BillReport($this->from, $this->to, $this->billCategoryId, $this->billProviderId, $this->paymentStatusFilter),
             ShopScreen::Repairs->value => new RepairReport($this->from, $this->to, $this->category, $this->paymentStatusFilter),
+            ShopScreen::Services->value => new ServiceReport($this->from, $this->to, '', '', $this->paymentStatusFilter),
             default => null,
         };
     }

@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\RecordStatus;
 use App\Enums\UdhaarTransactionType;
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Concerns\HasCancellation;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -11,7 +13,7 @@ use Illuminate\Support\Collection;
 
 class UdhaarTransaction extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, HasCancellation;
 
     protected $fillable = [
         'shop_id',
@@ -22,6 +24,10 @@ class UdhaarTransaction extends Model
         'transaction_date',
         'note',
         'reverses_transaction_id',
+        'status',
+        'cancelled_at',
+        'cancelled_by',
+        'cancel_reason',
     ];
 
     protected function casts(): array
@@ -30,6 +36,8 @@ class UdhaarTransaction extends Model
             'type' => UdhaarTransactionType::class,
             'amount' => 'decimal:2',
             'transaction_date' => 'date',
+            'status' => RecordStatus::class,
+            'cancelled_at' => 'datetime',
         ];
     }
 
@@ -61,6 +69,18 @@ class UdhaarTransaction extends Model
     public function isReversed(): bool
     {
         return ! $this->type->isReversal() && $this->reversal()->exists();
+    }
+
+    /**
+     * Edit, Cancel, and Reverse are mutually exclusive actions on the same
+     * row: once reversed, cancelling is redundant (the effect is already
+     * offset); once cancelled, reversing or editing is meaningless (the row
+     * no longer counts toward anything). A reversal row is itself never
+     * actionable — it exists only to correct its original.
+     */
+    public function isActionable(): bool
+    {
+        return ! $this->type->isReversal() && ! $this->isReversed() && ! $this->isCancelled();
     }
 
     /**

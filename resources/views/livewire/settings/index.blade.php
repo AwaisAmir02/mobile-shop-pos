@@ -3,6 +3,8 @@
 use App\Actions\CreateAccessoryCategory;
 use App\Actions\CreateBillCategory;
 use App\Actions\CreateBillProvider;
+use App\Actions\CreateServiceCategory;
+use App\Actions\CreateServiceItem;
 use App\Enums\ShopScreen;
 use App\Livewire\Concerns\Toasts;
 use App\Livewire\Concerns\UploadsImages;
@@ -16,6 +18,9 @@ use App\Models\MainCategory;
 use App\Models\Network;
 use App\Models\Product;
 use App\Models\Role;
+use App\Models\ServiceCategory;
+use App\Models\ServiceItem;
+use App\Models\ServicePayment;
 use App\Models\ShopAccount;
 use App\Models\WalletLoad;
 use Illuminate\Support\Facades\Auth;
@@ -70,6 +75,15 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public string $billProviderCategoryId = '';
     public string $billProviderRegion = '';
 
+    // Service Categories
+    public ?int $serviceCategoryEditingId = null;
+    public string $serviceCategoryName = '';
+
+    // Service Items
+    public ?int $serviceItemEditingId = null;
+    public string $serviceItemName = '';
+    public string $serviceItemCategoryId = '';
+
     // Roles
     public ?int $roleEditingId = null;
     public string $roleName = '';
@@ -82,9 +96,18 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public string $billsCommissionPercent = '';
     public string $nadraVerificationCommissionPercent = '';
 
+    // Branding
+    public $brandingLogo = null;
+    public ?string $brandingExistingLogoUrl = null;
+    public string $brandingDisplayName = '';
+
     public function mount(): void
     {
         MainCategory::ensureDefaultsExist();
+
+        if (Auth::user()->shop?->services_enabled) {
+            ServiceCategory::ensureDefaultsExist();
+        }
 
         $accessible = $this->accessibleTabs();
 
@@ -98,6 +121,8 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $this->walletLoadCommissionPercent = $shop?->wallet_load_commission_percent !== null ? (string) $shop->wallet_load_commission_percent : '';
         $this->billsCommissionPercent = $shop?->bills_commission_percent !== null ? (string) $shop->bills_commission_percent : '';
         $this->nadraVerificationCommissionPercent = $shop?->nadra_verification_commission_percent !== null ? (string) $shop->nadra_verification_commission_percent : '';
+        $this->brandingDisplayName = $shop?->invoice_display_name ?? '';
+        $this->brandingExistingLogoUrl = $shop?->logoUrl();
     }
 
     /**
@@ -123,8 +148,23 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             $tabs[] = 'networks';
         }
 
+        // Branding is gated twice: the shop must have it turned on by Super
+        // Admin (shops.branding_enabled — opt-in, off by default, mirroring
+        // barcode_enabled/import_enabled), AND the user needs the ordinary
+        // settings-branding permission. A shop without it enabled never
+        // sees this tab at all, regardless of role.
+        if (Auth::user()->shop?->branding_enabled && Auth::user()->hasAccessTo('settings-branding')) {
+            $tabs[] = 'branding';
+        }
+
         if (Auth::user()->hasAccessTo('settings-bill-config')) {
             $tabs[] = 'bills';
+        }
+
+        // Also gated twice, same as Branding: shops.services_enabled (opt-in,
+        // off by default) plus the ordinary settings-services permission.
+        if (Auth::user()->shop?->services_enabled && Auth::user()->hasAccessTo('settings-services')) {
+            $tabs[] = 'services';
         }
 
         if (Auth::user()->hasAccessTo('settings-percentage')) {
@@ -186,6 +226,12 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 : collect(),
             'billProviders' => in_array('bills', $accessible, true)
                 ? BillProvider::query()->with('billCategory')->orderBy('name')->get()
+                : collect(),
+            'serviceCategories' => in_array('services', $accessible, true)
+                ? ServiceCategory::query()->withCount('serviceItems')->orderBy('name')->get()
+                : collect(),
+            'serviceItems' => in_array('services', $accessible, true)
+                ? ServiceItem::query()->with('serviceCategory')->orderBy('name')->get()
                 : collect(),
             'roles' => in_array('roles', $accessible, true)
                 ? Role::query()->withCount('users')->orderBy('name')->get()
@@ -708,6 +754,142 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $this->reset(['billProviderEditingId', 'billProviderName', 'billProviderCategoryId', 'billProviderRegion']);
     }
 
+    // ── Service Categories ───────────────────────────────────────────
+
+    public function openServiceCategoryCreate(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings-services'), 403);
+
+        $this->reset(['serviceCategoryEditingId', 'serviceCategoryName']);
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'service-category-form');
+    }
+
+    public function openServiceCategoryEdit(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings-services'), 403);
+
+        $category = ServiceCategory::findOrFail($id);
+
+        $this->serviceCategoryEditingId = $category->id;
+        $this->serviceCategoryName = $category->name;
+
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'service-category-form');
+    }
+
+    public function saveServiceCategory(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings-services'), 403);
+
+        $this->validate([
+            'serviceCategoryName' => ['required', 'string', 'max:255', Rule::unique('service_categories', 'name')->where('shop_id', Auth::user()->shop_id)->ignore($this->serviceCategoryEditingId)],
+        ]);
+
+        $category = $this->serviceCategoryEditingId
+            ? ServiceCategory::findOrFail($this->serviceCategoryEditingId)
+            : CreateServiceCategory::handle($this->serviceCategoryName);
+
+        $category->name = $this->serviceCategoryName;
+        $category->save();
+
+        $this->toastSuccess($this->serviceCategoryEditingId ? 'Service category updated.' : 'Service category added.');
+        $this->dispatch('close-modal', name: 'service-category-form');
+        $this->reset(['serviceCategoryEditingId', 'serviceCategoryName']);
+    }
+
+    public function deleteServiceCategory(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings-services'), 403);
+
+        $category = ServiceCategory::withCount('serviceItems')->findOrFail($id);
+
+        if ($category->service_items_count > 0) {
+            $this->toastError("Cannot delete \"{$category->name}\" — it has items under it. Delete those first.");
+
+            return;
+        }
+
+        $category->delete();
+        $this->toastSuccess('Service category deleted.');
+    }
+
+    public function closeServiceCategoryForm(): void
+    {
+        $this->dispatch('close-modal', name: 'service-category-form');
+        $this->reset(['serviceCategoryEditingId', 'serviceCategoryName']);
+    }
+
+    // ── Service Items ────────────────────────────────────────────────
+
+    public function openServiceItemCreate(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings-services'), 403);
+
+        $this->reset(['serviceItemEditingId', 'serviceItemName']);
+        $this->serviceItemCategoryId = (string) (ServiceCategory::query()->orderBy('name')->value('id') ?? '');
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'service-item-form');
+    }
+
+    public function openServiceItemEdit(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings-services'), 403);
+
+        $item = ServiceItem::findOrFail($id);
+
+        $this->serviceItemEditingId = $item->id;
+        $this->serviceItemName = $item->name;
+        $this->serviceItemCategoryId = (string) $item->service_category_id;
+
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'service-item-form');
+    }
+
+    public function saveServiceItem(): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings-services'), 403);
+
+        $this->validate([
+            'serviceItemName' => ['required', 'string', 'max:255'],
+            'serviceItemCategoryId' => ['required', 'integer', Rule::exists('service_categories', 'id')->where('shop_id', Auth::user()->shop_id)],
+        ]);
+
+        $item = $this->serviceItemEditingId
+            ? ServiceItem::findOrFail($this->serviceItemEditingId)
+            : CreateServiceItem::handle($this->serviceItemName, (int) $this->serviceItemCategoryId);
+
+        $item->name = $this->serviceItemName;
+        $item->service_category_id = $this->serviceItemCategoryId;
+        $item->save();
+
+        $this->toastSuccess($this->serviceItemEditingId ? 'Service item updated.' : 'Service item added.');
+        $this->dispatch('close-modal', name: 'service-item-form');
+        $this->reset(['serviceItemEditingId', 'serviceItemName', 'serviceItemCategoryId']);
+    }
+
+    public function deleteServiceItem(int $id): void
+    {
+        abort_unless(Auth::user()->hasAccessTo('settings-services'), 403);
+
+        $item = ServiceItem::findOrFail($id);
+
+        if (ServicePayment::where('service_item_id', $item->id)->exists()) {
+            $this->toastError("Cannot delete \"{$item->name}\" — it has service payment history.");
+
+            return;
+        }
+
+        $item->delete();
+        $this->toastSuccess('Service item deleted.');
+    }
+
+    public function closeServiceItemForm(): void
+    {
+        $this->dispatch('close-modal', name: 'service-item-form');
+        $this->reset(['serviceItemEditingId', 'serviceItemName', 'serviceItemCategoryId']);
+    }
+
     // ── Roles ────────────────────────────────────────────────────────
 
     public function openRoleCreate(): void
@@ -801,6 +983,32 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
         $this->toastSuccess('Commission percentages saved.');
     }
+
+    // ── Branding ──────────────────────────────────────────────────────
+
+    public function saveBranding(): void
+    {
+        abort_unless(Auth::user()->shop?->branding_enabled && Auth::user()->hasAccessTo('settings-branding'), 403);
+
+        $this->validate([
+            'brandingLogo' => ['nullable', 'image', 'max:2048'],
+            'brandingDisplayName' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $shop = Auth::user()->shop;
+
+        if ($this->brandingLogo) {
+            $shop->logo_path = $this->storeImage($this->brandingLogo, 'branding', $shop->logo_path);
+        }
+
+        $shop->invoice_display_name = $this->brandingDisplayName !== '' ? $this->brandingDisplayName : null;
+        $shop->save();
+
+        $this->brandingLogo = null;
+        $this->brandingExistingLogoUrl = $shop->logoUrl();
+
+        $this->toastSuccess('Branding saved.');
+    }
 }; ?>
 
 <div>
@@ -813,8 +1021,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             'accessory-categories' => 'Categories',
             'brands' => 'Brands',
             'networks' => 'Networks',
+            'branding' => 'Branding',
             'shop-accounts' => 'Shop Accounts',
             'bills' => 'Bills',
+            'services' => 'Services',
             'percentage' => 'Percentage',
             'profile' => 'Profile',
             'roles' => 'Roles',
@@ -1182,6 +1392,102 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 @endif
             </x-ui.card>
         </div>
+    @elseif ($tab === 'services')
+        <div class="space-y-6">
+            <x-ui.card title="Service Categories" description="Manage the top-level categories your shop groups services under (Services, Installations, Downloads, etc.).">
+                <x-slot name="actions">
+                    <x-ui.button size="sm" wire:click="openServiceCategoryCreate">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Add Category
+                    </x-ui.button>
+                </x-slot>
+
+                @if ($serviceCategories->isEmpty())
+                    <x-ui.empty-state
+                        title="No service categories yet"
+                        description="Add Services, Installations, Downloads, or any other category your shop offers."
+                    >
+                        <x-slot name="action">
+                            <x-ui.button wire:click="openServiceCategoryCreate">Add Category</x-ui.button>
+                        </x-slot>
+                    </x-ui.empty-state>
+                @else
+                    <x-ui.table :headers="['Category', 'Items', '']">
+                        @foreach ($serviceCategories as $category)
+                            <x-ui.table-row wire:key="service-category-{{ $category->id }}">
+                                <x-ui.table-cell class="font-medium text-slate-900">{{ $category->name }}</x-ui.table-cell>
+                                <x-ui.table-cell>{{ $category->service_items_count }}</x-ui.table-cell>
+                                <x-ui.table-cell align="right">
+                                    <div class="flex justify-end gap-2">
+                                        <x-ui.button size="sm" variant="ghost" wire:click="openServiceCategoryEdit({{ $category->id }})">
+                                            Edit
+                                        </x-ui.button>
+                                        <x-ui.button
+                                            size="sm"
+                                            variant="ghost"
+                                            wire:click="deleteServiceCategory({{ $category->id }})"
+                                            wire:confirm="Delete {{ $category->name }}?"
+                                            class="text-red-600 hover:bg-red-50"
+                                        >
+                                            Delete
+                                        </x-ui.button>
+                                    </div>
+                                </x-ui.table-cell>
+                            </x-ui.table-row>
+                        @endforeach
+                    </x-ui.table>
+                @endif
+            </x-ui.card>
+
+            <x-ui.card title="Service Items" description="Manage the sellable items under each category (e.g. Screen Protector Install under Installations).">
+                <x-slot name="actions">
+                    <x-ui.button size="sm" wire:click="openServiceItemCreate">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Add Item
+                    </x-ui.button>
+                </x-slot>
+
+                @if ($serviceItems->isEmpty())
+                    <x-ui.empty-state
+                        title="No service items yet"
+                        description="Add the items your shop sells under each category."
+                    >
+                        <x-slot name="action">
+                            <x-ui.button wire:click="openServiceItemCreate">Add Item</x-ui.button>
+                        </x-slot>
+                    </x-ui.empty-state>
+                @else
+                    <x-ui.table :headers="['Item', 'Category', '']">
+                        @foreach ($serviceItems as $item)
+                            <x-ui.table-row wire:key="service-item-{{ $item->id }}">
+                                <x-ui.table-cell class="font-medium text-slate-900">{{ $item->name }}</x-ui.table-cell>
+                                <x-ui.table-cell>{{ $item->serviceCategory->name }}</x-ui.table-cell>
+                                <x-ui.table-cell align="right">
+                                    <div class="flex justify-end gap-2">
+                                        <x-ui.button size="sm" variant="ghost" wire:click="openServiceItemEdit({{ $item->id }})">
+                                            Edit
+                                        </x-ui.button>
+                                        <x-ui.button
+                                            size="sm"
+                                            variant="ghost"
+                                            wire:click="deleteServiceItem({{ $item->id }})"
+                                            wire:confirm="Delete {{ $item->name }}?"
+                                            class="text-red-600 hover:bg-red-50"
+                                        >
+                                            Delete
+                                        </x-ui.button>
+                                    </div>
+                                </x-ui.table-cell>
+                            </x-ui.table-row>
+                        @endforeach
+                    </x-ui.table>
+                @endif
+            </x-ui.card>
+        </div>
     @elseif ($tab === 'percentage')
         <div class="max-w-2xl space-y-6">
             <x-ui.card title="Commission Percentages" description="Set a default % for each service. When staff enter an amount, this auto-suggests the service fee — they can still edit it freely before saving.">
@@ -1214,6 +1520,28 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
                     <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveCommissionPercentages">
                         Save Percentages
+                    </x-ui.button>
+                </form>
+            </x-ui.card>
+        </div>
+    @elseif ($tab === 'branding')
+        <div class="max-w-2xl space-y-6">
+            <x-ui.card title="Branding" description="Shown on this shop's own receipts and invoices in place of the plain shop name.">
+                <form wire:submit="saveBranding" class="space-y-5">
+                    <x-ui.field label="Logo" name="brandingLogo" for="brandingLogo" help="Optional">
+                        <x-ui.file-input
+                            wire:model="brandingLogo"
+                            id="brandingLogo"
+                            :preview="$this->previewUrl($brandingLogo, $brandingExistingLogoUrl)"
+                        />
+                    </x-ui.field>
+
+                    <x-ui.field label="Display Name" name="brandingDisplayName" for="brandingDisplayName" :help="'Shown on receipts instead of \''.Auth::user()->shop->name.'\'. Leave blank to use the shop name.'">
+                        <x-ui.input wire:model="brandingDisplayName" id="brandingDisplayName" :placeholder="Auth::user()->shop->name" />
+                    </x-ui.field>
+
+                    <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveBranding">
+                        Save Branding
                     </x-ui.button>
                 </form>
             </x-ui.card>
@@ -1512,6 +1840,62 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveBillProvider">
                     {{ $billProviderEditingId ? 'Save Changes' : 'Add Provider' }}
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="service-category-form" max-width="sm">
+        <form wire:submit="saveServiceCategory" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">
+                {{ $serviceCategoryEditingId ? 'Edit Service Category' : 'Add Service Category' }}
+            </h2>
+
+            <div class="mt-5 space-y-5">
+                <x-ui.field label="Category Name" name="serviceCategoryName" for="serviceCategoryName" help="e.g. Services, Installations, Downloads">
+                    <x-ui.input wire:model="serviceCategoryName" id="serviceCategoryName" autofocus />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeServiceCategoryForm">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveServiceCategory">
+                    {{ $serviceCategoryEditingId ? 'Save Changes' : 'Add Category' }}
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="service-item-form" max-width="md">
+        <form wire:submit="saveServiceItem" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">
+                {{ $serviceItemEditingId ? 'Edit Service Item' : 'Add Service Item' }}
+            </h2>
+
+            <div class="mt-5 space-y-5">
+                <x-ui.field label="Category" name="serviceItemCategoryId" for="serviceItemCategoryId">
+                    <x-ui.select wire:model="serviceItemCategoryId" id="serviceItemCategoryId">
+                        @foreach ($serviceCategories as $category)
+                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                        @endforeach
+                    </x-ui.select>
+                </x-ui.field>
+
+                <x-ui.field label="Item Name" name="serviceItemName" for="serviceItemName" help="e.g. Screen Protector Install, Google Play Gift Card">
+                    <x-ui.input wire:model="serviceItemName" id="serviceItemName" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeServiceItemForm">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveServiceItem">
+                    {{ $serviceItemEditingId ? 'Save Changes' : 'Add Item' }}
                 </x-ui.button>
             </div>
         </form>

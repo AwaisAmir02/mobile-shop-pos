@@ -75,7 +75,7 @@
 </head>
 <body>
     <div class="header">
-        <div class="shop-name">{{ $repair->shop->name }}</div>
+        @include('pdf.partials.branded-shop-name', ['shop' => $repair->shop])
         <div class="receipt-title">Repair Job Ticket</div>
         <div class="receipt-meta">{{ $repair->receiptNumber() }} &middot; {{ $repair->created_at->format('d M Y, h:i A') }}</div>
     </div>

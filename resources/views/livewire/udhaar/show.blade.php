@@ -1,8 +1,10 @@
 <?php
 
+use App\Actions\CancelUdhaarTransaction;
 use App\Actions\CreateUdhaarTransaction;
 use App\Actions\RecordModulePayment;
 use App\Actions\RecordSalePayment;
+use App\Actions\UpdateUdhaarTransaction;
 use App\Exports\TableExport;
 use App\Livewire\Concerns\GuardsExportSize;
 use App\Livewire\Concerns\Toasts;
@@ -12,6 +14,8 @@ use App\Models\Customer;
 use App\Models\NadraVerification;
 use App\Models\Repair;
 use App\Models\Sale;
+use App\Models\Scopes\ExcludesCancelledScope;
+use App\Models\ServicePayment;
 use App\Models\SimSale;
 use App\Models\UdhaarTransaction;
 use App\Models\WalletLoad;
@@ -40,6 +44,15 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
     public ?int $settlingId = null;
     public string $dueSettleAmount = '';
 
+    public ?int $editingId = null;
+    public string $editType = '';
+    public string $editAmount = '';
+    public string $editTransactionDate = '';
+    public string $editNote = '';
+
+    public ?int $cancelingId = null;
+    public string $cancelReason = '';
+
     public function mount(Customer $customer): void
     {
         $this->customer = $customer;
@@ -48,11 +61,17 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 
     public function with(): array
     {
-        $this->customer->load(['udhaarTransactions.user', 'udhaarTransactions.reverses']);
+        $this->customer->load([
+            'udhaarTransactions' => fn ($query) => $query->withoutGlobalScope(ExcludesCancelledScope::class),
+            'udhaarTransactions.user',
+            'udhaarTransactions.reverses',
+        ]);
 
         $running = 0.0;
         $rows = $this->customer->udhaarTransactions->map(function (UdhaarTransaction $transaction) use (&$running) {
-            $running += $transaction->signedAmount();
+            if (! $transaction->isCancelled()) {
+                $running += $transaction->signedAmount();
+            }
 
             return [
                 'transaction' => $transaction,
@@ -199,6 +218,20 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
                 }
             });
 
+        ServicePayment::where('customer_id', $customerId)->with('serviceCategory')->get()
+            ->each(function (ServicePayment $payment) use ($rows) {
+                if ($payment->amountOwed() > 0) {
+                    $rows->push([
+                        'source' => 'service_payment',
+                        'sourceLabel' => 'Service',
+                        'id' => $payment->id,
+                        'description' => $payment->receiptNumber().' · '.($payment->serviceCategory?->name ?? '—'),
+                        'date' => $payment->created_at,
+                        'amountDue' => $payment->amountOwed(),
+                    ]);
+                }
+            });
+
         return $rows->sortByDesc('date')->values();
     }
 
@@ -212,6 +245,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
             'repair' => Repair::findOrFail($id),
             'nadra_verification' => NadraVerification::findOrFail($id),
             'sim_sale' => SimSale::findOrFail($id),
+            'service_payment' => ServicePayment::findOrFail($id),
             default => abort(404),
         };
 
@@ -284,7 +318,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 
     public function reverse(int $transactionId): void
     {
-        $original = UdhaarTransaction::where('customer_id', $this->customer->id)->findOrFail($transactionId);
+        $original = UdhaarTransaction::withoutGlobalScope(ExcludesCancelledScope::class)->where('customer_id', $this->customer->id)->findOrFail($transactionId);
 
         if ($original->type->isReversal()) {
             $this->toastError('A reversal entry cannot itself be reversed.');
@@ -294,6 +328,12 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 
         if ($original->isReversed()) {
             $this->toastError('This transaction has already been reversed.');
+
+            return;
+        }
+
+        if ($original->isCancelled()) {
+            $this->toastError('A cancelled transaction cannot be reversed.');
 
             return;
         }
@@ -311,11 +351,90 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
         $this->toastSuccess('Transaction reversed.');
     }
 
+    public function openEdit(int $transactionId): void
+    {
+        $transaction = UdhaarTransaction::withoutGlobalScope(ExcludesCancelledScope::class)->where('customer_id', $this->customer->id)->findOrFail($transactionId);
+
+        abort_unless($transaction->isActionable(), 403);
+
+        $this->editingId = $transaction->id;
+        $this->editType = $transaction->type->value;
+        $this->editAmount = (string) $transaction->amount;
+        $this->editTransactionDate = $transaction->transaction_date->toDateString();
+        $this->editNote = $transaction->note ?? '';
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'edit-transaction-form');
+    }
+
+    public function saveEdit(): void
+    {
+        $transaction = UdhaarTransaction::withoutGlobalScope(ExcludesCancelledScope::class)->where('customer_id', $this->customer->id)->findOrFail($this->editingId);
+
+        abort_unless($transaction->isActionable(), 403);
+
+        $rules = UpdateUdhaarTransaction::rules();
+
+        $this->validate([
+            'editType' => $rules['type'],
+            'editAmount' => $rules['amount'],
+            'editTransactionDate' => $rules['transaction_date'],
+            'editNote' => $rules['note'],
+        ]);
+
+        UpdateUdhaarTransaction::handle($transaction, [
+            'type' => $this->editType,
+            'amount' => (float) $this->editAmount,
+            'transaction_date' => $this->editTransactionDate,
+            'note' => $this->editNote,
+        ], Auth::id());
+
+        $this->toastSuccess('Transaction updated.');
+        $this->dispatch('close-modal', name: 'edit-transaction-form');
+        $this->reset(['editingId', 'editType', 'editAmount', 'editTransactionDate', 'editNote']);
+    }
+
+    public function closeEditForm(): void
+    {
+        $this->dispatch('close-modal', name: 'edit-transaction-form');
+        $this->reset(['editingId', 'editType', 'editAmount', 'editTransactionDate', 'editNote']);
+    }
+
+    public function openCancel(int $transactionId): void
+    {
+        $transaction = UdhaarTransaction::withoutGlobalScope(ExcludesCancelledScope::class)->where('customer_id', $this->customer->id)->findOrFail($transactionId);
+
+        abort_unless($transaction->isActionable(), 403);
+
+        $this->cancelingId = $transaction->id;
+        $this->cancelReason = '';
+        $this->dispatch('open-modal', name: 'cancel-transaction-form');
+    }
+
+    public function cancelTransaction(): void
+    {
+        $transaction = UdhaarTransaction::withoutGlobalScope(ExcludesCancelledScope::class)->where('customer_id', $this->customer->id)->findOrFail($this->cancelingId);
+
+        abort_unless($transaction->isActionable(), 403);
+
+        CancelUdhaarTransaction::handle($transaction, Auth::id(), $this->cancelReason);
+
+        $this->dispatch('close-modal', name: 'cancel-transaction-form');
+        $this->reset(['cancelingId', 'cancelReason']);
+
+        $this->toastSuccess('Transaction cancelled.');
+    }
+
+    public function closeCancelForm(): void
+    {
+        $this->dispatch('close-modal', name: 'cancel-transaction-form');
+        $this->reset(['cancelingId', 'cancelReason']);
+    }
+
     protected function ledgerExportRows(bool $forExcel): array
     {
         $running = 0.0;
 
-        return $this->customer->udhaarTransactions->map(function (UdhaarTransaction $transaction) use (&$running, $forExcel) {
+        return $this->customer->udhaarTransactions->reject(fn (UdhaarTransaction $transaction) => $transaction->isCancelled())->map(function (UdhaarTransaction $transaction) use (&$running, $forExcel) {
             $running += $transaction->signedAmount();
             $note = TableExportService::sanitizeCell($transaction->note ?? '');
             $enteredBy = TableExportService::sanitizeCell($transaction->user?->name ?? '—');
@@ -422,11 +541,16 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
         <x-ui.table :headers="['Date', 'Type', 'Amount', 'Running Balance', 'Note', 'Entered By', '']">
             @foreach ($rows as $row)
                 @php $transaction = $row['transaction']; @endphp
-                <x-ui.table-row wire:key="udhaar-txn-{{ $transaction->id }}">
+                <x-ui.table-row wire:key="udhaar-txn-{{ $transaction->id }}" @class(['opacity-50' => $transaction->isCancelled()])>
                     <x-ui.table-cell>{{ $transaction->transaction_date->format('d M Y') }}</x-ui.table-cell>
                     <x-ui.table-cell>
                         <div class="flex flex-col">
-                            <span class="text-slate-700">{{ $transaction->type->label() }}</span>
+                            <span class="text-slate-700">
+                                {{ $transaction->type->label() }}
+                                @if ($transaction->isCancelled())
+                                    <x-ui.badge variant="danger">Cancelled</x-ui.badge>
+                                @endif
+                            </span>
                             @if ($transaction->reverses_transaction_id)
                                 <span class="text-xs text-slate-400">Reverses #{{ $transaction->reverses_transaction_id }}</span>
                             @endif
@@ -442,16 +566,23 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
                     <x-ui.table-cell>{{ $transaction->note ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $transaction->user?->name ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell align="right">
-                        @if (! $transaction->type->isReversal() && ! $transaction->isReversed())
-                            <x-ui.button
-                                size="sm"
-                                variant="ghost"
-                                wire:click="reverse({{ $transaction->id }})"
-                                wire:confirm="Reverse this {{ strtolower($transaction->type->label()) }} of Rs {{ number_format($transaction->amount, 2) }}? This creates an offsetting entry — nothing is edited or deleted."
-                                class="text-red-600 hover:bg-red-50"
-                            >
-                                Reverse
-                            </x-ui.button>
+                        @if ($transaction->isActionable())
+                            <div class="flex justify-end gap-2">
+                                <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $transaction->id }})">
+                                    Edit
+                                </x-ui.button>
+                                <x-ui.button
+                                    size="sm"
+                                    variant="ghost"
+                                    wire:click="reverse({{ $transaction->id }})"
+                                    wire:confirm="Reverse this {{ strtolower($transaction->type->label()) }} of Rs {{ number_format($transaction->amount, 2) }}? This creates an offsetting entry — nothing is edited or deleted."
+                                >
+                                    Reverse
+                                </x-ui.button>
+                                <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $transaction->id }})" class="text-red-600 hover:bg-red-50">
+                                    Cancel
+                                </x-ui.button>
+                            </div>
                         @endif
                     </x-ui.table-cell>
                 </x-ui.table-row>
@@ -540,6 +671,68 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="save">
                     Save
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="edit-transaction-form" max-width="sm">
+        <form wire:submit="saveEdit" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Edit Transaction</h2>
+
+            <div class="mt-5 space-y-5">
+                <x-ui.field label="Type" name="editType" for="editType">
+                    <x-ui.select wire:model="editType" id="editType">
+                        <option value="given">Udhaar Given</option>
+                        <option value="repayment">Repayment</option>
+                    </x-ui.select>
+                </x-ui.field>
+
+                <x-ui.field label="Amount" name="editAmount" for="editAmount">
+                    <x-ui.input wire:model="editAmount" id="editAmount" type="number" min="0.01" step="0.01" class="text-lg" />
+                </x-ui.field>
+
+                <x-ui.field label="Date" name="editTransactionDate" for="editTransactionDate">
+                    <x-ui.input wire:model="editTransactionDate" id="editTransactionDate" type="date" />
+                </x-ui.field>
+
+                <x-ui.field label="Note" name="editNote" for="editNote" help="Optional">
+                    <x-ui.input wire:model="editNote" id="editNote" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeEditForm">
+                    Cancel
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveEdit">
+                    Save Changes
+                </x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="cancel-transaction-form" max-width="sm">
+        <form wire:submit="cancelTransaction" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Cancel This Transaction?</h2>
+            <p class="mt-2 text-sm text-slate-600">
+                This transaction will be marked <strong>Cancelled</strong>. It will no longer count toward this customer's balance, but stays visible in the ledger for the record. This cannot be undone.
+            </p>
+
+            <div class="mt-5">
+                <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
+                    <x-ui.input wire:model="cancelReason" id="cancelReason" />
+                </x-ui.field>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" wire:click="closeCancelForm">
+                    Keep Transaction
+                </x-ui.button>
+
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelTransaction" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                    Cancel Transaction
                 </x-ui.button>
             </div>
         </form>

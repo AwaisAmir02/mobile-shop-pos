@@ -50,6 +50,17 @@ class RepairReport implements ScreenReport
             ->sum(fn (Repair $repair) => $repair->amountOwed());
     }
 
+    /** Historical repairs predating the charge split have a null service_charges and are excluded here rather than counted as zero. */
+    public function totalServiceCharges(): float
+    {
+        return (float) $this->query()->where('repairs.status', '!=', 'cancelled')->sum('service_charges');
+    }
+
+    public function totalProductsCharges(): float
+    {
+        return (float) $this->query()->where('repairs.status', '!=', 'cancelled')->sum('products_charges');
+    }
+
     public function filtersSummary(): string
     {
         $parts = [];
@@ -76,12 +87,14 @@ class RepairReport implements ScreenReport
         return [
             ['label' => 'Total Collected', 'value' => 'Rs '.number_format($this->totalCollected(), 2)],
             ['label' => 'Total Owed by Customers', 'value' => 'Rs '.number_format($this->totalOwed(), 2)],
+            ['label' => 'Total Service Charges', 'value' => 'Rs '.number_format($this->totalServiceCharges(), 2)],
+            ['label' => 'Total Products Charges', 'value' => 'Rs '.number_format($this->totalProductsCharges(), 2)],
         ];
     }
 
     public function tableHeaders(): array
     {
-        return ['Receipt', 'Date', 'Category', 'Description', 'Customer', 'Total', 'Payment', 'Owed'];
+        return ['Receipt', 'Date', 'Category', 'Description', 'Customer', 'Service Charges', 'Products Charges', 'Total', 'Payment', 'Owed'];
     }
 
     public function tableRows(bool $forExcel): array
@@ -92,13 +105,13 @@ class RepairReport implements ScreenReport
             $status = $repair->isCancelled() ? 'Cancelled' : $repair->payment_status->label();
 
             return $forExcel
-                ? [$repair->receiptNumber(), TableExport::excelDate($repair->created_at), $repair->categoryLabel(), $description, $customer, (float) $repair->total, $status, (float) $repair->amountOwed()]
-                : [$repair->receiptNumber(), $repair->created_at->format('d M Y, h:i A'), $repair->categoryLabel(), $description, $customer, 'Rs '.number_format($repair->total, 2), $status, $repair->amountOwed() > 0 ? 'Rs '.number_format($repair->amountOwed(), 2) : '—'];
+                ? [$repair->receiptNumber(), TableExport::excelDate($repair->created_at), $repair->categoryLabel(), $description, $customer, $repair->service_charges !== null ? (float) $repair->service_charges : null, $repair->products_charges !== null ? (float) $repair->products_charges : null, (float) $repair->total, $status, (float) $repair->amountOwed()]
+                : [$repair->receiptNumber(), $repair->created_at->format('d M Y, h:i A'), $repair->categoryLabel(), $description, $customer, $repair->service_charges !== null ? 'Rs '.number_format($repair->service_charges, 2) : '—', $repair->products_charges !== null ? 'Rs '.number_format($repair->products_charges, 2) : '—', 'Rs '.number_format($repair->total, 2), $status, $repair->amountOwed() > 0 ? 'Rs '.number_format($repair->amountOwed(), 2) : '—'];
         })->all();
     }
 
     public function columnTypes(): array
     {
-        return ['string', 'date', 'string', 'string', 'string', 'currency', 'string', 'currency'];
+        return ['string', 'date', 'string', 'string', 'string', 'currency', 'currency', 'currency', 'string', 'currency'];
     }
 }

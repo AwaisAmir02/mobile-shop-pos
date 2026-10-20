@@ -21,6 +21,8 @@ class Repair extends Model
         'sub_category',
         'description',
         'amount',
+        'service_charges',
+        'products_charges',
         'discount',
         'total',
         'payment_status',
@@ -35,6 +37,8 @@ class Repair extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'service_charges' => 'decimal:2',
+            'products_charges' => 'decimal:2',
             'discount' => 'decimal:2',
             'total' => 'decimal:2',
             'payment_status' => PaymentStatus::class,

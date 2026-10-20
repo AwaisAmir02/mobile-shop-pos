@@ -72,7 +72,7 @@
 </head>
 <body>
     <div class="header">
-        <div class="shop-name">{{ $sale->shop->name }}</div>
+        @include('pdf.partials.branded-shop-name', ['shop' => $sale->shop])
         <div class="receipt-title">SIM Sale Receipt</div>
         <div class="receipt-meta">{{ $sale->receiptNumber() }} &middot; {{ $sale->created_at->format('d M Y, h:i A') }}</div>
     </div>

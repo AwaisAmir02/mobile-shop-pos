@@ -58,6 +58,11 @@ class Customer extends Model
         return $this->hasMany(SimSale::class)->latest();
     }
 
+    public function servicePayments(): HasMany
+    {
+        return $this->hasMany(ServicePayment::class)->latest();
+    }
+
     public function udhaarBalance(): float
     {
         return $this->udhaarTransactions
@@ -105,6 +110,7 @@ class Customer extends Model
             || $this->billPayments()->exists()
             || $this->repairs()->exists()
             || $this->nadraVerifications()->exists()
-            || $this->simSales()->exists();
+            || $this->simSales()->exists()
+            || $this->servicePayments()->exists();
     }
 }

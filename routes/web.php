@@ -58,6 +58,9 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('repairs', 'repairs.create')->name('repairs.index')->middleware('shop.access:repairs');
         Volt::route('repairs/history', 'repairs.history')->name('repairs.history')->middleware('shop.access:repairs');
 
+        Volt::route('services', 'services.create')->name('services.index')->middleware('shop.access:services');
+        Volt::route('services/history', 'services.history')->name('services.history')->middleware('shop.access:services');
+
         Volt::route('nadra-verifications', 'nadra-verifications.create')->name('nadra-verifications.index')->middleware('shop.access:nadra-verifications');
         Volt::route('nadra-verifications/history', 'nadra-verifications.history')->name('nadra-verifications.history')->middleware('shop.access:nadra-verifications');
 
@@ -67,7 +70,7 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('party-ledger', 'party-ledger.index')->name('party-ledger.index')->middleware('shop.access:party-ledger');
 
-        Volt::route('settings', 'settings.index')->name('settings.index')->middleware('shop.access:settings,users,shop-accounts,settings-categories,settings-networks,settings-bill-config,settings-percentage,settings-brands');
+        Volt::route('settings', 'settings.index')->name('settings.index')->middleware('shop.access:settings,users,shop-accounts,settings-categories,settings-networks,settings-bill-config,settings-percentage,settings-brands,settings-branding,settings-services');
 
         Volt::route('users', 'users.index')->name('users.index')->middleware('shop.access:users');
     });
