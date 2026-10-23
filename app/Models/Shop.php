@@ -32,6 +32,7 @@ class Shop extends Model
         'barcode_enabled',
         'branding_enabled',
         'invoice_display_name',
+        'invoice_address',
         'logo_path',
         'services_enabled',
         'sim_sale_commission_percent',
@@ -146,6 +147,15 @@ class Shop extends Model
         }
 
         return $this->name;
+    }
+
+    public function invoiceAddress(): ?string
+    {
+        if ($this->branding_enabled && $this->invoice_address) {
+            return $this->invoice_address;
+        }
+
+        return null;
     }
 
     public function logoUrl(): ?string

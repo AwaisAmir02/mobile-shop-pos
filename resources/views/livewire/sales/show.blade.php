@@ -142,10 +142,12 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                     <span class="text-slate-500">Subtotal</span>
                     <span class="font-medium text-slate-900">Rs {{ number_format($sale->subtotal, 2) }}</span>
                 </div>
-                <div class="flex items-center justify-between text-sm">
-                    <span class="text-slate-500">Discount</span>
-                    <span class="font-medium text-slate-900">Rs {{ number_format($sale->discount_amount, 2) }}</span>
-                </div>
+                @if ((float) $sale->discount_amount > 0)
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-slate-500">Discount</span>
+                        <span class="font-medium text-slate-900">Rs {{ number_format($sale->discount_amount, 2) }}</span>
+                    </div>
+                @endif
                 <div class="flex items-center justify-between border-t border-slate-100 pt-2">
                     <span class="font-medium text-slate-500">Total</span>
                     <span class="text-display-sm text-slate-900">Rs {{ number_format($sale->total, 2) }}</span>

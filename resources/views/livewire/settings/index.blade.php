@@ -100,6 +100,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public $brandingLogo = null;
     public ?string $brandingExistingLogoUrl = null;
     public string $brandingDisplayName = '';
+    public string $brandingAddress = '';
 
     public function mount(): void
     {
@@ -122,6 +123,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $this->billsCommissionPercent = $shop?->bills_commission_percent !== null ? (string) $shop->bills_commission_percent : '';
         $this->nadraVerificationCommissionPercent = $shop?->nadra_verification_commission_percent !== null ? (string) $shop->nadra_verification_commission_percent : '';
         $this->brandingDisplayName = $shop?->invoice_display_name ?? '';
+        $this->brandingAddress = $shop?->invoice_address ?? '';
         $this->brandingExistingLogoUrl = $shop?->logoUrl();
     }
 
@@ -993,6 +995,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $this->validate([
             'brandingLogo' => ['nullable', 'image', 'max:2048'],
             'brandingDisplayName' => ['nullable', 'string', 'max:255'],
+            'brandingAddress' => ['nullable', 'string', 'max:500'],
         ]);
 
         $shop = Auth::user()->shop;
@@ -1002,6 +1005,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         }
 
         $shop->invoice_display_name = $this->brandingDisplayName !== '' ? $this->brandingDisplayName : null;
+        $shop->invoice_address = $this->brandingAddress !== '' ? $this->brandingAddress : null;
         $shop->save();
 
         $this->brandingLogo = null;
@@ -1538,6 +1542,16 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
                     <x-ui.field label="Display Name" name="brandingDisplayName" for="brandingDisplayName" :help="'Shown on receipts instead of \''.Auth::user()->shop->name.'\'. Leave blank to use the shop name.'">
                         <x-ui.input wire:model="brandingDisplayName" id="brandingDisplayName" :placeholder="Auth::user()->shop->name" />
+                    </x-ui.field>
+
+                    <x-ui.field label="Address" name="brandingAddress" for="brandingAddress" help="Shown on receipts and invoices. Leave blank to hide.">
+                        <textarea
+                            wire:model="brandingAddress"
+                            id="brandingAddress"
+                            rows="2"
+                            class="block w-full rounded-lg border-slate-300 py-2 px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:ring-brand-500"
+                            placeholder="Shop #, Street, Market / City"
+                        ></textarea>
                     </x-ui.field>
 
                     <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveBranding">

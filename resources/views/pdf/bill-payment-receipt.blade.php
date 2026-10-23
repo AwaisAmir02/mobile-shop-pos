@@ -106,10 +106,12 @@
             <td class="label">Service Charge</td>
             <td class="value">Rs {{ number_format($payment->fee, 2) }}</td>
         </tr>
-        <tr>
-            <td class="label">Discount</td>
-            <td class="value">− Rs {{ number_format($payment->discount, 2) }}</td>
-        </tr>
+        @if ((float) $payment->discount > 0)
+            <tr>
+                <td class="label">Discount</td>
+                <td class="value">− Rs {{ number_format($payment->discount, 2) }}</td>
+            </tr>
+        @endif
         <tr class="amount-row">
             <td class="label">Total Collected</td>
             <td class="value">Rs {{ number_format($payment->total, 2) }}</td>

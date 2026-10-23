@@ -12,3 +12,8 @@
 @else
     <div class="shop-name">{{ $shop->invoiceDisplayName() }}</div>
 @endif
+
+@if ($shop->invoiceAddress())
+    <div class="shop-address" style="font-size: 10px; color: #64748b; margin-top: 2px; word-wrap: break-word; font-weight: normal;">{{ $shop->invoiceAddress() }}</div>
+@endif
+

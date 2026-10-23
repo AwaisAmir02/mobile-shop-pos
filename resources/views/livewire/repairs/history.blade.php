@@ -30,6 +30,7 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
     public string $paymentAmount = '';
 
     public ?int $editingId = null;
+    public string $editRepairDate = '';
     public string $editCategory = '';
     public string $editSubCategory = '';
     public string $editCustomerId = '';
@@ -152,6 +153,7 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
         $repair = Repair::findOrFail($repairId);
 
         $this->editingId = $repair->id;
+        $this->editRepairDate = $repair->created_at->timezone('Asia/Karachi')->toDateString();
         $this->editCategory = $repair->category;
         $this->editSubCategory = $repair->sub_category ?? '';
         $this->editCustomerId = $repair->customer_id !== null ? (string) $repair->customer_id : '';
@@ -167,7 +169,10 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
     {
         abort_unless(Auth::user()->hasAccessTo('repairs-edit-cancel'), 403);
 
+        $todayKarachi = \Carbon\Carbon::now('Asia/Karachi')->toDateString();
+
         $this->validate([
+            'editRepairDate' => ['nullable', 'date', 'before_or_equal:'.$todayKarachi],
             'editCategory' => ['required', 'string'],
             'editSubCategory' => ['nullable', 'string', 'max:255'],
             'editCustomerId' => ['nullable', 'integer'],
@@ -180,6 +185,7 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
         $repair = Repair::findOrFail($this->editingId);
 
         UpdateRepair::handle($repair, [
+            'repair_date' => $this->editRepairDate !== '' ? $this->editRepairDate : null,
             'category' => $this->editCategory,
             'sub_category' => $this->editSubCategory !== '' ? $this->editSubCategory : null,
             'description' => $this->editDescription,
@@ -191,13 +197,13 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
 
         $this->toastSuccess('Repair updated.');
         $this->dispatch('close-modal', name: 'edit-repair-form');
-        $this->reset(['editingId', 'editCategory', 'editSubCategory', 'editCustomerId', 'editDescription', 'editServiceCharges', 'editProductsCharges', 'editDiscount']);
+        $this->reset(['editingId', 'editRepairDate', 'editCategory', 'editSubCategory', 'editCustomerId', 'editDescription', 'editServiceCharges', 'editProductsCharges', 'editDiscount']);
     }
 
     public function closeEditForm(): void
     {
         $this->dispatch('close-modal', name: 'edit-repair-form');
-        $this->reset(['editingId', 'editCategory', 'editSubCategory', 'editCustomerId', 'editDescription', 'editServiceCharges', 'editProductsCharges', 'editDiscount']);
+        $this->reset(['editingId', 'editRepairDate', 'editCategory', 'editSubCategory', 'editCustomerId', 'editDescription', 'editServiceCharges', 'editProductsCharges', 'editDiscount']);
     }
 
     public function openCancel(int $repairId): void
@@ -414,6 +420,10 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
             <h2 class="text-lg font-semibold text-slate-900">Edit Repair</h2>
 
             <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <x-ui.field label="Date" name="editRepairDate" for="editRepairDate">
+                    <x-ui.input wire:model="editRepairDate" id="editRepairDate" type="date" max="{{ \Carbon\Carbon::now('Asia/Karachi')->toDateString() }}" />
+                </x-ui.field>
+
                 <x-ui.field label="Category" name="editCategory" for="editCategory">
                     <x-ui.select wire:model="editCategory" id="editCategory">
                         @foreach ($categories as $option)

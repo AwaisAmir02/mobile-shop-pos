@@ -77,7 +77,7 @@
     <div class="header">
         @include('pdf.partials.branded-shop-name', ['shop' => $repair->shop])
         <div class="receipt-title">Repair Job Ticket</div>
-        <div class="receipt-meta">{{ $repair->receiptNumber() }} &middot; {{ $repair->created_at->format('d M Y, h:i A') }}</div>
+        <div class="receipt-meta">{{ $repair->receiptNumber() }} &middot; {{ $repair->created_at->timezone('Asia/Karachi')->format('d M Y, h:i A') }}</div>
     </div>
 
     <table class="details">
@@ -97,10 +97,12 @@
             <td class="label">Amount</td>
             <td class="value">Rs {{ number_format($repair->amount, 2) }}</td>
         </tr>
-        <tr>
-            <td class="label">Discount</td>
-            <td class="value">− Rs {{ number_format($repair->discount, 2) }}</td>
-        </tr>
+        @if ((float) $repair->discount > 0)
+            <tr>
+                <td class="label">Discount</td>
+                <td class="value">− Rs {{ number_format($repair->discount, 2) }}</td>
+            </tr>
+        @endif
         <tr class="amount-row">
             <td class="label">Total</td>
             <td class="value">Rs {{ number_format($repair->total, 2) }}</td>

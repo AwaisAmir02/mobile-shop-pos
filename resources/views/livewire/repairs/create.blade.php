@@ -20,6 +20,7 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
     use Toasts;
 
     public string $customerId = '';
+    public string $repairDate = '';
     public string $mainCategorySlug = 'mobile';
     public string $subCategoryName = '';
     public string $description = '';
@@ -37,6 +38,7 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
     {
         MainCategory::ensureDefaultsExist();
         $this->amountPaid = '0';
+        $this->repairDate = \Carbon\Carbon::now('Asia/Karachi')->toDateString();
     }
 
     public function updatingMainCategorySlug(string $value): void
@@ -175,7 +177,10 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
 
     public function save(): void
     {
+        $todayKarachi = \Carbon\Carbon::now('Asia/Karachi')->toDateString();
+
         $this->validate([
+            'repairDate' => ['nullable', 'date', 'before_or_equal:'.$todayKarachi],
             'mainCategorySlug' => ['required', 'string', Rule::exists('main_categories', 'slug')->where('shop_id', Auth::user()->shop_id)],
             'subCategoryName' => ['nullable', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:1000'],
@@ -195,7 +200,11 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
             default => 0,
         };
 
-        $repair = Repair::create([
+        $dateStr = $this->repairDate !== '' ? $this->repairDate : $todayKarachi;
+        $karachiNow = \Carbon\Carbon::now('Asia/Karachi');
+        $utcDatetime = \Carbon\Carbon::parse($dateStr, 'Asia/Karachi')->setTimeFrom($karachiNow)->utc();
+
+        $repair = new Repair([
             'user_id' => Auth::id(),
             'customer_id' => $this->customerId !== '' ? $this->customerId : null,
             'category' => $this->mainCategorySlug,
@@ -209,10 +218,13 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
             'payment_status' => $this->paymentStatus,
             'amount_paid' => $amountPaid,
         ]);
+        $repair->created_at = $utcDatetime;
+        $repair->save();
 
         $this->toastSuccess('Repair recorded.');
         $this->lastRepairId = $repair->id;
         $this->reset(['customerId', 'subCategoryName', 'description', 'serviceCharges', 'productsCharges', 'discount', 'amountPaid']);
+        $this->repairDate = \Carbon\Carbon::now('Asia/Karachi')->toDateString();
         $this->mainCategorySlug = 'mobile';
         $this->paymentStatus = 'paid';
         $this->amountPaid = '0';
@@ -267,7 +279,11 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
         @else
             <x-ui.card title="New Repair">
                 <form wire:submit="save" class="space-y-5">
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <x-ui.field label="Date" name="repairDate" for="repairDate">
+                            <x-ui.input wire:model="repairDate" id="repairDate" type="date" max="{{ \Carbon\Carbon::now('Asia/Karachi')->toDateString() }}" />
+                        </x-ui.field>
+
                         <x-ui.field label="Main Category" name="mainCategorySlug" for="mainCategorySlug">
                             <x-ui.select wire:model.live="mainCategorySlug" id="mainCategorySlug">
                                 <option value="__create__">+ New Main Category</option>

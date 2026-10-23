@@ -48,9 +48,10 @@ class UpdateRepair
                 'discount' => (float) $repair->discount,
                 'total' => (float) $repair->total,
                 'customer_id' => $repair->customer_id,
+                'created_at' => $repair->created_at->toIso8601String(),
             ];
 
-            $repair->update([
+            $repair->fill([
                 'category' => $fields['category'],
                 'sub_category' => $fields['sub_category'],
                 'description' => $fields['description'],
@@ -61,6 +62,15 @@ class UpdateRepair
                 'total' => $newTotal,
                 'customer_id' => $fields['customer_id'],
             ]);
+
+            if (! empty($fields['repair_date'])) {
+                $karachiTime = $repair->created_at->timezone('Asia/Karachi');
+                $repair->created_at = \Carbon\Carbon::parse($fields['repair_date'], 'Asia/Karachi')
+                    ->setTime($karachiTime->hour, $karachiTime->minute, $karachiTime->second)
+                    ->utc();
+            }
+
+            $repair->save();
 
             ModuleRevision::create([
                 'shop_id' => $repair->shop_id,

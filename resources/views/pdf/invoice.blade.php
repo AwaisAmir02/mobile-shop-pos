@@ -114,9 +114,9 @@
         <tr>
             <td>
                 @include('pdf.partials.branded-shop-name', ['shop' => $sale->shop])
-                @if ($sale->shop->phone || $sale->shop->address)
+                @if ($sale->shop->phone)
                     <div class="shop-meta">
-                        {{ collect([$sale->shop->address, $sale->shop->phone])->filter()->implode(' · ') }}
+                        {{ $sale->shop->phone }}
                     </div>
                 @endif
             </td>
@@ -128,13 +128,18 @@
         </tr>
     </table>
 
+    @php
+        $hasItemDiscounts = $sale->items->contains(fn ($item) => (float) $item->discount_amount > 0);
+    @endphp
     <table class="items">
         <thead>
             <tr>
                 <th>Item</th>
                 <th class="text-right">Qty</th>
                 <th class="text-right">Unit Price</th>
-                <th class="text-right">Discount</th>
+                @if ($hasItemDiscounts)
+                    <th class="text-right">Discount</th>
+                @endif
                 <th class="text-right">Total</th>
             </tr>
         </thead>
@@ -149,7 +154,9 @@
                             <span class="overridden-hint">overridden</span>
                         @endif
                     </td>
-                    <td class="text-right">{{ $item->discount_amount > 0 ? 'Rs '.number_format($item->discount_amount, 2) : '—' }}</td>
+                    @if ($hasItemDiscounts)
+                        <td class="text-right">{{ (float) $item->discount_amount > 0 ? 'Rs '.number_format($item->discount_amount, 2) : '—' }}</td>
+                    @endif
                     <td class="text-right">Rs {{ number_format($item->line_total, 2) }}</td>
                 </tr>
             @endforeach
@@ -161,10 +168,12 @@
             <td>Subtotal</td>
             <td class="text-right">Rs {{ number_format($sale->subtotal, 2) }}</td>
         </tr>
-        <tr>
-            <td>Discount</td>
-            <td class="text-right">Rs {{ number_format($sale->discount_amount, 2) }}</td>
-        </tr>
+        @if ((float) $sale->discount_amount > 0)
+            <tr>
+                <td>Discount</td>
+                <td class="text-right">Rs {{ number_format($sale->discount_amount, 2) }}</td>
+            </tr>
+        @endif
         <tr class="total-row">
             <td>Total</td>
             <td class="text-right">Rs {{ number_format($sale->total, 2) }}</td>
