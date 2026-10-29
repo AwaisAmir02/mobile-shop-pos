@@ -31,9 +31,15 @@ new #[Layout('layouts.guest')] class extends Component
 <div>
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
+    @if (session('oauth_error'))
+        <p class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{{ session('oauth_error') }}</p>
+    @endif
+
+    <x-signup.social-buttons intent="login" class="mb-5" />
+
     <form wire:submit="login" class="space-y-5">
-        <x-ui.field label="Email" name="form.email" for="email">
-            <x-ui.input wire:model="form.email" id="email" type="email" name="email" required autofocus autocomplete="username" />
+        <x-ui.field label="Email or mobile number" name="form.email" for="email">
+            <x-ui.input wire:model="form.email" id="email" type="text" name="email" required autofocus autocomplete="username" />
         </x-ui.field>
 
         <x-ui.field label="Password" name="form.password" for="password">

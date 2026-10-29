@@ -86,7 +86,7 @@
         x-on:keydown.escape="close()"
         :aria-expanded="open"
         aria-haspopup="listbox"
-        class="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white py-2.5 px-3.5 text-left text-base text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+        class="flex w-full items-center justify-between gap-2 rounded-md border border-slate-300 bg-white py-2 px-3 text-left text-base text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm"
     >
         <span class="truncate" x-text="selectedLabel"></span>
 
@@ -105,7 +105,7 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
-        class="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+        class="absolute z-20 mt-1 w-full overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
         role="listbox"
     >
         <div class="border-b border-slate-100 p-2">
@@ -131,9 +131,9 @@
                     :data-highlighted="highlighted === index"
                     x-on:click="select(option)"
                     x-on:mouseenter="highlighted = index"
-                    class="flex w-full items-center px-3.5 py-2 text-left text-sm"
+                    class="flex w-full items-center px-3 py-2 text-left text-sm"
                     :class="{
-                        'bg-accent-500 text-slate-900': highlighted === index && !option.create,
+                        'bg-accent-500 text-white': highlighted === index && !option.create,
                         'mt-1 border-t border-slate-100 pt-2.5 font-medium text-brand-700': option.create,
                     }"
                 >

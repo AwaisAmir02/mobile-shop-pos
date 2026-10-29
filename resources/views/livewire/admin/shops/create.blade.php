@@ -1,14 +1,11 @@
 <?php
 
+use App\Actions\CreateShopWithOwner;
+use App\Enums\BusinessCategory;
 use App\Enums\PlanType;
 use App\Enums\SubscriptionStatus;
 use App\Livewire\Concerns\Toasts;
-use App\Models\Shop;
-use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
@@ -21,6 +18,7 @@ new #[Layout('layouts.app')] #[Title('Create Shop')] class extends Component
     public string $shopPhone = '';
     public string $shopEmail = '';
     public string $shopAddress = '';
+    public string $businessCategory = '';
 
     public string $userName = '';
     public string $userEmail = '';
@@ -39,15 +37,19 @@ new #[Layout('layouts.app')] #[Title('Create Shop')] class extends Component
 
     public function save(): void
     {
-        $this->validate([
-            'shopName' => ['required', 'string', 'max:255'],
-            'shopPhone' => ['nullable', 'string', 'max:50'],
-            'shopEmail' => ['nullable', 'email', 'max:255'],
-            'shopAddress' => ['nullable', 'string', 'max:255'],
+        $shopRules = CreateShopWithOwner::shopRules();
+        $ownerRules = CreateShopWithOwner::ownerRules();
 
-            'userName' => ['required', 'string', 'max:255'],
-            'userEmail' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+        $this->validate([
+            'shopName' => $shopRules['name'],
+            'shopPhone' => $shopRules['phone'],
+            'shopEmail' => $shopRules['email'],
+            'shopAddress' => $shopRules['address'],
+            'businessCategory' => $shopRules['business_category'],
+
+            'userName' => $ownerRules['name'],
+            'userEmail' => $ownerRules['email'],
+            'password' => $ownerRules['password'],
 
             'planType' => ['required', Rule::enum(PlanType::class)],
             'subscriptionStartDate' => ['required', 'date'],
@@ -55,31 +57,18 @@ new #[Layout('layouts.app')] #[Title('Create Shop')] class extends Component
             'salesAllowed' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        $shop = DB::transaction(function () {
-            $shop = Shop::create([
-                'name' => $this->shopName,
-                'phone' => $this->shopPhone !== '' ? $this->shopPhone : null,
-                'email' => $this->shopEmail !== '' ? $this->shopEmail : null,
-                'address' => $this->shopAddress !== '' ? $this->shopAddress : null,
+        [$shop] = CreateShopWithOwner::handle(
+            ['name' => $this->shopName, 'phone' => $this->shopPhone, 'email' => $this->shopEmail, 'address' => $this->shopAddress, 'business_category' => $this->businessCategory],
+            ['name' => $this->userName, 'email' => $this->userEmail, 'password' => $this->password],
+            [
                 'plan_type' => $this->planType,
-                'subscription_status' => SubscriptionStatus::Active->value,
+                'subscription_status' => SubscriptionStatus::Active,
                 'subscription_start_date' => $this->subscriptionStartDate,
                 'products_allowed' => $this->productsAllowed !== '' ? $this->productsAllowed : null,
                 'sales_allowed' => $this->salesAllowed !== '' ? $this->salesAllowed : null,
-            ]);
-
-            $user = User::create([
-                'shop_id' => $shop->id,
-                'name' => $this->userName,
-                'email' => $this->userEmail,
-                'password' => Hash::make($this->password),
-                'is_owner' => true,
-            ]);
-
-            $user->forceFill(['email_verified_at' => now()])->save();
-
-            return $shop;
-        });
+            ],
+            emailVerified: true,
+        );
 
         $this->toastSuccess('Shop created.');
         $this->redirectRoute('admin.shops.show', $shop, navigate: true);
@@ -113,6 +102,15 @@ new #[Layout('layouts.app')] #[Title('Create Shop')] class extends Component
 
                 <x-ui.field label="Address" name="shopAddress" for="shopAddress" class="sm:col-span-2" help="Optional">
                     <x-ui.input wire:model="shopAddress" id="shopAddress" />
+                </x-ui.field>
+
+                <x-ui.field label="Business category" name="businessCategory" for="businessCategory" class="sm:col-span-2" help="Sets which modules the shop sees at first and adds starter product categories. The owner can change module visibility later.">
+                    <x-ui.select wire:model="businessCategory" id="businessCategory">
+                        <option value="">Not set — every module visible</option>
+                        @foreach (BusinessCategory::cases() as $option)
+                            <option value="{{ $option->value }}">{{ $option->label() }}</option>
+                        @endforeach
+                    </x-ui.select>
                 </x-ui.field>
             </div>
         </x-ui.card>

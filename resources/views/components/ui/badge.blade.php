@@ -7,9 +7,11 @@
         'danger' => 'bg-red-100 text-red-800 ring-red-600/30',
         'neutral' => 'bg-slate-100 text-slate-700 ring-slate-500/20',
         'brand' => 'bg-brand-100 text-brand-800 ring-brand-600/30',
+        'accent' => 'bg-accent-100 text-accent-800 ring-accent-600/30',
+        'info' => 'bg-sky-100 text-sky-800 ring-sky-600/30',
     ];
 @endphp
 
-<span {{ $attributes->class(['inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset', $variants[$variant] ?? $variants['neutral']]) }}>
+<span {{ $attributes->class(['inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset', $variants[$variant] ?? $variants['neutral']]) }}>
     {{ $slot }}
 </span>

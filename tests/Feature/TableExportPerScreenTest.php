@@ -11,7 +11,7 @@ use App\Models\StockIn;
 use App\Models\User;
 use App\ReportQueries\StockInReport;
 use App\ReportQueries\UdhaarReport;
-use App\Services\ShopReportService;
+use App\Services\TableExportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -155,7 +155,7 @@ class TableExportPerScreenTest extends TestCase
 
     // ── Party Ledger ──────────────────────────────────────────────────
 
-    public function test_party_ledger_export_includes_earnings_and_per_customer_sections(): void
+    public function test_party_ledger_export_has_one_statement_section_per_balance_for_the_chosen_customer(): void
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
@@ -165,17 +165,30 @@ class TableExportPerScreenTest extends TestCase
 
         Sale::create(['shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $customer->id, 'subtotal' => 500, 'discount_amount' => 0, 'total' => 500]);
 
+        $component = Livewire::test('party-ledger.index')->set('customerId', $customer->id);
+        $sections = $this->callProtected($component->instance(), 'exportSections', [false]);
+
+        $this->assertSame(['Sales', 'Udhaar', 'Opening & adjustments'], array_column($sections, 'title'));
+        $this->assertSame(['Date', 'Description', 'Debit', 'Credit', 'Balance'], $sections[0]['headers']);
+        $this->assertSame(['date', 'string', 'currency', 'currency', 'currency'], $sections[0]['columnTypes']);
+
+        $saleRow = collect($sections[0]['rows'])->first(fn (array $row) => str_starts_with($row[1], 'Sale INV-'));
+        $this->assertNotNull($saleRow);
+        $this->assertSame('Rs 500.00', $saleRow[2]);
+
+        $closing = collect($sections[0]['rows'])->last();
+        $this->assertSame('Closing balance', $closing[1]);
+        $this->assertSame('Rs 500.00', $closing[4]);
+    }
+
+    public function test_party_ledger_export_without_a_customer_chosen_does_nothing(): void
+    {
+        $shop = Shop::create(['name' => 'Shop A']);
+        $this->actingAs(User::factory()->create(['shop_id' => $shop->id]));
+
         $component = Livewire::test('party-ledger.index');
-        $sections = $this->callProtected($component->instance(), 'exportSections', [app(ShopReportService::class), false]);
-
-        $this->assertCount(2, $sections);
-        $this->assertStringContainsString('Earnings', $sections[0]['title']);
-        $this->assertSame(['Metric', 'Amount'], $sections[0]['headers']);
-        $this->assertSame('Per-Customer Balances', $sections[1]['title']);
-
-        $customerRow = collect($sections[1]['rows'])->firstWhere(0, 'Bilal Khan');
-        $this->assertNotNull($customerRow);
-        $this->assertSame('Rs 500.00', $customerRow[1]);
+        $this->assertNull($component->instance()->exportPdf(app(TableExportService::class)));
+        $this->assertNull($component->instance()->exportExcel(app(TableExportService::class)));
     }
 
     public function test_a_role_without_party_ledger_access_cannot_reach_it(): void

@@ -171,8 +171,10 @@ class RolesPermissionsTest extends TestCase
         // The settings.index route now accepts either "settings" or "users".
         $this->get(route('settings.index'))->assertOk();
 
-        // Defaults straight to the Roles tab since that's the only one they can see.
+        // Settings opens on Profile for everyone; Roles is still the only other tab they can reach.
         Livewire::test('settings.index')
+            ->assertSet('tab', 'profile')
+            ->call('setTab', 'roles')
             ->assertSet('tab', 'roles')
             ->set('roleName', 'Cashier')
             ->call('saveRole')

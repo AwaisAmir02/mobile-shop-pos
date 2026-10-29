@@ -21,6 +21,7 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
     {
         return [
             'shops' => Shop::query()
+                ->with('plan')
                 ->withCount(['products', 'users'])
                 ->when($this->search, fn ($query) => $query->where('name', 'like', "%{$this->search}%"))
                 ->latest()
@@ -43,6 +44,20 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
             </a>
         </div>
     </x-slot>
+
+    @php($lastBackup = \App\Models\BackupRun::lastSuccessful())
+    @php($backupStale = \App\Models\BackupRun::isStale())
+    <a href="{{ route('admin.backups') }}" wire:navigate @class([
+        'mb-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm',
+        'border-red-200 bg-red-50 text-red-800' => $backupStale,
+        'border-emerald-200 bg-emerald-50 text-emerald-800' => ! $backupStale,
+    ])>
+        <span>
+            <span class="font-semibold">{{ $backupStale ? 'Backups need attention.' : 'Backups OK.' }}</span>
+            Last successful backup: {{ $lastBackup ? $lastBackup->finished_at->diffForHumans() : 'never' }}
+        </span>
+        <span class="font-semibold underline">View backups</span>
+    </a>
 
     <div class="mb-4">
         <x-ui.input wire:model.live.debounce.400ms="search" type="search" placeholder="Search shops…" class="sm:max-w-xs" />
@@ -68,12 +83,21 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
                             {{ $shop->name }}
                         </a>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>{{ $shop->plan_type?->label() ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell>
+                        {{ $shop->plan?->name ?? $shop->plan_type?->label() ?? '—' }}
+                        @if ($shop->plan && $shop->plan_type)
+                            <span class="text-xs text-slate-500">· {{ $shop->plan_type->label() }}</span>
+                        @endif
+                    </x-ui.table-cell>
                     <x-ui.table-cell>
                         @if ($shop->isSubscriptionActive())
                             <x-ui.badge variant="success">Active</x-ui.badge>
                         @else
                             <x-ui.badge variant="danger">Inactive</x-ui.badge>
+                        @endif
+                        @php($limitAlerts = collect(app(\App\Services\Billing\Entitlements::class)->meters($shop))->filter(fn ($meter) => $meter['over'] || ($meter['state'] === 'full' && $meter['key'] !== 'sales_per_month')))
+                        @if ($limitAlerts->isNotEmpty())
+                            <x-ui.badge variant="warning" class="mt-1" title="{{ $limitAlerts->pluck('label')->implode(', ') }}">{{ $limitAlerts->contains('key', 'sales_per_month') ? 'Over sales limit' : 'At plan limit' }}</x-ui.badge>
                         @endif
                     </x-ui.table-cell>
                     <x-ui.table-cell>{{ $shop->subscription_start_date?->format('d M Y') ?? '—' }}</x-ui.table-cell>

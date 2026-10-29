@@ -115,7 +115,7 @@ class WalletLoadMergedAccountDropdownTest extends TestCase
 
         Livewire::test('settings.index')
             ->call('setTab', 'wallet-providers')
-            ->assertSet('tab', 'accessory-categories');
+            ->assertSet('tab', 'profile');
 
         Livewire::test('settings.index')
             ->assertDontSee('Wallet Providers');

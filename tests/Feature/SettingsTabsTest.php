@@ -13,14 +13,14 @@ class SettingsTabsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_the_owner_defaults_to_the_accessory_categories_tab(): void
+    public function test_the_owner_defaults_to_the_profile_tab(): void
     {
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
 
         $this->actingAs($owner);
 
-        Livewire::test('settings.index')->assertSet('tab', 'accessory-categories');
+        Livewire::test('settings.index')->assertSet('tab', 'profile');
     }
 
     public function test_switching_tabs_shows_the_right_content(): void
@@ -48,8 +48,9 @@ class SettingsTabsTest extends TestCase
 
         $this->actingAs($owner);
 
+        // Profile is the default tab, so its forms render on the first load.
         Livewire::test('settings.index')
-            ->call('setTab', 'profile')
+            ->assertSet('tab', 'profile')
             ->assertSeeLivewire('profile.update-profile-information-form')
             ->assertSeeLivewire('profile.update-password-form')
             ->assertSeeLivewire('profile.delete-user-form');

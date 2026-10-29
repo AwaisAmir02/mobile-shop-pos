@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SaleSource;
 use App\Enums\SaleStatus;
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Scopes\ExcludesCancelledSalesScope;
@@ -17,6 +18,7 @@ class Sale extends Model
         'shop_id',
         'user_id',
         'customer_id',
+        'source',
         'subtotal',
         'discount_amount',
         'total',
@@ -38,6 +40,7 @@ class Sale extends Model
             'discount_amount' => 'decimal:2',
             'total' => 'decimal:2',
             'status' => SaleStatus::class,
+            'source' => SaleSource::class,
             'cancelled_at' => 'datetime',
         ];
     }

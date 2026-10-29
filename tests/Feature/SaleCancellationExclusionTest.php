@@ -112,37 +112,43 @@ class SaleCancellationExclusionTest extends TestCase
         Livewire::test('sales.history')->assertViewHas('totalOutstanding', 0.0);
     }
 
-    // 7. Party Ledger: walk-in sales outstanding
-    public function test_7_party_ledger_walk_in_sales_outstanding_excludes_cancelled(): void
+    // 7. Party Ledger statement: a cancelled sale never appears as an entry
+    public function test_7_party_ledger_statement_never_lists_a_cancelled_sale(): void
     {
         [$shop, $owner] = $this->shopOwner();
-        $this->cancelledSale($shop->id, $owner->id);
+        $customer = Customer::create(['shop_id' => $shop->id, 'name' => 'Bilal']);
+        $sale = $this->cancelledSale($shop->id, $owner->id, $customer->id);
 
-        Livewire::test('party-ledger.index')->assertViewHas('walkInSalesOutstanding', 0.0);
+        Livewire::test('party-ledger.index')
+            ->set('customerId', $customer->id)
+            ->assertViewHas('statement', fn ($statement) => $statement['sales']['rows']->isEmpty())
+            ->assertDontSee($sale->invoiceNumber());
     }
 
-    // 7b. Party Ledger: per-customer sales outstanding row
-    public function test_7b_party_ledger_per_customer_sales_outstanding_excludes_cancelled(): void
+    // 7b. Party Ledger statement: per-customer Sales closing balance
+    public function test_7b_party_ledger_sales_closing_balance_excludes_cancelled(): void
     {
         [$shop, $owner] = $this->shopOwner();
         $customer = Customer::create(['shop_id' => $shop->id, 'name' => 'Bilal']);
         $this->cancelledSale($shop->id, $owner->id, $customer->id);
 
         Livewire::test('party-ledger.index')
-            ->assertViewHas('rows', function ($rows) use ($customer) {
-                $row = collect($rows)->firstWhere('customer.id', $customer->id);
-
-                return (float) $row['salesOutstanding'] === 0.0;
-            });
+            ->set('customerId', $customer->id)
+            ->assertViewHas('statement', fn ($statement) => $statement['sales']['closing'] === 0.0);
     }
 
-    // 7c. Party Ledger: salesRevenue figure (sourced from ShopReportService)
-    public function test_7c_party_ledger_sales_revenue_excludes_cancelled(): void
+    // 7c. Party Ledger statement: payments on a cancelled sale are not credits
+    public function test_7c_party_ledger_excludes_payments_on_a_cancelled_sale(): void
     {
         [$shop, $owner] = $this->shopOwner();
-        $this->cancelledSale($shop->id, $owner->id);
+        $customer = Customer::create(['shop_id' => $shop->id, 'name' => 'Bilal']);
+        $sale = Sale::create(['shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $customer->id, 'subtotal' => 900, 'discount_amount' => 0, 'total' => 900]);
+        $sale->payments()->create(['shop_id' => $shop->id, 'user_id' => $owner->id, 'amount' => 400, 'payment_date' => now()->toDateString()]);
+        CancelSale::handle($sale, $owner->id, null);
 
-        Livewire::test('party-ledger.index')->assertViewHas('salesRevenue', 0.0);
+        Livewire::test('party-ledger.index')
+            ->set('customerId', $customer->id)
+            ->assertViewHas('statement', fn ($statement) => $statement['sales']['credits'] === 0.0 && $statement['sales']['closing'] === 0.0);
     }
 
     // 8. Customer::salesOutstandingBalance()

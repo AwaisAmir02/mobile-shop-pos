@@ -25,6 +25,8 @@ class Product extends Model
         'price',
         'cost_price',
         'stock_quantity',
+        'whatsapp_listed',
+        'archived_at',
         'details',
     ];
 
@@ -34,8 +36,30 @@ class Product extends Model
             'price' => 'decimal:2',
             'cost_price' => 'decimal:2',
             'stock_quantity' => 'integer',
+            'whatsapp_listed' => 'boolean',
+            'archived_at' => 'datetime',
             'details' => 'array',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::updated(function (Product $product) {
+            if ($product->archived_at !== null && $product->stock_quantity > 0) {
+                $product->archived_at = null;
+                $product->saveQuietly();
+            }
+        });
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    public function canBeArchived(): bool
+    {
+        return ! $this->isArchived() && $this->stock_quantity <= 0;
     }
 
     public function mainCategory(): BelongsTo

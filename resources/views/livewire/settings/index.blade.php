@@ -36,7 +36,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     use Toasts, UploadsImages, WithFileUploads;
 
     #[Url]
-    public string $tab = 'accessory-categories';
+    public string $tab = 'profile';
 
     // Main Categories
     public ?int $mainCategoryEditingId = null;
@@ -169,6 +169,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             $tabs[] = 'services';
         }
 
+        if ((Auth::user()->shop?->whatsapp_enabled || Auth::user()->shop?->social_enabled || Auth::user()->shop?->ads_enabled) && Auth::user()->hasAccessTo('settings-integrations')) {
+            $tabs[] = 'integrations';
+        }
+
         if (Auth::user()->hasAccessTo('settings-percentage')) {
             $tabs[] = 'percentage';
         }
@@ -179,6 +183,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
         if (Auth::user()->hasAccessTo('users')) {
             $tabs[] = 'roles';
+        }
+
+        if (Auth::user()->is_owner) {
+            $tabs[] = 'modules';
         }
 
         // Profile has no permission requirement (matching the standalone
@@ -1029,30 +1037,77 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             'shop-accounts' => 'Shop Accounts',
             'bills' => 'Bills',
             'services' => 'Services',
+            'integrations' => 'Integrations',
             'percentage' => 'Percentage',
             'profile' => 'Profile',
             'roles' => 'Roles',
+            'modules' => 'Modules',
         ];
     @endphp
 
-    <div class="mb-6 border-b border-slate-200">
-        <nav class="-mb-px flex gap-6 overflow-x-auto">
-            @foreach ($accessibleTabs as $key)
+    @php
+        // Display grouping only — which tabs exist still comes from accessibleTabs().
+        $tabGroups = collect([
+            'Your shop' => ['profile', 'branding', 'shop-accounts'],
+            'Catalogue' => ['accessory-categories', 'brands', 'networks'],
+            'Pricing & services' => ['percentage', 'bills', 'services'],
+            'Team & access' => ['roles', 'modules'],
+            'Connections' => ['integrations'],
+        ])->map(fn ($keys) => array_values(array_intersect($keys, $accessibleTabs)))->filter();
+        // A tab added to accessibleTabs() but not grouped above still shows up.
+        $ungrouped = array_values(array_diff($accessibleTabs, $tabGroups->flatten()->all()));
+        if ($ungrouped) {
+            $tabGroups->put('More', $ungrouped);
+        }
+    @endphp
+
+    <div class="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8">
+        {{-- Phones/tablets: one scrollable row of tabs, in the same group order. --}}
+        <nav class="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 lg:hidden" aria-label="Settings sections">
+            @foreach ($tabGroups->flatten() as $key)
                 <button
                     type="button"
                     wire:click="setTab('{{ $key }}')"
+                    @if ($tab === $key) aria-current="page" @endif
                     @class([
-                        'whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition',
-                        'border-brand-600 text-brand-700' => $tab === $key,
-                        'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700' => $tab !== $key,
+                        'shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',
+                        'border-brand-600 bg-brand-600 text-white' => $tab === $key,
+                        'border-slate-300 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900' => $tab !== $key,
                     ])
                 >
-                    {{ $tabLabels[$key] }}
+                    {{ $tabLabels[$key] ?? \Illuminate\Support\Str::headline($key) }}
                 </button>
             @endforeach
         </nav>
-    </div>
 
+        {{-- Desktop: grouped side menu. --}}
+        <nav class="hidden lg:block" aria-label="Settings sections">
+            <div class="sticky top-20 space-y-5">
+                @foreach ($tabGroups as $group => $keys)
+                    <div>
+                        <p class="px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">{{ $group }}</p>
+                        <div class="mt-1.5 space-y-0.5">
+                            @foreach ($keys as $key)
+                                <button
+                                    type="button"
+                                    wire:click="setTab('{{ $key }}')"
+                                    @if ($tab === $key) aria-current="page" @endif
+                                    @class([
+                                        'flex w-full items-center rounded-md border-l-2 px-3 py-1.5 text-left text-sm font-medium transition-colors',
+                                        'border-accent-500 bg-white text-brand-800 shadow-sm' => $tab === $key,
+                                        'border-transparent text-slate-600 hover:bg-white hover:text-slate-900' => $tab !== $key,
+                                    ])
+                                >
+                                    {{ $tabLabels[$key] ?? \Illuminate\Support\Str::headline($key) }}
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </nav>
+
+        <div class="min-w-0">
     @if ($tab === 'accessory-categories')
         <div class="space-y-6">
             <x-ui.card title="Main Categories" description="The top-level categories a Product can be. Mobile Phone and Accessory are built in; add your own for anything else your shop sells.">
@@ -1560,6 +1615,14 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 </form>
             </x-ui.card>
         </div>
+    @elseif ($tab === 'modules')
+        <div class="max-w-2xl">
+            <livewire:settings.modules />
+        </div>
+    @elseif ($tab === 'integrations')
+        <div class="max-w-3xl">
+            <livewire:settings.integrations />
+        </div>
     @elseif ($tab === 'profile')
         <div class="max-w-2xl space-y-6">
             <x-ui.card>
@@ -1634,6 +1697,8 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             @endif
         </x-ui.card>
     @endif
+        </div>
+    </div>
 
     <x-ui.modal name="main-category-form" max-width="sm">
         <form wire:submit="saveMainCategory" class="p-6">

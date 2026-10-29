@@ -42,6 +42,13 @@ enum ShopScreen: string
     case Services = 'services';
     case ServicesEditCancel = 'services-edit-cancel';
     case SettingsServices = 'settings-services';
+    case WhatsAppOrders = 'whatsapp-orders';
+    case WhatsAppOrdersDecide = 'whatsapp-orders-decide';
+    case SettingsIntegrations = 'settings-integrations';
+    case WhatsAppMessages = 'whatsapp-messages';
+    case Marketing = 'marketing';
+    case MarketingAnalytics = 'marketing-analytics';
+    case MarketingAds = 'marketing-ads';
 
     public function label(): string
     {
@@ -84,6 +91,13 @@ enum ShopScreen: string
             self::Services => 'Services',
             self::ServicesEditCancel => 'Services: Edit / Cancel',
             self::SettingsServices => 'Settings: Services',
+            self::WhatsAppOrders => 'WhatsApp Orders',
+            self::WhatsAppOrdersDecide => 'WhatsApp Orders: Accept / Reject',
+            self::SettingsIntegrations => 'Settings: Integrations',
+            self::WhatsAppMessages => 'Customer Messages (reminders, repair ready)',
+            self::Marketing => 'Marketing: Posts, Reviews & QR codes',
+            self::MarketingAnalytics => 'Marketing: Overview & analytics',
+            self::MarketingAds => 'Marketing: Meta ads (spends money)',
         };
     }
 
@@ -128,6 +142,13 @@ enum ShopScreen: string
             self::Services => 'services.index',
             self::ServicesEditCancel => 'services.index',
             self::SettingsServices => 'settings.index',
+            self::WhatsAppOrders => 'whatsapp-orders.index',
+            self::WhatsAppOrdersDecide => 'whatsapp-orders.index',
+            self::SettingsIntegrations => 'settings.index',
+            self::WhatsAppMessages => 'whatsapp-messages.index',
+            self::Marketing => 'marketing.posts',
+            self::MarketingAnalytics => 'marketing.index',
+            self::MarketingAds => 'marketing.ads',
         };
     }
 
@@ -145,8 +166,9 @@ enum ShopScreen: string
             'Core' => [self::Dashboard, self::Products, self::Customers, self::Reports, self::PartyLedger],
             'Inventory & Sales' => [self::StockIns, self::StockInsEditCancel, self::Vendors, self::Sales, self::SalesEditCancel, self::SalesViewCostPrice, self::SimSales, self::SimSalesEditCancel],
             'Financial Services' => [self::BalanceLoads, self::BalanceLoadsEditCancel, self::WalletLoads, self::WalletLoadsEditCancel, self::Bills, self::BillsEditCancel, self::Repairs, self::RepairsEditCancel, self::NadraVerifications, self::NadraVerificationsEditCancel, self::Udhaar, self::Expenses, self::ExpensesEditCancel, self::Services, self::ServicesEditCancel],
+            'Online Selling' => [self::WhatsAppOrders, self::WhatsAppOrdersDecide, self::WhatsAppMessages, self::Marketing, self::MarketingAnalytics, self::MarketingAds],
             'Administration' => [self::Users, self::ShopAccounts],
-            'Settings' => [self::Settings, self::SettingsCategories, self::SettingsNetworks, self::SettingsBillConfig, self::SettingsPercentage, self::SettingsBrands, self::SettingsBranding, self::SettingsServices],
+            'Settings' => [self::Settings, self::SettingsCategories, self::SettingsNetworks, self::SettingsBillConfig, self::SettingsPercentage, self::SettingsBrands, self::SettingsBranding, self::SettingsServices, self::SettingsIntegrations],
         ];
     }
 }

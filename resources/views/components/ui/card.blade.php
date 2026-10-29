@@ -1,8 +1,8 @@
 @props(['title' => null, 'description' => null, 'padding' => true])
 
-<div {{ $attributes->class(['bg-white rounded-xl border border-slate-200 shadow-card']) }}>
+<div {{ $attributes->class(['bg-white rounded-lg border border-slate-200 shadow-card']) }}>
     @if ($title || $description || isset($actions))
-        <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+        <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 sm:px-5">
             <div>
                 @if ($title)
                     <h3 class="text-base font-semibold text-slate-900">{{ $title }}</h3>
@@ -20,7 +20,7 @@
         </div>
     @endif
 
-    <div @class([$padding ? 'p-5' : ''])>
+    <div @class([$padding ? 'p-4 sm:p-5' : ''])>
         {{ $slot }}
     </div>
 </div>

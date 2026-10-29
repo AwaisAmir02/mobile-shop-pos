@@ -19,7 +19,7 @@ new class extends Component
     {
         try {
             $validated = $this->validate([
-                'current_password' => ['required', 'string', 'current_password'],
+                'current_password' => Auth::user()->hasPassword() ? ['required', 'string', 'current_password'] : ['nullable'],
                 'password' => ['required', 'string', Password::defaults(), 'confirmed'],
             ]);
         } catch (ValidationException $e) {
@@ -52,9 +52,13 @@ new class extends Component
     </header>
 
     <form wire:submit="updatePassword" class="mt-6 space-y-6">
-        <x-ui.field label="Current Password" name="current_password">
-            <x-ui.input wire:model="current_password" id="update_password_current_password" name="current_password" type="password" autocomplete="current-password" />
-        </x-ui.field>
+        @if (Auth::user()->hasPassword())
+            <x-ui.field label="Current Password" name="current_password">
+                <x-ui.input wire:model="current_password" id="update_password_current_password" name="current_password" type="password" autocomplete="current-password" />
+            </x-ui.field>
+        @else
+            <p class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">You sign in with Google or Microsoft. Set a password to also log in with your email.</p>
+        @endif
 
         <x-ui.field label="New Password" name="password">
             <x-ui.input wire:model="password" id="update_password_password" name="password" type="password" autocomplete="new-password" />

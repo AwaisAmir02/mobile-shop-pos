@@ -21,7 +21,7 @@
     </head>
     <body class="font-sans text-slate-900 antialiased">
         <div class="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-10">
-            <a href="/" wire:navigate class="flex items-center">
+            <a href="/" class="flex items-center">
                 <img
                     src="{{ asset(config('branding.logo_horizontal')) }}"
                     srcset="{{ asset(config('branding.logo_horizontal')) }} 1x, {{ asset(config('branding.logo_horizontal_2x')) }} 2x"

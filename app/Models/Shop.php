@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\BusinessCategory;
 use App\Enums\PlanType;
 use App\Enums\ShopScreen;
 use App\Enums\SubscriptionStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
@@ -23,11 +25,16 @@ class Shop extends Model
         'email',
         'address',
         'plan_type',
+        'plan_id',
         'subscription_status',
         'subscription_start_date',
         'products_allowed',
         'sales_allowed',
+        'limit_overrides',
+        'feature_overrides',
         'disabled_screens',
+        'hidden_screens',
+        'business_category',
         'import_enabled',
         'barcode_enabled',
         'branding_enabled',
@@ -35,6 +42,9 @@ class Shop extends Model
         'invoice_address',
         'logo_path',
         'services_enabled',
+        'whatsapp_enabled',
+        'social_enabled',
+        'ads_enabled',
         'sim_sale_commission_percent',
         'balance_load_commission_percent',
         'wallet_load_commission_percent',
@@ -49,10 +59,17 @@ class Shop extends Model
             'subscription_status' => SubscriptionStatus::class,
             'subscription_start_date' => 'date',
             'disabled_screens' => 'array',
+            'hidden_screens' => 'array',
+            'business_category' => BusinessCategory::class,
             'import_enabled' => 'boolean',
             'barcode_enabled' => 'boolean',
             'branding_enabled' => 'boolean',
             'services_enabled' => 'boolean',
+            'whatsapp_enabled' => 'boolean',
+            'social_enabled' => 'boolean',
+            'ads_enabled' => 'boolean',
+            'limit_overrides' => 'array',
+            'feature_overrides' => 'array',
             'sim_sale_commission_percent' => 'decimal:2',
             'balance_load_commission_percent' => 'decimal:2',
             'wallet_load_commission_percent' => 'decimal:2',
@@ -106,6 +123,16 @@ class Shop extends Model
         return $this->hasMany(SubscriptionInvoice::class);
     }
 
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
+    public function addons(): HasMany
+    {
+        return $this->hasMany(ShopAddon::class);
+    }
+
     /**
      * Super Admin's platform-level override: a screen disabled here is
      * unreachable for every user of this shop, owner included, regardless
@@ -116,6 +143,13 @@ class Shop extends Model
         $value = $screen instanceof ShopScreen ? $screen->value : $screen;
 
         return in_array($value, $this->disabled_screens ?? [], true);
+    }
+
+    public function isScreenHidden(ShopScreen|string $screen): bool
+    {
+        $value = $screen instanceof ShopScreen ? $screen->value : $screen;
+
+        return in_array($value, $this->hidden_screens ?? [], true);
     }
 
     public function expectedRenewalDate(): ?Carbon

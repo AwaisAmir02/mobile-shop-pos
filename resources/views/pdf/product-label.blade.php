@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>{{ $label['barcode'] }}</title>
+    <title>{{ $title ?? $label['barcode'] }}</title>
     <style>
         @page { margin: 0; }
         * { box-sizing: border-box; }
@@ -36,23 +36,27 @@
     </style>
 </head>
 <body>
+@php
+    $labels ??= array_fill(0, $copies, $label);
+    $total = count($labels);
+@endphp
 @if ($layout === 'roll')
-    @for ($i = 0; $i < $copies; $i++)
-        <div class="roll-label @if ($i < $copies - 1) break-after @endif">
-            @include('pdf.partials.product-label-content', ['label' => $label])
+    @foreach ($labels as $i => $item)
+        <div class="roll-label @if ($i < $total - 1) break-after @endif">
+            @include('pdf.partials.product-label-content', ['label' => $item])
         </div>
-    @endfor
+    @endforeach
 @else
     @php $perPage = $columns * $rowsPerPage; @endphp
-    @for ($page = 0; $page < (int) ceil($copies / $perPage); $page++)
-        <table class="sheet @if ($page < (int) ceil($copies / $perPage) - 1) break-after @endif">
+    @for ($page = 0; $page < (int) ceil($total / $perPage); $page++)
+        <table class="sheet @if ($page < (int) ceil($total / $perPage) - 1) break-after @endif">
             @for ($row = 0; $row < $rowsPerPage; $row++)
                 <tr>
                     @for ($col = 0; $col < $columns; $col++)
                         @php $index = $page * $perPage + $row * $columns + $col; @endphp
                         <td>
-                            @if ($index < $copies)
-                                @include('pdf.partials.product-label-content', ['label' => $label])
+                            @if ($index < $total)
+                                @include('pdf.partials.product-label-content', ['label' => $labels[$index]])
                             @endif
                         </td>
                     @endfor

@@ -1,12 +1,15 @@
 <?php
 
 use App\Actions\CreateProduct;
+use App\Enums\LimitKey;
+use App\Exceptions\UsageLimitReached;
 use App\Livewire\Concerns\Toasts;
 use App\Livewire\Concerns\UploadsImages;
 use App\Models\AccessoryCategoryOption;
 use App\Models\Brand;
 use App\Models\MainCategory;
 use App\Services\BarcodeService;
+use App\Services\Billing\Entitlements;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -148,6 +151,14 @@ new class extends Component
     {
         $this->barcode = trim($this->barcode);
         $this->validate(CreateProduct::rules(Auth::user()->shop_id, $this->type));
+
+        try {
+            app(Entitlements::class)->ensureCanAdd(Auth::user()->shop, LimitKey::Products);
+        } catch (UsageLimitReached $e) {
+            $this->toastError($e->getMessage());
+
+            return;
+        }
 
         $attributes = [
             'type' => $this->type,

@@ -12,6 +12,12 @@
             <livewire:profile.update-password-form />
         </x-ui.card>
 
+        @if (\App\Enums\SocialProvider::configured() !== [])
+            <x-ui.card>
+                <livewire:profile.connected-accounts />
+            </x-ui.card>
+        @endif
+
         <x-ui.card>
             <livewire:profile.delete-user-form />
         </x-ui.card>

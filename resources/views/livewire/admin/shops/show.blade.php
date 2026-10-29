@@ -1,11 +1,17 @@
 <?php
 
+use App\Enums\BusinessCategory;
+use App\Enums\FeatureKey;
+use App\Enums\LimitKey;
 use App\Enums\PlanType;
 use App\Enums\ShopScreen;
 use App\Enums\SubscriptionStatus;
 use App\Livewire\Concerns\Toasts;
+use App\Models\Plan;
 use App\Models\Shop;
 use App\Models\UdhaarTransaction;
+use App\Services\Billing\Entitlements;
+use App\Services\BusinessCategories;
 use App\Services\ShopReportService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -25,12 +31,17 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
     public string $phone = '';
     public string $email = '';
     public string $address = '';
+    public string $businessCategory = '';
 
+    public string $planId = '';
     public string $planType = 'monthly';
     public string $subscriptionStatus = 'inactive';
     public string $subscriptionStartDate = '';
     public string $productsAllowed = '';
     public string $salesAllowed = '';
+    public string $staffUsersLimit = '';
+    public string $messagesLimit = '';
+    public string $postsLimit = '';
 
     public string $newPassword = '';
     public string $newPassword_confirmation = '';
@@ -47,12 +58,18 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $this->phone = (string) $shop->phone;
         $this->email = (string) $shop->email;
         $this->address = (string) $shop->address;
+        $this->businessCategory = $shop->business_category?->value ?? '';
 
+        $this->planId = $shop->plan_id !== null ? (string) $shop->plan_id : '';
         $this->planType = $shop->plan_type?->value ?? 'monthly';
         $this->subscriptionStatus = $shop->subscription_status->value;
         $this->subscriptionStartDate = $shop->subscription_start_date?->toDateString() ?? now()->toDateString();
-        $this->productsAllowed = $shop->products_allowed !== null ? (string) $shop->products_allowed : '';
-        $this->salesAllowed = $shop->sales_allowed !== null ? (string) $shop->sales_allowed : '';
+        $overrides = $shop->limit_overrides ?? [];
+        $this->productsAllowed = (string) ($overrides[LimitKey::Products->value] ?? $shop->products_allowed ?? '');
+        $this->salesAllowed = (string) ($overrides[LimitKey::SalesPerMonth->value] ?? $shop->sales_allowed ?? '');
+        $this->staffUsersLimit = (string) ($overrides[LimitKey::StaffUsers->value] ?? '');
+        $this->messagesLimit = (string) ($overrides[LimitKey::WhatsAppMessagesPerMonth->value] ?? '');
+        $this->postsLimit = (string) ($overrides[LimitKey::MarketingPostsPerMonth->value] ?? '');
 
         $this->day = now()->toDateString();
         $this->month = now()->format('Y-m');
@@ -65,6 +82,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string', 'max:255'],
+            'businessCategory' => ['nullable', Rule::enum(BusinessCategory::class)],
         ]);
 
         $this->shop->update([
@@ -72,22 +90,46 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             'phone' => $this->phone !== '' ? $this->phone : null,
             'email' => $this->email !== '' ? $this->email : null,
             'address' => $this->address !== '' ? $this->address : null,
+            'business_category' => $this->businessCategory !== '' ? $this->businessCategory : null,
         ]);
 
         $this->toastSuccess('Shop information updated.');
     }
 
+    public function updatedPlanId(): void
+    {
+        $plan = $this->planId !== '' ? Plan::find($this->planId) : null;
+
+        if ($plan) {
+            $this->planType = $plan->billing_interval->value;
+        }
+    }
+
     public function saveSubscription(): void
     {
         $this->validate([
+            'planId' => ['nullable', Rule::exists('plans', 'id')],
             'planType' => ['required', Rule::enum(PlanType::class)],
             'subscriptionStatus' => ['required', Rule::enum(SubscriptionStatus::class)],
             'subscriptionStartDate' => ['required', 'date'],
             'productsAllowed' => ['nullable', 'integer', 'min:0'],
             'salesAllowed' => ['nullable', 'integer', 'min:0'],
+            'staffUsersLimit' => ['nullable', 'integer', 'min:0'],
+            'messagesLimit' => ['nullable', 'integer', 'min:0'],
+            'postsLimit' => ['nullable', 'integer', 'min:0'],
         ]);
 
+        $limitOverrides = array_map('intval', array_filter([
+            LimitKey::Products->value => $this->productsAllowed,
+            LimitKey::SalesPerMonth->value => $this->salesAllowed,
+            LimitKey::StaffUsers->value => $this->staffUsersLimit,
+            LimitKey::WhatsAppMessagesPerMonth->value => $this->messagesLimit,
+            LimitKey::MarketingPostsPerMonth->value => $this->postsLimit,
+        ], fn ($value) => $value !== ''));
+
         $this->shop->update([
+            'limit_overrides' => $limitOverrides === [] ? null : $limitOverrides,
+            'plan_id' => $this->planId !== '' ? (int) $this->planId : null,
             'plan_type' => $this->planType,
             'subscription_status' => $this->subscriptionStatus,
             'subscription_start_date' => $this->subscriptionStartDate,
@@ -95,6 +137,9 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             'sales_allowed' => $this->salesAllowed !== '' ? $this->salesAllowed : null,
         ]);
 
+        $this->shop->refresh();
+        app(Entitlements::class)->syncFeatureFlags($this->shop);
+        app(Entitlements::class)->forgetMeters($this->shop);
         $this->shop->refresh();
         $this->toastSuccess('Subscription updated.');
     }
@@ -126,7 +171,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $user->update(['password' => Hash::make($this->newPassword)]);
 
         $this->reset(['newPassword', 'newPassword_confirmation']);
-        $this->toastSuccess("Password reset for {$user->email}.");
+        $this->toastSuccess("Password reset for {$user->loginLabel()}.");
     }
 
     public function setPeriodType(string $type): void
@@ -164,7 +209,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
      */
     public function toggleImportEnabled(): void
     {
-        $this->shop->update(['import_enabled' => ! $this->shop->import_enabled]);
+        $this->flipFeature(FeatureKey::Import);
         $this->shop->refresh();
 
         $this->toastSuccess($this->shop->import_enabled ? 'Products Import enabled for this shop.' : 'Products Import disabled for this shop.');
@@ -172,7 +217,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
 
     public function toggleBarcodeEnabled(): void
     {
-        $this->shop->update(['barcode_enabled' => ! $this->shop->barcode_enabled]);
+        $this->flipFeature(FeatureKey::Barcode);
         $this->shop->refresh();
 
         $this->toastSuccess($this->shop->barcode_enabled ? 'Barcodes enabled for this shop.' : 'Barcodes disabled for this shop.');
@@ -186,7 +231,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
      */
     public function toggleBrandingEnabled(): void
     {
-        $this->shop->update(['branding_enabled' => ! $this->shop->branding_enabled]);
+        $this->flipFeature(FeatureKey::Branding);
         $this->shop->refresh();
 
         $this->toastSuccess($this->shop->branding_enabled ? 'Custom branding enabled for this shop.' : 'Custom branding disabled for this shop.');
@@ -200,10 +245,68 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
      */
     public function toggleServicesEnabled(): void
     {
-        $this->shop->update(['services_enabled' => ! $this->shop->services_enabled]);
+        $this->flipFeature(FeatureKey::Services);
         $this->shop->refresh();
 
         $this->toastSuccess($this->shop->services_enabled ? 'Services enabled for this shop.' : 'Services disabled for this shop.');
+    }
+
+    public function toggleWhatsAppEnabled(): void
+    {
+        $this->flipFeature(FeatureKey::WhatsApp);
+        $this->shop->refresh();
+
+        $this->toastSuccess($this->shop->whatsapp_enabled ? 'WhatsApp ordering enabled for this shop.' : 'WhatsApp ordering disabled for this shop.');
+    }
+
+    public function toggleSocialEnabled(): void
+    {
+        $this->flipFeature(FeatureKey::Social);
+        $this->shop->refresh();
+
+        $this->toastSuccess($this->shop->social_enabled ? 'Social posting enabled for this shop.' : 'Social posting disabled for this shop.');
+    }
+
+    public function toggleAdsEnabled(): void
+    {
+        $this->flipFeature(FeatureKey::Ads);
+        $this->shop->refresh();
+
+        $this->toastSuccess($this->shop->ads_enabled ? 'Meta ads enabled for this shop.' : 'Meta ads disabled for this shop.');
+    }
+
+    public function applyCategoryDefaults(BusinessCategories $categories): void
+    {
+        if (! $this->shop->business_category) {
+            $this->toastError('Choose and save a business category first.');
+
+            return;
+        }
+
+        $categories->applyDefaults($this->shop);
+        $this->shop->refresh();
+
+        $this->toastSuccess('Defaults for '.$this->shop->business_category->label().' applied.');
+    }
+
+    protected function flipFeature(FeatureKey $feature): void
+    {
+        $entitlements = app(Entitlements::class);
+        $value = ! $this->shop->{$feature->column()};
+
+        if ($entitlements->governed($this->shop)) {
+            $entitlements->setFeatureOverride($this->shop, $feature, $value);
+        } else {
+            $this->shop->update([$feature->column() => $value]);
+        }
+    }
+
+    public function usePlanDefault(string $feature): void
+    {
+        app(Entitlements::class)->setFeatureOverride($this->shop, FeatureKey::from($feature), null);
+        $this->shop->refresh();
+
+        $this->toastSuccess(FeatureKey::from($feature)->label().' now follows the plan.');
     }
 
     protected function periodRange(): array
@@ -247,8 +350,22 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             'productCount' => $this->shop->products()->count(),
             'customerCount' => $this->shop->customers()->count(),
             'udhaarOutstanding' => max(0.0, (float) $udhaarBalances),
-            'loginEmail' => $this->shop->user?->email,
+            'loginEmail' => $this->shop->user?->loginLabel(),
             'expectedRenewalDate' => $this->shop->expectedRenewalDate(),
+            'plans' => Plan::ordered()->get(),
+            'governed' => app(Entitlements::class)->governed($this->shop),
+            'hiddenModules' => BusinessCategories::hiddenModules($this->shop),
+            'planLimits' => $this->shop->plan?->limits ?? [],
+            'meters' => app(Entitlements::class)->meters($this->shop, fresh: true),
+            'shopAddons' => $this->shop->addons()->latest('id')->limit(10)->get(),
+            'featureOverrides' => collect(FeatureKey::cases())
+                ->filter(fn (FeatureKey $feature) => app(Entitlements::class)->featureOverride($this->shop, $feature) !== null)
+                ->map(fn (FeatureKey $feature) => [
+                    'key' => $feature->value,
+                    'label' => $feature->label(),
+                    'value' => app(Entitlements::class)->featureOverride($this->shop, $feature),
+                    'plan' => app(Entitlements::class)->planFeature($this->shop, $feature),
+                ])->values(),
             'users' => $this->shop->users()->with('role')->orderByDesc('is_owner')->orderBy('name')->get(),
             'screens' => ShopScreen::cases(),
             'groupedScreens' => ShopScreen::grouped(),
@@ -287,6 +404,25 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                         <x-ui.field label="Address" name="address" for="address" class="sm:col-span-2">
                             <x-ui.input wire:model="address" id="address" />
                         </x-ui.field>
+
+                        <x-ui.field label="Business category" name="businessCategory" for="businessCategory" class="sm:col-span-2" help="Saving a new category does not change anything by itself — use “Apply category defaults” below.">
+                            <x-ui.select wire:model="businessCategory" id="businessCategory">
+                                <option value="">Not set — every module visible</option>
+                                @foreach (BusinessCategory::cases() as $option)
+                                    <option value="{{ $option->value }}">{{ $option->label() }}</option>
+                                @endforeach
+                            </x-ui.select>
+                        </x-ui.field>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                        <span>
+                            Hidden by category / owner:
+                            <span class="font-medium text-slate-800">{{ $hiddenModules === [] ? 'nothing' : collect($hiddenModules)->map(fn ($key) => \App\Services\BusinessCategories::modules()[$key]['label'])->implode(', ') }}</span>
+                        </span>
+                        @if ($shop->business_category)
+                            <button type="button" wire:click="applyCategoryDefaults" wire:confirm="Apply the {{ $shop->business_category->label() }} defaults? Module visibility is reset to that category's defaults and any missing starter product categories are added. Nothing is deleted." class="font-semibold text-brand-700 hover:underline">Apply category defaults</button>
+                        @endif
                     </div>
 
                     <div class="flex justify-end">
@@ -306,6 +442,15 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
 
                 <form wire:submit="saveSubscription" class="space-y-4">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <x-ui.field label="Plan" name="planId" for="planId" class="sm:col-span-2">
+                            <x-ui.select wire:model.live="planId" id="planId">
+                                <option value="">No plan</option>
+                                @foreach ($plans as $plan)
+                                    <option value="{{ $plan->id }}">{{ $plan->name }} — {{ $plan->priceLabel() }} / {{ $plan->intervalLabel() }}{{ $plan->is_active ? '' : ' (inactive)' }}</option>
+                                @endforeach
+                            </x-ui.select>
+                        </x-ui.field>
+
                         <x-ui.field label="Plan Type" name="planType" for="planType">
                             <x-ui.select wire:model="planType" id="planType">
                                 @foreach (PlanType::cases() as $plan)
@@ -332,13 +477,18 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                             </p>
                         </x-ui.field>
 
-                        <x-ui.field label="Products Allowed" name="productsAllowed" for="productsAllowed" help="Reference only — not enforced">
-                            <x-ui.input wire:model="productsAllowed" id="productsAllowed" type="number" min="0" />
-                        </x-ui.field>
+                    </div>
 
-                        <x-ui.field label="Sales Allowed" name="salesAllowed" for="salesAllowed" help="Reference only — not enforced">
-                            <x-ui.input wire:model="salesAllowed" id="salesAllowed" type="number" min="0" />
-                        </x-ui.field>
+                    <div class="rounded-lg border border-slate-200 p-4">
+                        <p class="text-sm font-medium text-slate-900">Usage limits</p>
+                        <p class="mt-0.5 text-xs text-slate-500">{{ $governed ? 'Leave blank to use the plan’s limit. A number here replaces it for this shop only.' : 'Not enforced — limits only apply to shops on a plan.' }}</p>
+                        <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            @foreach ([['productsAllowed', LimitKey::Products], ['staffUsersLimit', LimitKey::StaffUsers], ['salesAllowed', LimitKey::SalesPerMonth], ['messagesLimit', LimitKey::WhatsAppMessagesPerMonth], ['postsLimit', LimitKey::MarketingPostsPerMonth]] as [$field, $limitKey])
+                                <x-ui.field :label="$limitKey->label()" :name="$field" :for="$field" :help="$governed ? 'Plan: '.(array_key_exists($limitKey->value, $planLimits) && $planLimits[$limitKey->value] !== null ? number_format($planLimits[$limitKey->value]) : 'unlimited') : null">
+                                    <x-ui.input wire:model="{{ $field }}" id="{{ $field }}" type="number" min="0" placeholder="Plan default" />
+                                </x-ui.field>
+                            @endforeach
+                        </div>
                     </div>
 
                     <div class="flex justify-end">
@@ -349,6 +499,25 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                 </form>
             </x-ui.card>
 
+            @if ($meters !== [])
+                <x-ui.card title="Usage this month" description="Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged.">
+                    <x-billing.usage-meters :meters="$meters" />
+                    @if ($shopAddons->isNotEmpty())
+                        <div class="mt-5 border-t border-slate-100 pt-4">
+                            <p class="text-sm font-medium text-slate-900">Add-ons</p>
+                            <ul class="mt-2 space-y-1.5 text-sm">
+                                @foreach ($shopAddons as $shopAddon)
+                                    <li class="flex items-center justify-between gap-3">
+                                        <span>{{ $shopAddon->name }}@if ($shopAddon->ends_at) <span class="text-xs text-slate-500">· until {{ $shopAddon->ends_at->format('d M Y') }}</span>@endif</span>
+                                        <x-ui.badge :variant="$shopAddon->status->badge()">{{ $shopAddon->status->label() }}</x-ui.badge>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                </x-ui.card>
+            @endif
+
             <livewire:admin.shops.billing :shop-id="$shop->id" />
         </div>
 
@@ -357,7 +526,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             <x-ui.stat label="Product Count" :value="$productCount" />
             <x-ui.stat label="Customer Count" :value="$customerCount" />
             <x-ui.stat label="Udhaar Outstanding" value="Rs {{ number_format($udhaarOutstanding, 2) }}" sub="Current, across all customers" />
-            <x-ui.stat label="Login Email" :value="$loginEmail ?? 'N/A'" />
+            <x-ui.stat label="Login" :value="$loginEmail ?? 'N/A'" />
 
             <x-ui.card title="Reset Login Password" description="Sets a new password without needing the current one.">
                 <form wire:submit="resetPassword" class="space-y-4">
@@ -447,7 +616,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             @foreach ($users as $user)
                 <x-ui.table-row wire:key="shop-user-{{ $user->id }}">
                     <x-ui.table-cell class="font-medium text-slate-900">{{ $user->name }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $user->email }}</x-ui.table-cell>
+                    <x-ui.table-cell>{{ $user->loginLabel() }}</x-ui.table-cell>
                     <x-ui.table-cell>
                         @if ($user->is_owner)
                             <x-ui.badge variant="brand">Owner</x-ui.badge>
@@ -547,6 +716,17 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             <div>
                 <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Shop Features</h3>
                 <div class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                    @if ($governed)
+                        <div class="bg-brand-50/60 px-4 py-2.5 text-xs text-slate-600">
+                            These switches follow the <span class="font-semibold">{{ $shop->plan?->name }}</span> plan. Flipping one here overrides the plan for this shop only.
+                            @foreach ($featureOverrides as $override)
+                                <span class="mt-1 flex items-center justify-between gap-2">
+                                    <span>{{ $override['label'] }}: <span class="font-semibold">{{ $override['value'] ? 'on' : 'off' }}</span> here, plan says {{ $override['plan'] === null ? 'nothing' : ($override['plan'] ? 'on' : 'off') }}</span>
+                                    <button type="button" wire:click="usePlanDefault('{{ $override['key'] }}')" class="font-semibold text-brand-700 hover:underline">Use plan default</button>
+                                </span>
+                            @endforeach
+                        </div>
+                    @endif
                     <div class="flex items-center justify-between gap-3 px-4 py-2.5">
                         <div>
                             <span class="text-sm font-medium text-slate-900">Barcodes</span>
@@ -624,6 +804,87 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                                     'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
                                     'translate-x-6' => $shop->services_enabled,
                                     'translate-x-1' => ! $shop->services_enabled,
+                                ])
+                            ></span>
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 px-4 py-2.5">
+                        <div>
+                            <span class="text-sm font-medium text-slate-900">WhatsApp Ordering</span>
+                            <p class="text-xs text-slate-500">Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default.</p>
+                        </div>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked="{{ $shop->whatsapp_enabled ? 'true' : 'false' }}"
+                            aria-label="{{ $shop->whatsapp_enabled ? 'Disable' : 'Enable' }} WhatsApp Ordering"
+                            wire:click="toggleWhatsAppEnabled"
+                            wire:confirm="{{ $shop->whatsapp_enabled ? 'Disable' : 'Enable' }} WhatsApp Ordering for this shop?"
+                            @class([
+                                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                                'bg-emerald-500' => $shop->whatsapp_enabled,
+                                'bg-slate-300' => ! $shop->whatsapp_enabled,
+                            ])
+                        >
+                            <span
+                                @class([
+                                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                                    'translate-x-6' => $shop->whatsapp_enabled,
+                                    'translate-x-1' => ! $shop->whatsapp_enabled,
+                                ])
+                            ></span>
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 px-4 py-2.5">
+                        <div>
+                            <span class="text-sm font-medium text-slate-900">Social Posting</span>
+                            <p class="text-xs text-slate-500">Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.</p>
+                        </div>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked="{{ $shop->social_enabled ? 'true' : 'false' }}"
+                            aria-label="{{ $shop->social_enabled ? 'Disable' : 'Enable' }} Social Posting"
+                            wire:click="toggleSocialEnabled"
+                            wire:confirm="{{ $shop->social_enabled ? 'Disable' : 'Enable' }} Social Posting for this shop?"
+                            @class([
+                                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                                'bg-emerald-500' => $shop->social_enabled,
+                                'bg-slate-300' => ! $shop->social_enabled,
+                            ])
+                        >
+                            <span
+                                @class([
+                                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                                    'translate-x-6' => $shop->social_enabled,
+                                    'translate-x-1' => ! $shop->social_enabled,
+                                ])
+                            ></span>
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 px-4 py-2.5">
+                        <div>
+                            <span class="text-sm font-medium text-slate-900">Meta Ads</span>
+                            <p class="text-xs text-slate-500">Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.</p>
+                        </div>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked="{{ $shop->ads_enabled ? 'true' : 'false' }}"
+                            aria-label="{{ $shop->ads_enabled ? 'Disable' : 'Enable' }} Meta Ads"
+                            wire:click="toggleAdsEnabled"
+                            wire:confirm="{{ $shop->ads_enabled ? 'Disable' : 'Enable' }} Meta Ads for this shop?"
+                            @class([
+                                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                                'bg-emerald-500' => $shop->ads_enabled,
+                                'bg-slate-300' => ! $shop->ads_enabled,
+                            ])
+                        >
+                            <span
+                                @class([
+                                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                                    'translate-x-6' => $shop->ads_enabled,
+                                    'translate-x-1' => ! $shop->ads_enabled,
                                 ])
                             ></span>
                         </button>

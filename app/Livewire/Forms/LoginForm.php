@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Forms;
 
+use App\Support\PhoneNumber;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -12,7 +13,7 @@ use Livewire\Form;
 
 class LoginForm extends Form
 {
-    #[Validate('required|string|email')]
+    #[Validate('required|string|max:255')]
     public string $email = '';
 
     #[Validate('required|string')]
@@ -25,7 +26,7 @@ class LoginForm extends Form
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt([...$this->only(['email', 'password']), 'is_active' => true], $this->remember)) {
+        if (! Auth::attempt([...$this->credentials(), 'password' => $this->password, 'is_active' => true], $this->remember)) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -34,6 +35,17 @@ class LoginForm extends Form
         }
 
         RateLimiter::clear($this->throttleKey());
+    }
+
+    protected function credentials(): array
+    {
+        $login = trim($this->email);
+
+        if (str_contains($login, '@')) {
+            return ['email' => $login];
+        }
+
+        return ['phone' => PhoneNumber::isPakistaniMobile($login) ? PhoneNumber::normalize($login) : $login];
     }
 
     protected function ensureIsNotRateLimited(): void
@@ -56,6 +68,6 @@ class LoginForm extends Form
 
     protected function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->email).'|'.request()->ip());
+        return Str::transliterate(Str::lower((string) head($this->credentials())).'|'.request()->ip());
     }
 }

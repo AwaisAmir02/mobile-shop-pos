@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\ShopScreen;
+use App\Support\PhoneNumber;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -17,6 +19,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone',
         'password',
         'shop_id',
         'role_id',
@@ -40,10 +43,26 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(UserSocialAccount::class);
+    }
+
+    public function loginLabel(): string
+    {
+        return $this->email ?? ($this->phone ? PhoneNumber::display($this->phone) : '—');
+    }
+
+    public function hasPassword(): bool
+    {
+        return filled($this->getAuthPassword());
+    }
+
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_super_admin' => 'boolean',
             'is_owner' => 'boolean',
@@ -53,7 +72,7 @@ class User extends Authenticatable
 
     public function hasAccessTo(ShopScreen|string $screen): bool
     {
-        if ($this->shop && $this->shop->isScreenDisabled($screen)) {
+        if ($this->shop && ($this->shop->isScreenDisabled($screen) || $this->shop->isScreenHidden($screen))) {
             return false;
         }
 

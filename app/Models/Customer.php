@@ -4,12 +4,23 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Scopes\ExcludesCancelledSalesScope;
+use App\Models\Scopes\ExcludesCancelledScope;
+use App\Support\PhoneNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Customer extends Model
 {
     use BelongsToShop;
+
+    protected static function booted(): void
+    {
+        static::saving(function (Customer $customer) {
+            if ($customer->isDirty('phone') || ! $customer->exists) {
+                $customer->phone_normalized = PhoneNumber::normalize($customer->phone);
+            }
+        });
+    }
 
     protected $fillable = [
         'shop_id',
@@ -111,6 +122,7 @@ class Customer extends Model
             || $this->repairs()->exists()
             || $this->nadraVerifications()->exists()
             || $this->simSales()->exists()
-            || $this->servicePayments()->exists();
+            || $this->servicePayments()->exists()
+            || PartyLedgerEntry::withoutGlobalScope(ExcludesCancelledScope::class)->where('customer_id', $this->id)->exists();
     }
 }

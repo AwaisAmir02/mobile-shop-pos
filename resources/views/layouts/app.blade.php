@@ -18,19 +18,57 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        {{-- Applied before first paint so a collapsed sidebar doesn't flash open on load. --}}
+        <script>
+            try { if (localStorage.getItem('hok.sidebar') === 'collapsed') document.documentElement.dataset.sidebar = 'collapsed'; } catch (e) {}
+        </script>
     </head>
     <body class="font-sans text-slate-900 antialiased">
-        <div x-data="{ sidebarOpen: false }" class="flex min-h-screen bg-slate-50">
+        {{-- wire:navigate copies the new page's <html> attributes over the old ones, dropping
+             data-sidebar. Livewire re-runs body scripts during the swap (before Alpine and before
+             paint), so re-apply it here too. --}}
+        <script>
+            try { if (localStorage.getItem('hok.sidebar') === 'collapsed') document.documentElement.dataset.sidebar = 'collapsed'; } catch (e) {}
+        </script>
+        <div
+            x-data="{
+                sidebarOpen: false,
+                collapsed: document.documentElement.dataset.sidebar === 'collapsed',
+                toggleCollapsed() {
+                    this.collapsed = ! this.collapsed;
+                    document.documentElement.dataset.sidebar = this.collapsed ? 'collapsed' : 'expanded';
+                    try { localStorage.setItem('hok.sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+                },
+            }"
+            class="flex min-h-screen bg-slate-50"
+        >
             <x-layout.sidebar />
 
-            <div class="flex min-w-0 flex-1 flex-col lg:pl-64">
-                <livewire:layout.navigation />
+            <div class="sb-main flex min-w-0 flex-1 flex-col lg:pl-64">
+                <header class="app-header sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+                    <div class="flex min-h-14 items-center gap-3 px-4 sm:px-6 lg:px-8">
+                        <button
+                            x-on:click="sidebarOpen = true"
+                            type="button"
+                            aria-label="Open menu"
+                            class="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
+                        >
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+                            </svg>
+                        </button>
 
-                @isset($header)
-                    <div class="border-b border-slate-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
-                        {{ $header }}
+                        <div class="min-w-0 flex-1 py-2">
+                            {{ $header ?? '' }}
+                        </div>
+
+                        <livewire:layout.navigation />
                     </div>
-                @endisset
+                </header>
+
+                <x-billing.pending-banner />
+                <x-billing.usage-banner />
 
                 <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
                     {{ $slot }}

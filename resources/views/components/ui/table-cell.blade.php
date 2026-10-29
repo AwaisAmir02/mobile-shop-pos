@@ -8,6 +8,6 @@
     ][$align] ?? 'text-left';
 @endphp
 
-<td {{ $attributes->class(["px-4 py-3.5 text-sm text-slate-700 whitespace-nowrap {$alignment}"]) }}>
+<td {{ $attributes->class(["px-4 py-2.5 text-sm tabular-nums text-slate-700 whitespace-nowrap {$alignment}"]) }}>
     {{ $slot }}
 </td>

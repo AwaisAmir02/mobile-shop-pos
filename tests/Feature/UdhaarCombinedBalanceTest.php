@@ -188,14 +188,13 @@ class UdhaarCombinedBalanceTest extends TestCase
         // Udhaar's own headline now combines everything (1000 + 300 + 500 = 1800)...
         Livewire::test('udhaar.show', ['customer' => $customer])->assertViewHas('balance', 1800.0);
 
-        // ...but Party Ledger keeps Sales Outstanding (300) and Udhaar
-        // Outstanding (1000) as their own separate, un-combined figures —
+        // ...but the Party Ledger statement keeps Sales (300) and Udhaar
+        // (1000) as their own separate, un-combined running balances —
         // it never even sees the Balance Load due.
         Livewire::test('party-ledger.index')
-            ->assertViewHas('rows', function ($rows) use ($customer) {
-                $row = collect($rows)->firstWhere('customer.id', $customer->id);
-
-                return $row['salesOutstanding'] === 300.0 && $row['udhaarBalance'] === 1000.0;
-            });
+            ->set('customerId', $customer->id)
+            ->assertViewHas('statement', fn ($statement) => $statement['sales']['closing'] === 300.0
+                && $statement['udhaar']['closing'] === 1000.0
+                && $statement['manual']['closing'] === 0.0);
     }
 }

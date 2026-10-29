@@ -1,8 +1,12 @@
 <?php
 
+use App\Enums\LimitKey;
+use App\Exceptions\UsageLimitReached;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Billing\Entitlements;
+use App\Support\PhoneNumber;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -19,6 +23,7 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
 
     public string $name = '';
     public string $email = '';
+    public string $phone = '';
     public ?int $roleId = null;
 
     public ?int $resettingId = null;
@@ -47,7 +52,8 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
 
         $this->editingId = $user->id;
         $this->name = $user->name;
-        $this->email = $user->email;
+        $this->email = (string) $user->email;
+        $this->phone = $user->phone ? '0'.substr($user->phone, 2) : '';
         $this->roleId = $user->role_id;
 
         $this->resetErrorBag();
@@ -58,9 +64,19 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
     {
         $editingOwner = $this->editingId && User::find($this->editingId)?->is_owner;
 
+        $this->email = trim($this->email);
+        $normalizedPhone = PhoneNumber::isPakistaniMobile($this->phone) ? PhoneNumber::normalize($this->phone) : null;
+
         $this->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->editingId)],
+            'email' => ['nullable', 'required_without:phone', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->editingId)],
+            'phone' => ['nullable', 'required_without:email', 'string', 'max:20', function ($attribute, $value, $fail) use ($normalizedPhone) {
+                if ($normalizedPhone === null) {
+                    $fail('Enter a Pakistani mobile number, e.g. 0300 1234567.');
+                } elseif (User::where('phone', $normalizedPhone)->whereKeyNot($this->editingId)->exists()) {
+                    $fail('This mobile number is already used by another login.');
+                }
+            }],
             'roleId' => [$editingOwner ? 'nullable' : 'required', 'integer', Rule::exists('roles', 'id')->where('shop_id', Auth::user()->shop_id)],
         ]);
 
@@ -69,16 +85,26 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
 
             $user->update([
                 'name' => $this->name,
-                'email' => $this->email,
+                'email' => $this->email !== '' ? $this->email : null,
+                'phone' => $normalizedPhone,
                 'role_id' => $user->is_owner ? null : $this->roleId,
             ]);
 
             $this->toastSuccess('User updated.');
         } else {
+            try {
+                app(Entitlements::class)->ensureCanAdd(Auth::user()->shop, LimitKey::StaffUsers);
+            } catch (UsageLimitReached $e) {
+                $this->toastError($e->getMessage());
+
+                return;
+            }
+
             User::create([
                 'shop_id' => Auth::user()->shop_id,
                 'name' => $this->name,
-                'email' => $this->email,
+                'email' => $this->email !== '' ? $this->email : null,
+                'phone' => $normalizedPhone,
                 'password' => Hash::make(str()->random(24)),
                 'role_id' => $this->roleId,
                 'is_owner' => false,
@@ -109,7 +135,7 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
         $user = User::where('shop_id', Auth::user()->shop_id)->findOrFail($this->resettingId);
         $user->update(['password' => Hash::make($this->newPassword)]);
 
-        $this->toastSuccess("Password reset for {$user->email}.");
+        $this->toastSuccess("Password reset for {$user->loginLabel()}.");
         $this->dispatch('close-modal', name: 'reset-password-form');
         $this->reset(['resettingId', 'newPassword', 'newPassword_confirmation']);
     }
@@ -149,7 +175,7 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
 
     protected function resetForm(): void
     {
-        $this->reset(['editingId', 'name', 'email', 'roleId']);
+        $this->reset(['editingId', 'name', 'email', 'phone', 'roleId']);
         $this->resetErrorBag();
     }
 }; ?>
@@ -173,11 +199,11 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
         </x-ui.button>
     </div>
 
-    <x-ui.table :headers="['Name', 'Email', 'Role', '']">
+    <x-ui.table :headers="['Name', 'Login', 'Role', '']">
         @foreach ($users as $user)
             <x-ui.table-row wire:key="user-{{ $user->id }}">
                 <x-ui.table-cell class="font-medium text-slate-900">{{ $user->name }}</x-ui.table-cell>
-                <x-ui.table-cell>{{ $user->email }}</x-ui.table-cell>
+                <x-ui.table-cell>{{ $user->loginLabel() }}</x-ui.table-cell>
                 <x-ui.table-cell>
                     @if ($user->is_owner)
                         <x-ui.badge variant="brand">Owner · Full Access</x-ui.badge>
@@ -225,6 +251,10 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <x-ui.field label="Email" name="email" for="email">
                         <x-ui.input wire:model="email" id="email" type="email" />
+                    </x-ui.field>
+
+                    <x-ui.field label="Mobile number" name="phone" for="phone" help="Email, mobile, or both — either can be used to log in">
+                        <x-ui.input wire:model="phone" id="phone" type="tel" inputmode="tel" />
                     </x-ui.field>
 
                     <x-ui.field label="Role" name="roleId" for="roleId">

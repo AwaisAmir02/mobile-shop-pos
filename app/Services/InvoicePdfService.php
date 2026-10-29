@@ -10,13 +10,18 @@ class InvoicePdfService
 {
     public function download(Sale $sale): StreamedResponse
     {
-        $sale->loadMissing(['items', 'shop', 'user', 'payments']);
-
-        $pdf = Pdf::loadView('pdf.invoice', ['sale' => $sale])->setPaper('a5');
+        $output = $this->render($sale);
 
         return response()->streamDownload(
-            fn () => print ($pdf->output()),
+            fn () => print ($output),
             $sale->invoiceNumber().'.pdf'
         );
+    }
+
+    public function render(Sale $sale): string
+    {
+        $sale->loadMissing(['items', 'shop', 'user', 'payments']);
+
+        return Pdf::loadView('pdf.invoice', ['sale' => $sale])->setPaper('a5')->output();
     }
 }

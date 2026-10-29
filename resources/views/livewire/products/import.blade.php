@@ -70,6 +70,10 @@ new class extends Component
 
     public int $createdBrands = 0;
 
+    public int $limitSkippedCount = 0;
+
+    public array $limitSkippedLines = [];
+
     protected function guard(): void
     {
         abort_unless(Auth::user()->canImportProducts(), 403);
@@ -93,6 +97,7 @@ new class extends Component
             'toCreateCount', 'toSkipCount', 'skippedLines', 'skippedLinesMore',
             'newMainCategoryNames', 'newSubCategoryNames', 'newBrandNames', 'similarWarnings', 'notices',
             'createdCount', 'skippedCount', 'createdMainCategories', 'createdSubCategories', 'createdBrands',
+            'limitSkippedCount', 'limitSkippedLines',
         ]);
         $this->step = 'upload';
         $this->resetErrorBag();
@@ -191,6 +196,8 @@ new class extends Component
         $this->createdMainCategories = $outcome['createdMainCategories'];
         $this->createdSubCategories = $outcome['createdSubCategories'];
         $this->createdBrands = $outcome['createdBrands'];
+        $this->limitSkippedCount = $outcome['limitSkippedProducts'];
+        $this->limitSkippedLines = $outcome['limitSkippedLines'];
 
         $this->step = 'done';
         $this->processing = false;
@@ -363,6 +370,21 @@ new class extends Component
                         <x-ui.stat label="Sub-Categories Created" :value="number_format($createdSubCategories)" />
                         <x-ui.stat label="Brands Created" :value="number_format($createdBrands)" />
                     </div>
+
+                    @if ($limitSkippedCount > 0)
+                        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                            <p class="font-semibold">{{ number_format($limitSkippedCount) }} row(s) were not imported because your plan’s product limit was reached:</p>
+                            <ul class="mt-2 list-disc space-y-0.5 pl-5">
+                                @foreach ($limitSkippedLines as $line)
+                                    <li>{{ $line }}</li>
+                                @endforeach
+                                @if ($limitSkippedCount > count($limitSkippedLines))
+                                    <li class="italic">…and {{ $limitSkippedCount - count($limitSkippedLines) }} more.</li>
+                                @endif
+                            </ul>
+                            <p class="mt-2">Archive old products, upgrade your plan or buy an add-on in Plan &amp; Billing, then import these rows again.</p>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="mt-6 flex justify-end">

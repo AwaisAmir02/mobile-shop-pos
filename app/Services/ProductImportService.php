@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Actions\CreateAccessoryCategory;
 use App\Actions\CreateProduct;
+use App\Enums\LimitKey;
 use App\Imports\ProductSheetReader;
 use App\Models\AccessoryCategoryOption;
 use App\Models\Brand;
 use App\Models\MainCategory;
 use App\Models\Product;
 use App\Models\Shop;
+use App\Services\Billing\Entitlements;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -44,8 +46,21 @@ class ProductImportService
     public function preview(string $absolutePath, int $shopId): array
     {
         $result = $this->analyze($absolutePath, $shopId);
+        $summary = $this->summarize($result);
+        $remaining = $this->remainingProductAllowance($shopId);
 
-        return $this->summarize($result);
+        if ($remaining !== null && $summary['toCreateCount'] > $remaining) {
+            $summary['notices'][] = 'Your plan has room for '.number_format($remaining).' more product(s). The first '.number_format($remaining).' new row(s) will be imported and the other '.number_format($summary['toCreateCount'] - $remaining).' will be skipped — archive old products, upgrade your plan or buy an add-on to import them.';
+        }
+
+        return $summary;
+    }
+
+    protected function remainingProductAllowance(int $shopId): ?int
+    {
+        $shop = Shop::find($shopId);
+
+        return $shop ? app(Entitlements::class)->remaining($shop, LimitKey::Products) : null;
     }
 
     /**
@@ -68,8 +83,10 @@ class ProductImportService
         $createdSubCategories = 0;
         $createdBrands = 0;
         $createdProducts = 0;
+        $limitSkipped = [];
+        $remaining = $this->remainingProductAllowance($shopId);
 
-        DB::transaction(function () use ($result, $shopId, &$createdMainCategories, &$createdSubCategories, &$createdBrands, &$createdProducts) {
+        DB::transaction(function () use ($result, $shopId, $remaining, &$createdMainCategories, &$createdSubCategories, &$createdBrands, &$createdProducts, &$limitSkipped) {
             /** @var array<string, array{id: int, slug: string}> $mainCategories keyed by normalized name */
             $mainCategories = [];
             /** @var array<string, true> $subCategorySeen keyed by "mainCategoryId|normalized sub name" */
@@ -79,6 +96,12 @@ class ProductImportService
 
             foreach ($result['rows'] as $row) {
                 if ($row['skip']) {
+                    continue;
+                }
+
+                if ($remaining !== null && $createdProducts >= $remaining) {
+                    $limitSkipped[] = "Row {$row['excelRow']}: \"{$row['name']}\"";
+
                     continue;
                 }
 
@@ -177,6 +200,8 @@ class ProductImportService
             'createdMainCategories' => $createdMainCategories,
             'createdSubCategories' => $createdSubCategories,
             'createdBrands' => $createdBrands,
+            'limitSkippedProducts' => count($limitSkipped),
+            'limitSkippedLines' => array_slice($limitSkipped, 0, 50),
         ];
     }
 

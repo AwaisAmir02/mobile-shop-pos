@@ -113,6 +113,7 @@ class SettingsAccessoryCategoryTest extends TestCase
         $this->actingAs($ownerA);
 
         Livewire::test('settings.index')
+            ->set('tab', 'accessory-categories')
             ->assertSee('Category A')
             ->assertDontSee('Category B');
     }

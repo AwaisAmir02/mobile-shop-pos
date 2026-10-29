@@ -1,13 +1,12 @@
 <?php
 
 use App\Actions\ConsumeStockFifo;
+use App\Actions\CreateSale;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\Models\Product;
-use App\Models\Sale;
 use App\Support\SaleCartMath;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -229,60 +228,35 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
         $this->validate($rules);
 
-        $sale = DB::transaction(function () use ($paidNow) {
-            $subtotal = 0;
-            $allItemsData = [];
+        $lines = [];
 
-            foreach ($this->cart as $productId => $item) {
-                $product = Product::whereKey($productId)->lockForUpdate()->firstOrFail();
-                $quantity = (int) $item['quantity'];
+        foreach ($this->cart as $productId => $item) {
+            $lines[] = [
+                'product_id' => (int) $productId,
+                'quantity' => (int) $item['quantity'],
+                'discount' => (float) $item['discount'],
+                'custom_price' => $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null,
+            ];
+        }
 
-                if ($product->stock_quantity < $quantity) {
-                    throw ValidationException::withMessages([
-                        "cart.$productId.quantity" => "Only {$product->stock_quantity} left in stock for {$product->name}.",
-                    ]);
-                }
+        try {
+            $sale = CreateSale::handle(
+                lines: $lines,
+                invoiceDiscount: (float) $this->invoiceDiscount,
+                customerId: $this->customerId !== '' ? (int) $this->customerId : null,
+                userId: Auth::id(),
+                saleDate: $this->saleDate,
+                amountPaid: $paidNow,
+            );
+        } catch (ValidationException $e) {
+            $errors = [];
 
-                $allocations = ConsumeStockFifo::handle($product, $quantity);
-                $overridePrice = $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null;
-                $subLines = SaleCartMath::allocateLines($overridePrice, (float) $item['discount'], $allocations);
-
-                foreach ($subLines as $subLine) {
-                    $subtotal += $subLine['line_total'];
-                    $allItemsData[] = array_merge($subLine, [
-                        'product_id' => $product->id,
-                        'product_name' => $product->name,
-                        'product_type' => $product->type,
-                    ]);
-                }
-
-                $product->decrement('stock_quantity', $quantity);
+            foreach ($e->errors() as $key => $messages) {
+                $errors[preg_replace('/^lines\.(\d+)$/', 'cart.$1.quantity', $key)] = $messages;
             }
 
-            $invoiceDiscount = min((float) $this->invoiceDiscount, $subtotal);
-
-            $sale = new Sale([
-                'user_id' => Auth::id(),
-                'customer_id' => $this->customerId !== '' ? $this->customerId : null,
-                'subtotal' => $subtotal,
-                'discount_amount' => $invoiceDiscount,
-                'total' => $subtotal - $invoiceDiscount,
-            ]);
-            $sale->created_at = \Carbon\Carbon::parse($this->saleDate)->setTimeFrom(now());
-            $sale->save();
-
-            foreach ($allItemsData as $itemData) {
-                $sale->items()->create($itemData);
-            }
-
-            $sale->payments()->create([
-                'user_id' => Auth::id(),
-                'amount' => $paidNow,
-                'payment_date' => now()->toDateString(),
-            ]);
-
-            return $sale;
-        });
+            throw ValidationException::withMessages($errors);
+        }
 
         $this->toastSuccess('Sale completed.');
         $this->redirectRoute('sales.show', $sale, navigate: true);

@@ -40,4 +40,41 @@ class ProductLabelPdfService
             ['Content-Type' => 'application/pdf'],
         );
     }
+
+    /**
+     * @param  iterable<array{product: Product, copies: int}>  $items
+     */
+    public function downloadSheet(iterable $items, bool $showPrice, string $shopName): StreamedResponse
+    {
+        $labels = [];
+
+        foreach ($items as $item) {
+            $product = $item['product'];
+            $label = [
+                'shopName' => $shopName,
+                'name' => $product->name,
+                'barcode' => $product->barcode,
+                'barcodeImage' => BarcodeService::imageDataUri($product->barcode),
+                'price' => $showPrice ? 'Rs '.number_format($product->currentSellingPrice(), 2) : null,
+            ];
+
+            array_push($labels, ...array_fill(0, $item['copies'], $label));
+        }
+
+        $pdf = Pdf::loadView('pdf.product-label', [
+            'layout' => self::LAYOUT_A4,
+            'copies' => count($labels),
+            'columns' => self::A4_COLUMNS,
+            'rowsPerPage' => self::A4_ROWS_PER_PAGE,
+            'label' => $labels[0],
+            'labels' => $labels,
+            'title' => 'Product labels',
+        ])->setPaper('a4');
+
+        return response()->streamDownload(
+            fn () => print ($pdf->output()),
+            'labels-'.now()->format('Ymd-His').'.pdf',
+            ['Content-Type' => 'application/pdf'],
+        );
+    }
 }

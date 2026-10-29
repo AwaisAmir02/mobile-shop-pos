@@ -50,24 +50,24 @@
         x-show="show"
         class="fixed inset-0 transform transition-all"
         x-on:click="show = false"
-        x-transition:enter="ease-out duration-300"
+        x-transition:enter="ease-out duration-150"
         x-transition:enter-start="opacity-0"
         x-transition:enter-end="opacity-100"
-        x-transition:leave="ease-in duration-200"
+        x-transition:leave="ease-in duration-100"
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
     >
-        <div class="absolute inset-0 bg-slate-900/50"></div>
+        <div class="absolute inset-0 bg-brand-950/60"></div>
     </div>
 
     <div class="flex min-h-full items-center justify-center p-4 py-6">
         <div
             x-show="show"
-            class="relative transform rounded-xl bg-white shadow-xl transition-all sm:w-full {{ $maxWidth }}"
-            x-transition:enter="ease-out duration-300"
+            class="relative transform rounded-lg bg-white shadow-xl transition-all sm:w-full {{ $maxWidth }}"
+            x-transition:enter="ease-out duration-150"
             x-transition:enter-start="translate-y-4 opacity-0 sm:translate-y-0 sm:scale-95"
             x-transition:enter-end="translate-y-0 opacity-100 sm:scale-100"
-            x-transition:leave="ease-in duration-200"
+            x-transition:leave="ease-in duration-100"
             x-transition:leave-start="translate-y-0 opacity-100 sm:scale-100"
             x-transition:leave-end="translate-y-4 opacity-0 sm:translate-y-0 sm:scale-95"
         >

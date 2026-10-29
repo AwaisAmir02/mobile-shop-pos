@@ -1,6 +1,8 @@
 <?php
 
 use App\Actions\CreateProduct;
+use App\Enums\LimitKey;
+use App\Exceptions\UsageLimitReached;
 use App\Livewire\Concerns\GuardsExportSize;
 use App\Livewire\Concerns\Toasts;
 use App\Livewire\Concerns\UploadsImages;
@@ -10,6 +12,7 @@ use App\Models\MainCategory;
 use App\Models\Product;
 use App\ReportQueries\ProductReport;
 use App\Services\BarcodeService;
+use App\Services\Billing\Entitlements;
 use App\Services\ProductLabelPdfService;
 use App\Services\TableExportService;
 use Illuminate\Database\QueryException;
@@ -28,6 +31,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 {
     use GuardsExportSize, Toasts, UploadsImages, WithFileUploads, WithPagination;
+
+    public const MAX_SHEET_PRODUCTS = 100;
 
     public string $search = '';
     public string $typeFilter = '';
@@ -55,6 +60,12 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public string $printCopies = '1';
     public string $printLayout = ProductLabelPdfService::LAYOUT_ROLL;
     public bool $printShowPrice = true;
+
+    public array $labelSelection = [];
+
+    public array $sheetCopies = [];
+
+    public bool $sheetShowPrice = true;
 
     public function mount(): void
     {
@@ -175,9 +186,11 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             )->all(),
             'canImportProducts' => Auth::user()->canImportProducts(),
             'barcodeEnabled' => Auth::user()->canUseBarcodes(),
+            'whatsappEnabled' => (bool) Auth::user()->shop?->whatsapp_enabled,
             'barcodePreview' => $this->barcodePreview(),
             'missingBarcodeCount' => Auth::user()->canUseBarcodes() ? Product::whereNull('barcode')->count() : 0,
             'printingProduct' => $this->printingId ? Product::find($this->printingId) : null,
+            'sheetProducts' => $this->labelSelection !== [] ? Product::whereIn('id', $this->selectedLabelIds())->orderBy('name')->get() : collect(),
         ];
     }
 
@@ -252,6 +265,16 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     {
         $this->barcode = trim($this->barcode);
         $this->validate($this->rules());
+
+        if (! $this->editingId) {
+            try {
+                app(Entitlements::class)->ensureCanAdd(Auth::user()->shop, LimitKey::Products);
+            } catch (UsageLimitReached $e) {
+                $this->toastError($e->getMessage());
+
+                return;
+            }
+        }
 
         $product = $this->editingId ? Product::findOrFail($this->editingId) : new Product;
 
@@ -372,6 +395,155 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             $this->printShowPrice,
             Auth::user()->shop->name,
         );
+    }
+
+    public function openLabelSheet(): void
+    {
+        abort_unless(Auth::user()->canUseBarcodes(), 403);
+
+        $ids = $this->selectedLabelIds();
+
+        if ($ids === []) {
+            $this->toastError('Tick the products you want labels for first.');
+
+            return;
+        }
+
+        if (count($ids) > self::MAX_SHEET_PRODUCTS) {
+            $this->toastError('Select up to '.self::MAX_SHEET_PRODUCTS.' products per label sheet.');
+
+            return;
+        }
+
+        $this->sheetCopies = collect($ids)->mapWithKeys(fn (int $id) => [$id => (string) ($this->sheetCopies[$id] ?? '1')])->all();
+        $this->sheetShowPrice = true;
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'label-sheet-form');
+    }
+
+    public function generateBarcodesForSelection(): void
+    {
+        abort_unless(Auth::user()->canUseBarcodes(), 403);
+
+        $generated = 0;
+
+        foreach (Product::whereIn('id', $this->selectedLabelIds())->whereNull('barcode')->pluck('id') as $productId) {
+            if (BarcodeService::assignToProduct($productId)) {
+                $generated++;
+            }
+        }
+
+        $this->toastSuccess("Generated {$generated} barcode(s).");
+    }
+
+    public function removeFromLabelSelection(int $id): void
+    {
+        $this->labelSelection = array_values(array_diff($this->selectedLabelIds(), [$id]));
+        unset($this->sheetCopies[$id]);
+
+        if ($this->labelSelection === []) {
+            $this->dispatch('close-modal', name: 'label-sheet-form');
+        }
+    }
+
+    public function clearLabelSelection(): void
+    {
+        $this->reset(['labelSelection', 'sheetCopies']);
+    }
+
+    public function printLabelSheet(ProductLabelPdfService $labels): ?StreamedResponse
+    {
+        abort_unless(Auth::user()->canUseBarcodes(), 403);
+
+        $ids = $this->selectedLabelIds();
+
+        $this->validate([
+            'sheetCopies' => ['array'],
+            'sheetCopies.*' => ['required', 'integer', 'min:1', 'max:'.BarcodeService::MAX_LABEL_COPIES],
+        ], [], ['sheetCopies.*' => 'copies']);
+
+        $products = Product::whereIn('id', $ids)->whereNotNull('barcode')->where('barcode', '!=', '')->orderBy('name')->get();
+
+        if ($products->isEmpty()) {
+            $this->toastError('None of the selected products has a barcode yet. Generate them first.');
+
+            return null;
+        }
+
+        $total = $products->sum(fn (Product $product) => (int) ($this->sheetCopies[$product->id] ?? 1));
+
+        if ($total > BarcodeService::MAX_LABEL_COPIES) {
+            $this->addError('sheetCopies', 'That is '.$total.' labels — you can print up to '.BarcodeService::MAX_LABEL_COPIES.' per sheet request. Lower some copies or print in two batches.');
+
+            return null;
+        }
+
+        $this->dispatch('close-modal', name: 'label-sheet-form');
+        $this->reset(['labelSelection', 'sheetCopies']);
+
+        return $labels->downloadSheet(
+            $products->map(fn (Product $product) => ['product' => $product, 'copies' => (int) ($this->sheetCopiesFor($product->id))]),
+            $this->sheetShowPrice,
+            Auth::user()->shop->name,
+        );
+    }
+
+    protected function sheetCopiesFor(int $productId): int
+    {
+        return max(1, (int) ($this->sheetCopies[$productId] ?? 1));
+    }
+
+    protected function selectedLabelIds(): array
+    {
+        return array_values(array_unique(array_map('intval', array_filter($this->labelSelection, fn ($id) => is_numeric($id)))));
+    }
+
+    public function toggleWhatsAppListing(int $id): void
+    {
+        abort_unless(Auth::user()->shop?->whatsapp_enabled, 403);
+
+        $product = Product::findOrFail($id);
+        $product->update(['whatsapp_listed' => ! $product->whatsapp_listed]);
+
+        $this->toastSuccess($product->whatsapp_listed ? "{$product->name} is now available on WhatsApp." : "{$product->name} removed from WhatsApp.");
+    }
+
+    public function archive(int $id): void
+    {
+        $product = Product::findOrFail($id);
+
+        if (! $product->canBeArchived()) {
+            $this->toastError('Only products with no stock left can be archived.');
+
+            return;
+        }
+
+        $product->update(['archived_at' => now(), 'whatsapp_listed' => false]);
+        app(Entitlements::class)->forgetMeters(Auth::user()->shop);
+
+        $this->toastSuccess("{$product->name} archived. It no longer counts towards your plan, and comes back automatically if you stock it again.");
+    }
+
+    public function restore(int $id): void
+    {
+        $product = Product::findOrFail($id);
+
+        if (! $product->isArchived()) {
+            return;
+        }
+
+        try {
+            app(Entitlements::class)->ensureCanAdd(Auth::user()->shop, LimitKey::Products);
+        } catch (UsageLimitReached $e) {
+            $this->toastError($e->getMessage());
+
+            return;
+        }
+
+        $product->update(['archived_at' => null]);
+        app(Entitlements::class)->forgetMeters(Auth::user()->shop);
+
+        $this->toastSuccess("{$product->name} restored.");
     }
 
     public function delete(int $id): void
@@ -501,11 +673,24 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 ? ['Product', 'Category', 'Barcode', 'Price', 'Stock', '']
                 : ['Product', 'Category', 'Price', 'Stock', ''];
         @endphp
+        @if ($barcodeEnabled && $labelSelection !== [])
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm">
+                <span class="font-medium text-brand-900">{{ count($labelSelection) }} {{ \Illuminate\Support\Str::plural('product', count($labelSelection)) }} selected for labels</span>
+                <div class="flex items-center gap-2">
+                    <x-ui.button size="sm" variant="ghost" wire:click="clearLabelSelection">Clear</x-ui.button>
+                    <x-ui.button size="sm" wire:click="openLabelSheet">Print label sheet</x-ui.button>
+                </div>
+            </div>
+        @endif
+
         <x-ui.table :headers="$productHeaders">
             @foreach ($products as $product)
                 <x-ui.table-row wire:key="product-{{ $product->id }}">
                     <x-ui.table-cell class="font-medium text-slate-900">
                         <div class="flex items-center gap-3">
+                            @if ($barcodeEnabled && $product->type !== 'sim')
+                                <input type="checkbox" wire:model.live="labelSelection" value="{{ $product->id }}" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" aria-label="Select {{ $product->name }} for label printing">
+                            @endif
                             <x-ui.thumbnail :src="$product->imageUrl()" :label="$product->name" />
                             {{ $product->name }}
                         </div>
@@ -528,7 +713,9 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     @endif
                     <x-ui.table-cell>Rs {{ number_format($product->price, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell>
-                        @if ($product->isOutOfStock())
+                        @if ($product->isArchived())
+                            <x-ui.badge>Archived</x-ui.badge>
+                        @elseif ($product->isOutOfStock())
                             <x-ui.badge variant="danger">Out of stock</x-ui.badge>
                         @elseif ($product->isLowStock())
                             <x-ui.badge variant="warning">Low · {{ $product->stock_quantity }}</x-ui.badge>
@@ -543,10 +730,20 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                                     Print Label
                                 </x-ui.button>
                             @endif
+                            @if ($whatsappEnabled && $product->type !== 'sim')
+                                <x-ui.button size="sm" variant="ghost" wire:click="toggleWhatsAppListing({{ $product->id }})" @class(['text-emerald-700' => $product->whatsapp_listed]) title="{{ $product->whatsapp_listed ? 'Listed on WhatsApp — click to remove' : 'Not on WhatsApp — click to list' }}">
+                                    {{ $product->whatsapp_listed ? 'On WhatsApp' : 'Add to WhatsApp' }}
+                                </x-ui.button>
+                            @endif
                             @if ($product->type !== 'sim')
                                 <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $product->id }})">
                                     Edit
                                 </x-ui.button>
+                            @endif
+                            @if ($product->isArchived())
+                                <x-ui.button size="sm" variant="ghost" wire:click="restore({{ $product->id }})">Restore</x-ui.button>
+                            @elseif ($product->canBeArchived())
+                                <x-ui.button size="sm" variant="ghost" wire:click="archive({{ $product->id }})" title="Hide this out-of-stock product so it no longer counts towards your plan">Archive</x-ui.button>
                             @endif
                             <x-ui.button
                                 size="sm"
@@ -732,6 +929,55 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                         Download PDF
                     </x-ui.button>
                 @endif
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.modal name="label-sheet-form" max-width="lg">
+        <form wire:submit="printLabelSheet" class="p-6">
+            <h2 class="text-lg font-semibold text-slate-900">Print label sheet</h2>
+            <p class="mt-1 text-sm text-slate-500">One A4 sheet (3 × 8 labels per page) with each product’s label repeated by its copies.</p>
+
+            @php($missing = $sheetProducts->filter(fn ($p) => $p->barcode === null || $p->barcode === ''))
+
+            @if ($missing->isNotEmpty())
+                <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    <span>{{ $missing->count() }} selected {{ \Illuminate\Support\Str::plural('product', $missing->count()) }} {{ $missing->count() === 1 ? 'has' : 'have' }} no barcode and will be skipped.</span>
+                    <button type="button" wire:click="generateBarcodesForSelection" class="font-semibold underline">Generate barcodes for {{ $missing->count() === 1 ? 'it' : 'them' }}</button>
+                </div>
+            @endif
+
+            <ul class="mt-4 max-h-80 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200">
+                @foreach ($sheetProducts as $sheetProduct)
+                    <li class="flex items-center justify-between gap-3 px-3 py-2" wire:key="sheet-{{ $sheetProduct->id }}">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-medium text-slate-900">{{ $sheetProduct->name }}</p>
+                            <p class="font-mono text-xs text-slate-500">{{ $sheetProduct->barcode ?: 'No barcode — skipped' }}</p>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-2">
+                            @if ($sheetProduct->barcode)
+                                <label class="sr-only" for="sheet-copies-{{ $sheetProduct->id }}">Copies of {{ $sheetProduct->name }}</label>
+                                <x-ui.input wire:model="sheetCopies.{{ $sheetProduct->id }}" id="sheet-copies-{{ $sheetProduct->id }}" type="number" min="1" max="{{ \App\Services\BarcodeService::MAX_LABEL_COPIES }}" class="w-20 py-1.5 text-sm" />
+                            @endif
+                            <button type="button" wire:click="removeFromLabelSelection({{ $sheetProduct->id }})" class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600" aria-label="Remove {{ $sheetProduct->name }}">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </li>
+                @endforeach
+            </ul>
+            <x-ui.error :messages="$errors->get('sheetCopies')" class="mt-2" />
+            @foreach ($errors->get('sheetCopies.*') as $messages)
+                <x-ui.error :messages="$messages" class="mt-1" />
+            @endforeach
+
+            <div class="mt-4">
+                <x-ui.checkbox wire:model="sheetShowPrice" label="Show selling price on the labels" />
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal', { name: 'label-sheet-form' })">Cancel</x-ui.button>
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="printLabelSheet" :disabled="$sheetProducts->every(fn ($p) => ! $p->barcode)">Download PDF</x-ui.button>
             </div>
         </form>
     </x-ui.modal>

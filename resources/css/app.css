@@ -15,3 +15,150 @@
         display: none !important;
     }
 }
+
+/* App shell: page titles sit in the sticky top bar, so keep them compact. */
+.app-header h1 {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+}
+
+/* Sidebar menu scrollbar: thin, white-tinted on the navy background.
+   Chromium/Safari use the ::-webkit pseudo-elements (setting the standard properties as
+   well would make Chromium ignore them and draw its wider default), Firefox the standard
+   properties. */
+.sb-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sb-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sb-scroll::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: rgb(255 255 255 / 0.16);
+}
+
+.sb-scroll:hover::-webkit-scrollbar-thumb {
+    background-color: rgb(255 255 255 / 0.28);
+}
+
+.sb-scroll::-webkit-scrollbar-thumb:active {
+    background-color: rgb(255 255 255 / 0.4);
+}
+
+@supports (-moz-appearance: none) {
+    .sb-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgb(255 255 255 / 0.22) transparent;
+    }
+}
+
+/* Desktop sidebar collapsed to an icon rail (toggled in layouts/app.blade.php). */
+@media (min-width: 1024px) {
+    /* Keep the rail icons centred whether or not the scrollbar is showing. */
+    html[data-sidebar='collapsed'] .sb-aside .sb-scroll {
+        scrollbar-gutter: stable both-edges;
+        padding-inline: 0.25rem;
+    }
+
+    html[data-sidebar='collapsed'] .sb-aside .sb-scroll::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    html[data-sidebar='collapsed'] .sb-main {
+        padding-left: 4rem;
+    }
+
+    html[data-sidebar='collapsed'] .sb-aside {
+        width: 4rem;
+    }
+
+    html[data-sidebar='collapsed'] .sb-aside .sb-label {
+        display: none;
+    }
+
+    html[data-sidebar='collapsed'] .sb-aside .sb-divider {
+        display: block;
+    }
+
+    html[data-sidebar='collapsed'] .sb-aside .sb-group-items {
+        display: block !important;
+    }
+
+    html[data-sidebar='collapsed'] .sb-aside .sb-brand,
+    html[data-sidebar='collapsed'] .sb-aside [data-nav-item] {
+        justify-content: center;
+    }
+
+    html[data-sidebar='collapsed'] .sb-aside .sb-collapse {
+        margin-inline: auto;
+    }
+}
+
+.js [data-reveal] {
+    opacity: 0;
+    transform: translateY(1.5rem);
+    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+}
+
+.js [data-reveal='left'] {
+    transform: translateX(-2rem);
+}
+
+.js [data-reveal='right'] {
+    transform: translateX(2rem);
+}
+
+.js [data-reveal='zoom'] {
+    transform: scale(0.96);
+}
+
+.js [data-reveal].is-visible {
+    opacity: 1;
+    transform: none;
+}
+
+[data-site-header].is-scrolled {
+    border-color: rgb(226 232 240);
+    box-shadow: 0 8px 24px -12px rgb(2 33 87 / 0.18);
+}
+
+@keyframes site-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+}
+
+@keyframes site-float-slow {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-8px) rotate(-1deg); }
+}
+
+@keyframes site-drift {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(2rem, -1.5rem) scale(1.08); }
+}
+
+@keyframes site-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+@keyframes site-grow {
+    from { transform: scaleY(0.15); }
+    to { transform: scaleY(1); }
+}
+
+.site-float { animation: site-float 6s ease-in-out infinite; }
+.site-float-slow { animation: site-float-slow 8s ease-in-out infinite; }
+.site-drift { animation: site-drift 18s ease-in-out infinite; }
+.site-marquee { animation: site-marquee 40s linear infinite; }
+.site-bar { transform-origin: bottom; transform: scaleY(0.15); transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1); transition-delay: var(--bar-delay, 0ms); }
+.is-visible .site-bar, html:not(.js) .site-bar { transform: scaleY(1); }
+
+@media (prefers-reduced-motion: reduce) {
+    .js [data-reveal] { opacity: 1; transform: none; transition: none; }
+    .site-float, .site-float-slow, .site-drift, .site-marquee { animation: none; }
+    .site-bar { transform: none; transition: none; }
+}
