@@ -43,7 +43,8 @@ class Shop extends Model
         'invoice_address',
         'logo_path',
         'services_enabled',
-        'whatsapp_enabled',
+        'whatsapp_ordering_enabled',
+        'whatsapp_messaging_enabled',
         'social_enabled',
         'whatsapp_messages',
         'ads_enabled',
@@ -67,7 +68,8 @@ class Shop extends Model
             'barcode_enabled' => 'boolean',
             'branding_enabled' => 'boolean',
             'services_enabled' => 'boolean',
-            'whatsapp_enabled' => 'boolean',
+            'whatsapp_ordering_enabled' => 'boolean',
+            'whatsapp_messaging_enabled' => 'boolean',
             'social_enabled' => 'boolean',
             'whatsapp_messages' => 'array',
             'ads_enabled' => 'boolean',
@@ -196,6 +198,15 @@ class Shop extends Model
     public function isSubscriptionActive(): bool
     {
         return $this->subscription_status === SubscriptionStatus::Active;
+    }
+
+    /**
+     * Either half of WhatsApp is on. For what both halves need: the number's
+     * connection, the bot's welcome texts, inbound webhooks and marketing.
+     */
+    public function usesWhatsApp(): bool
+    {
+        return $this->whatsapp_ordering_enabled || $this->whatsapp_messaging_enabled;
     }
 
     /**

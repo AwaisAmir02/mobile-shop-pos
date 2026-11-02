@@ -18,6 +18,7 @@ use App\Models\Sale;
 use App\Models\Shop;
 use App\Models\ShopAddon;
 use App\Models\User;
+use App\Models\WhatsAppOrder;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 
@@ -73,7 +74,7 @@ class Entitlements
     {
         return ShopAddon::where('shop_id', $shop->id)
             ->where('kind', AddonKind::FeatureUnlock->value)
-            ->where('feature_key', $feature->value)
+            ->whereJsonContains('feature_keys', $feature->value)
             ->inEffect()
             ->exists();
     }
@@ -95,6 +96,8 @@ class Entitlements
             LimitKey::SalesPerMonth => Sale::withoutGlobalScopes()->where('shop_id', $shop->id)->where('status', '!=', SaleStatus::Cancelled->value)->whereBetween('created_at', [$start, $end])->count(),
             LimitKey::WhatsAppMessagesPerMonth => CustomerNotification::withoutGlobalScopes()->where('shop_id', $shop->id)->where('status', NotificationStatus::Sent->value)->whereBetween('created_at', [$start, $end])->count(),
             LimitKey::Branches => Branch::withoutGlobalScopes()->where('shop_id', $shop->id)->whereNull('archived_at')->count(),
+            // Orders the customer placed (Confirm tapped) this month, whatever the shop did with them.
+            LimitKey::WhatsAppOrdersPerMonth => WhatsAppOrder::withoutGlobalScopes()->where('shop_id', $shop->id)->whereBetween('submitted_at', [$start, $end])->count(),
             LimitKey::MarketingPostsPerMonth => MarketingPost::withoutGlobalScopes()->where('shop_id', $shop->id)->where('kind', '!=', PostKind::QrCode->value)->whereBetween('created_at', [$start, $end])->count(),
         };
     }
@@ -179,7 +182,7 @@ class Entitlements
 
             $unlocks = ShopAddon::where('shop_id', $shop->id)
                 ->where('kind', AddonKind::FeatureUnlock->value)
-                ->where('feature_key', $feature->value)
+                ->whereJsonContains('feature_keys', $feature->value)
                 ->inEffect()
                 ->get('ends_at');
 
@@ -205,6 +208,14 @@ class Entitlements
         $flags = $this->plan($shop)?->feature_flags ?? [];
 
         return array_key_exists($feature->value, $flags) ? (bool) $flags[$feature->value] : null;
+    }
+
+    /** Whether the plan switches on every one of $features (an add-on would add nothing). */
+    public function planIncludesAll(Shop $shop, iterable $features): bool
+    {
+        $features = collect($features);
+
+        return $features->isNotEmpty() && $features->every(fn (FeatureKey $feature) => $this->planFeature($shop, $feature) === true);
     }
 
     public function featureOverride(Shop $shop, FeatureKey $feature): ?bool

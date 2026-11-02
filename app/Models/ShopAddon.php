@@ -8,6 +8,7 @@ use App\Enums\FeatureKey;
 use App\Enums\LimitKey;
 use App\Enums\ShopAddonStatus;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -22,7 +23,7 @@ class ShopAddon extends Model
         'kind',
         'limit_key',
         'quantity',
-        'feature_key',
+        'feature_keys',
         'price',
         'billing',
         'starts_at',
@@ -36,7 +37,7 @@ class ShopAddon extends Model
             'status' => ShopAddonStatus::class,
             'kind' => AddonKind::class,
             'limit_key' => LimitKey::class,
-            'feature_key' => FeatureKey::class,
+            'feature_keys' => AsEnumCollection::of(FeatureKey::class),
             'billing' => AddonBilling::class,
             'quantity' => 'integer',
             'price' => 'decimal:2',

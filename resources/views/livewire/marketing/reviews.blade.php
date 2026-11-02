@@ -16,7 +16,7 @@ new #[Layout('layouts.app')] #[Title('Customer Reviews')] class extends Componen
     public function mount(): void
     {
         $shop = Auth::user()->shop;
-        abort_unless($shop?->whatsapp_enabled || $shop?->social_enabled, 403);
+        abort_unless($shop?->usesWhatsApp() || $shop?->social_enabled, 403);
     }
 
     public function createPost(int $reviewId, PostComposer $composer): void

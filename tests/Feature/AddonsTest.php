@@ -30,7 +30,7 @@ class AddonsTest extends TestCase
         return User::factory()->create(['is_super_admin' => true, 'shop_id' => null]);
     }
 
-    protected function plannedShop(array $limits = ['products' => 2], array $features = ['whatsapp' => false], string $interval = 'monthly'): array
+    protected function plannedShop(array $limits = ['products' => 2], array $features = ['whatsapp_ordering' => false, 'whatsapp_messaging' => false], string $interval = 'monthly'): array
     {
         $plan = Plan::create(['name' => 'Plan '.uniqid(), 'price' => 2000, 'billing_interval' => $interval, 'features' => [['label' => 'x', 'included' => true]], 'limits' => $limits, 'feature_flags' => $features]);
         $shop = Shop::create(['name' => 'Ali Mobiles', 'plan_id' => $plan->id, 'plan_type' => $interval, 'subscription_status' => 'active', 'subscription_start_date' => now()->subDays(5)->toDateString()]);
@@ -39,9 +39,10 @@ class AddonsTest extends TestCase
         return [$shop, $owner, $plan];
     }
 
-    protected function unlock(string $feature = 'whatsapp', string $billing = 'monthly'): Addon
+    /** Defaults to the WhatsApp bundle, which is what a pre-split "whatsapp" unlock became. */
+    protected function unlock(array $features = ['whatsapp_ordering', 'whatsapp_messaging'], string $billing = 'monthly'): Addon
     {
-        return Addon::create(['name' => 'WhatsApp ordering', 'kind' => 'feature_unlock', 'feature_key' => $feature, 'price' => 1500, 'billing' => $billing])->fresh();
+        return Addon::create(['name' => 'WhatsApp ordering', 'kind' => 'feature_unlock', 'feature_keys' => $features, 'price' => 1500, 'billing' => $billing])->fresh();
     }
 
     protected function confirmLatestPayment(): SubscriptionPayment
@@ -73,12 +74,12 @@ class AddonsTest extends TestCase
         Livewire::test('admin.addons')->call('openCreate')->set('name', 'More messages')->set('kind', 'limit_pack')->set('limitKey', 'whatsapp_messages_per_month')->set('quantity', '1000')->set('price', '800')->set('billing', 'yearly')->call('save')->assertHasNoErrors();
         $pack = Addon::where('name', 'More messages')->sole();
         $this->assertSame(AddonBilling::OneOff, $pack->billing);
-        $this->assertNull($pack->feature_key);
+        $this->assertNull($pack->feature_keys);
 
-        Livewire::test('admin.addons')->call('openCreate')->set('name', 'Ads unlock')->set('kind', 'feature_unlock')->set('featureKey', 'ads')->set('billing', 'yearly')->set('price', '9000')->call('save')->assertHasNoErrors();
+        Livewire::test('admin.addons')->call('openCreate')->set('name', 'Ads unlock')->set('kind', 'feature_unlock')->set('featureKeys', ['ads'])->set('billing', 'yearly')->set('price', '9000')->call('save')->assertHasNoErrors();
         $unlock = Addon::where('name', 'Ads unlock')->sole();
         $this->assertSame(AddonBilling::Yearly, $unlock->billing);
-        $this->assertSame(FeatureKey::Ads, $unlock->feature_key);
+        $this->assertSame([FeatureKey::Ads], $unlock->feature_keys->all());
         $this->assertNull($unlock->quantity);
     }
 
@@ -122,15 +123,15 @@ class AddonsTest extends TestCase
 
     public function test_a_feature_unlock_switches_the_feature_on_and_off_and_renewal_extends_it(): void
     {
-        [$shop, $owner] = $this->plannedShop(features: ['whatsapp' => false]);
+        [$shop, $owner] = $this->plannedShop(features: ['whatsapp_ordering' => false, 'whatsapp_messaging' => false]);
         $unlock = $this->unlock();
         $addons = app(AddonService::class);
 
         $addons->purchase($shop, $unlock, $owner->id);
-        $this->assertFalse($shop->fresh()->whatsapp_enabled);
+        $this->assertFalse($shop->fresh()->usesWhatsApp());
 
         $this->confirmLatestPayment();
-        $this->assertTrue($shop->fresh()->whatsapp_enabled);
+        $this->assertTrue($shop->fresh()->whatsapp_ordering_enabled && $shop->fresh()->whatsapp_messaging_enabled);
         $first = ShopAddon::sole();
         $this->assertTrue($first->ends_at->isSameDay(now()->addMonthNoOverflow()));
 
@@ -141,29 +142,34 @@ class AddonsTest extends TestCase
 
         $this->travelTo($first->ends_at->copy()->addMinute());
         $this->artisan('billing:expire-addons');
-        $this->assertTrue($shop->fresh()->whatsapp_enabled);
+        $this->assertTrue($shop->fresh()->whatsapp_ordering_enabled && $shop->fresh()->whatsapp_messaging_enabled);
 
         $this->travelTo($second->ends_at->copy()->addMinute());
         $this->artisan('billing:expire-addons');
-        $this->assertFalse($shop->fresh()->whatsapp_enabled);
+        $this->assertFalse($shop->fresh()->usesWhatsApp());
     }
 
     public function test_an_admin_override_beats_an_unlock(): void
     {
-        [$shop, $owner] = $this->plannedShop(features: ['whatsapp' => false]);
+        [$shop, $owner] = $this->plannedShop(features: ['whatsapp_ordering' => false, 'whatsapp_messaging' => false]);
         app(AddonService::class)->purchase($shop, $this->unlock(), $owner->id);
         $this->confirmLatestPayment();
 
-        app(Entitlements::class)->setFeatureOverride($shop->fresh(), FeatureKey::WhatsApp, false);
-        $this->assertFalse($shop->fresh()->whatsapp_enabled);
+        app(Entitlements::class)->setFeatureOverride($shop->fresh(), FeatureKey::WhatsAppOrdering, false);
+        $this->assertFalse($shop->fresh()->whatsapp_ordering_enabled);
+        $this->assertTrue($shop->fresh()->whatsapp_messaging_enabled, 'The other half of the bundle stays on.');
 
-        app(Entitlements::class)->setFeatureOverride($shop->fresh(), FeatureKey::WhatsApp, null);
-        $this->assertTrue($shop->fresh()->whatsapp_enabled);
+        app(Entitlements::class)->setFeatureOverride($shop->fresh(), FeatureKey::WhatsAppMessaging, false);
+        $this->assertFalse($shop->fresh()->usesWhatsApp());
+
+        app(Entitlements::class)->setFeatureOverride($shop->fresh(), FeatureKey::WhatsAppOrdering, null);
+        app(Entitlements::class)->setFeatureOverride($shop->fresh(), FeatureKey::WhatsAppMessaging, null);
+        $this->assertTrue($shop->fresh()->whatsapp_ordering_enabled && $shop->fresh()->whatsapp_messaging_enabled);
     }
 
     public function test_unlocks_already_in_the_plan_are_not_offered_and_shops_without_a_plan_cannot_buy(): void
     {
-        [$shop, $owner] = $this->plannedShop(features: ['whatsapp' => true]);
+        [$shop, $owner] = $this->plannedShop(features: ['whatsapp_ordering' => true, 'whatsapp_messaging' => true]);
         $unlock = $this->unlock();
 
         // The feature itself is listed under "What's included"; what must be

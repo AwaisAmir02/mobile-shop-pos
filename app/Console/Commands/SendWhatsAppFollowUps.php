@@ -26,7 +26,7 @@ class SendWhatsAppFollowUps extends Command
     public function handle(CustomerNotifications $notifications): int
     {
         $limit = (int) $this->option('limit');
-        $enabledShopIds = Shop::where('whatsapp_enabled', true)->pluck('id');
+        $enabledShopIds = Shop::where('whatsapp_messaging_enabled', true)->pluck('id');
 
         $reviews = 0;
 

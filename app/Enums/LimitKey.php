@@ -10,6 +10,7 @@ enum LimitKey: string
     case WhatsAppMessagesPerMonth = 'whatsapp_messages_per_month';
     case MarketingPostsPerMonth = 'marketing_posts_per_month';
     case Branches = 'branches';
+    case WhatsAppOrdersPerMonth = 'whatsapp_orders_per_month';
 
     public function label(): string
     {
@@ -20,6 +21,7 @@ enum LimitKey: string
             self::WhatsAppMessagesPerMonth => 'WhatsApp messages this month',
             self::MarketingPostsPerMonth => 'Marketing posts this month',
             self::Branches => 'Branches',
+            self::WhatsAppOrdersPerMonth => 'WhatsApp orders this month',
         };
     }
 
@@ -34,6 +36,7 @@ enum LimitKey: string
                 self::WhatsAppMessagesPerMonth => 'message',
                 self::MarketingPostsPerMonth => 'post',
                 self::Branches => 'branch',
+                self::WhatsAppOrdersPerMonth => 'order',
             };
         }
 
@@ -44,6 +47,7 @@ enum LimitKey: string
             self::WhatsAppMessagesPerMonth => 'messages',
             self::MarketingPostsPerMonth => 'posts',
             self::Branches => 'branches',
+            self::WhatsAppOrdersPerMonth => 'orders',
         };
     }
 
@@ -59,11 +63,56 @@ enum LimitKey: string
 
     public function isMonthly(): bool
     {
-        return in_array($this, [self::SalesPerMonth, self::WhatsAppMessagesPerMonth, self::MarketingPostsPerMonth], true);
+        return in_array($this, [self::SalesPerMonth, self::WhatsAppMessagesPerMonth, self::MarketingPostsPerMonth, self::WhatsAppOrdersPerMonth], true);
     }
 
     public function blocksAtLimit(): bool
     {
         return $this !== self::SalesPerMonth;
+    }
+
+    /** The lowest limit a plan or a shop override can set. Main always counts as one branch. */
+    public function minimum(): int
+    {
+        return $this === self::Branches ? 1 : 0;
+    }
+
+    /**
+     * The shops column this limit was kept in before limit_overrides. The
+     * admin shop page still reads it as a fallback and writes it alongside.
+     */
+    public function legacyColumn(): ?string
+    {
+        return match ($this) {
+            self::Products => 'products_allowed',
+            self::SalesPerMonth => 'sales_allowed',
+            default => null,
+        };
+    }
+
+    /**
+     * Branch packs are the one recurring kind of limit pack: a branch is a
+     * standing thing, so its pack must not lapse when the plan renews.
+     * Every other pack stays one-off, until the plan renews.
+     */
+    public function packRecurs(): bool
+    {
+        return $this === self::Branches;
+    }
+
+    /** The feature this limit is shown with in the Plan editor, if any. */
+    public function feature(): ?FeatureKey
+    {
+        return collect(FeatureKey::cases())->first(fn (FeatureKey $feature) => $feature->limit() === $this);
+    }
+
+    /**
+     * Limits no feature is paired with: the Plan editor's "Core limits".
+     *
+     * @return array<int, self>
+     */
+    public static function core(): array
+    {
+        return array_values(array_filter(self::cases(), fn (self $key) => $key->feature() === null));
     }
 }

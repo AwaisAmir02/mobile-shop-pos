@@ -57,7 +57,7 @@ new class extends Component
         $shop = Auth::user()->shop;
 
         return match (true) {
-            (bool) $shop?->whatsapp_enabled => 'whatsapp',
+            (bool) $shop?->usesWhatsApp() => 'whatsapp',
             (bool) $shop?->social_enabled => 'facebook',
             (bool) $shop?->ads_enabled => 'ads',
             default => 'whatsapp',
@@ -71,7 +71,7 @@ new class extends Component
 
     protected function authorizeWhatsApp(): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings-integrations') && Auth::user()->shop?->whatsapp_enabled, 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-integrations') && Auth::user()->shop?->usesWhatsApp(), 403);
     }
 
     public function completeWhatsAppSignup(string $code, string $phoneNumberId, string $wabaId, WhatsAppOnboarding $onboarding): void
@@ -305,7 +305,7 @@ new class extends Component
 
     @if ($section === 'whatsapp')
         <x-ui.card title="WhatsApp" description="Connect your shop's WhatsApp Business number so customers can browse and order through a chatbot.">
-            @if (! $shop->whatsapp_enabled)
+            @if (! $shop->usesWhatsApp())
                 <p class="text-sm text-slate-500">WhatsApp ordering is not enabled for your shop. Contact HisabOKitab support to turn it on.</p>
             @elseif ($whatsappConnection)
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -410,7 +410,7 @@ new class extends Component
                 </div>
             @endif
 
-            @if ($shop->whatsapp_enabled && ! $whatsappConnection && $allowManual)
+            @if ($shop->usesWhatsApp() && ! $whatsappConnection && $allowManual)
                 <form wire:submit="connectManually" class="mt-6 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-2">
                     <p class="text-xs font-medium uppercase tracking-wide text-slate-400 sm:col-span-2">Manual connection (testing only)</p>
                     <x-ui.field label="Phone number ID" name="manualPhoneNumberId" for="manualPhoneNumberId">
@@ -430,7 +430,7 @@ new class extends Component
             @endif
         </x-ui.card>
 
-        @if ($shop->whatsapp_enabled)
+        @if ($shop->usesWhatsApp())
             <livewire:settings.whatsapp-messages key="whatsapp-messages" />
         @endif
     @elseif ($section === 'facebook')

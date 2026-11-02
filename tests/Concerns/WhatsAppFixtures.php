@@ -32,7 +32,7 @@ trait WhatsAppFixtures
 
     protected function whatsappShop(string $name = 'Shop A', string $phoneNumberId = '100200300'): array
     {
-        $shop = Shop::create(['name' => $name, 'whatsapp_enabled' => true]);
+        $shop = Shop::create(['name' => $name, 'whatsapp_ordering_enabled' => true, 'whatsapp_messaging_enabled' => true]);
         $owner = User::factory()->create(['shop_id' => $shop->id, 'is_owner' => true]);
 
         $connection = ShopChannelConnection::create([

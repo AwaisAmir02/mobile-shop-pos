@@ -36,7 +36,7 @@ class DuesInvarianceTest extends TestCase
         [$shop, $owner, $bilal, $sana] = DuesBaselineTest::seedDuesFixture($this);
         DuesBaselineTest::assertGoldenDues($this, $bilal, $sana);
 
-        $shop->update(['whatsapp_enabled' => true, 'social_enabled' => true]);
+        $shop->update(['whatsapp_ordering_enabled' => true, 'whatsapp_messaging_enabled' => true, 'social_enabled' => true]);
         $connection = ShopChannelConnection::create([
             'shop_id' => $shop->id, 'provider' => ChannelProvider::WhatsApp, 'external_id' => '777', 'waba_id' => '900',
             'access_token' => 'tok', 'status' => ConnectionStatus::Connected, 'connected_at' => now(),
@@ -98,7 +98,7 @@ class DuesInvarianceTest extends TestCase
         ]);
 
         [$shop, $owner, $bilal, $sana] = DuesBaselineTest::seedDuesFixture($this);
-        $shop->update(['whatsapp_enabled' => true, 'social_enabled' => true, 'ads_enabled' => true]);
+        $shop->update(['whatsapp_ordering_enabled' => true, 'whatsapp_messaging_enabled' => true, 'social_enabled' => true, 'ads_enabled' => true]);
         ShopChannelConnection::create(['shop_id' => $shop->id, 'provider' => ChannelProvider::WhatsApp, 'external_id' => '777', 'meta' => ['display_phone_number' => '+92 300 0000000'], 'access_token' => 't', 'status' => ConnectionStatus::Connected, 'connected_at' => now()]);
         $this->metaConnections($shop);
         ShopChannelConnection::create(['shop_id' => $shop->id, 'provider' => ChannelProvider::MetaAds, 'external_id' => 'act_1', 'access_token' => 't', 'meta' => ['currency' => 'PKR'], 'status' => ConnectionStatus::Connected, 'connected_at' => now()]);

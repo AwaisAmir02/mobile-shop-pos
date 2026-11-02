@@ -34,7 +34,7 @@ class CustomerNotifications
     {
         $shop = Shop::findOrFail($order->shop_id);
         $contact = WhatsAppContact::withoutGlobalScope(ShopScope::class)->findOrFail($order->whatsapp_contact_id);
-        $connection = $this->connectionFor($shop);
+        $connection = $this->connectionFor($shop, NotificationType::OrderUpdate);
 
         $sentence = WhatsAppLanguage::t($contact, $status->messageKey(), ['order' => $order->orderNumber(), 'shop' => $shop->invoiceDisplayName()]);
 
@@ -55,7 +55,7 @@ class CustomerNotifications
             throw new RuntimeException('This repair has no customer attached.');
         }
 
-        $connection = $this->connectionFor($shop);
+        $connection = $this->connectionFor($shop, NotificationType::RepairReady);
         $contact = CustomerMessenger::contactForCustomer($customer, $connection)
             ?? throw new RuntimeException("{$customer->name} has no valid phone number.");
 
@@ -128,7 +128,7 @@ class CustomerNotifications
         }
 
         $shop = Shop::findOrFail($customer->shop_id);
-        $connection = $this->connectionFor($shop);
+        $connection = $this->connectionFor($shop, NotificationType::PaymentReminder);
         $contact = CustomerMessenger::contactForCustomer($customer, $connection)
             ?? throw new RuntimeException("{$customer->name} has no valid phone number.");
 
@@ -154,7 +154,7 @@ class CustomerNotifications
         $price = self::money($product->currentSellingPrice());
 
         return $this->messenger->deliver(
-            $this->connectionFor($shop), $contact, NotificationType::RestockAlert, $product,
+            $this->connectionFor($shop, NotificationType::RestockAlert), $contact, NotificationType::RestockAlert, $product,
             WhatsAppLanguage::t($contact, 'restock', ['name' => $product->name, 'shop' => $shop->invoiceDisplayName(), 'price' => $price]), [],
             'restock_alert', [$product->name, $shop->invoiceDisplayName(), $price],
         );
@@ -167,7 +167,7 @@ class CustomerNotifications
         $name = $contact->displayName();
 
         return $this->messenger->deliver(
-            $this->connectionFor($shop), $contact, NotificationType::ReviewRequest, $order,
+            $this->connectionFor($shop, NotificationType::ReviewRequest), $contact, NotificationType::ReviewRequest, $order,
             WhatsAppLanguage::t($contact, 'review_request', ['name' => $name, 'order' => $order->orderNumber(), 'shop' => $shop->invoiceDisplayName()]),
             [
                 'rate:5' => WhatsAppLanguage::t($contact, 'btn_review_great'),
@@ -178,10 +178,10 @@ class CustomerNotifications
         );
     }
 
-    protected function connectionFor(Shop $shop)
+    protected function connectionFor(Shop $shop, NotificationType $type)
     {
-        if (! $shop->whatsapp_enabled) {
-            throw new RuntimeException('WhatsApp is not enabled for this shop.');
+        if (! $shop->{$type->feature()->column()}) {
+            throw new RuntimeException($type->feature()->label().' is not enabled for this shop.');
         }
 
         return CustomerMessenger::whatsappConnection($shop->id)

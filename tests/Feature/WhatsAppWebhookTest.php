@@ -88,7 +88,7 @@ class WhatsAppWebhookTest extends TestCase
         $this->fakeGraph();
         $this->whatsappIntegration();
         [$shop, , $connection] = $this->whatsappShop();
-        Shop::whereKey($shop->id)->update(['whatsapp_enabled' => false]);
+        Shop::whereKey($shop->id)->update(['whatsapp_ordering_enabled' => false, 'whatsapp_messaging_enabled' => false]);
 
         $this->postWebhook($this->webhookBody($connection->external_id, [$this->textMessage('923001234567', 'hi')]))->assertOk();
 

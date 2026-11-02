@@ -29,7 +29,7 @@ new #[Layout('layouts.app')] #[Title('Post')] class extends Component
     public function mount(MarketingPost $post): void
     {
         $shop = Auth::user()->shop;
-        abort_unless($shop?->whatsapp_enabled || $shop?->social_enabled, 403);
+        abort_unless($shop?->usesWhatsApp() || $shop?->social_enabled, 403);
         abort_if($post->kind === PostKind::QrCode, 404);
 
         $this->post = $post;

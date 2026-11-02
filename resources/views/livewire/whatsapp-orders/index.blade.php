@@ -18,7 +18,7 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Orders')] class extends Component
 
     public function mount(): void
     {
-        abort_unless(Auth::user()->shop?->whatsapp_enabled, 403);
+        abort_unless(Auth::user()->shop?->whatsapp_ordering_enabled, 403);
 
         if (! in_array($this->tab, ['pending', 'accepted', 'rejected'], true)) {
             $this->tab = 'pending';
@@ -55,6 +55,8 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Orders')] class extends Component
     <x-slot name="header">
         <h1 class="text-xl font-semibold text-slate-900">WhatsApp Orders</h1>
     </x-slot>
+
+    <x-billing.limit-notice limit="whatsapp_orders_per_month" />
 
     <div class="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200">
         @foreach (['pending' => 'Pending', 'accepted' => 'Accepted', 'rejected' => 'Rejected'] as $key => $label)

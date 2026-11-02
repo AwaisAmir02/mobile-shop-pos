@@ -91,7 +91,7 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('whatsapp-orders/{order}', 'whatsapp-orders.show')->name('whatsapp-orders.show')->middleware('shop.access:whatsapp-orders');
         Route::get('whatsapp-orders/{order}/slip', function (\App\Models\WhatsAppOrder $order, \Illuminate\Http\Request $request) {
             // Route binding already limits {order} to the viewer's shop; checked again here.
-            abort_unless(auth()->user()->shop?->whatsapp_enabled, 403);
+            abort_unless(auth()->user()->shop?->whatsapp_ordering_enabled, 403);
             abort_unless($order->shop_id === auth()->user()->shop_id, 404);
             $disk = \Illuminate\Support\Facades\Storage::disk(\App\Services\WhatsApp\WhatsAppChatbot::SLIP_DISK);
             abort_if($order->payment_slip_path === null || ! $disk->exists($order->payment_slip_path), 404);
@@ -115,7 +115,7 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('marketing/ads/{campaign}', 'marketing.ad')->name('marketing.ads.show')->middleware('shop.access:marketing-ads');
         Route::get('marketing/qr/{post}/{format}', function (\App\Models\MarketingPost $post, string $format, \App\Services\Marketing\QrCodeService $qrCodes) {
             $shop = auth()->user()->shop;
-            abort_unless(($shop->whatsapp_enabled || $shop->social_enabled) && $post->kind === \App\Enums\PostKind::QrCode && in_array($format, ['png', 'pdf'], true), 404);
+            abort_unless(($shop->usesWhatsApp() || $shop->social_enabled) && $post->kind === \App\Enums\PostKind::QrCode && in_array($format, ['png', 'pdf'], true), 404);
             $filename = \Illuminate\Support\Str::slug($post->title).'-qr.'.$format;
 
             if ($format === 'pdf') {

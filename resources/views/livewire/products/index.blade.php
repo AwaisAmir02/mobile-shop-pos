@@ -186,7 +186,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             )->all(),
             'canImportProducts' => Auth::user()->canImportProducts(),
             'barcodeEnabled' => Auth::user()->canUseBarcodes(),
-            'whatsappEnabled' => (bool) Auth::user()->shop?->whatsapp_enabled,
+            'whatsappEnabled' => (bool) Auth::user()->shop?->whatsapp_ordering_enabled,
             'barcodePreview' => $this->barcodePreview(),
             'missingBarcodeCount' => Auth::user()->canUseBarcodes() ? Product::whereNull('barcode')->count() : 0,
             'printingProduct' => $this->printingId ? Product::find($this->printingId) : null,
@@ -500,7 +500,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
     public function toggleWhatsAppListing(int $id): void
     {
-        abort_unless(Auth::user()->shop?->whatsapp_enabled, 403);
+        abort_unless(Auth::user()->shop?->whatsapp_ordering_enabled, 403);
 
         $product = Product::findOrFail($id);
         $product->update(['whatsapp_listed' => ! $product->whatsapp_listed]);

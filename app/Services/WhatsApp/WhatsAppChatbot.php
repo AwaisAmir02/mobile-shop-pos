@@ -2,6 +2,7 @@
 
 namespace App\Services\WhatsApp;
 
+use App\Enums\LimitKey;
 use App\Enums\WhatsAppOrderStatus;
 use App\Enums\WhatsAppPaymentChoice;
 use App\Models\AccessoryCategoryOption;
@@ -17,6 +18,8 @@ use App\Models\ShopChannelConnection;
 use App\Models\WhatsAppContact;
 use App\Models\WhatsAppOrder;
 use App\Models\WhatsAppOrderItem;
+use App\Services\Billing\Entitlements;
+use App\Exceptions\UsageLimitReached;
 use App\Support\PhoneNumber;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -88,12 +91,50 @@ class WhatsAppChatbot
         }
 
         if (in_array($message['type'] ?? null, ['image', 'document'], true)) {
-            $this->handleMedia($message);
+            $this->orderingOn() ? $this->handleMedia($message) : $this->sendOrderingOff();
+
+            return;
+        }
+
+        if (! $this->orderingOn() && ! $this->answersWithoutOrdering($input)) {
+            $this->sendOrderingOff();
 
             return;
         }
 
         $this->route($input);
+    }
+
+    protected function orderingOn(): bool
+    {
+        return (bool) $this->shop->whatsapp_ordering_enabled;
+    }
+
+    /**
+     * With ordering off the bot still handles the messaging side: review
+     * ratings and comments, opt-in/out, language and asking for a person.
+     * Browsing, the cart and checkout get the "not taking orders" reply.
+     */
+    protected function answersWithoutOrdering(array $input): bool
+    {
+        $id = $input['id'];
+        $command = strtolower((string) $input['text']);
+
+        if ($id !== null) {
+            return str_starts_with($id, 'rate:') || str_starts_with($id, 'consent:') || in_array($id, ['optin', 'agent'], true);
+        }
+
+        return in_array($command, ['urdu', 'اردو', 'english', 'eng', 'stop', 'unsubscribe', 'help', 'agent'], true)
+            || (($this->contact->bot_state['step'] ?? null) === 'awaiting_review_comment' && $input['text'] !== null);
+    }
+
+    protected function sendOrderingOff(): void
+    {
+        $this->client->sendButtons(
+            $this->contact->wa_id,
+            $this->t('ordering_off', ['shop' => $this->shop->invoiceDisplayName()]),
+            ['agent' => $this->t('btn_agent')],
+        );
     }
 
     public function handleBusinessEcho(string $customerWaId): void
@@ -1277,6 +1318,17 @@ class WhatsAppChatbot
         // Name and phone fall back to what WhatsApp already tells us.
         if (blank($order->delivery_address)) {
             $this->startCheckout();
+
+            return;
+        }
+
+        // Over the plan's monthly orders: the cart stays as it is and a person
+        // at the shop takes the conversation from here.
+        try {
+            app(Entitlements::class)->ensureCanAdd($this->shop, LimitKey::WhatsAppOrdersPerMonth);
+        } catch (UsageLimitReached) {
+            $this->remember(['handoff_until' => now()->addHours(self::HANDOFF_HOURS)->toIso8601String()]);
+            $this->client->sendText($this->contact->wa_id, $this->t('order_limit', ['shop' => $this->shop->invoiceDisplayName()]));
 
             return;
         }

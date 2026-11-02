@@ -29,7 +29,7 @@ class SalePaymentMethodTest extends TestCase
 
     protected function shopWithOwner(string $name = 'Shop A'): array
     {
-        $shop = Shop::create(['name' => $name, 'whatsapp_enabled' => true]);
+        $shop = Shop::create(['name' => $name, 'whatsapp_ordering_enabled' => true, 'whatsapp_messaging_enabled' => true]);
         $owner = User::factory()->create(['shop_id' => $shop->id, 'is_owner' => true]);
 
         return [$shop, $owner];

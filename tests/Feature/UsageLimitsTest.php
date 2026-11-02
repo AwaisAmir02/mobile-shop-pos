@@ -212,7 +212,7 @@ class UsageLimitsTest extends TestCase
     {
         $this->fakeGraph();
         [$shop, , $connection] = $this->whatsappShop();
-        $shop->update(['plan_id' => $this->planWith(['whatsapp_messages_per_month' => 1], ['whatsapp' => true])->id]);
+        $shop->update(['plan_id' => $this->planWith(['whatsapp_messages_per_month' => 1], ['whatsapp_ordering' => true, 'whatsapp_messaging' => true])->id]);
         $contact = WhatsAppContact::create(['shop_id' => $shop->id, 'shop_channel_connection_id' => $connection->id, 'wa_id' => '923001234567', 'last_inbound_at' => now()]);
         $messenger = app(CustomerMessenger::class);
 
@@ -231,22 +231,22 @@ class UsageLimitsTest extends TestCase
 
     public function test_plan_features_switch_shops_on_and_admin_overrides_stick(): void
     {
-        $plan = $this->planWith([], ['whatsapp' => true, 'ads' => false, 'barcode' => true]);
+        $plan = $this->planWith([], ['whatsapp_ordering' => true, 'whatsapp_messaging' => true, 'ads' => false, 'barcode' => true]);
         [$shop] = $this->shopOn(null, ['ads_enabled' => true]);
         $admin = User::factory()->create(['is_super_admin' => true, 'shop_id' => null]);
         $this->actingAs($admin);
 
         Livewire::test('admin.shops.show', ['shop' => $shop])->set('planId', (string) $plan->id)->call('saveSubscription')->assertHasNoErrors();
         $shop->refresh();
-        $this->assertTrue($shop->whatsapp_enabled);
+        $this->assertTrue($shop->whatsapp_ordering_enabled && $shop->whatsapp_messaging_enabled);
         $this->assertFalse($shop->ads_enabled);
 
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleAdsEnabled')->assertSee('Use plan default');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleFeature', 'ads')->assertSee('Use plan default');
         $this->assertTrue($shop->fresh()->ads_enabled);
         $this->assertSame(['ads' => true], $shop->fresh()->feature_overrides);
 
-        Livewire::test('admin.plans')->call('openEdit', $plan->id)->set('featureFlags.whatsapp', false)->call('save')->assertHasNoErrors();
-        $this->assertFalse($shop->fresh()->whatsapp_enabled);
+        Livewire::test('admin.plans')->call('openEdit', $plan->id)->set('featureFlags.whatsapp_ordering', false)->set('featureFlags.whatsapp_messaging', false)->call('save')->assertHasNoErrors();
+        $this->assertFalse($shop->fresh()->usesWhatsApp());
         $this->assertTrue($shop->fresh()->ads_enabled);
 
         Livewire::test('admin.shops.show', ['shop' => $shop->fresh()])->call('usePlanDefault', FeatureKey::Ads->value);
@@ -270,7 +270,7 @@ class UsageLimitsTest extends TestCase
         $this->assertTrue($plan->feature_flags['import']);
 
         [$shop] = $this->shopOn($plan);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->assertSee('Plan: 50')->set('productsAllowed', '75')->set('messagesLimit', '10')->call('saveSubscription')->assertHasNoErrors();
+        Livewire::test('admin.shops.show', ['shop' => $shop])->assertSee('Plan: 50')->set('limitOverrides.products', '75')->set('limitOverrides.whatsapp_messages_per_month', '10')->call('saveSubscription')->assertHasNoErrors();
 
         $shop->refresh();
         $this->assertSame(['products' => 75, 'whatsapp_messages_per_month' => 10], $shop->limit_overrides);

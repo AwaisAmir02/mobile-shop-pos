@@ -54,7 +54,7 @@ class ProcessWhatsAppWebhookEvent implements ShouldQueue
     {
         $connection = ShopChannelConnection::resolveWhatsApp((string) $payload['phone_number_id']);
 
-        if ($connection === null || ! Shop::whereKey($connection->shop_id)->where('whatsapp_enabled', true)->exists()) {
+        if ($connection === null || ! Shop::find($connection->shop_id)?->usesWhatsApp()) {
             return;
         }
 

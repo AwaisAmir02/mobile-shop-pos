@@ -297,7 +297,7 @@ class SocialMarketingTest extends TestCase
         $this->get(route('marketing.posts'))->assertOk();
         $this->get(route('marketing.index'))->assertForbidden();
 
-        $shop->update(['whatsapp_enabled' => false, 'social_enabled' => false]);
+        $shop->update(['whatsapp_ordering_enabled' => false, 'whatsapp_messaging_enabled' => false, 'social_enabled' => false]);
         $this->actingAs($owner->fresh())->get(route('marketing.posts'))->assertForbidden();
     }
 

@@ -40,7 +40,7 @@ class ServicesTest extends TestCase
         $shopB = Shop::create(['name' => 'Shop B']);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleServicesEnabled');
+        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleFeature', 'services');
 
         $this->assertTrue($shopA->fresh()->services_enabled);
         $this->assertFalse($shopB->fresh()->services_enabled);

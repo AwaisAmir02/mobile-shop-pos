@@ -30,7 +30,7 @@ class PlanChangeTest extends TestCase
 
     protected function plan(string $name, float $price, array $limits, array $features = [], string $interval = 'monthly'): Plan
     {
-        return Plan::create(['name' => $name, 'price' => $price, 'billing_interval' => $interval, 'features' => [['label' => 'x', 'included' => true]], 'limits' => $limits, 'feature_flags' => $features + ['whatsapp' => false]])->fresh();
+        return Plan::create(['name' => $name, 'price' => $price, 'billing_interval' => $interval, 'features' => [['label' => 'x', 'included' => true]], 'limits' => $limits, 'feature_flags' => $features + ['whatsapp_ordering' => false, 'whatsapp_messaging' => false]])->fresh();
     }
 
     protected function shopOn(Plan $plan, array $attributes = []): array
@@ -64,7 +64,7 @@ class PlanChangeTest extends TestCase
     public function test_asking_to_switch_creates_a_plan_invoice_and_changes_nothing_until_it_is_paid(): void
     {
         $starter = $this->plan('Starter', 2000, ['products' => 5]);
-        $growth = $this->plan('Growth', 5000, ['products' => 50], ['whatsapp' => true], 'yearly');
+        $growth = $this->plan('Growth', 5000, ['products' => 50], ['whatsapp_ordering' => true, 'whatsapp_messaging' => true], 'yearly');
         [$shop, $owner] = $this->shopOn($starter);
 
         $payment = $this->changes()->request($shop, $growth, $owner->id);
@@ -80,14 +80,14 @@ class PlanChangeTest extends TestCase
         $shop->refresh();
         $this->assertSame($starter->id, $shop->plan_id);
         $this->assertSame(PlanType::Monthly, $shop->plan_type);
-        $this->assertFalse($shop->whatsapp_enabled);
+        $this->assertFalse($shop->usesWhatsApp());
         $this->assertSame(5, app(Entitlements::class)->limit($shop, LimitKey::Products));
     }
 
     public function test_confirming_the_payment_moves_the_shop_onto_the_plan_from_the_confirmation_day(): void
     {
         $starter = $this->plan('Starter', 2000, ['products' => 5]);
-        $growth = $this->plan('Growth', 5000, ['products' => 50], ['whatsapp' => true], 'yearly');
+        $growth = $this->plan('Growth', 5000, ['products' => 50], ['whatsapp_ordering' => true, 'whatsapp_messaging' => true], 'yearly');
         [$shop, $owner] = $this->shopOn($starter);
         app(Entitlements::class)->meters($shop);
 
@@ -101,7 +101,7 @@ class PlanChangeTest extends TestCase
         $this->assertSame(SubscriptionStatus::Active, $shop->subscription_status);
         $this->assertSame(now()->toDateString(), $shop->subscription_start_date->toDateString());
         $this->assertSame(now()->addYear()->toDateString(), $shop->expectedRenewalDate()->toDateString());
-        $this->assertTrue($shop->whatsapp_enabled, 'The new plan’s features switch on.');
+        $this->assertTrue($shop->whatsapp_ordering_enabled && $shop->whatsapp_messaging_enabled, 'The new plan’s features switch on.');
         $this->assertSame(50, collect(app(Entitlements::class)->meters($shop))->firstWhere('key', 'products')['limit'], 'Meters are refreshed, not served from cache.');
 
         $invoice = SubscriptionInvoice::where('plan_id', $growth->id)->sole();
@@ -214,7 +214,7 @@ class PlanChangeTest extends TestCase
     public function test_a_rejected_plan_payment_leaves_the_shop_on_its_plan(): void
     {
         $starter = $this->plan('Starter', 2000, []);
-        $growth = $this->plan('Growth', 5000, [], ['whatsapp' => true]);
+        $growth = $this->plan('Growth', 5000, [], ['whatsapp_ordering' => true, 'whatsapp_messaging' => true]);
         [$shop, $owner] = $this->shopOn($starter);
 
         $payment = $this->changes()->request($shop, $growth, $owner->id);
@@ -223,7 +223,7 @@ class PlanChangeTest extends TestCase
 
         $shop->refresh();
         $this->assertSame($starter->id, $shop->plan_id);
-        $this->assertFalse($shop->whatsapp_enabled);
+        $this->assertFalse($shop->usesWhatsApp());
     }
 
     public function test_the_switch_still_happens_if_usage_grew_while_the_payment_waited(): void

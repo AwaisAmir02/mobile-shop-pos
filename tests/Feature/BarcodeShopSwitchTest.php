@@ -29,7 +29,7 @@ class BarcodeShopSwitchTest extends TestCase
         $shopB = Shop::create(['name' => 'Shop B']);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleBarcodeEnabled');
+        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleFeature', 'barcode');
 
         $this->assertFalse($shopA->fresh()->barcode_enabled);
         $this->assertTrue($shopB->fresh()->barcode_enabled);
@@ -41,7 +41,7 @@ class BarcodeShopSwitchTest extends TestCase
         $shop = Shop::create(['name' => 'Shop A', 'barcode_enabled' => false]);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleBarcodeEnabled');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleFeature', 'barcode');
 
         $this->assertTrue($shop->fresh()->barcode_enabled);
     }

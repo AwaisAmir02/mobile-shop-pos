@@ -38,8 +38,9 @@
             ['label' => 'Plan & Usage', 'route' => 'billing.index', 'icon' => 'receipt', 'group' => 'manage', 'owner' => true],
         ])->filter(fn ($item) => $user && (($item['owner'] ?? false) ? $user->is_owner : collect((array) $item['permission'])->contains(fn ($p) => $user->hasAccessTo($p))))
             ->reject(fn ($item) => $item['route'] === 'services.index' && ! $user?->shop?->services_enabled)
-            ->reject(fn ($item) => in_array($item['route'], ['whatsapp-orders.index', 'whatsapp-messages.index'], true) && ! $user?->shop?->whatsapp_enabled)
-            ->reject(fn ($item) => $item['route'] === 'marketing.posts' && ! ($user?->shop?->whatsapp_enabled || $user?->shop?->social_enabled))
+            ->reject(fn ($item) => $item['route'] === 'whatsapp-orders.index' && ! $user?->shop?->whatsapp_ordering_enabled)
+            ->reject(fn ($item) => $item['route'] === 'whatsapp-messages.index' && ! $user?->shop?->whatsapp_messaging_enabled)
+            ->reject(fn ($item) => $item['route'] === 'marketing.posts' && ! ($user?->shop?->usesWhatsApp() || $user?->shop?->social_enabled))
             ->map(fn ($item) => $item['route'] === 'marketing.posts' && $user?->hasAccessTo('marketing-analytics') ? array_merge($item, ['route' => 'marketing.index']) : $item)
             ->map(fn ($item) => $item['route'] === 'marketing.posts' && ! $user?->hasAccessTo('marketing') && $user?->hasAccessTo('marketing-ads') && $user?->shop?->ads_enabled ? array_merge($item, ['route' => 'marketing.ads']) : $item)
             ->reject(fn ($item) => $item['route'] === 'marketing.ads' && ! $user?->shop?->ads_enabled)

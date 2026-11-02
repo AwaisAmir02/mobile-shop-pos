@@ -28,7 +28,7 @@ new class extends Component
 
     protected function authorizeMessages(): void
     {
-        abort_unless(Auth::user()->hasAccessTo('settings-integrations') && Auth::user()->shop?->whatsapp_enabled, 403);
+        abort_unless(Auth::user()->hasAccessTo('settings-integrations') && Auth::user()->shop?->usesWhatsApp(), 403);
     }
 
     protected function shop(): Shop

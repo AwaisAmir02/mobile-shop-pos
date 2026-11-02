@@ -98,7 +98,7 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
 
         // Packs for a limit the shop already has unlimited would add nothing.
         $catalogue = Addon::active()->ordered()->get()
-            ->reject(fn (Addon $addon) => $addon->kind === AddonKind::FeatureUnlock && $entitlements->planFeature($shop, $addon->feature_key) === true)
+            ->reject(fn (Addon $addon) => $addon->kind === AddonKind::FeatureUnlock && $entitlements->planIncludesAll($shop, $addon->feature_keys))
             ->reject(fn (Addon $addon) => $addon->kind === AddonKind::LimitPack && $addon->limit_key && $entitlements->limit($shop, $addon->limit_key) === null)
             ->values();
 

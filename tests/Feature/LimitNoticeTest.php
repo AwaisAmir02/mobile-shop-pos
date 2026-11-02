@@ -35,7 +35,7 @@ class LimitNoticeTest extends TestCase
 
     protected function plan(string $name, array $limits, array $features = [], int $sort = 0): Plan
     {
-        return Plan::create(['name' => $name, 'price' => 2000, 'billing_interval' => 'monthly', 'features' => [['label' => 'x', 'included' => true]], 'limits' => $limits, 'feature_flags' => $features + ['whatsapp' => false], 'sort_order' => $sort])->fresh();
+        return Plan::create(['name' => $name, 'price' => 2000, 'billing_interval' => 'monthly', 'features' => [['label' => 'x', 'included' => true]], 'limits' => $limits, 'feature_flags' => $features + ['whatsapp_ordering' => false, 'whatsapp_messaging' => false], 'sort_order' => $sort])->fresh();
     }
 
     protected function shopOn(Plan $plan): array
@@ -195,7 +195,7 @@ class LimitNoticeTest extends TestCase
 
     public function test_marketing_posts_and_customer_messages_show_their_monthly_limits(): void
     {
-        [, $owner] = $this->shopOn($this->plan('Starter', ['marketing_posts_per_month' => 0, 'whatsapp_messages_per_month' => 0], ['whatsapp' => true]));
+        [, $owner] = $this->shopOn($this->plan('Starter', ['marketing_posts_per_month' => 0, 'whatsapp_messages_per_month' => 0], ['whatsapp_ordering' => true, 'whatsapp_messaging' => true]));
 
         $this->actingAs($owner)->get(route('marketing.posts'))->assertOk()
             ->assertSee('data-limit-notice="marketing_posts_per_month"', false)

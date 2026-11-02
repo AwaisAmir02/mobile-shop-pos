@@ -23,7 +23,7 @@ class CustomerDuesStatementTest extends TestCase
 
     protected function connectWhatsApp(Shop $shop): ShopChannelConnection
     {
-        $shop->update(['whatsapp_enabled' => true]);
+        $shop->update(['whatsapp_ordering_enabled' => true, 'whatsapp_messaging_enabled' => true]);
 
         return ShopChannelConnection::create([
             'shop_id' => $shop->id,

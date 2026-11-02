@@ -28,6 +28,13 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
     public array $limits = [];
     public array $featureFlags = [];
 
+    /**
+     * "Has a usage limit?" for each limit paired with a feature. Only a view
+     * of $limits: it starts on when the limit has a number, and turning it
+     * off clears the number, which saves as unlimited (null).
+     */
+    public array $limited = [];
+
     protected function authorizeSuperAdmin(): void
     {
         abort_unless(Auth::user()?->is_super_admin, 403);
@@ -42,6 +49,20 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
         $this->features = [['label' => '', 'included' => true]];
         $this->limits = array_fill_keys(array_column(LimitKey::cases(), 'value'), '');
         $this->featureFlags = array_fill_keys(array_column(FeatureKey::cases(), 'value'), false);
+        $this->limited = $this->pairedLimits()->mapWithKeys(fn (LimitKey $key) => [$key->value => false])->all();
+    }
+
+    protected function pairedLimits()
+    {
+        return collect(FeatureKey::cases())->map(fn (FeatureKey $feature) => $feature->limit())->filter()->values();
+    }
+
+    public function updatedLimited($value, string $key): void
+    {
+        if (! $value) {
+            $this->limits[$key] = '';
+            $this->resetValidation('limits.'.$key);
+        }
     }
 
     public function openCreate(): void
@@ -75,6 +96,10 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
             $this->featureFlags[$key->value] = (bool) ($plan->feature_flags[$key->value] ?? false);
         }
 
+        foreach ($this->pairedLimits() as $key) {
+            $this->limited[$key->value] = $this->limits[$key->value] !== '';
+        }
+
         $this->dispatch('open-modal', name: 'plan-form');
     }
 
@@ -103,11 +128,11 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
             'features' => ['array', 'max:'.Plan::MAX_FEATURES],
             'features.*.label' => ['nullable', 'string', 'max:120'],
             'features.*.included' => ['boolean'],
-            'limits.*' => ['nullable', 'integer', 'min:0', 'max:100000000'],
-            // Main always counts as one branch, so a plan can't allow fewer.
-            'limits.'.LimitKey::Branches->value => ['nullable', 'integer', 'min:1', 'max:100000000'],
+            ...collect(LimitKey::cases())->mapWithKeys(fn (LimitKey $key) => ['limits.'.$key->value => [
+                ($this->limited[$key->value] ?? false) ? 'required' : 'nullable', 'integer', 'min:'.$key->minimum(), 'max:100000000',
+            ]])->all(),
             'featureFlags.*' => ['boolean'],
-        ], [], ['features.*.label' => 'feature', 'limits.*' => 'limit']);
+        ], ['limits.*.required' => 'Enter a limit, or turn off “Has a usage limit?”.'], ['features.*.label' => 'feature', 'limits.*' => 'limit']);
 
         $features = collect($this->features)
             ->map(fn ($f) => ['label' => trim((string) ($f['label'] ?? '')), 'included' => (bool) ($f['included'] ?? false)])
@@ -288,23 +313,44 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
                 </div>
 
                 <div class="rounded-lg border border-slate-200 p-4">
-                    <p class="text-sm font-medium text-slate-700">Usage limits</p>
+                    <p class="text-sm font-medium text-slate-700">Core limits</p>
                     <p class="text-xs text-slate-500">Leave blank for unlimited. Sales are never blocked — shops over the sales limit are only flagged.</p>
                     <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        @foreach (LimitKey::cases() as $limitKey)
+                        @foreach (LimitKey::core() as $limitKey)
                             <x-ui.field :label="$limitKey->label()" :name="'limits.'.$limitKey->value" :for="'limit-'.$limitKey->value">
-                                <x-ui.input wire:model="limits.{{ $limitKey->value }}" id="limit-{{ $limitKey->value }}" type="number" :min="$limitKey === LimitKey::Branches ? 1 : 0" placeholder="Unlimited" />
+                                <x-ui.input wire:model="limits.{{ $limitKey->value }}" id="limit-{{ $limitKey->value }}" type="number" :min="$limitKey->minimum()" placeholder="Unlimited" />
                             </x-ui.field>
                         @endforeach
                     </div>
                 </div>
 
                 <div class="rounded-lg border border-slate-200 p-4">
-                    <p class="text-sm font-medium text-slate-700">Features this plan switches on</p>
-                    <p class="text-xs text-slate-500">Applied to every shop on the plan. You can still override a single shop from its page.</p>
-                    <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <p class="text-sm font-medium text-slate-700">Features</p>
+                    <p class="text-xs text-slate-500">Ticked features are switched on for every shop on the plan; you can still override a single shop from its page. A usage limit counts whether or not its feature is ticked.</p>
+                    <div class="mt-3 divide-y divide-slate-100">
                         @foreach (FeatureKey::cases() as $featureKey)
-                            <x-ui.checkbox wire:model="featureFlags.{{ $featureKey->value }}" :label="$featureKey->label()" />
+                            @php $pairedLimit = $featureKey->limit(); @endphp
+                            <div class="py-2.5" wire:key="plan-feature-{{ $featureKey->value }}">
+                                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                    <x-ui.checkbox wire:model="featureFlags.{{ $featureKey->value }}" :label="$featureKey->label()" />
+                                    @if ($pairedLimit)
+                                        <div class="flex flex-wrap items-center gap-3">
+                                            <x-ui.checkbox wire:model.live="limited.{{ $pairedLimit->value }}" label="Has a usage limit?" />
+                                            @if ($limited[$pairedLimit->value] ?? false)
+                                                <div class="flex items-center gap-2">
+                                                    <x-ui.input wire:model="limits.{{ $pairedLimit->value }}" id="limit-{{ $pairedLimit->value }}" type="number" :min="$pairedLimit->minimum()" class="w-28" aria-label="{{ $pairedLimit->label() }}" />
+                                                    <span class="text-xs text-slate-500">{{ $pairedLimit->unit().($pairedLimit->isMonthly() ? ' a month' : '') }}</span>
+                                                </div>
+                                            @else
+                                                <span class="text-xs text-slate-500">Unlimited</span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                                @if ($pairedLimit)
+                                    <x-ui.error :messages="$errors->get('limits.'.$pairedLimit->value)" class="mt-1" />
+                                @endif
+                            </div>
                         @endforeach
                     </div>
                 </div>

@@ -320,7 +320,7 @@ class WhatsAppPaymentSlipTest extends TestCase
         $cashier = User::factory()->staff()->create(['shop_id' => $shop->id, 'role_id' => $role->id]);
         $this->actingAs($cashier)->get(route('whatsapp-orders.slip', $order))->assertForbidden();
 
-        $shop->update(['whatsapp_enabled' => false]);
+        $shop->update(['whatsapp_ordering_enabled' => false, 'whatsapp_messaging_enabled' => false]);
         $this->actingAs($owner->fresh())->get(route('whatsapp-orders.slip', $order))->assertStatus(403);
     }
 

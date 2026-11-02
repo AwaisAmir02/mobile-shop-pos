@@ -25,7 +25,7 @@ class PlanUsageScreenTest extends TestCase
 
     protected function plan(string $name, float $price, array $limits, array $features = [], int $sort = 0): Plan
     {
-        return Plan::create(['name' => $name, 'price' => $price, 'billing_interval' => 'monthly', 'features' => [['label' => 'x', 'included' => true]], 'limits' => $limits, 'feature_flags' => $features + ['whatsapp' => false], 'sort_order' => $sort])->fresh();
+        return Plan::create(['name' => $name, 'price' => $price, 'billing_interval' => 'monthly', 'features' => [['label' => 'x', 'included' => true]], 'limits' => $limits, 'feature_flags' => $features + ['whatsapp_ordering' => false, 'whatsapp_messaging' => false], 'sort_order' => $sort])->fresh();
     }
 
     protected function shopOn(Plan $plan, array $attributes = []): array
@@ -69,7 +69,7 @@ class PlanUsageScreenTest extends TestCase
 
         app(Entitlements::class)->setFeatureOverride($shop, FeatureKey::Import, true);
 
-        app(AddonService::class)->purchase($shop->fresh(), Addon::create(['name' => 'Social posting', 'kind' => 'feature_unlock', 'feature_key' => 'social', 'price' => 1500, 'billing' => 'monthly'])->fresh(), $owner->id);
+        app(AddonService::class)->purchase($shop->fresh(), Addon::create(['name' => 'Social posting', 'kind' => 'feature_unlock', 'feature_keys' => ['social'], 'price' => 1500, 'billing' => 'monthly'])->fresh(), $owner->id);
         $admin = User::factory()->create(['is_super_admin' => true, 'shop_id' => null]);
         app(SubscriptionPaymentService::class)->confirm(SubscriptionPayment::latest('id')->firstOrFail(), $admin->id);
         $until = ShopAddon::where('shop_id', $shop->id)->firstOrFail()->ends_at;
@@ -78,7 +78,8 @@ class PlanUsageScreenTest extends TestCase
 
         $this->assertCount(count(FeatureKey::cases()), $features);
         $this->assertSame([true, 'plan'], [$features['barcode']['on'], $features['barcode']['source']]);
-        $this->assertSame([false, 'plan'], [$features['whatsapp']['on'], $features['whatsapp']['source']]);
+        $this->assertSame([false, 'plan'], [$features['whatsapp_ordering']['on'], $features['whatsapp_ordering']['source']]);
+        $this->assertSame([false, 'plan'], [$features['whatsapp_messaging']['on'], $features['whatsapp_messaging']['source']]);
         $this->assertSame([true, 'hisabokitab'], [$features['import']['on'], $features['import']['source']]);
         $this->assertSame([true, 'addon'], [$features['social']['on'], $features['social']['source']]);
         $this->assertTrue($until->equalTo($features['social']['until']));
@@ -93,7 +94,7 @@ class PlanUsageScreenTest extends TestCase
 
     public function test_a_shop_without_a_plan_sees_its_features_as_set_by_hisabokitab_and_no_plan_switching(): void
     {
-        $shop = Shop::create(['name' => 'Legacy Mobiles', 'subscription_status' => 'active', 'whatsapp_enabled' => true]);
+        $shop = Shop::create(['name' => 'Legacy Mobiles', 'subscription_status' => 'active', 'whatsapp_ordering_enabled' => true, 'whatsapp_messaging_enabled' => true]);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
         $this->plan('Starter', 2000, ['products' => 50]);
 
@@ -144,7 +145,7 @@ class PlanUsageScreenTest extends TestCase
     public function test_plans_are_listed_side_by_side_with_the_current_one_marked(): void
     {
         $starter = $this->plan('Starter', 2000, ['products' => 10, 'branches' => 1], [], 1);
-        $this->plan('Growth', 5000, ['products' => null, 'branches' => 3], ['whatsapp' => true], 2);
+        $this->plan('Growth', 5000, ['products' => null, 'branches' => 3], ['whatsapp_ordering' => true, 'whatsapp_messaging' => true], 2);
         $retired = $this->plan('Retired', 900, ['products' => 5], [], 3);
         $retired->update(['is_active' => false]);
         [, $owner] = $this->shopOn($starter);
@@ -158,7 +159,7 @@ class PlanUsageScreenTest extends TestCase
     public function test_switching_creates_the_plan_invoice_and_the_payment_card_names_the_plan(): void
     {
         $starter = $this->plan('Starter', 2000, ['products' => 10], [], 1);
-        $growth = $this->plan('Growth', 5000, ['products' => 100], ['whatsapp' => true], 2);
+        $growth = $this->plan('Growth', 5000, ['products' => 100], ['whatsapp_ordering' => true, 'whatsapp_messaging' => true], 2);
         [$shop, $owner] = $this->shopOn($starter);
 
         Volt::actingAs($owner)->test('billing.index')->call('switchPlan', $growth->id)->assertDispatched('toast', type: 'success');

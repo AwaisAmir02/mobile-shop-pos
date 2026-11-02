@@ -36,7 +36,7 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
 
     public function mount(WhatsAppOrder $order): void
     {
-        abort_unless(Auth::user()->shop?->whatsapp_enabled, 403);
+        abort_unless(Auth::user()->shop?->whatsapp_ordering_enabled, 403);
         abort_if($order->status === WhatsAppOrderStatus::Collecting, 404);
 
         $this->order = $order->load(['items.product', 'contact.customer', 'customer', 'sale', 'decidedBy']);

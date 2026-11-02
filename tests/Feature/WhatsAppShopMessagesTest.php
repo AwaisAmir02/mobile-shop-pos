@@ -132,7 +132,7 @@ class WhatsAppShopMessagesTest extends TestCase
         $this->actingAs(User::factory()->staff()->create(['shop_id' => $shop->id, 'role_id' => $role->id]));
         Livewire::test('settings.whatsapp-messages')->assertForbidden();
 
-        $shop->update(['whatsapp_enabled' => false]);
+        $shop->update(['whatsapp_ordering_enabled' => false, 'whatsapp_messaging_enabled' => false]);
         $this->actingAs($owner->fresh());
         Livewire::test('settings.whatsapp-messages')->assertForbidden();
     }

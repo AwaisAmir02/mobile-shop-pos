@@ -22,7 +22,7 @@ new #[Layout('layouts.app')] #[Title('QR Codes')] class extends Component
     public function mount(): void
     {
         $shop = Auth::user()->shop;
-        abort_unless($shop?->whatsapp_enabled || $shop?->social_enabled, 403);
+        abort_unless($shop?->usesWhatsApp() || $shop?->social_enabled, 403);
     }
 
     public function create(PostComposer $composer): void

@@ -37,12 +37,8 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
     public string $planType = 'monthly';
     public string $subscriptionStatus = 'inactive';
     public string $subscriptionStartDate = '';
-    public string $productsAllowed = '';
-    public string $salesAllowed = '';
-    public string $staffUsersLimit = '';
-    public string $messagesLimit = '';
-    public string $branchesLimit = '';
-    public string $postsLimit = '';
+    /** @var array<string, string> per LimitKey value; blank = use the plan's limit */
+    public array $limitOverrides = [];
 
     public string $newPassword = '';
     public string $newPassword_confirmation = '';
@@ -66,12 +62,10 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $this->subscriptionStatus = $shop->subscription_status->value;
         $this->subscriptionStartDate = $shop->subscription_start_date?->toDateString() ?? now()->toDateString();
         $overrides = $shop->limit_overrides ?? [];
-        $this->productsAllowed = (string) ($overrides[LimitKey::Products->value] ?? $shop->products_allowed ?? '');
-        $this->salesAllowed = (string) ($overrides[LimitKey::SalesPerMonth->value] ?? $shop->sales_allowed ?? '');
-        $this->staffUsersLimit = (string) ($overrides[LimitKey::StaffUsers->value] ?? '');
-        $this->messagesLimit = (string) ($overrides[LimitKey::WhatsAppMessagesPerMonth->value] ?? '');
-        $this->branchesLimit = (string) ($overrides[LimitKey::Branches->value] ?? '');
-        $this->postsLimit = (string) ($overrides[LimitKey::MarketingPostsPerMonth->value] ?? '');
+        foreach (LimitKey::cases() as $key) {
+            $legacy = $key->legacyColumn();
+            $this->limitOverrides[$key->value] = (string) ($overrides[$key->value] ?? ($legacy ? $shop->{$legacy} : null) ?? '');
+        }
 
         $this->day = now()->toDateString();
         $this->month = now()->format('Y-m');
@@ -114,22 +108,11 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             'planType' => ['required', Rule::enum(PlanType::class)],
             'subscriptionStatus' => ['required', Rule::enum(SubscriptionStatus::class)],
             'subscriptionStartDate' => ['required', 'date'],
-            'productsAllowed' => ['nullable', 'integer', 'min:0'],
-            'salesAllowed' => ['nullable', 'integer', 'min:0'],
-            'staffUsersLimit' => ['nullable', 'integer', 'min:0'],
-            'messagesLimit' => ['nullable', 'integer', 'min:0'],
-            'branchesLimit' => ['nullable', 'integer', 'min:1'],
-            'postsLimit' => ['nullable', 'integer', 'min:0'],
-        ]);
+            ...collect(LimitKey::cases())->mapWithKeys(fn (LimitKey $key) => ['limitOverrides.'.$key->value => ['nullable', 'integer', 'min:'.$key->minimum()]])->all(),
+        ], [], collect(LimitKey::cases())->mapWithKeys(fn (LimitKey $key) => ['limitOverrides.'.$key->value => $key->label()])->all());
 
-        $limitOverrides = array_map('intval', array_filter([
-            LimitKey::Products->value => $this->productsAllowed,
-            LimitKey::SalesPerMonth->value => $this->salesAllowed,
-            LimitKey::StaffUsers->value => $this->staffUsersLimit,
-            LimitKey::WhatsAppMessagesPerMonth->value => $this->messagesLimit,
-            LimitKey::Branches->value => $this->branchesLimit,
-            LimitKey::MarketingPostsPerMonth->value => $this->postsLimit,
-        ], fn ($value) => $value !== ''));
+        $values = collect(LimitKey::cases())->mapWithKeys(fn (LimitKey $key) => [$key->value => (string) ($this->limitOverrides[$key->value] ?? '')]);
+        $limitOverrides = $values->reject(fn (string $value) => $value === '')->map(fn (string $value) => (int) $value)->all();
 
         $this->shop->update([
             'limit_overrides' => $limitOverrides === [] ? null : $limitOverrides,
@@ -137,8 +120,8 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             'plan_type' => $this->planType,
             'subscription_status' => $this->subscriptionStatus,
             'subscription_start_date' => $this->subscriptionStartDate,
-            'products_allowed' => $this->productsAllowed !== '' ? $this->productsAllowed : null,
-            'sales_allowed' => $this->salesAllowed !== '' ? $this->salesAllowed : null,
+            ...collect(LimitKey::cases())->filter(fn (LimitKey $key) => $key->legacyColumn() !== null)
+                ->mapWithKeys(fn (LimitKey $key) => [$key->legacyColumn() => $values[$key->value] !== '' ? $values[$key->value] : null])->all(),
         ]);
 
         $this->shop->refresh();
@@ -207,76 +190,17 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
     }
 
     /**
-     * A deliberately separate control from Module Access above — this is
-     * an opt-in capability flag (shops.import_enabled), not a ShopScreen,
-     * and nothing in the shop's own UI can flip it. Only reachable here.
+     * A shop feature switch (shops.{feature}_enabled). These are opt-in
+     * capability flags, deliberately separate from Module Access: nothing
+     * in the shop's own UI can flip them, only this page.
      */
-    public function toggleImportEnabled(): void
+    public function toggleFeature(string $feature): void
     {
-        $this->flipFeature(FeatureKey::Import);
+        $feature = FeatureKey::from($feature);
+        $this->flipFeature($feature);
         $this->shop->refresh();
 
-        $this->toastSuccess($this->shop->import_enabled ? 'Products Import enabled for this shop.' : 'Products Import disabled for this shop.');
-    }
-
-    public function toggleBarcodeEnabled(): void
-    {
-        $this->flipFeature(FeatureKey::Barcode);
-        $this->shop->refresh();
-
-        $this->toastSuccess($this->shop->barcode_enabled ? 'Barcodes enabled for this shop.' : 'Barcodes disabled for this shop.');
-    }
-
-    /**
-     * Also a separate opt-in capability flag (shops.branding_enabled), not a
-     * ShopScreen — it decides whether the shop's Settings → Branding tab and
-     * its receipt/invoice branding exist at all. A shop with this off keeps
-     * seeing today's plain shop-name header on every receipt, unchanged.
-     */
-    public function toggleBrandingEnabled(): void
-    {
-        $this->flipFeature(FeatureKey::Branding);
-        $this->shop->refresh();
-
-        $this->toastSuccess($this->shop->branding_enabled ? 'Custom branding enabled for this shop.' : 'Custom branding disabled for this shop.');
-    }
-
-    /**
-     * Also a separate opt-in capability flag (shops.services_enabled), not a
-     * ShopScreen — it decides whether the Services sidebar entry, Settings
-     * tab, and the services.* routes exist for this shop at all. A shop
-     * with this off sees no Services anywhere, regardless of role.
-     */
-    public function toggleServicesEnabled(): void
-    {
-        $this->flipFeature(FeatureKey::Services);
-        $this->shop->refresh();
-
-        $this->toastSuccess($this->shop->services_enabled ? 'Services enabled for this shop.' : 'Services disabled for this shop.');
-    }
-
-    public function toggleWhatsAppEnabled(): void
-    {
-        $this->flipFeature(FeatureKey::WhatsApp);
-        $this->shop->refresh();
-
-        $this->toastSuccess($this->shop->whatsapp_enabled ? 'WhatsApp ordering enabled for this shop.' : 'WhatsApp ordering disabled for this shop.');
-    }
-
-    public function toggleSocialEnabled(): void
-    {
-        $this->flipFeature(FeatureKey::Social);
-        $this->shop->refresh();
-
-        $this->toastSuccess($this->shop->social_enabled ? 'Social posting enabled for this shop.' : 'Social posting disabled for this shop.');
-    }
-
-    public function toggleAdsEnabled(): void
-    {
-        $this->flipFeature(FeatureKey::Ads);
-        $this->shop->refresh();
-
-        $this->toastSuccess($this->shop->ads_enabled ? 'Meta ads enabled for this shop.' : 'Meta ads disabled for this shop.');
+        $this->toastSuccess($feature->adminSwitch()['toast'].($this->shop->{$feature->column()} ? ' enabled' : ' disabled').' for this shop.');
     }
 
     public function applyCategoryDefaults(BusinessCategories $categories): void
@@ -487,9 +411,9 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                         <p class="text-sm font-medium text-slate-900">Usage limits</p>
                         <p class="mt-0.5 text-xs text-slate-500">{{ $governed ? 'Leave blank to use the plan’s limit. A number here replaces it for this shop only.' : 'Not enforced — limits only apply to shops on a plan.' }}</p>
                         <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            @foreach ([['productsAllowed', LimitKey::Products], ['staffUsersLimit', LimitKey::StaffUsers], ['salesAllowed', LimitKey::SalesPerMonth], ['messagesLimit', LimitKey::WhatsAppMessagesPerMonth], ['postsLimit', LimitKey::MarketingPostsPerMonth], ['branchesLimit', LimitKey::Branches]] as [$field, $limitKey])
-                                <x-ui.field :label="$limitKey->label()" :name="$field" :for="$field" :help="$governed ? 'Plan: '.(array_key_exists($limitKey->value, $planLimits) && $planLimits[$limitKey->value] !== null ? number_format($planLimits[$limitKey->value]) : 'unlimited') : null">
-                                    <x-ui.input wire:model="{{ $field }}" id="{{ $field }}" type="number" min="0" placeholder="Plan default" />
+                            @foreach (LimitKey::cases() as $limitKey)
+                                <x-ui.field :label="$limitKey->label()" :name="'limitOverrides.'.$limitKey->value" :for="'limit-override-'.$limitKey->value" :help="$governed ? 'Plan: '.(array_key_exists($limitKey->value, $planLimits) && $planLimits[$limitKey->value] !== null ? number_format($planLimits[$limitKey->value]) : 'unlimited') : null">
+                                    <x-ui.input wire:model="limitOverrides.{{ $limitKey->value }}" id="limit-override-{{ $limitKey->value }}" type="number" :min="$limitKey->minimum()" placeholder="Plan default" />
                                 </x-ui.field>
                             @endforeach
                         </div>
@@ -651,7 +575,8 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         </x-ui.table>
     </x-ui.card>
 
-    <x-ui.card title="Products Import" description="A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet." class="mt-8">
+    @php $importSwitch = FeatureKey::Import->adminSwitch(); @endphp
+    <x-ui.card :title="$importSwitch['label']" :description="$importSwitch['description']" class="mt-8">
         <div class="flex items-center justify-between gap-3">
             <span class="text-sm font-medium text-slate-900">
                 {{ $shop->import_enabled ? 'Enabled for this shop' : 'Disabled for this shop' }}
@@ -660,9 +585,9 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                 type="button"
                 role="switch"
                 aria-checked="{{ $shop->import_enabled ? 'true' : 'false' }}"
-                aria-label="{{ $shop->import_enabled ? 'Disable' : 'Enable' }} Products Import"
-                wire:click="toggleImportEnabled"
-                wire:confirm="{{ $shop->import_enabled ? 'Disable' : 'Enable' }} Products Import for this shop?"
+                aria-label="{{ $shop->import_enabled ? 'Disable' : 'Enable' }} {{ $importSwitch['label'] }}"
+                wire:click="toggleFeature('{{ FeatureKey::Import->value }}')"
+                wire:confirm="{{ $shop->import_enabled ? 'Disable' : 'Enable' }} {{ $importSwitch['label'] }} for this shop?"
                 @class([
                     'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
                     'bg-emerald-500' => $shop->import_enabled,
@@ -731,168 +656,39 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                             @endforeach
                         </div>
                     @endif
-                    <div class="flex items-center justify-between gap-3 px-4 py-2.5">
-                        <div>
-                            <span class="text-sm font-medium text-slate-900">Barcodes</span>
-                            <p class="text-xs text-slate-500">Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off.</p>
-                        </div>
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked="{{ $shop->barcode_enabled ? 'true' : 'false' }}"
-                            aria-label="{{ $shop->barcode_enabled ? 'Disable' : 'Enable' }} Barcodes"
-                            wire:click="toggleBarcodeEnabled"
-                            wire:confirm="{{ $shop->barcode_enabled ? 'Disable' : 'Enable' }} Barcodes for this shop?"
-                            @class([
-                                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
-                                'bg-emerald-500' => $shop->barcode_enabled,
-                                'bg-slate-300' => ! $shop->barcode_enabled,
-                            ])
-                        >
-                            <span
+                    @foreach (FeatureKey::adminSwitches() as $feature)
+                        @php
+                            $switch = $feature->adminSwitch();
+                            $on = (bool) $shop->{$feature->column()};
+                        @endphp
+                        <div class="flex items-center justify-between gap-3 px-4 py-2.5" wire:key="feature-switch-{{ $feature->value }}">
+                            <div>
+                                <span class="text-sm font-medium text-slate-900">{{ $switch['label'] }}</span>
+                                <p class="text-xs text-slate-500">{{ $switch['description'] }}</p>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked="{{ $on ? 'true' : 'false' }}"
+                                aria-label="{{ $on ? 'Disable' : 'Enable' }} {{ $switch['label'] }}"
+                                wire:click="toggleFeature('{{ $feature->value }}')"
+                                wire:confirm="{{ $on ? 'Disable' : 'Enable' }} {{ $switch['label'] }} for this shop?"
                                 @class([
-                                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
-                                    'translate-x-6' => $shop->barcode_enabled,
-                                    'translate-x-1' => ! $shop->barcode_enabled,
+                                    'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                                    'bg-emerald-500' => $on,
+                                    'bg-slate-300' => ! $on,
                                 ])
-                            ></span>
-                        </button>
-                    </div>
-                    <div class="flex items-center justify-between gap-3 px-4 py-2.5">
-                        <div>
-                            <span class="text-sm font-medium text-slate-900">Branding</span>
-                            <p class="text-xs text-slate-500">Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name.</p>
+                            >
+                                <span
+                                    @class([
+                                        'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                                        'translate-x-6' => $on,
+                                        'translate-x-1' => ! $on,
+                                    ])
+                                ></span>
+                            </button>
                         </div>
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked="{{ $shop->branding_enabled ? 'true' : 'false' }}"
-                            aria-label="{{ $shop->branding_enabled ? 'Disable' : 'Enable' }} Branding"
-                            wire:click="toggleBrandingEnabled"
-                            wire:confirm="{{ $shop->branding_enabled ? 'Disable' : 'Enable' }} Branding for this shop?"
-                            @class([
-                                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
-                                'bg-emerald-500' => $shop->branding_enabled,
-                                'bg-slate-300' => ! $shop->branding_enabled,
-                            ])
-                        >
-                            <span
-                                @class([
-                                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
-                                    'translate-x-6' => $shop->branding_enabled,
-                                    'translate-x-1' => ! $shop->branding_enabled,
-                                ])
-                            ></span>
-                        </button>
-                    </div>
-                    <div class="flex items-center justify-between gap-3 px-4 py-2.5">
-                        <div>
-                            <span class="text-sm font-medium text-slate-900">Services</span>
-                            <p class="text-xs text-slate-500">A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop.</p>
-                        </div>
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked="{{ $shop->services_enabled ? 'true' : 'false' }}"
-                            aria-label="{{ $shop->services_enabled ? 'Disable' : 'Enable' }} Services"
-                            wire:click="toggleServicesEnabled"
-                            wire:confirm="{{ $shop->services_enabled ? 'Disable' : 'Enable' }} Services for this shop?"
-                            @class([
-                                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
-                                'bg-emerald-500' => $shop->services_enabled,
-                                'bg-slate-300' => ! $shop->services_enabled,
-                            ])
-                        >
-                            <span
-                                @class([
-                                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
-                                    'translate-x-6' => $shop->services_enabled,
-                                    'translate-x-1' => ! $shop->services_enabled,
-                                ])
-                            ></span>
-                        </button>
-                    </div>
-                    <div class="flex items-center justify-between gap-3 px-4 py-2.5">
-                        <div>
-                            <span class="text-sm font-medium text-slate-900">WhatsApp Ordering</span>
-                            <p class="text-xs text-slate-500">Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default.</p>
-                        </div>
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked="{{ $shop->whatsapp_enabled ? 'true' : 'false' }}"
-                            aria-label="{{ $shop->whatsapp_enabled ? 'Disable' : 'Enable' }} WhatsApp Ordering"
-                            wire:click="toggleWhatsAppEnabled"
-                            wire:confirm="{{ $shop->whatsapp_enabled ? 'Disable' : 'Enable' }} WhatsApp Ordering for this shop?"
-                            @class([
-                                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
-                                'bg-emerald-500' => $shop->whatsapp_enabled,
-                                'bg-slate-300' => ! $shop->whatsapp_enabled,
-                            ])
-                        >
-                            <span
-                                @class([
-                                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
-                                    'translate-x-6' => $shop->whatsapp_enabled,
-                                    'translate-x-1' => ! $shop->whatsapp_enabled,
-                                ])
-                            ></span>
-                        </button>
-                    </div>
-                    <div class="flex items-center justify-between gap-3 px-4 py-2.5">
-                        <div>
-                            <span class="text-sm font-medium text-slate-900">Social Posting</span>
-                            <p class="text-xs text-slate-500">Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.</p>
-                        </div>
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked="{{ $shop->social_enabled ? 'true' : 'false' }}"
-                            aria-label="{{ $shop->social_enabled ? 'Disable' : 'Enable' }} Social Posting"
-                            wire:click="toggleSocialEnabled"
-                            wire:confirm="{{ $shop->social_enabled ? 'Disable' : 'Enable' }} Social Posting for this shop?"
-                            @class([
-                                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
-                                'bg-emerald-500' => $shop->social_enabled,
-                                'bg-slate-300' => ! $shop->social_enabled,
-                            ])
-                        >
-                            <span
-                                @class([
-                                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
-                                    'translate-x-6' => $shop->social_enabled,
-                                    'translate-x-1' => ! $shop->social_enabled,
-                                ])
-                            ></span>
-                        </button>
-                    </div>
-                    <div class="flex items-center justify-between gap-3 px-4 py-2.5">
-                        <div>
-                            <span class="text-sm font-medium text-slate-900">Meta Ads</span>
-                            <p class="text-xs text-slate-500">Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.</p>
-                        </div>
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked="{{ $shop->ads_enabled ? 'true' : 'false' }}"
-                            aria-label="{{ $shop->ads_enabled ? 'Disable' : 'Enable' }} Meta Ads"
-                            wire:click="toggleAdsEnabled"
-                            wire:confirm="{{ $shop->ads_enabled ? 'Disable' : 'Enable' }} Meta Ads for this shop?"
-                            @class([
-                                'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
-                                'bg-emerald-500' => $shop->ads_enabled,
-                                'bg-slate-300' => ! $shop->ads_enabled,
-                            ])
-                        >
-                            <span
-                                @class([
-                                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
-                                    'translate-x-6' => $shop->ads_enabled,
-                                    'translate-x-1' => ! $shop->ads_enabled,
-                                ])
-                            ></span>
-                        </button>
-                    </div>
+                    @endforeach
                 </div>
             </div>
         </div>

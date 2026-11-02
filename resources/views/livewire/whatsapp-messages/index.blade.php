@@ -27,7 +27,7 @@ new #[Layout('layouts.app')] #[Title('Customer Messages')] class extends Compone
 
     public function mount(): void
     {
-        abort_unless(Auth::user()->shop?->whatsapp_enabled, 403);
+        abort_unless(Auth::user()->shop?->whatsapp_messaging_enabled, 403);
 
         if (! in_array($this->tab, ['reminders', 'repairs', 'log'], true)) {
             $this->tab = 'reminders';

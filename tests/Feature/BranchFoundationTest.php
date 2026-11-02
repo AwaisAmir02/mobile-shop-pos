@@ -278,7 +278,7 @@ class BranchFoundationTest extends TestCase
         [$shop] = $this->shop($this->plan(['branches' => 1]));
         $this->actingAs(User::factory()->create(['is_super_admin' => true, 'shop_id' => null]));
 
-        Livewire::test('admin.shops.show', ['shop' => $shop])->set('branchesLimit', '4')->call('saveSubscription')->assertHasNoErrors();
+        Livewire::test('admin.shops.show', ['shop' => $shop])->set('limitOverrides.branches', '4')->call('saveSubscription')->assertHasNoErrors();
 
         $this->assertSame(4, app(Entitlements::class)->limit($shop->fresh(), LimitKey::Branches));
         $this->assertTrue(Auth::check());

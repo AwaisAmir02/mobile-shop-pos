@@ -10,6 +10,12 @@ enum NotificationType: string
     case RestockAlert = 'restock_alert';
     case ReviewRequest = 'review_request';
 
+    /** The WhatsApp feature a shop needs on to send this. Order updates are part of ordering. */
+    public function feature(): FeatureKey
+    {
+        return $this === self::OrderUpdate ? FeatureKey::WhatsAppOrdering : FeatureKey::WhatsAppMessaging;
+    }
+
     public function pausesAtMessageLimit(): bool
     {
         return in_array($this, [self::PaymentReminder, self::RestockAlert, self::ReviewRequest], true);

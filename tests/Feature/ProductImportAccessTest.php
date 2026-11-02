@@ -135,7 +135,7 @@ class ProductImportAccessTest extends TestCase
         $shopB = Shop::create(['name' => 'Shop B']);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleImportEnabled');
+        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleFeature', 'import');
 
         $this->assertTrue($shopA->fresh()->import_enabled);
         $this->assertFalse($shopB->fresh()->import_enabled);
@@ -147,7 +147,7 @@ class ProductImportAccessTest extends TestCase
         $shop = Shop::create(['name' => 'Shop A', 'import_enabled' => true]);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleImportEnabled');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleFeature', 'import');
 
         $this->assertFalse($shop->fresh()->import_enabled);
     }

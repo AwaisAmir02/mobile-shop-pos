@@ -211,7 +211,7 @@ class WhatsAppEngagementTest extends TestCase
         [$shop, $owner] = $this->whatsappShop();
         $this->actingAs($owner)->get(route('whatsapp-messages.index'))->assertOk();
 
-        $shop->update(['whatsapp_enabled' => false]);
+        $shop->update(['whatsapp_ordering_enabled' => false, 'whatsapp_messaging_enabled' => false]);
         $this->actingAs($owner->fresh())->get(route('whatsapp-messages.index'))->assertForbidden();
     }
 }

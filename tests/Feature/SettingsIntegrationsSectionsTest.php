@@ -31,7 +31,7 @@ class SettingsIntegrationsSectionsTest extends TestCase
 
     public function test_with_whatsapp_on_the_default_is_whatsapp_with_its_card_and_the_messages_editor_only(): void
     {
-        $this->actingAs($this->ownerOf(['whatsapp_enabled' => true, 'social_enabled' => true, 'ads_enabled' => true]));
+        $this->actingAs($this->ownerOf(['whatsapp_ordering_enabled' => true, 'whatsapp_messaging_enabled' => true, 'social_enabled' => true, 'ads_enabled' => true]));
 
         Livewire::test('settings.integrations')
             ->assertSet('section', 'whatsapp')
@@ -73,7 +73,7 @@ class SettingsIntegrationsSectionsTest extends TestCase
 
     public function test_each_sub_tab_shows_only_its_own_card(): void
     {
-        $this->actingAs($this->ownerOf(['whatsapp_enabled' => true, 'social_enabled' => true, 'ads_enabled' => true]));
+        $this->actingAs($this->ownerOf(['whatsapp_ordering_enabled' => true, 'whatsapp_messaging_enabled' => true, 'social_enabled' => true, 'ads_enabled' => true]));
 
         Livewire::test('settings.integrations')
             ->call('setSection', 'facebook')
@@ -93,7 +93,7 @@ class SettingsIntegrationsSectionsTest extends TestCase
 
     public function test_the_ad_account_sub_tab_needs_ads_and_unknown_sections_fall_back(): void
     {
-        $this->actingAs($this->ownerOf(['whatsapp_enabled' => true, 'social_enabled' => true]));
+        $this->actingAs($this->ownerOf(['whatsapp_ordering_enabled' => true, 'whatsapp_messaging_enabled' => true, 'social_enabled' => true]));
 
         Livewire::test('settings.integrations')
             ->assertDontSee('Meta Ad Account')
@@ -123,7 +123,7 @@ class SettingsIntegrationsSectionsTest extends TestCase
     {
         $this->mock(MetaOnboarding::class, fn ($mock) => $mock->shouldReceive('exchangeCode')->andReturn([])->shouldReceive('candidates')->andReturn([]));
         $this->mock(MetaAdsOnboarding::class, fn ($mock) => $mock->shouldReceive('exchangeCode')->andReturn([])->shouldReceive('candidates')->andReturn([]));
-        $this->actingAs($this->ownerOf(['whatsapp_enabled' => true, 'social_enabled' => true, 'ads_enabled' => true]));
+        $this->actingAs($this->ownerOf(['whatsapp_ordering_enabled' => true, 'whatsapp_messaging_enabled' => true, 'social_enabled' => true, 'ads_enabled' => true]));
 
         Livewire::test('settings.integrations')
             ->assertSet('section', 'whatsapp')

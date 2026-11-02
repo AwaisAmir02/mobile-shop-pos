@@ -47,6 +47,8 @@ return [
     'order_confirmed_invoice' => 'Aapka order :order confirm ho gaya hai. Yeh raha aapka invoice — shukriya!',
     'order_rejected' => 'Maazrat, hum aapka order :order accept nahi kar sake.',
     'order_rejected_reason' => 'Wajah: :reason',
+    'order_limit' => 'Maazrat, :shop abhi mazeed WhatsApp orders nahi le sakti. Aapka cart mehfooz hai, shop aapko yahin khud jawab degi.',
+    'ordering_off' => ':shop abhi WhatsApp par order nahi le rahi. Shop se baat karne ke liye neeche tap karein.',
     'say_hi_again' => 'Dobara dekhne ke liye hi likhein.',
 
     'fulfillment' => [

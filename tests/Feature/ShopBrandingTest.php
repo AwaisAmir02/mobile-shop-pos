@@ -36,7 +36,7 @@ class ShopBrandingTest extends TestCase
         $shopB = Shop::create(['name' => 'Shop B']);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleBrandingEnabled');
+        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleFeature', 'branding');
 
         $this->assertTrue($shopA->fresh()->branding_enabled);
         $this->assertFalse($shopB->fresh()->branding_enabled);

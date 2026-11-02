@@ -4,6 +4,7 @@ namespace App\Services\Billing;
 
 use App\Enums\AddonBilling;
 use App\Enums\AddonKind;
+use App\Enums\FeatureKey;
 use App\Enums\ShopAddonStatus;
 use App\Models\Addon;
 use App\Models\Shop;
@@ -36,8 +37,8 @@ class AddonService
             throw new RuntimeException('Please finish your pending payment first, then buy the add-on.');
         }
 
-        if ($addon->kind === AddonKind::FeatureUnlock && $this->entitlements->planFeature($shop, $addon->feature_key) === true) {
-            throw new RuntimeException('Your plan already includes '.$addon->feature_key->label().'.');
+        if ($addon->kind === AddonKind::FeatureUnlock && $this->entitlements->planIncludesAll($shop, $addon->feature_keys)) {
+            throw new RuntimeException('Your plan already includes '.$addon->featuresLabel().'.');
         }
 
         return DB::transaction(function () use ($shop, $addon, $userId) {
@@ -57,7 +58,7 @@ class AddonService
                 'kind' => $addon->kind,
                 'limit_key' => $addon->limit_key,
                 'quantity' => $addon->quantity,
-                'feature_key' => $addon->feature_key,
+                'feature_keys' => $addon->feature_keys,
                 'price' => $addon->price,
                 'billing' => $addon->billing,
                 'purchased_by' => $userId,
@@ -125,8 +126,9 @@ class AddonService
             return $renewal && $renewal->isFuture() ? $renewal->copy()->endOfDay() : now()->addMonthNoOverflow();
         }
 
+        // Stacks after an unlock in effect that already covers every feature this one does.
         $current = ShopAddon::where('shop_id', $shop->id)
-            ->where('feature_key', $shopAddon->feature_key?->value)
+            ->where(fn ($query) => collect($shopAddon->feature_keys)->each(fn (FeatureKey $feature) => $query->whereJsonContains('feature_keys', $feature->value)))
             ->whereKeyNot($shopAddon->id)
             ->inEffect()
             ->max('ends_at');

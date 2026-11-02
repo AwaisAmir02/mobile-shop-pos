@@ -47,6 +47,8 @@ return [
     'order_confirmed_invoice' => 'Your order :order is confirmed. Here is your invoice — thank you for shopping with us!',
     'order_rejected' => "Sorry, we couldn't accept your order :order.",
     'order_rejected_reason' => 'Reason: :reason',
+    'order_limit' => "Sorry, :shop can't take more WhatsApp orders right now. Your cart is saved, and the shop will reply to you here personally.",
+    'ordering_off' => ":shop isn't taking orders on WhatsApp right now. Tap below to talk to the shop.",
     'say_hi_again' => 'Say hi to browse again.',
 
     'fulfillment' => [

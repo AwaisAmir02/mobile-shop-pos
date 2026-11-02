@@ -23,7 +23,8 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
     public string $kind = 'limit_pack';
     public string $limitKey = 'products';
     public string $quantity = '';
-    public string $featureKey = 'whatsapp';
+    /** @var array<int, string> the features an unlock switches on; more than one makes a bundle */
+    public array $featureKeys = [];
     public string $price = '';
     public string $billing = 'monthly';
     public bool $isActive = true;
@@ -36,7 +37,7 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
     protected function resetForm(): void
     {
         $this->resetValidation();
-        $this->reset(['editingId', 'name', 'description', 'kind', 'limitKey', 'quantity', 'featureKey', 'price', 'billing', 'isActive']);
+        $this->reset(['editingId', 'name', 'description', 'kind', 'limitKey', 'quantity', 'featureKeys', 'price', 'billing', 'isActive']);
     }
 
     public function openCreate(): void
@@ -58,7 +59,7 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
         $this->kind = $addon->kind->value;
         $this->limitKey = $addon->limit_key?->value ?? 'products';
         $this->quantity = (string) ($addon->quantity ?? '');
-        $this->featureKey = $addon->feature_key?->value ?? 'whatsapp';
+        $this->featureKeys = collect($addon->feature_keys)->map(fn (FeatureKey $feature) => $feature->value)->all();
         $this->price = (string) (float) $addon->price;
         $this->billing = $addon->billing === AddonBilling::OneOff ? 'monthly' : $addon->billing->value;
         $this->isActive = $addon->is_active;
@@ -66,14 +67,10 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
         $this->dispatch('open-modal', name: 'addon-form');
     }
 
-    /**
-     * Branch packs are the one recurring kind of limit pack: a branch is a
-     * standing thing, so its pack must not lapse when the plan renews.
-     * Every other pack stays one-off, until the plan renews.
-     */
+    /** See LimitKey::packRecurs(). */
     protected function recurringPack(): bool
     {
-        return $this->kind === AddonKind::LimitPack->value && $this->limitKey === LimitKey::Branches->value;
+        return $this->kind === AddonKind::LimitPack->value && (LimitKey::tryFrom($this->limitKey)?->packRecurs() ?? false);
     }
 
     public function save(): void
@@ -88,10 +85,11 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
             'kind' => ['required', Rule::enum(AddonKind::class)],
             'limitKey' => [$pack ? 'required' : 'nullable', Rule::enum(LimitKey::class)],
             'quantity' => [$pack ? 'required' : 'nullable', 'integer', 'min:1', 'max:10000000'],
-            'featureKey' => [$pack ? 'nullable' : 'required', Rule::enum(FeatureKey::class)],
+            'featureKeys' => [$pack ? 'nullable' : 'required', 'array'],
+            'featureKeys.*' => [Rule::enum(FeatureKey::class)],
             'price' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
             'billing' => [$pack && ! $this->recurringPack() ? 'nullable' : 'required', 'in:monthly,yearly'],
-        ]);
+        ], ['featureKeys.required' => 'Tick at least one feature.']);
 
         $data = [
             'name' => trim($this->name),
@@ -99,7 +97,7 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
             'kind' => $this->kind,
             'limit_key' => $pack ? $this->limitKey : null,
             'quantity' => $pack ? (int) $this->quantity : null,
-            'feature_key' => $pack ? null : $this->featureKey,
+            'feature_keys' => $pack ? null : collect(FeatureKey::cases())->filter(fn (FeatureKey $feature) => in_array($feature->value, $this->featureKeys, true))->values()->all(),
             'price' => $this->price,
             'billing' => $pack && ! $this->recurringPack() ? AddonBilling::OneOff->value : $this->billing,
             'is_active' => $this->isActive,
@@ -257,7 +255,7 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
                             <x-ui.input wire:model="quantity" id="addonQuantity" type="number" min="1" />
                         </x-ui.field>
                     </div>
-                    @if ($limitKey === 'branches')
+                    @if (LimitKey::tryFrom($limitKey)?->packRecurs())
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <x-ui.field label="Billed" name="billing" for="addonPackBilling">
                                 <x-ui.select wire:model="billing" id="addonPackBilling">
@@ -271,14 +269,14 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
                         <p class="text-xs text-slate-500">Packs are one-off and last until the shop’s plan renews.</p>
                     @endif
                 @else
+                    <x-ui.field label="Switches on" name="featureKeys" help="Tick more than one to sell them together as a bundle.">
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            @foreach (FeatureKey::cases() as $feature)
+                                <x-ui.checkbox wire:model="featureKeys" :value="$feature->value" :label="$feature->label()" />
+                            @endforeach
+                        </div>
+                    </x-ui.field>
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <x-ui.field label="Switches on" name="featureKey" for="addonFeature">
-                            <x-ui.select wire:model="featureKey" id="addonFeature">
-                                @foreach (FeatureKey::cases() as $feature)
-                                    <option value="{{ $feature->value }}">{{ $feature->label() }}</option>
-                                @endforeach
-                            </x-ui.select>
-                        </x-ui.field>
                         <x-ui.field label="Billed" name="billing" for="addonBilling">
                             <x-ui.select wire:model="billing" id="addonBilling">
                                 <option value="monthly">Every month</option>

@@ -7,6 +7,7 @@ use App\Enums\AddonKind;
 use App\Enums\FeatureKey;
 use App\Enums\LimitKey;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -18,7 +19,7 @@ class Addon extends Model
         'kind',
         'limit_key',
         'quantity',
-        'feature_key',
+        'feature_keys',
         'price',
         'billing',
         'is_active',
@@ -30,7 +31,7 @@ class Addon extends Model
         return [
             'kind' => AddonKind::class,
             'limit_key' => LimitKey::class,
-            'feature_key' => FeatureKey::class,
+            'feature_keys' => AsEnumCollection::of(FeatureKey::class),
             'billing' => AddonBilling::class,
             'quantity' => 'integer',
             'price' => 'decimal:2',
@@ -58,7 +59,13 @@ class Addon extends Model
     {
         return $this->kind === AddonKind::LimitPack
             ? '+'.number_format((int) $this->quantity).' '.$this->limit_key?->unit((int) $this->quantity).($this->limit_key?->isMonthly() ? ' a month' : '')
-            : $this->feature_key?->label().' switched on';
+            : $this->featuresLabel().' switched on';
+    }
+
+    /** "WhatsApp ordering & WhatsApp messaging" for a bundle. */
+    public function featuresLabel(): string
+    {
+        return collect($this->feature_keys)->map(fn (FeatureKey $feature) => $feature->label())->implode(' & ');
     }
 
     public function priceLabel(): string
