@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\PaymentStatus;
+use App\Enums\StockInPaymentSource;
 use App\Livewire\Concerns\Toasts;
 use App\Models\AccessoryCategoryOption;
 use App\Models\MainCategory;
@@ -283,7 +284,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                     default => PaymentStatus::Unpaid,
                 };
 
-                StockIn::create([
+                $entry = StockIn::create([
                     'product_id' => $product->id,
                     'vendor_id' => $vendorId,
                     'product_name' => $product->name,
@@ -298,6 +299,17 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                     'stock_date' => $this->stock_date,
                     'note' => $this->note !== '' ? $this->note : null,
                 ]);
+
+                // Dated history of this line's share of the purchase-time payment.
+                if (round($lineAmountPaid, 2) != 0.0) {
+                    $entry->payments()->create([
+                        'shop_id' => $entry->shop_id,
+                        'user_id' => Auth::id(),
+                        'amount' => $lineAmountPaid,
+                        'payment_date' => $this->stock_date,
+                        'source' => StockInPaymentSource::Initial,
+                    ]);
+                }
             }
         });
 

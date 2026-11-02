@@ -2,6 +2,7 @@
 
 use App\Actions\ConsumeStockFifo;
 use App\Actions\CreateSale;
+use App\Livewire\Concerns\PicksPaymentMethod;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\Models\Product;
@@ -16,7 +17,7 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 {
-    use Toasts;
+    use PicksPaymentMethod, Toasts;
 
     const MAX_LINE_PRICE = 9999999.99;
 
@@ -30,6 +31,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
     public function mount(): void
     {
         $this->saleDate = now()->toDateString();
+        $this->paymentMethod = 'cash';
     }
 
     public function updatedCustomerId(): void
@@ -58,6 +60,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                     ->get()
                 : collect(),
             'customers' => Customer::query()->orderBy('name')->get(),
+            'paymentAccounts' => $this->paymentAccounts(),
             'barcodeEnabled' => Auth::user()->canUseBarcodes(),
         ];
     }
@@ -239,6 +242,8 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             ];
         }
 
+        [$paymentMethod, $shopAccountId] = $this->chosenPaymentMethod();
+
         try {
             $sale = CreateSale::handle(
                 lines: $lines,
@@ -247,6 +252,8 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                 userId: Auth::id(),
                 saleDate: $this->saleDate,
                 amountPaid: $paidNow,
+                paymentMethod: $paymentMethod,
+                shopAccountId: $shopAccountId,
             );
         } catch (ValidationException $e) {
             $errors = [];
@@ -272,6 +279,8 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             </a>
         </div>
     </x-slot>
+
+    <x-billing.limit-notice limit="sales_per_month" informational />
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2">
@@ -425,6 +434,8 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                         <x-ui.input wire:model.live="amountPaidNow" id="amountPaidNow" type="number" min="0" step="0.01" :placeholder="number_format($this->total(), 2)" />
                     </x-ui.field>
 
+                    <x-sales.payment-method-picker :accounts="$paymentAccounts" :value="$paymentMethod" amount="amountPaidNow" />
+
                     <x-ui.field label="Customer" name="customerId" for="customerId" :help="$amountPaidNow !== '' && (float) $amountPaidNow < $this->total() ? 'Required — this sale is not being paid in full' : 'Optional — leave blank for a walk-in sale'">
                         <x-ui.select wire:model.live="customerId" id="customerId">
                             <option value="">Walk-in (no customer)</option>
@@ -464,4 +475,5 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
     </div>
 
     <livewire:customers.quick-create />
+    <livewire:shop-accounts.quick-create />
 </div>

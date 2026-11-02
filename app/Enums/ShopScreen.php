@@ -49,6 +49,7 @@ enum ShopScreen: string
     case Marketing = 'marketing';
     case MarketingAnalytics = 'marketing-analytics';
     case MarketingAds = 'marketing-ads';
+    case Branches = 'branches';
 
     public function label(): string
     {
@@ -98,6 +99,7 @@ enum ShopScreen: string
             self::Marketing => 'Marketing: Posts, Reviews & QR codes',
             self::MarketingAnalytics => 'Marketing: Overview & analytics',
             self::MarketingAds => 'Marketing: Meta ads (spends money)',
+            self::Branches => 'Branches',
         };
     }
 
@@ -149,6 +151,7 @@ enum ShopScreen: string
             self::Marketing => 'marketing.posts',
             self::MarketingAnalytics => 'marketing.index',
             self::MarketingAds => 'marketing.ads',
+            self::Branches => 'branches.index',
         };
     }
 
@@ -167,7 +170,7 @@ enum ShopScreen: string
             'Inventory & Sales' => [self::StockIns, self::StockInsEditCancel, self::Vendors, self::Sales, self::SalesEditCancel, self::SalesViewCostPrice, self::SimSales, self::SimSalesEditCancel],
             'Financial Services' => [self::BalanceLoads, self::BalanceLoadsEditCancel, self::WalletLoads, self::WalletLoadsEditCancel, self::Bills, self::BillsEditCancel, self::Repairs, self::RepairsEditCancel, self::NadraVerifications, self::NadraVerificationsEditCancel, self::Udhaar, self::Expenses, self::ExpensesEditCancel, self::Services, self::ServicesEditCancel],
             'Online Selling' => [self::WhatsAppOrders, self::WhatsAppOrdersDecide, self::WhatsAppMessages, self::Marketing, self::MarketingAnalytics, self::MarketingAds],
-            'Administration' => [self::Users, self::ShopAccounts],
+            'Administration' => [self::Users, self::ShopAccounts, self::Branches],
             'Settings' => [self::Settings, self::SettingsCategories, self::SettingsNetworks, self::SettingsBillConfig, self::SettingsPercentage, self::SettingsBrands, self::SettingsBranding, self::SettingsServices, self::SettingsIntegrations],
         ];
     }

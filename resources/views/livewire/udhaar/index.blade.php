@@ -6,6 +6,7 @@ use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\ReportQueries\UdhaarReport;
 use App\Services\TableExportService;
+use App\Support\BranchContext;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -24,6 +25,16 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
     public string $amount = '';
     public string $transaction_date = '';
     public string $note = '';
+
+    /**
+     * Customers and vendors belong to the whole shop, so this screen shows
+     * every branch's lines and balances to everyone, restricted staff
+     * included. boot() runs on every Livewire request, not just the first.
+     */
+    public function boot(): void
+    {
+        BranchContext::current()->shopWideForRequest();
+    }
 
     public function mount(): void
     {

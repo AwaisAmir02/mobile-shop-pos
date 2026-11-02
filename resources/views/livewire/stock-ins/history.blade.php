@@ -3,6 +3,7 @@
 use App\Actions\CancelStockIn;
 use App\Actions\UpdateStockIn;
 use App\Enums\PaymentStatus;
+use App\Enums\StockInPaymentSource;
 use App\Livewire\Concerns\GuardsExportSize;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Product;
@@ -12,6 +13,7 @@ use App\Models\Vendor;
 use App\ReportQueries\StockInReport;
 use App\Services\TableExportService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -132,20 +134,26 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     public function markAsPaid(int $id): void
     {
-        $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($id);
-        abort_if($entry->isCancelled(), 403);
+        DB::transaction(function () use ($id) {
+            $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->inCurrentBranch()->lockForUpdate()->findOrFail($id);
+            abort_if($entry->isCancelled(), 403);
 
-        $entry->update([
-            'payment_status' => PaymentStatus::Paid,
-            'amount_paid' => $entry->total_cost ?? $entry->amount_paid,
-        ]);
+            $previousAmountPaid = (float) $entry->amount_paid;
+
+            $entry->update([
+                'payment_status' => PaymentStatus::Paid,
+                'amount_paid' => $entry->total_cost ?? $entry->amount_paid,
+            ]);
+
+            $this->recordPaymentRow($entry, (float) $entry->amount_paid - $previousAmountPaid, StockInPaymentSource::MarkPaid);
+        });
 
         $this->toastSuccess('Marked as paid.');
     }
 
     public function openAddPayment(int $id): void
     {
-        $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($id);
+        $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->inCurrentBranch()->findOrFail($id);
         abort_if($entry->isCancelled(), 403);
 
         $this->payingId = $id;
@@ -156,25 +164,53 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     public function submitPayment(): void
     {
-        $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($this->payingId);
+        $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->inCurrentBranch()->findOrFail($this->payingId);
         abort_if($entry->isCancelled(), 403);
 
         $this->validate([
             'paymentAmount' => ['required', 'numeric', 'min:0.01'],
         ]);
 
-        $newAmountPaid = (float) $entry->amount_paid + (float) $this->paymentAmount;
+        DB::transaction(function () {
+            $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->inCurrentBranch()->lockForUpdate()->findOrFail($this->payingId);
+            abort_if($entry->isCancelled(), 403);
 
-        $entry->update([
-            'amount_paid' => $newAmountPaid,
-            'payment_status' => $entry->total_cost !== null && $newAmountPaid >= (float) $entry->total_cost
-                ? PaymentStatus::Paid
-                : PaymentStatus::Partial,
-        ]);
+            $previousAmountPaid = (float) $entry->amount_paid;
+            $newAmountPaid = $previousAmountPaid + (float) $this->paymentAmount;
+
+            $entry->update([
+                'amount_paid' => $newAmountPaid,
+                'payment_status' => $entry->total_cost !== null && $newAmountPaid >= (float) $entry->total_cost
+                    ? PaymentStatus::Paid
+                    : PaymentStatus::Partial,
+            ]);
+
+            $this->recordPaymentRow($entry, (float) $entry->amount_paid - $previousAmountPaid, StockInPaymentSource::Payment);
+        });
 
         $this->toastSuccess('Payment recorded.');
         $this->dispatch('close-modal', name: 'add-payment-form');
         $this->reset(['payingId', 'paymentAmount']);
+    }
+
+    /**
+     * Dated history for a change to amount_paid. The row is the exact change
+     * just stored (after decimal rounding), so a Stock-In's rows always add
+     * up to its amount_paid. No change, no row.
+     */
+    protected function recordPaymentRow(StockIn $entry, float $change, StockInPaymentSource $source): void
+    {
+        if (round($change, 2) == 0.0) {
+            return;
+        }
+
+        $entry->payments()->create([
+            'shop_id' => $entry->shop_id,
+            'user_id' => Auth::id(),
+            'amount' => round($change, 2),
+            'payment_date' => now()->toDateString(),
+            'source' => $source,
+        ]);
     }
 
     public function closePaymentForm(): void
@@ -187,7 +223,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
     {
         abort_unless(Auth::user()->hasAccessTo('stock-ins-edit-cancel'), 403);
 
-        $entry = StockIn::findOrFail($entryId);
+        $entry = StockIn::inCurrentBranch()->findOrFail($entryId);
 
         $this->editingId = $entry->id;
         $this->editQuantity = (string) $entry->quantity;
@@ -213,7 +249,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'editSellingPrice' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $entry = StockIn::findOrFail($this->editingId);
+        $entry = StockIn::inCurrentBranch()->findOrFail($this->editingId);
 
         UpdateStockIn::handle($entry, [
             'quantity' => (int) $this->editQuantity,
@@ -248,7 +284,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
     {
         abort_unless(Auth::user()->hasAccessTo('stock-ins-edit-cancel'), 403);
 
-        $entry = StockIn::findOrFail($this->cancelingId);
+        $entry = StockIn::inCurrentBranch()->findOrFail($this->cancelingId);
         $result = CancelStockIn::handle($entry, Auth::id(), $this->cancelReason);
 
         $this->dispatch('close-modal', name: 'cancel-stock-in-form');

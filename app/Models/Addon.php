@@ -57,7 +57,7 @@ class Addon extends Model
     public function grants(): string
     {
         return $this->kind === AddonKind::LimitPack
-            ? '+'.number_format((int) $this->quantity).' '.$this->limit_key?->unit().($this->limit_key?->isMonthly() ? ' a month' : '')
+            ? '+'.number_format((int) $this->quantity).' '.$this->limit_key?->unit((int) $this->quantity).($this->limit_key?->isMonthly() ? ' a month' : '')
             : $this->feature_key?->label().' switched on';
     }
 

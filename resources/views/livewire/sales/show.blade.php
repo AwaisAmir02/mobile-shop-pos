@@ -20,7 +20,7 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
 
     public function mount(Sale $sale): void
     {
-        $this->sale = $sale->load(['items', 'customer', 'payments']);
+        $this->sale = $sale->load(['items', 'customer', 'payments.shopAccount']);
     }
 
     public function downloadInvoice(InvoicePdfService $pdf): StreamedResponse
@@ -48,7 +48,7 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
 
         $result = CancelSale::handle($this->sale, Auth::id(), $this->cancelReason);
 
-        $this->sale = $this->sale->fresh(['items', 'customer', 'payments']);
+        $this->sale = $this->sale->fresh(['items', 'customer', 'payments.shopAccount']);
         $this->dispatch('close-modal', name: 'cancel-sale-form');
 
         $message = 'Sale cancelled and stock restored.';
@@ -175,6 +175,18 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                     <x-ui.badge variant="danger">Unpaid</x-ui.badge>
                 @endif
             </div>
+
+            @php($recordedPayments = $sale->payments->filter(fn ($payment) => (float) $payment->amount != 0.0)->sortBy('id'))
+            @if ($recordedPayments->isNotEmpty())
+                <ul class="mt-3 space-y-1 text-sm">
+                    @foreach ($recordedPayments as $payment)
+                        <li class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-slate-500">{{ $payment->payment_date->format('d M Y') }} · Rs {{ number_format($payment->amount, 2) }}</span>
+                            <span class="text-slate-700">Paid by: <span class="font-medium text-slate-900">{{ $payment->methodLabel() }}</span></span>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
         </x-ui.card>
 
         <x-ui.modal name="cancel-sale-form" max-width="sm">

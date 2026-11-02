@@ -26,6 +26,15 @@ class MarketingSiteTest extends TestCase
             'pricing' => ['/pricing', 'Pricing | HisabOKitab'],
             'about' => ['/about', 'About | HisabOKitab'],
             'contact' => ['/contact', 'Contact | HisabOKitab'],
+            'feature: pos' => ['/features/pos', 'Sales & Invoices | HisabOKitab'],
+            'feature: stock' => ['/features/stock', 'Stock & FIFO Costing | HisabOKitab'],
+            'feature: udhaar' => ['/features/udhaar', 'Udhaar & Customers | HisabOKitab'],
+            'feature: reports' => ['/features/reports', 'Reports & Expenses | HisabOKitab'],
+            'feature: multi-branch' => ['/features/multi-branch', 'Multi-Branch | HisabOKitab'],
+            'feature: whatsapp-ordering' => ['/features/whatsapp-ordering', 'WhatsApp Ordering | HisabOKitab'],
+            'feature: social-posting' => ['/features/social-posting', 'Facebook & Instagram Posting | HisabOKitab'],
+            'feature: meta-ads' => ['/features/meta-ads', 'Meta Ads | HisabOKitab'],
+            'feature: mobile-shop-services' => ['/features/mobile-shop-services', 'Mobile Shop Services | HisabOKitab'],
         ];
     }
 
@@ -87,7 +96,7 @@ class MarketingSiteTest extends TestCase
 
     public function test_only_future_ad_channels_are_marked_coming_soon(): void
     {
-        foreach (['/', '/features'] as $path) {
+        foreach (['/', '/features/meta-ads'] as $path) {
             $html = $this->get($path)->getContent();
 
             foreach (['Google Ads', 'YouTube Ads', 'LinkedIn Ads'] as $channel) {
@@ -113,6 +122,10 @@ class MarketingSiteTest extends TestCase
 
         foreach (['home', 'site.features', 'site.pricing', 'site.about', 'site.contact'] as $name) {
             $response->assertSee('<loc>'.route($name).'</loc>', false);
+        }
+
+        foreach (\App\Support\SiteFeatures::slugs() as $slug) {
+            $response->assertSee('<loc>'.route('site.feature', $slug).'</loc>', false);
         }
     }
 }

@@ -12,6 +12,7 @@ class SubscriptionInvoice extends Model
 {
     protected $fillable = [
         'shop_id',
+        'plan_id',
         'invoice_number',
         'plan_type',
         'period_start',
@@ -46,6 +47,12 @@ class SubscriptionInvoice extends Model
     public function shop(): BelongsTo
     {
         return $this->belongsTo(Shop::class);
+    }
+
+    /** The plan this invoice switches the shop to once paid; null for signup, renewal and add-on invoices. */
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class);
     }
 
     public function createdBy(): BelongsTo

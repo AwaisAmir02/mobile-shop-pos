@@ -37,6 +37,69 @@ const mobileMenu = () => {
     });
 };
 
+// Header "Features" dropdown: opens on hover (on devices that can hover) or
+// with its arrow button; closes on leaving, Escape, focus leaving or a click outside.
+const featuresDropdown = () => {
+    document.querySelectorAll('[data-dropdown]').forEach((root) => {
+        const toggle = root.querySelector('[data-dropdown-toggle]');
+
+        if (!toggle) {
+            return;
+        }
+
+        const canHover = window.matchMedia('(hover: hover)');
+        let closeTimer = null;
+
+        const isOpen = () => root.hasAttribute('data-open');
+        const setOpen = (open) => {
+            clearTimeout(closeTimer);
+            root.toggleAttribute('data-open', open);
+            toggle.setAttribute('aria-expanded', String(open));
+        };
+
+        root.addEventListener('mouseenter', () => {
+            if (canHover.matches) {
+                setOpen(true);
+            }
+        });
+        root.addEventListener('mouseleave', () => {
+            if (canHover.matches) {
+                closeTimer = setTimeout(() => setOpen(false), 150);
+            }
+        });
+        toggle.addEventListener('click', () => setOpen(!isOpen()));
+        root.addEventListener('focusout', (event) => {
+            if (!root.contains(event.relatedTarget)) {
+                setOpen(false);
+            }
+        });
+        document.addEventListener('click', (event) => {
+            if (isOpen() && !root.contains(event.target)) {
+                setOpen(false);
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && isOpen()) {
+                setOpen(false);
+                toggle.focus();
+            }
+        });
+    });
+};
+
+// Mobile menu: the Features row expands to list each feature page.
+const mobileSubmenus = () => {
+    document.querySelectorAll('[data-submenu]').forEach((root) => {
+        const toggle = root.querySelector('[data-submenu-toggle]');
+
+        toggle?.addEventListener('click', () => {
+            const open = !root.hasAttribute('data-open');
+            root.toggleAttribute('data-open', open);
+            toggle.setAttribute('aria-expanded', String(open));
+        });
+    });
+};
+
 const headerShadow = () => {
     const header = document.querySelector('[data-site-header]');
 
@@ -91,6 +154,8 @@ const countUp = () => {
 document.addEventListener('DOMContentLoaded', () => {
     revealOnScroll();
     mobileMenu();
+    featuresDropdown();
+    mobileSubmenus();
     headerShadow();
     countUp();
 });

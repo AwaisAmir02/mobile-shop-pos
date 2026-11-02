@@ -24,7 +24,10 @@ use App\ReportQueries\SimSaleReport;
 use App\ReportQueries\StockInReport;
 use App\ReportQueries\UdhaarReport;
 use App\ReportQueries\WalletLoadReport;
+use App\Services\ShopReportService;
 use App\Services\TableExportService;
+use App\Support\BranchContext;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -92,9 +95,35 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
     // Repairs
     public string $category = '';
 
+    // Owner's branch comparison
+    public string $compareFrom = '';
+    public string $compareTo = '';
+
     public function mount(): void
     {
         $this->screen = $this->accessibleScreens()[0]?->value ?? '';
+        $this->compareFrom = now()->startOfMonth()->toDateString();
+        $this->compareTo = now()->toDateString();
+    }
+
+    /**
+     * The consolidated, per-branch view is the owner's alone, and only
+     * means something across all branches: a single-branch shop, or the
+     * switcher set to one branch, gets nothing here.
+     */
+    protected function branchComparison(): ?array
+    {
+        $user = Auth::user();
+        $context = BranchContext::current();
+
+        if (! $user->is_owner || ! $context->hasMultipleBranches($user->shop_id) || $context->selectedBranchId() !== null) {
+            return null;
+        }
+
+        $from = rescue(fn () => Carbon::parse($this->compareFrom)->startOfDay(), now()->startOfMonth(), false);
+        $to = rescue(fn () => Carbon::parse($this->compareTo)->endOfDay(), now()->endOfDay(), false);
+
+        return app(ShopReportService::class)->byBranch($user->shop, $from, $to);
     }
 
     /** @return array<int, ShopScreen> */
@@ -174,6 +203,7 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
         $report = $this->reportIfAccessible();
 
         return [
+            'branchComparison' => $this->branchComparison(),
             'accessibleScreens' => $accessible,
             'summaryCards' => $report?->summaryCards() ?? [],
             'tableHeaders' => $report?->tableHeaders() ?? [],
@@ -232,6 +262,50 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
     <x-slot name="header">
         <h1 class="text-xl font-semibold text-slate-900">Reports</h1>
     </x-slot>
+
+    @if ($branchComparison)
+        <x-ui.card title="Branches compared" description="Every branch side by side. Only you, the owner, see this." class="mb-6">
+            <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                <x-ui.field label="From" name="compareFrom" for="compareFrom" class="sm:max-w-[12rem]">
+                    <x-ui.input wire:model.live="compareFrom" id="compareFrom" type="date" />
+                </x-ui.field>
+                <x-ui.field label="To" name="compareTo" for="compareTo" class="sm:max-w-[12rem]">
+                    <x-ui.input wire:model.live="compareTo" id="compareTo" type="date" />
+                </x-ui.field>
+            </div>
+
+            @php
+                $columns = [
+                    'Sales' => fn ($s) => $s['totalRevenue'],
+                    'Items sold' => fn ($s) => $s['totalItemsSold'],
+                    'Expenses' => fn ($s) => $s['totalExpenses'],
+                    'Net (sales − expenses)' => fn ($s) => $s['netSummary'],
+                    'Repairs' => fn ($s) => $s['totalRepairsRevenue'],
+                    'Commission (loads, bills)' => fn ($s) => $s['totalBalanceLoadFees'] + $s['totalWalletLoadFees'] + $s['totalBillsFeeRevenue'],
+                    'Stock-in units' => fn ($s) => $s['totalStockInUnits'],
+                ];
+                $counts = ['Items sold', 'Stock-in units'];
+                $cell = fn (string $label, array $summary) => in_array($label, $counts, true) ? number_format($columns[$label]($summary)) : 'Rs '.number_format($columns[$label]($summary), 2);
+            @endphp
+
+            <x-ui.table :headers="array_merge(['Branch'], array_keys($columns))">
+                @foreach ($branchComparison['branches'] as $row)
+                    <x-ui.table-row wire:key="compare-{{ $row['branch']->id }}">
+                        <x-ui.table-cell class="font-medium text-slate-900">{{ $row['branch']->name }}</x-ui.table-cell>
+                        @foreach (array_keys($columns) as $label)
+                            <x-ui.table-cell>{{ $cell($label, $row['summary']) }}</x-ui.table-cell>
+                        @endforeach
+                    </x-ui.table-row>
+                @endforeach
+                <x-ui.table-row wire:key="compare-total">
+                    <x-ui.table-cell class="font-semibold text-slate-900">All branches</x-ui.table-cell>
+                    @foreach (array_keys($columns) as $label)
+                        <x-ui.table-cell class="font-semibold text-slate-900">{{ $cell($label, $branchComparison['total']) }}</x-ui.table-cell>
+                    @endforeach
+                </x-ui.table-row>
+            </x-ui.table>
+        </x-ui.card>
+    @endif
 
     @if (empty($accessibleScreens))
         <x-ui.empty-state

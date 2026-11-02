@@ -8,6 +8,7 @@ use App\Models\BillProvider;
 use App\Models\Customer;
 use App\Models\ShopAccount;
 use App\Services\BillPaymentReceiptPdfService;
+use App\Support\BranchContext;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -42,7 +43,7 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
     {
         BillCategory::ensureDefaultsExist();
         $this->billCategoryId = (string) (BillCategory::query()->orderBy('name')->value('id') ?? '');
-        $this->shopAccountId = (string) (ShopAccount::query()->orderBy('name')->value('id') ?? '');
+        $this->shopAccountId = (string) (ShopAccount::query()->usableAt(BranchContext::current()->recordingBranchId())->orderBy('name')->value('id') ?? '');
     }
 
     public function updatingBillCategoryId(string $value): void
@@ -179,7 +180,7 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
                 ->orderBy('name')
                 ->get(),
             'customers' => Customer::query()->orderBy('name')->get(),
-            'shopAccounts' => ShopAccount::query()->orderBy('name')->get(),
+            'shopAccounts' => ShopAccount::query()->usableAt(BranchContext::current()->recordingBranchId())->orderBy('name')->get(),
             'lastPayment' => $this->lastPaymentId ? BillPayment::find($this->lastPaymentId) : null,
             'totalCollected' => $this->totalCollected(),
             'paymentStatuses' => PaymentStatus::cases(),

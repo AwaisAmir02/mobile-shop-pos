@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\ShopAccount;
 use App\Models\WalletLoad;
 use App\Services\WalletLoadReceiptPdfService;
+use App\Support\BranchContext;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -36,7 +37,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
 
     public function mount(): void
     {
-        $this->shopAccountId = (string) (ShopAccount::query()->orderBy('name')->value('id') ?? '');
+        $this->shopAccountId = (string) (ShopAccount::query()->usableAt(BranchContext::current()->recordingBranchId())->orderBy('name')->value('id') ?? '');
     }
 
     public function switchDirection(string $direction): void
@@ -167,7 +168,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
             'shopAccountOptions' => collect([
                 ['value' => '__create__', 'label' => 'New Shop Account', 'image' => null, 'special' => true, 'modal' => 'quick-create-shop-account'],
             ])->concat(
-                ShopAccount::query()->orderBy('name')->get()->map(fn (ShopAccount $account) => [
+                ShopAccount::query()->usableAt(BranchContext::current()->recordingBranchId())->orderBy('name')->get()->map(fn (ShopAccount $account) => [
                     'value' => (string) $account->id,
                     'label' => $account->name,
                     'image' => null,

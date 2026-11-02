@@ -10,6 +10,7 @@
     $faqs = [
         ['Do I need to install anything?', 'No. HisabOKitab runs in your browser on a phone, tablet or computer. Log in and start selling.'],
         ['Who pays for Meta ads?', 'Ads are billed by Meta directly to your own ad account. HisabOKitab never charges you for ad spend, and you confirm the maximum spend before any ad goes live.'],
+        ['Can I run more than one branch?', 'Yes. Each plan includes a set number of branches, and you can add more with a monthly or yearly branch add-on. Products, customers and stock are shared by every branch; each branch records its own sales, stock-ins, udhaar and expenses, and you see them side by side.'],
         ['Can I keep using WhatsApp Business on my phone?', 'Yes. Your number stays usable in the WhatsApp Business app while HisabOKitab handles chatbot orders and messages.'],
         ['Is my shop’s data private?', 'Yes. Every shop’s records are isolated from every other shop, and staff only see the screens you allow.'],
     ];

@@ -10,6 +10,10 @@
         ['route' => 'site.about', 'label' => 'About'],
         ['route' => 'site.contact', 'label' => 'Contact'],
     ];
+    $siteFeatures = \App\Support\SiteFeatures::all();
+    $featuresActive = request()->routeIs('site.features', 'site.feature');
+    $currentFeature = request()->route('feature');
+    $chevron = '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="h-4 w-4 transition-transform duration-200 group-data-[open]:rotate-180"><path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>';
     $contact = config('site.contact');
     $structuredData = json_encode([
         '@context' => 'https://schema.org',
@@ -64,11 +68,42 @@
 
                 <div class="hidden items-center gap-1 md:flex">
                     @foreach ($links as $link)
-                        <a href="{{ route($link['route']) }}" @class([
-                            'rounded-full px-4 py-2 text-sm font-medium transition-colors',
-                            'bg-brand-50 text-brand-700' => request()->routeIs($link['route']),
-                            'text-slate-600 hover:bg-slate-100 hover:text-slate-900' => ! request()->routeIs($link['route']),
-                        ]) @if (request()->routeIs($link['route'])) aria-current="page" @endif>{{ $link['label'] }}</a>
+                        @if ($link['route'] === 'site.features')
+                            <div class="group relative" data-dropdown>
+                                <div @class([
+                                    'flex items-center rounded-full transition-colors',
+                                    'bg-brand-50 text-brand-700' => $featuresActive,
+                                    'text-slate-600 hover:bg-slate-100 hover:text-slate-900 group-data-[open]:bg-slate-100 group-data-[open]:text-slate-900' => ! $featuresActive,
+                                ])>
+                                    <a href="{{ route('site.features') }}" class="py-2 pl-4 pr-1 text-sm font-medium" @if (request()->routeIs('site.features')) aria-current="page" @endif>{{ $link['label'] }}</a>
+                                    <button type="button" data-dropdown-toggle class="rounded-r-full py-2 pl-1 pr-3" aria-expanded="false" aria-controls="site-features-menu" aria-label="Show all features">{!! $chevron !!}</button>
+                                </div>
+                                <div id="site-features-menu" class="invisible absolute left-1/2 top-full z-50 w-[40rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 translate-y-1 pt-3 opacity-0 transition duration-150 group-data-[open]:visible group-data-[open]:translate-y-0 group-data-[open]:opacity-100">
+                                    <div class="overflow-hidden rounded-2xl bg-white shadow-2xl shadow-brand-950/15 ring-1 ring-slate-900/5">
+                                        <div class="grid grid-cols-2 gap-1 p-3">
+                                            @foreach ($siteFeatures as $slug => $feature)
+                                                <a href="{{ route('site.feature', $slug) }}" @class(['flex gap-3 rounded-xl p-3 transition hover:bg-slate-50', 'bg-brand-50' => $currentFeature === $slug, 'col-span-2' => $loop->last && $loop->odd]) @if ($currentFeature === $slug) aria-current="page" @endif>
+                                                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><x-site.icon :name="$feature['icon']" class="h-5 w-5" /></span>
+                                                    <span class="min-w-0">
+                                                        <span class="block text-sm font-semibold text-slate-900">{{ $feature['name'] }}</span>
+                                                        <span class="mt-0.5 line-clamp-2 block text-xs leading-5 text-slate-500">{{ $feature['summary'] }}</span>
+                                                    </span>
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                        <div class="border-t border-slate-100 bg-slate-50 px-6 py-3">
+                                            <a href="{{ route('site.features') }}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800">All features <x-site.icon name="arrow-right" class="h-4 w-4" /></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @else
+                            <a href="{{ route($link['route']) }}" @class([
+                                'rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                                'bg-brand-50 text-brand-700' => request()->routeIs($link['route']),
+                                'text-slate-600 hover:bg-slate-100 hover:text-slate-900' => ! request()->routeIs($link['route']),
+                            ]) @if (request()->routeIs($link['route'])) aria-current="page" @endif>{{ $link['label'] }}</a>
+                        @endif
                     @endforeach
                 </div>
 
@@ -89,7 +124,24 @@
 
             <div id="site-mobile-menu" data-menu class="hidden border-t border-slate-100 bg-white px-4 pb-6 pt-2 md:hidden">
                 @foreach ($links as $link)
-                    <a href="{{ route($link['route']) }}" class="block rounded-lg px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50">{{ $link['label'] }}</a>
+                    @if ($link['route'] === 'site.features')
+                        <div class="group" data-submenu>
+                            <div class="flex items-center">
+                                <a href="{{ route('site.features') }}" class="block flex-1 rounded-lg px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50">{{ $link['label'] }}</a>
+                                <button type="button" data-submenu-toggle class="rounded-lg p-3 text-slate-500 hover:bg-slate-50" aria-expanded="false" aria-controls="site-mobile-features" aria-label="Show all features">{!! $chevron !!}</button>
+                            </div>
+                            <div id="site-mobile-features" class="hidden pb-2 pl-3 group-data-[open]:block">
+                                @foreach ($siteFeatures as $slug => $feature)
+                                    <a href="{{ route('site.feature', $slug) }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                                        <x-site.icon :name="$feature['icon']" class="h-5 w-5 text-brand-600" />
+                                        {{ $feature['name'] }}
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <a href="{{ route($link['route']) }}" class="block rounded-lg px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50">{{ $link['label'] }}</a>
+                    @endif
                 @endforeach
                 <div class="mt-4 grid grid-cols-1 gap-3">
                     @auth

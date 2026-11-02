@@ -11,7 +11,10 @@ use Illuminate\Support\Facades\DB;
 class SubscriptionBillingService
 {
     /**
-     * @param  array{period_start: string, months: int, amount: float|string, discount?: float|string|null, notes?: ?string}  $data
+     * plan_id and plan_type are given only for a plan-change invoice, whose
+     * billing interval is the new plan's rather than the shop's current one.
+     *
+     * @param  array{period_start: string, months: int, amount: float|string, discount?: float|string|null, notes?: ?string, plan_id?: ?int, plan_type?: ?string}  $data
      */
     public function create(Shop $shop, array $data, ?int $userId, ?string $paidAt = null): SubscriptionInvoice
     {
@@ -24,8 +27,9 @@ class SubscriptionBillingService
 
             $invoice = SubscriptionInvoice::create([
                 'shop_id' => $shop->id,
+                'plan_id' => $data['plan_id'] ?? null,
                 'invoice_number' => $this->nextInvoiceNumber(),
-                'plan_type' => $shop->plan_type?->value ?? 'monthly',
+                'plan_type' => $data['plan_type'] ?? $shop->plan_type?->value ?? 'monthly',
                 'period_start' => $start->toDateString(),
                 'months' => $months,
                 'period_end' => SubscriptionInvoice::periodEndFor($start, $months)->toDateString(),

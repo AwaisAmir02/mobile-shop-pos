@@ -3,12 +3,16 @@
 namespace App\Services\WhatsApp;
 
 use App\Enums\WhatsAppOrderStatus;
+use App\Enums\WhatsAppPaymentChoice;
+use App\Models\AccessoryCategoryOption;
 use App\Models\Customer;
 use App\Models\CustomerReview;
+use App\Models\MainCategory;
 use App\Models\Product;
 use App\Models\RestockSubscription;
 use App\Models\Scopes\ShopScope;
 use App\Models\Shop;
+use App\Models\ShopAccount;
 use App\Models\ShopChannelConnection;
 use App\Models\WhatsAppContact;
 use App\Models\WhatsAppOrder;
@@ -16,6 +20,8 @@ use App\Models\WhatsAppOrderItem;
 use App\Support\PhoneNumber;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class WhatsAppChatbot
 {
@@ -26,6 +32,22 @@ class WhatsAppChatbot
     public const HANDOFF_HOURS = 12;
 
     public const SEARCH_LIMIT = 9;
+
+    public const CATEGORY_PAGE_SIZE = 8;
+
+    public const SUB_CATEGORY_PAGE_SIZE = 7;
+
+    public const SLIP_MAX_BYTES = 5 * 1024 * 1024;
+
+    public const SLIP_DISK = 'local';
+
+    /** Payment slip types accepted, and the extension each is stored with. */
+    public const SLIP_TYPES = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'application/pdf' => 'pdf',
+    ];
 
     protected WhatsAppClient $client;
 
@@ -65,6 +87,12 @@ class WhatsAppChatbot
             return;
         }
 
+        if (in_array($message['type'] ?? null, ['image', 'document'], true)) {
+            $this->handleMedia($message);
+
+            return;
+        }
+
         $this->route($input);
     }
 
@@ -100,14 +128,21 @@ class WhatsAppChatbot
             $contact->profile_name = $profileName;
         }
 
+        $newlyLinked = false;
+
         if ($contact->customer_id === null) {
             $contact->customer_id = Customer::withoutGlobalScope(ShopScope::class)
                 ->where('shop_id', $this->shop->id)
                 ->where('phone_normalized', PhoneNumber::normalize($waId))
                 ->value('id');
+            $newlyLinked = $contact->customer_id !== null;
         }
 
         $contact->save();
+
+        if ($newlyLinked) {
+            $contact->syncDeliveryToCustomer();
+        }
 
         return $contact;
     }
@@ -164,7 +199,7 @@ class WhatsAppChatbot
 
             if (in_array($command, ['catalog', 'catalogue', 'products'], true)) {
                 $this->setStep('idle');
-                $this->sendCatalog(1);
+                $this->browse();
 
                 return;
             }
@@ -176,7 +211,26 @@ class WhatsAppChatbot
             }
 
             if ($step === 'awaiting_address' && $text !== null) {
-                $this->captureAddress($text);
+                // A conversation that was mid-checkout before structured details existed.
+                $this->startCheckout();
+
+                return;
+            }
+
+            if ($step === 'awaiting_payment_slip' && $text !== null && $this->collectingOrder(false) !== null) {
+                $this->askSlip();
+
+                return;
+            }
+
+            if ($step === 'awaiting_payment_choice' && $text !== null && in_array(strtolower($text), ['cash', 'cod', 'online'], true)) {
+                $this->choosePayment(strtolower($text) === 'online');
+
+                return;
+            }
+
+            if ($text !== null && in_array($step, ['awaiting_fulfilment', 'reviewing_saved_details', 'awaiting_delivery_name', 'awaiting_delivery_address', 'awaiting_delivery_area', 'awaiting_delivery_phone'], true)) {
+                $this->captureCheckoutText($step, $text);
 
                 return;
             }
@@ -199,8 +253,11 @@ class WhatsAppChatbot
         }
 
         match (true) {
-            $id === 'browse' => $this->sendCatalog(1),
+            $id === 'browse' => $this->browse(),
             str_starts_with($id, 'browse:page:') => $this->sendCatalog((int) substr($id, 12)),
+            str_starts_with($id, 'cats:') => $this->browse((int) substr($id, 5)),
+            str_starts_with($id, 'cat:') => $this->sendCategory(...array_map('intval', array_slice(explode(':', $id), 1, 2))),
+            str_starts_with($id, 'list:') => $this->sendCatalog((int) (explode(':', $id)[2] ?? 1), (string) (explode(':', $id)[1] ?? '')),
             str_starts_with($id, 'product:') => $this->sendProduct((int) substr($id, 8)),
             str_starts_with($id, 'qty:') => $this->addToCart(...array_map('intval', array_slice(explode(':', $id), 1, 2))),
             str_starts_with($id, 'notify:') => $this->subscribeRestock((int) substr($id, 7)),
@@ -208,6 +265,16 @@ class WhatsAppChatbot
             str_starts_with($id, 'consent:') => $this->captureConsent(substr($id, 8) === 'yes'),
             $id === 'cart' => $this->sendCart(),
             $id === 'checkout' => $this->startCheckout(),
+            $id === 'ship:delivery' => $this->chooseFulfilment('delivery'),
+            $id === 'ship:pickup' => $this->chooseFulfilment('pickup'),
+            $id === 'details:use' => $this->useSavedDetails(),
+            $id === 'details:update' => $this->askFulfilment(),
+            $id === 'phone:whatsapp' => $this->useWhatsAppNumber(),
+            $id === 'save:yes' => $this->answerSaveDetails(true),
+            $id === 'save:no' => $this->answerSaveDetails(false),
+            $id === 'pay:cash' => $this->choosePayment(false),
+            $id === 'pay:online' => $this->choosePayment(true),
+            $id === 'slip:later' => $this->sendSlipLater(),
             $id === 'confirm' => $this->confirmOrder(),
             $id === 'clear' => $this->clearCart(),
             $id === 'optin' => $this->optIn(),
@@ -220,7 +287,7 @@ class WhatsAppChatbot
     {
         $this->client->sendButtons(
             $this->contact->wa_id,
-            $this->t('welcome', ['shop' => $this->shop->invoiceDisplayName()]),
+            $this->shopText('welcome', ['{shop}' => $this->shop->invoiceDisplayName()], ['shop' => $this->shop->invoiceDisplayName()]),
             ['browse' => $this->t('btn_browse'), 'cart' => $this->t('btn_cart'), 'agent' => $this->t('btn_agent')],
         );
     }
@@ -252,9 +319,135 @@ class WhatsAppChatbot
         ];
     }
 
-    protected function sendCatalog(int $page): void
+    /**
+     * Browse entry point. Shows the shop's Main Categories (only those with
+     * something listed and in stock), plus an "All products" row. Falls back
+     * to the flat list when there's nothing to choose between.
+     */
+    protected function browse(int $page = 1): void
     {
         $products = $this->listedProducts();
+
+        if ($products->isEmpty()) {
+            $this->client->sendText($this->contact->wa_id, $this->t('no_products'));
+
+            return;
+        }
+
+        $groups = $this->mainCategories()
+            ->map(fn (MainCategory $category) => ['category' => $category, 'count' => $products->where('type', $category->slug)->count()])
+            ->filter(fn (array $group) => $group['count'] > 0)
+            ->values();
+
+        if ($groups->isEmpty()) {
+            $this->sendCatalog(1);
+
+            return;
+        }
+
+        if ($groups->count() === 1 && $groups[0]['count'] === $products->count()) {
+            $this->sendCategory($groups[0]['category']->id);
+
+            return;
+        }
+
+        $page = max(1, $page);
+        $slice = $groups->forPage($page, self::CATEGORY_PAGE_SIZE);
+
+        if ($slice->isEmpty()) {
+            $page = 1;
+            $slice = $groups->forPage(1, self::CATEGORY_PAGE_SIZE);
+        }
+
+        $rows = [['id' => 'browse:page:1', 'title' => $this->t('all_products'), 'description' => $this->t('product_count', ['count' => $products->count()])]];
+
+        foreach ($slice as $group) {
+            $rows[] = [
+                'id' => 'cat:'.$group['category']->id,
+                'title' => $group['category']->name,
+                'description' => $this->t('product_count', ['count' => $group['count']]),
+            ];
+        }
+
+        if ($groups->count() > $page * self::CATEGORY_PAGE_SIZE) {
+            $rows[] = ['id' => 'cats:'.($page + 1), 'title' => $this->t('more_categories')];
+        }
+
+        $this->client->sendList($this->contact->wa_id, $this->t('choose_category'), $this->t('btn_view_categories'), $rows, $this->t('section_categories'));
+    }
+
+    /**
+     * One Main Category. If any of its sub-categories have products, offer
+     * them (plus "All" and, when needed, "Other"); otherwise go straight to
+     * the category's product list.
+     */
+    protected function sendCategory(int $categoryId, int $page = 1): void
+    {
+        $category = $this->findMainCategory($categoryId);
+        $products = $category ? $this->listedProducts()->where('type', $category->slug)->values() : collect();
+
+        if ($category === null || $products->isEmpty()) {
+            $this->client->sendText($this->contact->wa_id, $this->t('selection_empty'));
+            $this->browse();
+
+            return;
+        }
+
+        $subs = $this->subCategoriesOf($category)
+            ->map(fn (AccessoryCategoryOption $option) => [
+                'option' => $option,
+                'count' => $products->filter(fn (Product $product) => $this->productSubCategory($product) === $option->name)->count(),
+            ])
+            ->filter(fn (array $sub) => $sub['count'] > 0)
+            ->values();
+
+        if ($subs->isEmpty()) {
+            $this->sendCatalog(1, 'c'.$category->id);
+
+            return;
+        }
+
+        $other = $this->otherProducts($category, $products)->count();
+        $page = max(1, $page);
+        $slice = $subs->forPage($page, self::SUB_CATEGORY_PAGE_SIZE);
+
+        if ($slice->isEmpty()) {
+            $page = 1;
+            $slice = $subs->forPage(1, self::SUB_CATEGORY_PAGE_SIZE);
+        }
+
+        $rows = [['id' => 'list:c'.$category->id.':1', 'title' => $this->t('all_in_category', ['name' => $category->name]), 'description' => $this->t('product_count', ['count' => $products->count()])]];
+
+        foreach ($slice as $sub) {
+            $rows[] = ['id' => 'list:s'.$sub['option']->id.':1', 'title' => $sub['option']->name, 'description' => $this->t('product_count', ['count' => $sub['count']])];
+        }
+
+        if ($other > 0) {
+            $rows[] = ['id' => 'list:o'.$category->id.':1', 'title' => $this->t('other_in_category'), 'description' => $this->t('product_count', ['count' => $other])];
+        }
+
+        if ($subs->count() > $page * self::SUB_CATEGORY_PAGE_SIZE) {
+            $rows[] = ['id' => 'cat:'.$category->id.':'.($page + 1), 'title' => $this->t('more_categories')];
+        }
+
+        $this->client->sendList($this->contact->wa_id, $this->t('choose_sub_category', ['name' => $category->name]), $this->t('btn_view_categories'), $rows, $this->t('section_categories'));
+    }
+
+    /**
+     * The product list. $scope narrows it: '' everything listed, 'c{id}' a
+     * Main Category, 's{id}' a sub-category, 'o{id}' a Main Category's
+     * products that match none of its sub-categories.
+     */
+    protected function sendCatalog(int $page, string $scope = ''): void
+    {
+        [$products, $heading] = $this->scopedProducts($scope);
+
+        if ($products === null || ($products->isEmpty() && $scope !== '')) {
+            $this->client->sendText($this->contact->wa_id, $this->t('selection_empty'));
+            $this->browse();
+
+            return;
+        }
 
         if ($products->isEmpty()) {
             $this->client->sendText($this->contact->wa_id, $this->t('no_products'));
@@ -273,10 +466,106 @@ class WhatsAppChatbot
         $rows = $slice->map(fn (Product $product) => $this->productRow($product))->values()->all();
 
         if ($products->count() > $page * self::PAGE_SIZE) {
-            $rows[] = ['id' => 'browse:page:'.($page + 1), 'title' => $this->t('more_products')];
+            $rows[] = ['id' => $scope === '' ? 'browse:page:'.($page + 1) : 'list:'.$scope.':'.($page + 1), 'title' => $this->t('more_products')];
         }
 
-        $this->client->sendList($this->contact->wa_id, $this->t('choose_product'), $this->t('btn_view_products'), $rows);
+        $body = $heading === null ? $this->t('choose_product') : "*{$heading}*\n".$this->t('choose_product');
+
+        $this->client->sendList($this->contact->wa_id, $body, $this->t('btn_view_products'), $rows);
+    }
+
+    /**
+     * @return array{0: ?Collection, 1: ?string} the products (null when the
+     *                                           scope points at nothing in this shop) and a heading
+     */
+    protected function scopedProducts(string $scope): array
+    {
+        $products = $this->listedProducts();
+
+        if ($scope === '') {
+            return [$products, null];
+        }
+
+        $kind = $scope[0];
+        $id = (int) substr($scope, 1);
+
+        if ($kind === 's') {
+            $option = $this->findSubCategory($id);
+            $category = $option ? $this->findMainCategory((int) $option->main_category_id) : null;
+
+            return $category === null ? [null, null] : [
+                $products->where('type', $category->slug)->filter(fn (Product $product) => $this->productSubCategory($product) === $option->name)->values(),
+                $option->name,
+            ];
+        }
+
+        $category = in_array($kind, ['c', 'o'], true) ? $this->findMainCategory($id) : null;
+
+        if ($category === null) {
+            return [null, null];
+        }
+
+        $inCategory = $products->where('type', $category->slug)->values();
+
+        return $kind === 'c'
+            ? [$inCategory, $category->name]
+            : [$this->otherProducts($category, $inCategory), $this->t('other_in_category_heading', ['name' => $category->name])];
+    }
+
+    /**
+     * Products link to a sub-category by name only (details.category, no
+     * foreign key) — the same exact-text match Stock-In's filter uses.
+     */
+    protected function productSubCategory(Product $product): ?string
+    {
+        $name = $product->details['category'] ?? null;
+
+        return is_string($name) && $name !== '' ? $name : null;
+    }
+
+    /**
+     * A category's products whose sub-category text matches none of its
+     * current sub-categories: none set, a sub-category renamed after the
+     * product was saved, or one since moved to another Main Category.
+     */
+    protected function otherProducts(MainCategory $category, Collection $inCategory): Collection
+    {
+        $names = $this->subCategoriesOf($category)->pluck('name')->all();
+
+        return $inCategory->reject(fn (Product $product) => in_array($this->productSubCategory($product), $names, true))->values();
+    }
+
+    protected function mainCategories(): Collection
+    {
+        return MainCategory::withoutGlobalScope(ShopScope::class)
+            ->where('shop_id', $this->shop->id)
+            ->orderBy('name')
+            ->get();
+    }
+
+    protected function findMainCategory(int $id): ?MainCategory
+    {
+        return MainCategory::withoutGlobalScope(ShopScope::class)
+            ->where('shop_id', $this->shop->id)
+            ->whereKey($id)
+            ->first();
+    }
+
+    protected function subCategoriesOf(MainCategory $category): Collection
+    {
+        return AccessoryCategoryOption::withoutGlobalScope(ShopScope::class)
+            ->where('shop_id', $this->shop->id)
+            ->where('main_category_id', $category->id)
+            ->orderBy('name')
+            ->get();
+    }
+
+    protected function findSubCategory(int $id): ?AccessoryCategoryOption
+    {
+        return AccessoryCategoryOption::withoutGlobalScope(ShopScope::class)
+            ->where('shop_id', $this->shop->id)
+            ->whereKey($id)
+            ->first();
     }
 
     protected function search(string $query): void
@@ -302,7 +591,7 @@ class WhatsAppChatbot
 
         if ($matches->isEmpty()) {
             $this->client->sendText($this->contact->wa_id, $this->t('search_no_match', ['query' => mb_substr($query, 0, 40)]));
-            $this->sendCatalog(1);
+            $this->browse();
 
             return;
         }
@@ -321,7 +610,7 @@ class WhatsAppChatbot
 
         if ($product === null) {
             $this->client->sendText($this->contact->wa_id, $this->t('product_unavailable'));
-            $this->sendCatalog(1);
+            $this->browse();
 
             return;
         }
@@ -502,11 +791,35 @@ class WhatsAppChatbot
             return;
         }
 
-        $this->setStep('awaiting_address');
-        $this->client->sendText($this->contact->wa_id, $this->t('ask_address'));
+        $this->discardSlip($order);
+        $order->update(['delivery_name' => null, 'delivery_address' => null, 'delivery_area' => null, 'delivery_phone' => null, 'payment_choice' => null]);
+
+        // Saved details are only ever shown for the customer to choose — never used silently.
+        if ($this->contact->hasSavedDelivery()) {
+            $this->setStep('reviewing_saved_details', [], ['details_typed']);
+            $this->client->sendButtons(
+                $this->contact->wa_id,
+                $this->t('saved_details', ['details' => $this->detailsBlock($this->contact->delivery_name, $this->contact->delivery_phone, $this->contact->delivery_address, $this->contact->delivery_area)]),
+                ['details:use' => $this->t('btn_deliver_here'), 'ship:pickup' => $this->t('btn_pickup'), 'details:update' => $this->t('btn_update_details')],
+            );
+
+            return;
+        }
+
+        $this->askFulfilment();
     }
 
-    protected function captureAddress(string $text): void
+    protected function askFulfilment(): void
+    {
+        $this->setStep('awaiting_fulfilment', [], ['details_typed']);
+        $this->client->sendButtons(
+            $this->contact->wa_id,
+            $this->t('ask_fulfilment'),
+            ['ship:delivery' => $this->t('btn_delivery'), 'ship:pickup' => $this->t('btn_pickup')],
+        );
+    }
+
+    protected function chooseFulfilment(string $kind, bool $ask = true): void
     {
         $order = $this->collectingOrder(false);
 
@@ -517,14 +830,437 @@ class WhatsAppChatbot
             return;
         }
 
-        $order->update(['delivery_address' => mb_substr(strtolower($text) === 'pickup' ? $this->t('pickup_label') : $text, 0, 500)]);
+        $fromSaved = ($this->contact->bot_state['step'] ?? null) === 'reviewing_saved_details';
+
+        if ($kind === 'pickup') {
+            // From the saved-details message, the name and phone it showed carry over.
+            $order->update([
+                'delivery_address' => $this->t('pickup_label'),
+                'delivery_area' => null,
+                'delivery_name' => $fromSaved ? $this->contact->delivery_name : null,
+                'delivery_phone' => $fromSaved ? $this->contact->delivery_phone : null,
+            ]);
+        } else {
+            $order->update(['delivery_name' => null, 'delivery_address' => null, 'delivery_area' => null, 'delivery_phone' => null]);
+        }
+
+        $this->remember(['details_typed' => ! $fromSaved, 'fulfilment' => $kind]);
+
+        if ($ask) {
+            $this->askNextDetail($order);
+        }
+    }
+
+    protected function useSavedDetails(): void
+    {
+        $order = $this->collectingOrder(false);
+
+        if ($order === null || ! $this->contact->hasSavedDelivery()) {
+            $this->startCheckout();
+
+            return;
+        }
+
+        $order->update([
+            'delivery_name' => $this->contact->delivery_name,
+            'delivery_address' => $this->contact->delivery_address,
+            'delivery_area' => $this->contact->delivery_area,
+            'delivery_phone' => $this->contact->delivery_phone,
+        ]);
+
+        $this->remember(['details_typed' => false, 'fulfilment' => 'delivery']);
+        $this->askNextDetail($order);
+    }
+
+    /**
+     * Asks for the first missing detail — name, address, area, phone for a
+     * delivery; name and phone for a pickup — or moves on once all are in.
+     */
+    protected function askNextDetail(WhatsAppOrder $order): void
+    {
+        $pickup = $order->delivery_address === $this->t('pickup_label');
+
+        $missing = match (true) {
+            blank($order->delivery_name) => 'name',
+            ! $pickup && blank($order->delivery_address) => 'address',
+            ! $pickup && blank($order->delivery_area) => 'area',
+            blank($order->delivery_phone) => 'phone',
+            default => null,
+        };
+
+        if ($missing === null) {
+            $this->detailsComplete($order);
+
+            return;
+        }
+
+        $this->setStep('awaiting_delivery_'.$missing);
+
+        if ($missing === 'phone') {
+            $this->client->sendButtons($this->contact->wa_id, $this->t('ask_phone'), ['phone:whatsapp' => $this->t('btn_use_this_number')]);
+
+            return;
+        }
+
+        $this->client->sendText($this->contact->wa_id, $this->t('ask_'.$missing));
+    }
+
+    /**
+     * Free text during checkout. At the delivery/pickup question (or the
+     * saved-details one) "pickup" picks pickup and anything else is taken
+     * as a typed delivery address, as the old single-step prompt allowed.
+     */
+    protected function captureCheckoutText(string $step, string $text): void
+    {
+        $order = $this->collectingOrder(false);
+
+        if ($order === null) {
+            $this->setStep('idle');
+            $this->sendWelcome();
+
+            return;
+        }
+
+        if (in_array($step, ['awaiting_fulfilment', 'reviewing_saved_details'], true)) {
+            if (strtolower($text) === 'pickup') {
+                $this->chooseFulfilment('pickup');
+
+                return;
+            }
+
+            $this->chooseFulfilment('delivery', ask: false);
+            $order->refresh();
+            $step = 'awaiting_delivery_address';
+        }
+
+        $field = substr($step, strlen('awaiting_delivery_'));
+        $value = trim($text);
+
+        [$valid, $value] = match ($field) {
+            'name' => [mb_strlen($value) >= 2, mb_substr($value, 0, 120)],
+            'address' => [mb_strlen($value) >= 5, mb_substr($value, 0, 500)],
+            'area' => [mb_strlen($value) >= 2, mb_substr($value, 0, 120)],
+            'phone' => [PhoneNumber::normalize($value) !== null && strlen(preg_replace('/\D+/', '', $value)) <= 15, mb_substr($value, 0, 20)],
+            default => [false, $value],
+        };
+
+        if (! $valid) {
+            $this->client->sendText($this->contact->wa_id, $this->t('invalid_'.$field));
+
+            return;
+        }
+
+        $order->update(['delivery_'.$field => $value]);
+        $this->remember(['details_typed' => true]);
+        $this->askNextDetail($order);
+    }
+
+    protected function useWhatsAppNumber(): void
+    {
+        $order = $this->collectingOrder(false);
+
+        if ($order === null || ($this->contact->bot_state['step'] ?? null) !== 'awaiting_delivery_phone') {
+            $this->startCheckout();
+
+            return;
+        }
+
+        $order->update(['delivery_phone' => '+'.$this->contact->wa_id]);
+        $this->remember(['details_typed' => true]);
+        $this->askNextDetail($order);
+    }
+
+    /**
+     * Typed details are only kept for next time if the customer says so.
+     */
+    protected function detailsComplete(WhatsAppOrder $order): void
+    {
+        $typed = (bool) ($this->contact->bot_state['details_typed'] ?? true);
+
+        if ($typed) {
+            $this->setStep('awaiting_save_details');
+            $this->client->sendButtons(
+                $this->contact->wa_id,
+                $this->t($this->contact->hasSavedDelivery() ? 'ask_replace_saved' : 'ask_save_details'),
+                ['save:yes' => $this->t('btn_save_details'), 'save:no' => $this->t('btn_dont_save')],
+            );
+
+            return;
+        }
+
+        $this->askPayment($order);
+    }
+
+    protected function answerSaveDetails(bool $save): void
+    {
+        $order = $this->collectingOrder(false);
+
+        if ($order === null || ($this->contact->bot_state['step'] ?? null) !== 'awaiting_save_details') {
+            $this->startCheckout();
+
+            return;
+        }
+
+        if ($save) {
+            $pickup = $order->delivery_address === $this->t('pickup_label');
+
+            // A pickup has no address to keep, so any saved address stays as it was.
+            $this->contact->fill(array_merge(
+                ['delivery_name' => $order->delivery_name, 'delivery_phone' => $order->delivery_phone],
+                $pickup ? [] : ['delivery_address' => $order->delivery_address, 'delivery_area' => $order->delivery_area],
+            ))->save();
+
+            $this->contact->syncDeliveryToCustomer();
+            $this->client->sendText($this->contact->wa_id, $this->t('details_saved'));
+        }
+
+        $this->askPayment($order);
+    }
+
+    /**
+     * Cash (on delivery, or at the shop for a pickup) or Online. Online is
+     * only offered when the shop has an account with a number to pay into;
+     * otherwise cash is the only way and the question is skipped.
+     */
+    protected function askPayment(WhatsAppOrder $order): void
+    {
+        $cash = $order->isPickup() ? WhatsAppPaymentChoice::PayAtShop : WhatsAppPaymentChoice::CashOnDelivery;
+
+        if ($this->onlineAccounts()->isEmpty()) {
+            $order->update(['payment_choice' => $cash]);
+            $this->sendConfirmPrompt($order);
+
+            return;
+        }
+
+        $this->setStep('awaiting_payment_choice');
+        $this->client->sendButtons(
+            $this->contact->wa_id,
+            $this->t('ask_payment'),
+            ['pay:cash' => $this->t($cash === WhatsAppPaymentChoice::PayAtShop ? 'btn_pay_at_shop' : 'btn_cod'), 'pay:online' => $this->t('btn_pay_online')],
+        );
+    }
+
+    protected function choosePayment(bool $online): void
+    {
+        $order = $this->collectingOrder(false);
+
+        if ($order === null || ($this->contact->bot_state['step'] ?? null) !== 'awaiting_payment_choice') {
+            $this->startCheckout();
+
+            return;
+        }
+
+        $accounts = $this->onlineAccounts();
+
+        if ($online && $accounts->isEmpty()) {
+            $this->askPayment($order);
+
+            return;
+        }
+
+        $order->update(['payment_choice' => $online
+            ? WhatsAppPaymentChoice::Online
+            : ($order->isPickup() ? WhatsAppPaymentChoice::PayAtShop : WhatsAppPaymentChoice::CashOnDelivery)]);
+
+        if ($online) {
+            $this->client->sendText($this->contact->wa_id, $this->t('online_accounts', [
+                'total' => CustomerNotifications::money((float) $order->quoted_total),
+                'accounts' => $accounts->map(fn (ShopAccount $account) => collect([
+                    '*'.$account->name.'* ('.$account->provider_type.')',
+                    filled($account->account_title) ? $this->t('account_title_line', ['value' => $account->account_title]) : null,
+                    $this->t('account_number_line', ['value' => $account->account_number]),
+                ])->filter()->implode("\n"))->implode("\n\n"),
+            ]));
+
+            $this->askSlip();
+
+            return;
+        }
+
+        $this->sendConfirmPrompt($order);
+    }
+
+    protected function askSlip(): void
+    {
+        $this->setStep('awaiting_payment_slip');
+        $this->client->sendButtons($this->contact->wa_id, $this->t('ask_slip'), ['slip:later' => $this->t('btn_send_later')]);
+    }
+
+    protected function sendSlipLater(): void
+    {
+        $order = $this->collectingOrder(false);
+
+        if ($order === null || ($this->contact->bot_state['step'] ?? null) !== 'awaiting_payment_slip') {
+            $this->startCheckout();
+
+            return;
+        }
+
+        $this->client->sendText($this->contact->wa_id, $this->t('slip_later_note'));
+        $this->sendConfirmPrompt($order);
+    }
+
+    /**
+     * The order a payment slip belongs to right now: the cart being checked
+     * out online (at the slip question or the confirm step), or else this
+     * contact's latest online order still waiting for the shop's decision.
+     */
+    protected function orderAwaitingSlip(): ?WhatsAppOrder
+    {
+        $collecting = $this->collectingOrder(false);
+
+        if ($collecting !== null
+            && $collecting->payment_choice === WhatsAppPaymentChoice::Online
+            && in_array($this->contact->bot_state['step'] ?? null, ['awaiting_payment_slip', 'confirming'], true)) {
+            return $collecting;
+        }
+
+        return WhatsAppOrder::withoutGlobalScope(ShopScope::class)
+            ->where('shop_id', $this->shop->id)
+            ->where('whatsapp_contact_id', $this->contact->id)
+            ->where('status', WhatsAppOrderStatus::Pending->value)
+            ->where('payment_choice', WhatsAppPaymentChoice::Online->value)
+            ->latest('submitted_at')
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * An image or document. Only a payment slip for an order that is waiting
+     * for one is accepted; it is downloaded with the shop's token and kept
+     * on the private disk, replacing any earlier slip for that order.
+     */
+    protected function handleMedia(array $message): void
+    {
+        $order = $this->orderAwaitingSlip();
+
+        if ($order === null) {
+            $this->client->sendText($this->contact->wa_id, $this->t('not_expecting_media'));
+
+            return;
+        }
+
+        $media = $message[$message['type']] ?? [];
+        $mime = strtolower((string) ($media['mime_type'] ?? ''));
+
+        if (empty($media['id']) || ! isset(self::SLIP_TYPES[$mime])) {
+            $this->client->sendText($this->contact->wa_id, $this->t('slip_wrong_type'));
+
+            return;
+        }
+
+        $info = $this->client->mediaInfo((string) $media['id']);
+        $mime = strtolower((string) ($info['mime_type'] ?? $mime));
+
+        if (! isset(self::SLIP_TYPES[$mime])) {
+            $this->client->sendText($this->contact->wa_id, $this->t('slip_wrong_type'));
+
+            return;
+        }
+
+        if (($info['file_size'] ?? 0) > self::SLIP_MAX_BYTES) {
+            $this->client->sendText($this->contact->wa_id, $this->t('slip_too_large'));
+
+            return;
+        }
+
+        $contents = $this->client->downloadMedia($info['url']);
+
+        if ($contents === '' || strlen($contents) > self::SLIP_MAX_BYTES) {
+            $this->client->sendText($this->contact->wa_id, $this->t($contents === '' ? 'slip_wrong_type' : 'slip_too_large'));
+
+            return;
+        }
+
+        $path = 'whatsapp-slips/'.$this->shop->id.'/'.$order->id.'-'.Str::random(20).'.'.self::SLIP_TYPES[$mime];
+        Storage::disk(self::SLIP_DISK)->put($path, $contents);
+
+        $previous = $order->payment_slip_path;
+        $order->update(['payment_slip_path' => $path]);
+
+        if ($previous !== null && $previous !== $path) {
+            Storage::disk(self::SLIP_DISK)->delete($previous);
+        }
+
+        if ($order->status === WhatsAppOrderStatus::Collecting) {
+            $this->client->sendText($this->contact->wa_id, $this->t('slip_received'));
+            $this->sendConfirmPrompt($order);
+
+            return;
+        }
+
+        $this->client->sendText($this->contact->wa_id, $this->t('slip_attached', ['order' => $order->orderNumber()]));
+    }
+
+    protected function discardSlip(WhatsAppOrder $order): void
+    {
+        if ($order->payment_slip_path !== null) {
+            Storage::disk(self::SLIP_DISK)->delete($order->payment_slip_path);
+            $order->update(['payment_slip_path' => null]);
+        }
+    }
+
+    /**
+     * The shop's own wording for a customisable message (tokens like {shop}),
+     * falling back to the standard text for the customer's language.
+     */
+    protected function shopText(string $key, array $tokens, array $replace): string
+    {
+        $custom = $this->shop->whatsappMessage($key, WhatsAppLanguage::for($this->contact));
+
+        return $custom !== null ? strtr($custom, $tokens) : $this->t($key, $replace);
+    }
+
+    protected function onlineAccounts(): Collection
+    {
+        return ShopAccount::withoutGlobalScope(ShopScope::class)
+            ->where('shop_id', $this->shop->id)
+            ->whereNotNull('account_number')
+            ->where('account_number', '!=', '')
+            ->orderBy('name')
+            ->get();
+    }
+
+    protected function sendConfirmPrompt(WhatsAppOrder $order): void
+    {
         $this->setStep('confirming');
 
         $this->client->sendButtons(
             $this->contact->wa_id,
-            $this->t('confirm_prompt', ['summary' => $this->cartSummary($order), 'address' => $order->delivery_address]),
+            $this->t('confirm_prompt', ['summary' => $this->cartSummary($order), 'details' => $this->orderDetailsBlock($order)]),
             ['confirm' => $this->t('btn_confirm'), 'clear' => $this->t('btn_cancel')],
         );
+    }
+
+    protected function orderDetailsBlock(WhatsAppOrder $order): string
+    {
+        $block = $this->detailsBlock($order->delivery_name, $order->delivery_phone, $order->delivery_address, $order->delivery_area);
+
+        if ($order->payment_choice === null) {
+            return $block;
+        }
+
+        $payment = $this->t('payment_'.$order->payment_choice->value);
+
+        if ($order->payment_choice === WhatsAppPaymentChoice::Online && $order->payment_slip_path !== null) {
+            $payment .= ' '.$this->t('slip_tag');
+        }
+
+        return $block."\n".$this->t('detail_payment', ['value' => $payment]);
+    }
+
+    protected function detailsBlock(?string $name, ?string $phone, ?string $address, ?string $area): string
+    {
+        $where = $address === $this->t('pickup_label') || blank($address)
+            ? (string) $address
+            : collect([$address, $area])->filter()->implode(', ');
+
+        return collect([
+            filled($name) ? $this->t('detail_name', ['value' => $name]) : null,
+            filled($phone) ? $this->t('detail_phone', ['value' => $phone]) : null,
+            filled($where) ? $this->t('detail_delivery', ['value' => $where]) : null,
+        ])->filter()->implode("\n");
     }
 
     protected function confirmOrder(): void
@@ -537,19 +1273,33 @@ class WhatsAppChatbot
             return;
         }
 
+        // A Confirm tapped before delivery or pickup was chosen restarts checkout.
+        // Name and phone fall back to what WhatsApp already tells us.
+        if (blank($order->delivery_address)) {
+            $this->startCheckout();
+
+            return;
+        }
+
         $state = $this->contact->bot_state ?? [];
 
         $order->update([
             'status' => WhatsAppOrderStatus::Pending,
             'submitted_at' => now(),
             'customer_id' => $order->customer_id ?? $this->contact->customer_id,
+            'delivery_name' => $order->delivery_name ?? mb_substr((string) ($this->contact->customer?->name ?? $this->contact->profile_name), 0, 120) ?: null,
+            'delivery_phone' => $order->delivery_phone ?? '+'.$this->contact->wa_id,
             'origin_ref' => $state['origin_ref'] ?? null,
             'referral' => $state['referral'] ?? null,
         ]);
 
-        $this->setStep('idle', [], ['origin_ref', 'referral']);
+        $this->setStep('idle', [], ['origin_ref', 'referral', 'details_typed', 'fulfilment']);
 
-        $this->client->sendText($this->contact->wa_id, $this->t('order_received', ['order' => $order->orderNumber()]));
+        $this->client->sendText($this->contact->wa_id, $this->shopText(
+            'order_received',
+            ['{order}' => $order->orderNumber(), '{shop}' => $this->shop->invoiceDisplayName()],
+            ['order' => $order->orderNumber()],
+        ));
     }
 
     protected function clearCart(): void
@@ -557,10 +1307,16 @@ class WhatsAppChatbot
         $order = $this->collectingOrder(false);
 
         if ($order !== null) {
+            $slip = $order->payment_slip_path;
+
             DB::transaction(function () use ($order) {
                 WhatsAppOrderItem::withoutGlobalScope(ShopScope::class)->where('whatsapp_order_id', $order->id)->delete();
                 $order->delete();
             });
+
+            if ($slip !== null) {
+                Storage::disk(self::SLIP_DISK)->delete($slip);
+            }
         }
 
         $this->setStep('idle');

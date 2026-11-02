@@ -616,6 +616,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         <h1 class="text-xl font-semibold text-slate-900">Products</h1>
     </x-slot>
 
+    <x-billing.limit-notice limit="products" />
+
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex flex-1 flex-col gap-3 sm:flex-row">
             <x-ui.input wire:model.live.debounce.400ms="search" type="search" placeholder="Search products…" class="sm:max-w-xs" />

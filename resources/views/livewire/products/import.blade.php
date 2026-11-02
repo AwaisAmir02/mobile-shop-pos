@@ -233,6 +233,7 @@ new class extends Component
 
             @if ($step === 'upload')
                 <div class="mt-5 space-y-5">
+                    <x-billing.limit-notice limit="products" />
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                         <p class="mb-2 font-medium text-slate-900">Required columns: Name, Main Category, Selling Price.</p>
                         <p class="mb-2">Optional: Cost Price, Stock Qty, Barcode (when barcode support is on for your shop — must be unique). Sub-Category is required only when Main Category is Accessory. Brand is required only when Main Category is Mobile Phone (Model and IMEI/Serial are optional and only apply to Mobile Phone).</p>
@@ -382,7 +383,7 @@ new class extends Component
                                     <li class="italic">…and {{ $limitSkippedCount - count($limitSkippedLines) }} more.</li>
                                 @endif
                             </ul>
-                            <p class="mt-2">Archive old products, upgrade your plan or buy an add-on in Plan &amp; Billing, then import these rows again.</p>
+                            <p class="mt-2">Archive old products, upgrade your plan or buy an add-on in Plan &amp; Usage, then import these rows again.</p>
                         </div>
                     @endif
                 </div>

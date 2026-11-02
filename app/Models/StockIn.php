@@ -4,14 +4,16 @@ namespace App\Models;
 
 use App\Enums\PaymentStatus;
 use App\Enums\RecordStatus;
+use App\Models\Concerns\BelongsToBranch;
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Concerns\HasCancellation;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class StockIn extends Model
 {
-    use BelongsToShop, HasCancellation;
+    use BelongsToShop, BelongsToBranch, HasCancellation;
 
     protected $fillable = [
         'shop_id',
@@ -33,6 +35,16 @@ class StockIn extends Model
         'cancelled_by',
         'cancel_reason',
     ];
+
+    /**
+     * Stock is one shared pool across branches in Phase 1, and these rows
+     * are also the FIFO batches every branch sells from, so they must never
+     * be hidden by branch. Stock-In lists use inCurrentBranch() instead.
+     */
+    public static function appliesBranchScope(): bool
+    {
+        return false;
+    }
 
     protected function casts(): array
     {
@@ -63,6 +75,15 @@ class StockIn extends Model
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(Vendor::class);
+    }
+
+    /**
+     * Dated history of amount_paid — see StockInPayment. Read-only here:
+     * amount_paid itself is still the figure every total uses.
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(StockInPayment::class);
     }
 
     public function amountOwed(): float

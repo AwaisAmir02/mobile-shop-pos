@@ -25,6 +25,7 @@ class StockInReport implements ScreenReport
     public function query(): Builder
     {
         $query = StockIn::query()
+            ->inCurrentBranch()
             ->when($this->from, fn ($query) => $query->whereDate('stock_date', '>=', $this->from))
             ->when($this->to, fn ($query) => $query->whereDate('stock_date', '<=', $this->to))
             ->when($this->productFilter, fn ($query) => $query->where('product_id', $this->productFilter))

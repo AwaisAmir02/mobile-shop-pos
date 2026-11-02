@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Scopes\ShopScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -20,6 +21,10 @@ class WhatsAppContact extends Model
         'customer_id',
         'profile_name',
         'language',
+        'delivery_name',
+        'delivery_address',
+        'delivery_area',
+        'delivery_phone',
         'last_inbound_at',
         'marketing_opt_in_at',
         'marketing_opt_out_at',
@@ -60,6 +65,53 @@ class WhatsAppContact extends Model
     {
         return $this->marketing_opt_in_at !== null
             && ($this->marketing_opt_out_at === null || $this->marketing_opt_out_at->lt($this->marketing_opt_in_at));
+    }
+
+    public function hasSavedDelivery(): bool
+    {
+        return filled($this->delivery_name) || filled($this->delivery_phone) || filled($this->delivery_address);
+    }
+
+    /**
+     * Copies saved details onto the linked Customer, filling only fields the
+     * Customer doesn't have yet — staff-entered customer data is never
+     * overwritten. The name is never copied onto an existing Customer.
+     */
+    public function syncDeliveryToCustomer(): void
+    {
+        if ($this->customer_id === null || ! $this->hasSavedDelivery()) {
+            return;
+        }
+
+        $customer = Customer::withoutGlobalScope(ShopScope::class)
+            ->where('shop_id', $this->shop_id)
+            ->whereKey($this->customer_id)
+            ->first();
+
+        if ($customer === null) {
+            return;
+        }
+
+        $address = $this->savedAddressLine();
+
+        if (blank($customer->address) && $address !== null) {
+            $customer->address = mb_substr($address, 0, 255);
+        }
+
+        if (blank($customer->phone) && filled($this->delivery_phone)) {
+            $customer->phone = $this->delivery_phone;
+        }
+
+        if ($customer->isDirty()) {
+            $customer->save();
+        }
+    }
+
+    public function savedAddressLine(): ?string
+    {
+        $line = collect([$this->delivery_address, $this->delivery_area])->filter(fn ($part) => filled($part))->implode(', ');
+
+        return $line !== '' ? $line : null;
     }
 
     public function displayName(): string

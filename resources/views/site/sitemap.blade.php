@@ -7,4 +7,11 @@
         <priority>{{ $name === 'home' ? '1.0' : '0.8' }}</priority>
     </url>
 @endforeach
+@foreach (\App\Support\SiteFeatures::slugs() as $slug)
+    <url>
+        <loc>{{ route('site.feature', $slug) }}</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.7</priority>
+    </url>
+@endforeach
 </urlset>

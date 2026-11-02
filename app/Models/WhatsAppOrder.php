@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\FulfillmentStatus;
+use App\Enums\WhatsAppPaymentChoice;
 use App\Enums\WhatsAppOrderStatus;
+use App\Models\Concerns\BelongsToBranch;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WhatsAppOrder extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, BelongsToBranch;
 
     protected $table = 'whatsapp_orders';
 
@@ -26,7 +28,12 @@ class WhatsAppOrder extends Model
         'review_requested_at',
         'quoted_total',
         'customer_note',
+        'delivery_name',
         'delivery_address',
+        'delivery_area',
+        'delivery_phone',
+        'payment_choice',
+        'payment_slip_path',
         'submitted_at',
         'decided_by',
         'decided_at',
@@ -40,6 +47,7 @@ class WhatsAppOrder extends Model
     {
         return [
             'status' => WhatsAppOrderStatus::class,
+            'payment_choice' => WhatsAppPaymentChoice::class,
             'fulfillment_status' => FulfillmentStatus::class,
             'fulfillment_updated_at' => 'datetime',
             'delivered_at' => 'datetime',
@@ -87,6 +95,26 @@ class WhatsAppOrder extends Model
         $this->quoted_total = $this->items()->withoutGlobalScopes()->get()
             ->sum(fn (WhatsAppOrderItem $item) => $item->lineTotal());
         $this->save();
+    }
+
+    public function isPickup(): bool
+    {
+        return in_array($this->delivery_address, [__('whatsapp.pickup_label', [], 'en'), __('whatsapp.pickup_label', [], 'ur')], true);
+    }
+
+    /** The address and area as one line, or null for a pickup or no address. */
+    public function deliveryAddressLine(): ?string
+    {
+        if ($this->isPickup() || blank($this->delivery_address)) {
+            return null;
+        }
+
+        return collect([$this->delivery_address, $this->delivery_area])->filter(fn ($part) => filled($part))->implode(', ');
+    }
+
+    public function slipIsPdf(): bool
+    {
+        return str_ends_with((string) $this->payment_slip_path, '.pdf');
     }
 
     public function isDecidable(): bool

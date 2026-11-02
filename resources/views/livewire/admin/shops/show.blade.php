@@ -41,6 +41,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
     public string $salesAllowed = '';
     public string $staffUsersLimit = '';
     public string $messagesLimit = '';
+    public string $branchesLimit = '';
     public string $postsLimit = '';
 
     public string $newPassword = '';
@@ -69,6 +70,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $this->salesAllowed = (string) ($overrides[LimitKey::SalesPerMonth->value] ?? $shop->sales_allowed ?? '');
         $this->staffUsersLimit = (string) ($overrides[LimitKey::StaffUsers->value] ?? '');
         $this->messagesLimit = (string) ($overrides[LimitKey::WhatsAppMessagesPerMonth->value] ?? '');
+        $this->branchesLimit = (string) ($overrides[LimitKey::Branches->value] ?? '');
         $this->postsLimit = (string) ($overrides[LimitKey::MarketingPostsPerMonth->value] ?? '');
 
         $this->day = now()->toDateString();
@@ -116,6 +118,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             'salesAllowed' => ['nullable', 'integer', 'min:0'],
             'staffUsersLimit' => ['nullable', 'integer', 'min:0'],
             'messagesLimit' => ['nullable', 'integer', 'min:0'],
+            'branchesLimit' => ['nullable', 'integer', 'min:1'],
             'postsLimit' => ['nullable', 'integer', 'min:0'],
         ]);
 
@@ -124,6 +127,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             LimitKey::SalesPerMonth->value => $this->salesAllowed,
             LimitKey::StaffUsers->value => $this->staffUsersLimit,
             LimitKey::WhatsAppMessagesPerMonth->value => $this->messagesLimit,
+            LimitKey::Branches->value => $this->branchesLimit,
             LimitKey::MarketingPostsPerMonth->value => $this->postsLimit,
         ], fn ($value) => $value !== ''));
 
@@ -483,7 +487,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                         <p class="text-sm font-medium text-slate-900">Usage limits</p>
                         <p class="mt-0.5 text-xs text-slate-500">{{ $governed ? 'Leave blank to use the plan’s limit. A number here replaces it for this shop only.' : 'Not enforced — limits only apply to shops on a plan.' }}</p>
                         <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            @foreach ([['productsAllowed', LimitKey::Products], ['staffUsersLimit', LimitKey::StaffUsers], ['salesAllowed', LimitKey::SalesPerMonth], ['messagesLimit', LimitKey::WhatsAppMessagesPerMonth], ['postsLimit', LimitKey::MarketingPostsPerMonth]] as [$field, $limitKey])
+                            @foreach ([['productsAllowed', LimitKey::Products], ['staffUsersLimit', LimitKey::StaffUsers], ['salesAllowed', LimitKey::SalesPerMonth], ['messagesLimit', LimitKey::WhatsAppMessagesPerMonth], ['postsLimit', LimitKey::MarketingPostsPerMonth], ['branchesLimit', LimitKey::Branches]] as [$field, $limitKey])
                                 <x-ui.field :label="$limitKey->label()" :name="$field" :for="$field" :help="$governed ? 'Plan: '.(array_key_exists($limitKey->value, $planLimits) && $planLimits[$limitKey->value] !== null ? number_format($planLimits[$limitKey->value]) : 'unlimited') : null">
                                     <x-ui.input wire:model="{{ $field }}" id="{{ $field }}" type="number" min="0" placeholder="Plan default" />
                                 </x-ui.field>

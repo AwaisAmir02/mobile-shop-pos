@@ -6,6 +6,7 @@ use App\Enums\BusinessCategory;
 use App\Enums\PlanType;
 use App\Enums\ShopScreen;
 use App\Enums\SubscriptionStatus;
+use App\Support\BranchContext;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -44,6 +45,7 @@ class Shop extends Model
         'services_enabled',
         'whatsapp_enabled',
         'social_enabled',
+        'whatsapp_messages',
         'ads_enabled',
         'sim_sale_commission_percent',
         'balance_load_commission_percent',
@@ -67,6 +69,7 @@ class Shop extends Model
             'services_enabled' => 'boolean',
             'whatsapp_enabled' => 'boolean',
             'social_enabled' => 'boolean',
+            'whatsapp_messages' => 'array',
             'ads_enabled' => 'boolean',
             'limit_overrides' => 'array',
             'feature_overrides' => 'array',
@@ -76,6 +79,17 @@ class Shop extends Model
             'bills_commission_percent' => 'decimal:2',
             'nadra_verification_commission_percent' => 'decimal:2',
         ];
+    }
+
+    /**
+     * Every shop has a Main branch from the moment it exists, so nothing
+     * recorded for it is ever left without a branch.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (Shop $shop) {
+            Branch::withoutGlobalScopes()->create(['shop_id' => $shop->id, 'name' => 'Main', 'is_main' => true]);
+        });
     }
 
     public function user(): HasOne
@@ -116,6 +130,21 @@ class Shop extends Model
     public function stockIns(): HasMany
     {
         return $this->hasMany(StockIn::class);
+    }
+
+    public function branches(): HasMany
+    {
+        return $this->hasMany(Branch::class);
+    }
+
+    public function mainBranch(): HasOne
+    {
+        return $this->hasOne(Branch::class)->where('is_main', true);
+    }
+
+    public function hasMultipleBranches(): bool
+    {
+        return BranchContext::current()->hasMultipleBranches($this->id);
     }
 
     public function subscriptionInvoices(): HasMany
@@ -217,5 +246,16 @@ class Shop extends Model
         $mime = $disk->mimeType($this->logo_path) ?: 'image/png';
 
         return 'data:'.$mime.';base64,'.base64_encode((string) $disk->get($this->logo_path));
+    }
+
+    /**
+     * The shop's own wording for a customisable WhatsApp message in one
+     * language, or null to use the standard text.
+     */
+    public function whatsappMessage(string $key, string $language): ?string
+    {
+        $text = ($this->whatsapp_messages ?? [])[$key][$language] ?? null;
+
+        return is_string($text) && trim($text) !== '' ? $text : null;
     }
 }

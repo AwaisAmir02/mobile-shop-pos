@@ -104,6 +104,8 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
             'features.*.label' => ['nullable', 'string', 'max:120'],
             'features.*.included' => ['boolean'],
             'limits.*' => ['nullable', 'integer', 'min:0', 'max:100000000'],
+            // Main always counts as one branch, so a plan can't allow fewer.
+            'limits.'.LimitKey::Branches->value => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'featureFlags.*' => ['boolean'],
         ], [], ['features.*.label' => 'feature', 'limits.*' => 'limit']);
 
@@ -291,7 +293,7 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
                     <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                         @foreach (LimitKey::cases() as $limitKey)
                             <x-ui.field :label="$limitKey->label()" :name="'limits.'.$limitKey->value" :for="'limit-'.$limitKey->value">
-                                <x-ui.input wire:model="limits.{{ $limitKey->value }}" id="limit-{{ $limitKey->value }}" type="number" min="0" placeholder="Unlimited" />
+                                <x-ui.input wire:model="limits.{{ $limitKey->value }}" id="limit-{{ $limitKey->value }}" type="number" :min="$limitKey === LimitKey::Branches ? 1 : 0" placeholder="Unlimited" />
                             </x-ui.field>
                         @endforeach
                     </div>

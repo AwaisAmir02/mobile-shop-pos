@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\PaymentStatus;
 use App\Enums\RecordStatus;
 use App\Enums\WalletLoadDirection;
+use App\Models\Concerns\BelongsToBranch;
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Concerns\HasCancellation;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WalletLoad extends Model
 {
-    use BelongsToShop, HasCancellation;
+    use BelongsToShop, BelongsToBranch, HasCancellation;
 
     protected $fillable = [
         'shop_id',

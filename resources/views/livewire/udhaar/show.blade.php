@@ -7,6 +7,7 @@ use App\Actions\RecordSalePayment;
 use App\Actions\UpdateUdhaarTransaction;
 use App\Exports\TableExport;
 use App\Livewire\Concerns\GuardsExportSize;
+use App\Livewire\Concerns\PicksPaymentMethod;
 use App\Livewire\Concerns\Toasts;
 use App\Models\BalanceLoad;
 use App\Models\BillPayment;
@@ -20,6 +21,7 @@ use App\Models\SimSale;
 use App\Models\UdhaarTransaction;
 use App\Models\WalletLoad;
 use App\Services\TableExportService;
+use App\Support\BranchContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -31,7 +33,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 {
-    use GuardsExportSize, Toasts;
+    use GuardsExportSize, PicksPaymentMethod, Toasts;
 
     public Customer $customer;
 
@@ -52,6 +54,16 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 
     public ?int $cancelingId = null;
     public string $cancelReason = '';
+
+    /**
+     * Customers and vendors belong to the whole shop, so this screen shows
+     * every branch's lines and balances to everyone, restricted staff
+     * included. boot() runs on every Livewire request, not just the first.
+     */
+    public function boot(): void
+    {
+        BranchContext::current()->shopWideForRequest();
+    }
 
     public function mount(Customer $customer): void
     {
@@ -261,6 +273,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
         $this->settlingSource = $source;
         $this->settlingId = $id;
         $this->dueSettleAmount = '';
+        $this->paymentMethod = '';
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'settle-due-form');
     }
@@ -275,20 +288,22 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
         ]);
 
         if ($this->settlingSource === 'sale') {
-            RecordSalePayment::handle($record, (float) $this->dueSettleAmount, Auth::id());
+            [$paymentMethod, $shopAccountId] = $this->chosenPaymentMethod();
+
+            RecordSalePayment::handle($record, (float) $this->dueSettleAmount, Auth::id(), $paymentMethod, $shopAccountId);
         } else {
             RecordModulePayment::handle($record, (float) $this->dueSettleAmount);
         }
 
         $this->toastSuccess('Payment recorded.');
         $this->dispatch('close-modal', name: 'settle-due-form');
-        $this->reset(['settlingSource', 'settlingId', 'dueSettleAmount']);
+        $this->reset(['settlingSource', 'settlingId', 'dueSettleAmount', 'paymentMethod']);
     }
 
     public function closeDueSettlement(): void
     {
         $this->dispatch('close-modal', name: 'settle-due-form');
-        $this->reset(['settlingSource', 'settlingId', 'dueSettleAmount']);
+        $this->reset(['settlingSource', 'settlingId', 'dueSettleAmount', 'paymentMethod']);
     }
 
     public function openAddTransaction(): void
@@ -625,6 +640,10 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
                 <x-ui.field label="Amount Paid Now" name="dueSettleAmount" for="dueSettleAmount">
                     <x-ui.input wire:model="dueSettleAmount" id="dueSettleAmount" type="number" min="0.01" step="0.01" autofocus />
                 </x-ui.field>
+
+                @if ($settlingSource === 'sale')
+                    <x-sales.payment-method-picker :accounts="$this->paymentAccounts()" :value="$paymentMethod" amount="dueSettleAmount" />
+                @endif
             </div>
 
             <div class="mt-6 flex justify-end gap-3">
@@ -737,4 +756,6 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
             </div>
         </form>
     </x-ui.modal>
+
+    <livewire:shop-accounts.quick-create />
 </div>

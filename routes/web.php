@@ -17,6 +17,9 @@ Route::get('/', function () {
 })->name('home');
 
 Route::view('features', 'site.features')->name('site.features');
+Route::get('features/{feature}', fn (string $feature) => view('site.feature', ['slug' => $feature, 'feature' => \App\Support\SiteFeatures::find($feature)]))
+    ->whereIn('feature', \App\Support\SiteFeatures::slugs())
+    ->name('site.feature');
 Route::view('pricing', 'site.pricing')->name('site.pricing');
 Route::view('about', 'site.about')->name('site.about');
 Route::view('contact', 'site.contact')->name('site.contact');
@@ -86,6 +89,20 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('whatsapp-orders', 'whatsapp-orders.index')->name('whatsapp-orders.index')->middleware('shop.access:whatsapp-orders');
         Volt::route('whatsapp-orders/{order}', 'whatsapp-orders.show')->name('whatsapp-orders.show')->middleware('shop.access:whatsapp-orders');
+        Route::get('whatsapp-orders/{order}/slip', function (\App\Models\WhatsAppOrder $order, \Illuminate\Http\Request $request) {
+            // Route binding already limits {order} to the viewer's shop; checked again here.
+            abort_unless(auth()->user()->shop?->whatsapp_enabled, 403);
+            abort_unless($order->shop_id === auth()->user()->shop_id, 404);
+            $disk = \Illuminate\Support\Facades\Storage::disk(\App\Services\WhatsApp\WhatsAppChatbot::SLIP_DISK);
+            abort_if($order->payment_slip_path === null || ! $disk->exists($order->payment_slip_path), 404);
+
+            $name = $order->orderNumber().'-payment.'.pathinfo($order->payment_slip_path, PATHINFO_EXTENSION);
+            $headers = ['X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store'];
+
+            return $request->boolean('download')
+                ? $disk->download($order->payment_slip_path, $name, $headers)
+                : $disk->response($order->payment_slip_path, $name, $headers);
+        })->name('whatsapp-orders.slip')->middleware('shop.access:whatsapp-orders');
         Volt::route('customer-messages', 'whatsapp-messages.index')->name('whatsapp-messages.index')->middleware('shop.access:whatsapp-messages');
 
         Volt::route('marketing', 'marketing.index')->name('marketing.index')->middleware('shop.access:marketing-analytics');
@@ -123,6 +140,7 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('settings', 'settings.index')->name('settings.index')->middleware('shop.access:settings,users,shop-accounts,settings-categories,settings-networks,settings-bill-config,settings-percentage,settings-brands,settings-branding,settings-services,settings-integrations');
 
         Volt::route('users', 'users.index')->name('users.index')->middleware('shop.access:users');
+        Volt::route('branches', 'branches.index')->name('branches.index')->middleware('shop.access:branches');
     });
 
     Route::middleware('super.admin')->prefix('admin')->name('admin.')->group(function () {

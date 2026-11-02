@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Enums\SalePaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Support\SaleCartMath;
@@ -20,8 +21,10 @@ class CreateSale
         float $amountPaid,
         ?int $shopId = null,
         array $attributes = [],
+        ?string $paymentMethod = null,
+        ?int $shopAccountId = null,
     ): Sale {
-        return DB::transaction(function () use ($lines, $invoiceDiscount, $customerId, $userId, $saleDate, $amountPaid, $shopId, $attributes) {
+        return DB::transaction(function () use ($lines, $invoiceDiscount, $customerId, $userId, $saleDate, $amountPaid, $shopId, $attributes, $paymentMethod, $shopAccountId) {
             $subtotal = 0;
             $allItemsData = [];
 
@@ -77,12 +80,12 @@ class CreateSale
                 $sale->items()->create(array_merge($itemData, ['shop_id' => $sale->shop_id]));
             }
 
-            $sale->payments()->create([
+            $sale->payments()->create(array_merge([
                 'shop_id' => $sale->shop_id,
                 'user_id' => $userId,
                 'amount' => $amountPaid,
                 'payment_date' => now()->toDateString(),
-            ]);
+            ], SalePaymentMethod::paymentAttributes($paymentMethod, $shopAccountId, $sale->shop_id, $amountPaid)));
 
             return $sale;
         });

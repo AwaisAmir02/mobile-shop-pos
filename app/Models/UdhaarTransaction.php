@@ -4,8 +4,10 @@ namespace App\Models;
 
 use App\Enums\RecordStatus;
 use App\Enums\UdhaarTransactionType;
+use App\Models\Concerns\BelongsToBranch;
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Concerns\HasCancellation;
+use App\Models\Scopes\BranchScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -13,7 +15,7 @@ use Illuminate\Support\Collection;
 
 class UdhaarTransaction extends Model
 {
-    use BelongsToShop, HasCancellation;
+    use BelongsToShop, BelongsToBranch, HasCancellation;
 
     protected $fillable = [
         'shop_id',
@@ -85,13 +87,14 @@ class UdhaarTransaction extends Model
 
     /**
      * Net udhaar balance per customer_id: positive = customer owes the shop,
-     * negative = customer has overpaid (advance), zero = settled.
+     * negative = customer has overpaid (advance), zero = settled. Always
+     * shop-wide, whichever branch the viewer works in.
      *
      * @return Collection<int, float>
      */
     public static function balancesByCustomer(): Collection
     {
-        return static::query()
+        return static::withoutGlobalScope(BranchScope::class)
             ->selectRaw("customer_id, SUM(
                 CASE type
                     WHEN 'given' THEN amount

@@ -6,9 +6,11 @@ use App\Enums\FulfillmentStatus;
 use App\Actions\CreateCustomer;
 use App\Actions\RejectWhatsAppOrder;
 use App\Enums\WhatsAppOrderStatus;
+use App\Livewire\Concerns\PicksPaymentMethod;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\ShopAccount;
 use App\Models\WhatsAppOrder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -20,7 +22,7 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
 {
-    use Toasts;
+    use PicksPaymentMethod, Toasts;
 
     const MAX_LINE_PRICE = 9999999.99;
 
@@ -39,6 +41,7 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
 
         $this->order = $order->load(['items.product', 'contact.customer', 'customer', 'sale', 'decidedBy']);
         $this->customerId = (string) ($order->customer_id ?? $order->contact?->customer_id ?? '');
+        $this->paymentMethod = $this->suggestedPaymentMethod();
 
         foreach ($order->items as $item) {
             $this->lines[$item->id] = [
@@ -52,6 +55,26 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
                 'removed' => false,
             ];
         }
+    }
+
+    /**
+     * Pre-fills "Paid by" from the customer's choice in chat. Online maps to
+     * an account only when the shop has exactly one account to pay into —
+     * otherwise staff pick it after checking which account received it.
+     */
+    protected function suggestedPaymentMethod(): string
+    {
+        if ($this->order->payment_choice === null) {
+            return '';
+        }
+
+        if ($this->order->payment_choice->isCash()) {
+            return 'cash';
+        }
+
+        $payable = ShopAccount::query()->whereNotNull('account_number')->where('account_number', '!=', '')->pluck('id');
+
+        return $payable->count() === 1 ? (string) $payable->first() : '';
     }
 
     public function updatedCustomerId(): void
@@ -73,7 +96,12 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
         $this->authorizeDecision();
 
         $contact = $this->order->contact;
-        $customer = CreateCustomer::handle($contact->profile_name ?: '+'.$contact->wa_id, '+'.$contact->wa_id, $this->order->delivery_address !== 'Pickup from shop' ? $this->order->delivery_address : null);
+        // The phone stays the WhatsApp number so future chats link to this customer automatically.
+        $customer = CreateCustomer::handle(
+            $this->order->delivery_name ?: $contact->delivery_name ?: $contact->profile_name ?: '+'.$contact->wa_id,
+            '+'.$contact->wa_id,
+            ($line = $this->order->deliveryAddressLine() ?? $contact->savedAddressLine()) !== null ? mb_substr($line, 0, 255) : null,
+        );
 
         $this->customerId = (string) $customer->id;
         $this->toastSuccess("Customer {$customer->name} created.");
@@ -142,6 +170,7 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
         }
 
         $total = $this->total();
+        [$paymentMethod, $shopAccountId] = $this->chosenPaymentMethod();
 
         try {
             $sale = AcceptWhatsAppOrder::handle(
@@ -151,6 +180,8 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
                 customerId: $this->customerId !== '' ? (int) $this->customerId : null,
                 amountPaid: $this->amountPaid !== '' ? (float) $this->amountPaid : $total,
                 userId: Auth::id(),
+                paymentMethod: $paymentMethod,
+                shopAccountId: $shopAccountId,
             );
         } catch (ValidationException $e) {
             $errors = [];
@@ -275,13 +306,40 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
             <x-ui.card title="Customer">
                 <dl class="space-y-2 text-sm">
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">WhatsApp</dt><dd class="font-medium text-slate-900">+{{ $order->contact?->wa_id }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Name</dt><dd class="text-slate-900">{{ $order->contact?->profile_name ?? '—' }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Delivery</dt><dd class="text-right text-slate-900">{{ $order->delivery_address ?? '—' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-slate-500">WhatsApp name</dt><dd class="text-slate-900">{{ $order->contact?->profile_name ?? '—' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Order name</dt><dd class="text-right text-slate-900">{{ $order->delivery_name ?? '—' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Phone</dt><dd class="text-right text-slate-900">{{ $order->delivery_phone ?? '—' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-slate-500">{{ $order->isPickup() ? 'Collection' : 'Delivery' }}</dt><dd class="text-right text-slate-900">{{ $order->delivery_address ?? '—' }}</dd></div>
+                    @if (! $order->isPickup() && filled($order->delivery_area))
+                        <div class="flex justify-between gap-3"><dt class="text-slate-500">Area / zip</dt><dd class="text-right text-slate-900">{{ $order->delivery_area }}</dd></div>
+                    @endif
+                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Will pay by</dt><dd class="text-right text-slate-900">{{ $order->payment_choice?->label() ?? 'Not chosen' }}</dd></div>
                     @if ($order->origin_ref || $order->referral)
                         <div class="flex justify-between gap-3"><dt class="text-slate-500">Came from</dt><dd class="text-slate-900">{{ $order->origin_ref ? 'Post REF-'.$order->origin_ref : 'Click-to-WhatsApp ad' }}</dd></div>
                     @endif
                 </dl>
             </x-ui.card>
+
+            @if ($order->payment_choice === \App\Enums\WhatsAppPaymentChoice::Online)
+                <x-ui.card title="Payment screenshot">
+                    @if ($order->payment_slip_path)
+                        @if ($order->slipIsPdf())
+                            <p class="text-sm text-slate-600">The customer sent a PDF receipt.</p>
+                        @else
+                            <a href="{{ route('whatsapp-orders.slip', $order) }}" target="_blank" rel="noopener">
+                                <img src="{{ route('whatsapp-orders.slip', $order) }}" alt="Payment screenshot for {{ $order->orderNumber() }}" class="max-h-96 w-full rounded-lg border border-slate-200 object-contain">
+                            </a>
+                        @endif
+                        <div class="mt-3 flex gap-2">
+                            <x-ui.button size="sm" variant="secondary" href="{{ route('whatsapp-orders.slip', $order) }}" target="_blank" rel="noopener">Open</x-ui.button>
+                            <x-ui.button size="sm" variant="secondary" href="{{ route('whatsapp-orders.slip', ['order' => $order, 'download' => 1]) }}">Download</x-ui.button>
+                        </div>
+                        <p class="mt-2 text-xs text-slate-500">Check the amount reached your account before accepting.</p>
+                    @else
+                        <p class="text-sm text-slate-500">No screenshot yet. The customer can still send one in the chat until you accept or reject this order.</p>
+                    @endif
+                </x-ui.card>
+            @endif
 
             @if ($order->isDecidable() && $canDecide)
                 <x-ui.card title="Accept as sale">
@@ -309,6 +367,8 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
                         <x-ui.field label="Amount paid now" name="amountPaid" for="amountPaid" help="Leave blank if paid in full. Anything unpaid shows as this customer's sale balance.">
                             <x-ui.input wire:model.live.debounce.400ms="amountPaid" id="amountPaid" type="number" step="0.01" min="0" :placeholder="number_format($this->total(), 2, '.', '')" />
                         </x-ui.field>
+
+                        <x-sales.payment-method-picker :accounts="$this->paymentAccounts()" :value="$paymentMethod" amount="amountPaid" />
 
                         <div class="flex items-center justify-between border-t border-slate-100 pt-4">
                             <span class="text-sm text-slate-500">Total</span>
@@ -359,5 +419,6 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
 
     @if ($order->isDecidable() && $canDecide)
         <livewire:customers.quick-create />
+        <livewire:shop-accounts.quick-create />
     @endif
 </div>

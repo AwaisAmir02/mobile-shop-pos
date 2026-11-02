@@ -12,14 +12,25 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Shop;
 use App\Models\SimSale;
+use App\Models\Branch;
 use App\Models\StockIn;
 use App\Models\WalletLoad;
+use App\Support\BranchContext;
 use Carbon\Carbon;
 
 class ShopReportService
 {
-    public function summary(Shop $shop, Carbon $start, Carbon $end): array
+    /**
+     * With no $branchId the figures follow the branch switcher (all
+     * branches when nothing is picked, which is exactly the single-branch
+     * output); with one, they cover only that branch.
+     */
+    public function summary(Shop $shop, Carbon $start, Carbon $end, ?int $branchId = null): array
     {
+        if ($branchId !== null) {
+            return BranchContext::current()->forBranch($branchId, fn () => $this->summary($shop, $start, $end));
+        }
+
         MainCategory::ensureDefaultsExist($shop->id);
 
         $salesQuery = fn () => Sale::where('shop_id', $shop->id)->whereBetween('created_at', [$start, $end]);
@@ -81,6 +92,7 @@ class ShopReportService
             ->sum('amount');
 
         $totalStockInUnits = (int) StockIn::where('shop_id', $shop->id)
+            ->inCurrentBranch()
             ->whereBetween('stock_date', [$start->toDateString(), $end->toDateString()])
             ->sum('quantity');
 
@@ -125,6 +137,24 @@ class ShopReportService
             'totalNadraVerifications' => $totalNadraVerifications,
             'totalNadraRevenue' => $totalNadraRevenue,
             'netSummary' => $totalRevenue - $totalExpenses,
+        ];
+    }
+
+    /**
+     * One summary per active branch, plus the all-branches total, for the
+     * owner's consolidated comparison.
+     *
+     * @return array{branches: array<int, array{branch: Branch, summary: array}>, total: array}
+     */
+    public function byBranch(Shop $shop, Carbon $start, Carbon $end): array
+    {
+        $context = BranchContext::current();
+
+        return [
+            'branches' => $context->branchesFor($shop->id)
+                ->map(fn (Branch $branch) => ['branch' => $branch, 'summary' => $this->summary($shop, $start, $end, $branch->id)])
+                ->all(),
+            'total' => $context->forBranch(null, fn () => $this->summary($shop, $start, $end)),
         ];
     }
 

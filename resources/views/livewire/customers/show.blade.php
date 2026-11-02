@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Customer;
+use App\Support\BranchContext;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
@@ -8,6 +9,16 @@ use Livewire\Volt\Component;
 new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Component
 {
     public Customer $customer;
+
+    /**
+     * Customers and vendors belong to the whole shop, so this screen shows
+     * every branch's lines and balances to everyone, restricted staff
+     * included. boot() runs on every Livewire request, not just the first.
+     */
+    public function boot(): void
+    {
+        BranchContext::current()->shopWideForRequest();
+    }
 
     public function mount(Customer $customer): void
     {

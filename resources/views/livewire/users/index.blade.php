@@ -6,6 +6,7 @@ use App\Livewire\Concerns\Toasts;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Billing\Entitlements;
+use App\Support\BranchContext;
 use App\Support\PhoneNumber;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -25,6 +26,7 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
     public string $email = '';
     public string $phone = '';
     public ?int $roleId = null;
+    public string $branchId = '';
 
     public ?int $resettingId = null;
     public string $newPassword = '';
@@ -34,9 +36,13 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
     {
         $shopId = Auth::user()->shop_id;
 
+        $multipleBranches = BranchContext::current()->hasMultipleBranches($shopId);
+
         return [
-            'users' => User::where('shop_id', $shopId)->with('role')->orderByDesc('is_owner')->orderBy('name')->get(),
+            'users' => User::where('shop_id', $shopId)->with(['role', 'branch'])->orderByDesc('is_owner')->orderBy('name')->get(),
             'roles' => Role::orderBy('name')->get(),
+            'multipleBranches' => $multipleBranches,
+            'branches' => $multipleBranches ? BranchContext::current()->branchesFor($shopId) : collect(),
         ];
     }
 
@@ -55,6 +61,7 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
         $this->email = (string) $user->email;
         $this->phone = $user->phone ? '0'.substr($user->phone, 2) : '';
         $this->roleId = $user->role_id;
+        $this->branchId = (string) ($user->branch_id ?? '');
 
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'user-form');
@@ -78,7 +85,11 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
                 }
             }],
             'roleId' => [$editingOwner ? 'nullable' : 'required', 'integer', Rule::exists('roles', 'id')->where('shop_id', Auth::user()->shop_id)],
+            'branchId' => ['nullable', 'integer', Rule::exists('branches', 'id')->where('shop_id', Auth::user()->shop_id)->whereNull('archived_at')],
         ]);
+
+        // Empty means every branch. The owner is never tied to one.
+        $branchId = $editingOwner || $this->branchId === '' ? null : (int) $this->branchId;
 
         if ($this->editingId) {
             $user = User::where('shop_id', Auth::user()->shop_id)->findOrFail($this->editingId);
@@ -88,6 +99,7 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
                 'email' => $this->email !== '' ? $this->email : null,
                 'phone' => $normalizedPhone,
                 'role_id' => $user->is_owner ? null : $this->roleId,
+                'branch_id' => $user->is_owner ? null : $branchId,
             ]);
 
             $this->toastSuccess('User updated.');
@@ -107,6 +119,7 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
                 'phone' => $normalizedPhone,
                 'password' => Hash::make(str()->random(24)),
                 'role_id' => $this->roleId,
+                'branch_id' => $branchId,
                 'is_owner' => false,
                 'email_verified_at' => now(),
             ]);
@@ -175,7 +188,7 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
 
     protected function resetForm(): void
     {
-        $this->reset(['editingId', 'name', 'email', 'phone', 'roleId']);
+        $this->reset(['editingId', 'name', 'email', 'phone', 'roleId', 'branchId']);
         $this->resetErrorBag();
     }
 }; ?>
@@ -190,6 +203,8 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
         </div>
     </x-slot>
 
+    <x-billing.limit-notice limit="staff_users" />
+
     <div class="mb-4 flex justify-end">
         <x-ui.button wire:click="openCreate">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -199,7 +214,7 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
         </x-ui.button>
     </div>
 
-    <x-ui.table :headers="['Name', 'Login', 'Role', '']">
+    <x-ui.table :headers="$multipleBranches ? ['Name', 'Login', 'Role', 'Branch', ''] : ['Name', 'Login', 'Role', '']">
         @foreach ($users as $user)
             <x-ui.table-row wire:key="user-{{ $user->id }}">
                 <x-ui.table-cell class="font-medium text-slate-900">{{ $user->name }}</x-ui.table-cell>
@@ -211,6 +226,9 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
                         <x-ui.badge>{{ $user->role?->name ?? 'No role' }}</x-ui.badge>
                     @endif
                 </x-ui.table-cell>
+                @if ($multipleBranches)
+                    <x-ui.table-cell>{{ $user->is_owner || ! $user->branch ? 'All branches' : $user->branch->name }}</x-ui.table-cell>
+                @endif
                 <x-ui.table-cell align="right">
                     <div class="flex justify-end gap-2">
                         <x-ui.button size="sm" variant="ghost" wire:click="openResetPassword({{ $user->id }})">
@@ -265,6 +283,17 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
                             @endforeach
                         </x-ui.select>
                     </x-ui.field>
+
+                    @if ($multipleBranches)
+                        <x-ui.field label="Branch" name="branchId" for="branchId" help="Staff tied to a branch only see and record that branch's work">
+                            <x-ui.select wire:model="branchId" id="branchId">
+                                <option value="">All branches</option>
+                                @foreach ($branches as $branch)
+                                    <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                @endforeach
+                            </x-ui.select>
+                        </x-ui.field>
+                    @endif
                 </div>
 
                 @unless ($editingId)

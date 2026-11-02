@@ -18,11 +18,13 @@ use App\Models\MainCategory;
 use App\Models\Network;
 use App\Models\Product;
 use App\Models\Role;
+use App\Models\SalePayment;
 use App\Models\ServiceCategory;
 use App\Models\ServiceItem;
 use App\Models\ServicePayment;
 use App\Models\ShopAccount;
 use App\Models\WalletLoad;
+use App\Support\BranchContext;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -64,6 +66,9 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public ?int $shopAccountEditingId = null;
     public string $shopAccountName = '';
     public string $shopAccountProviderType = '';
+    public string $shopAccountTitle = '';
+    public string $shopAccountNumber = '';
+    public string $shopAccountBranchId = '';
 
     // Bill Categories
     public ?int $billCategoryEditingId = null;
@@ -209,8 +214,12 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     {
         $accessible = $this->accessibleTabs();
 
+        $multipleBranches = BranchContext::current()->hasMultipleBranches(Auth::user()->shop_id);
+
         return [
             'accessibleTabs' => $accessible,
+            'multipleBranches' => $multipleBranches,
+            'branches' => $multipleBranches ? BranchContext::current()->branchesFor(Auth::user()->shop_id) : collect(),
             'mainCategories' => in_array('accessory-categories', $accessible, true)
                 ? MainCategory::query()->withCount('subCategories')->orderBy('name')->get()
                 : collect(),
@@ -228,6 +237,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                     ->withSum(['walletLoads as wallet_cash_in_sum_amount' => fn ($query) => $query->where('direction', 'cash_in')], 'amount')
                     ->withSum(['walletLoads as wallet_cash_out_sum_amount' => fn ($query) => $query->where('direction', 'cash_out')], 'amount')
                     ->withSum('billPayments', 'amount')
+                    ->with('branch')
                     ->orderBy('name')
                     ->get()
                 : collect(),
@@ -558,7 +568,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     {
         abort_unless(Auth::user()->hasAccessTo('shop-accounts'), 403);
 
-        $this->reset(['shopAccountEditingId', 'shopAccountName', 'shopAccountProviderType']);
+        $this->reset(['shopAccountEditingId', 'shopAccountName', 'shopAccountProviderType', 'shopAccountTitle', 'shopAccountNumber', 'shopAccountBranchId']);
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'shop-account-form');
     }
@@ -572,6 +582,9 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $this->shopAccountEditingId = $account->id;
         $this->shopAccountName = $account->name;
         $this->shopAccountProviderType = $account->provider_type;
+        $this->shopAccountTitle = (string) $account->account_title;
+        $this->shopAccountNumber = (string) $account->account_number;
+        $this->shopAccountBranchId = (string) ($account->branch_id ?? '');
 
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'shop-account-form');
@@ -584,17 +597,24 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $this->validate([
             'shopAccountName' => ['required', 'string', 'max:255', Rule::unique('shop_accounts', 'name')->where('shop_id', Auth::user()->shop_id)->ignore($this->shopAccountEditingId)],
             'shopAccountProviderType' => ['required', 'string', 'max:255'],
+            'shopAccountTitle' => ['nullable', 'string', 'max:120'],
+            'shopAccountNumber' => ['nullable', 'string', 'max:60'],
+            'shopAccountBranchId' => ['nullable', 'integer', Rule::exists('branches', 'id')->where('shop_id', Auth::user()->shop_id)->whereNull('archived_at')],
         ]);
 
         $account = $this->shopAccountEditingId ? ShopAccount::findOrFail($this->shopAccountEditingId) : new ShopAccount;
 
         $account->name = $this->shopAccountName;
         $account->provider_type = $this->shopAccountProviderType;
+        $account->account_title = trim($this->shopAccountTitle) !== '' ? trim($this->shopAccountTitle) : null;
+        $account->account_number = trim($this->shopAccountNumber) !== '' ? trim($this->shopAccountNumber) : null;
+        // Only a cash drawer belongs to one branch; empty keeps it shared by every branch.
+        $account->branch_id = $this->shopAccountBranchId !== '' ? (int) $this->shopAccountBranchId : null;
         $account->save();
 
         $this->toastSuccess($this->shopAccountEditingId ? 'Shop account updated.' : 'Shop account added.');
         $this->dispatch('close-modal', name: 'shop-account-form');
-        $this->reset(['shopAccountEditingId', 'shopAccountName', 'shopAccountProviderType']);
+        $this->reset(['shopAccountEditingId', 'shopAccountName', 'shopAccountProviderType', 'shopAccountTitle', 'shopAccountNumber', 'shopAccountBranchId']);
     }
 
     public function deleteShopAccount(int $id): void
@@ -615,6 +635,12 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             return;
         }
 
+        if (SalePayment::where('shop_account_id', $account->id)->exists()) {
+            $this->toastError("Cannot delete \"{$account->name}\" — it has sale payment history.");
+
+            return;
+        }
+
         $account->delete();
         $this->toastSuccess('Shop account deleted.');
     }
@@ -622,7 +648,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public function closeShopAccountForm(): void
     {
         $this->dispatch('close-modal', name: 'shop-account-form');
-        $this->reset(['shopAccountEditingId', 'shopAccountName', 'shopAccountProviderType']);
+        $this->reset(['shopAccountEditingId', 'shopAccountName', 'shopAccountProviderType', 'shopAccountTitle', 'shopAccountNumber', 'shopAccountBranchId']);
     }
 
     // ── Bill Categories ──────────────────────────────────────────────
@@ -1329,7 +1355,15 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 <x-ui.table :headers="['Account', 'Provider / Type', 'Total Sent', 'Total Received', '']">
                     @foreach ($shopAccounts as $account)
                         <x-ui.table-row wire:key="shop-account-{{ $account->id }}">
-                            <x-ui.table-cell class="font-medium text-slate-900">{{ $account->name }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-medium text-slate-900">
+                                {{ $account->name }}
+                                @if ($multipleBranches)
+                                    <span class="block text-xs font-normal text-slate-500">{{ $account->branch ? $account->branch->name.' cash drawer' : 'Shared by all branches' }}</span>
+                                @endif
+                                @if ($account->hasPaymentDetails())
+                                    <span class="block text-xs font-normal text-slate-500">{{ collect([$account->account_title, $account->account_number])->filter()->implode(' · ') }}</span>
+                                @endif
+                            </x-ui.table-cell>
                             <x-ui.table-cell>{{ $account->provider_type }}</x-ui.table-cell>
                             <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format(($account->wallet_cash_in_sum_amount ?? 0) + ($account->bill_payments_sum_amount ?? 0), 2) }}</x-ui.table-cell>
                             <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($account->wallet_cash_out_sum_amount ?? 0, 2) }}</x-ui.table-cell>
@@ -1847,6 +1881,25 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                     <x-ui.field label="Provider / Type" name="shopAccountProviderType" for="shopAccountProviderType" help="e.g. JazzCash, Easypaisa, Bank">
                         <x-ui.input wire:model="shopAccountProviderType" id="shopAccountProviderType" />
                     </x-ui.field>
+
+                    <x-ui.field label="Account Title" name="shopAccountTitle" for="shopAccountTitle" help="Optional — the name on the account">
+                        <x-ui.input wire:model="shopAccountTitle" id="shopAccountTitle" />
+                    </x-ui.field>
+
+                    <x-ui.field label="Account Number / IBAN" name="shopAccountNumber" for="shopAccountNumber" help="Optional — shown to WhatsApp customers who pay online">
+                        <x-ui.input wire:model="shopAccountNumber" id="shopAccountNumber" />
+                    </x-ui.field>
+
+                    @if ($multipleBranches)
+                        <x-ui.field label="Branch" name="shopAccountBranchId" for="shopAccountBranchId" help="Pick a branch only for a cash drawer kept there. Bank and wallet accounts stay shared.">
+                            <x-ui.select wire:model="shopAccountBranchId" id="shopAccountBranchId">
+                                <option value="">Shared by all branches</option>
+                                @foreach ($branches as $branch)
+                                    <option value="{{ $branch->id }}">{{ $branch->name }} cash drawer</option>
+                                @endforeach
+                            </x-ui.select>
+                        </x-ui.field>
+                    @endif
                 </div>
             </div>
 

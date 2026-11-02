@@ -137,6 +137,8 @@ new #[Layout('layouts.app')] #[Title('Customer Messages')] class extends Compone
         <h1 class="text-xl font-semibold text-slate-900">Customer Messages</h1>
     </x-slot>
 
+    <x-billing.limit-notice limit="whatsapp_messages_per_month" />
+
     @if (! $connected)
         <div class="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
             WhatsApp is not connected yet. Connect it in Settings → Integrations to send messages.

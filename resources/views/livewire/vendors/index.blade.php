@@ -2,7 +2,10 @@
 
 use App\Actions\CreateVendor;
 use App\Livewire\Concerns\Toasts;
+use App\Models\PartyLedgerEntry;
+use App\Models\Scopes\ExcludesCancelledScope;
 use App\Models\Vendor;
+use App\Support\BranchContext;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
@@ -21,6 +24,16 @@ new #[Layout('layouts.app')] #[Title('Vendors')] class extends Component
     public string $company_name = '';
     public string $address = '';
     public string $notes = '';
+
+    /**
+     * Customers and vendors belong to the whole shop, so this screen shows
+     * every branch's lines and balances to everyone, restricted staff
+     * included. boot() runs on every Livewire request, not just the first.
+     */
+    public function boot(): void
+    {
+        BranchContext::current()->shopWideForRequest();
+    }
 
     public function updatingSearch(): void
     {
@@ -89,6 +102,13 @@ new #[Layout('layouts.app')] #[Title('Vendors')] class extends Component
 
         if ($vendor->hasStockInHistory()) {
             $this->toastError("Cannot delete \"{$vendor->name}\" — it has existing stock-in entries.");
+
+            return;
+        }
+
+        // Party Ledger opening balances and adjustments, cancelled ones included.
+        if (PartyLedgerEntry::withoutGlobalScope(ExcludesCancelledScope::class)->where('vendor_id', $vendor->id)->exists()) {
+            $this->toastError("Cannot delete \"{$vendor->name}\" — it has Party Ledger entries.");
 
             return;
         }

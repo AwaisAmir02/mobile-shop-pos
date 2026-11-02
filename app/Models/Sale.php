@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\SaleSource;
 use App\Enums\SaleStatus;
+use App\Models\Concerns\BelongsToBranch;
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Scopes\ExcludesCancelledSalesScope;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Sale extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, BelongsToBranch;
 
     protected $fillable = [
         'shop_id',

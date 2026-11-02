@@ -63,6 +63,8 @@
                             {{ $header ?? '' }}
                         </div>
 
+                        <livewire:layout.branch-switcher />
+
                         <livewire:layout.navigation />
                     </div>
                 </header>

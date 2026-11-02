@@ -3,12 +3,18 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Scopes\BranchScope;
 use App\Models\Scopes\ExcludesCancelledSalesScope;
 use App\Models\Scopes\ExcludesCancelledScope;
 use App\Support\PhoneNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * A customer belongs to the whole shop, not a branch: every relation and
+ * balance here ignores BranchScope, so a branch-restricted user and the
+ * owner always see the same history and the same amounts owed.
+ */
 class Customer extends Model
 {
     use BelongsToShop;
@@ -31,47 +37,47 @@ class Customer extends Model
 
     public function udhaarTransactions(): HasMany
     {
-        return $this->hasMany(UdhaarTransaction::class)->orderBy('transaction_date')->orderBy('id');
+        return $this->hasMany(UdhaarTransaction::class)->withoutGlobalScope(BranchScope::class)->orderBy('transaction_date')->orderBy('id');
     }
 
     public function sales(): HasMany
     {
-        return $this->hasMany(Sale::class)->latest();
+        return $this->hasMany(Sale::class)->withoutGlobalScope(BranchScope::class)->latest();
     }
 
     public function walletLoads(): HasMany
     {
-        return $this->hasMany(WalletLoad::class)->latest();
+        return $this->hasMany(WalletLoad::class)->withoutGlobalScope(BranchScope::class)->latest();
     }
 
     public function balanceLoads(): HasMany
     {
-        return $this->hasMany(BalanceLoad::class)->latest();
+        return $this->hasMany(BalanceLoad::class)->withoutGlobalScope(BranchScope::class)->latest();
     }
 
     public function billPayments(): HasMany
     {
-        return $this->hasMany(BillPayment::class)->latest();
+        return $this->hasMany(BillPayment::class)->withoutGlobalScope(BranchScope::class)->latest();
     }
 
     public function repairs(): HasMany
     {
-        return $this->hasMany(Repair::class)->latest();
+        return $this->hasMany(Repair::class)->withoutGlobalScope(BranchScope::class)->latest();
     }
 
     public function nadraVerifications(): HasMany
     {
-        return $this->hasMany(NadraVerification::class)->latest();
+        return $this->hasMany(NadraVerification::class)->withoutGlobalScope(BranchScope::class)->latest();
     }
 
     public function simSales(): HasMany
     {
-        return $this->hasMany(SimSale::class)->latest();
+        return $this->hasMany(SimSale::class)->withoutGlobalScope(BranchScope::class)->latest();
     }
 
     public function servicePayments(): HasMany
     {
-        return $this->hasMany(ServicePayment::class)->latest();
+        return $this->hasMany(ServicePayment::class)->withoutGlobalScope(BranchScope::class)->latest();
     }
 
     public function udhaarBalance(): float
@@ -87,7 +93,8 @@ class Customer extends Model
      */
     public function salesOutstandingBalance(): float
     {
-        return Sale::where('customer_id', $this->id)
+        return Sale::withoutGlobalScope(BranchScope::class)
+            ->where('customer_id', $this->id)
             ->withSum('payments', 'amount')
             ->get()
             ->sum(fn (Sale $sale) => $sale->amountDue());

@@ -9,6 +9,7 @@ use App\Enums\NotificationStatus;
 use App\Enums\PostKind;
 use App\Enums\SaleStatus;
 use App\Exceptions\UsageLimitReached;
+use App\Models\Branch;
 use App\Models\CustomerNotification;
 use App\Models\MarketingPost;
 use App\Models\Plan;
@@ -37,8 +38,18 @@ class Entitlements
             return null;
         }
 
+        return $this->limitOn($shop, $this->plan($shop), $key);
+    }
+
+    /**
+     * What $shop's limit would be on $plan: the shop's own override first,
+     * else the plan's limit, plus any add-on packs in effect. Used for the
+     * current plan and to check a plan the owner wants to switch to.
+     */
+    public function limitOn(Shop $shop, ?Plan $plan, LimitKey $key): ?int
+    {
         $overrides = $shop->limit_overrides ?? [];
-        $planLimits = $this->plan($shop)?->limits ?? [];
+        $planLimits = $plan?->limits ?? [];
 
         $base = array_key_exists($key->value, $overrides) ? $overrides[$key->value] : ($planLimits[$key->value] ?? null);
 
@@ -83,6 +94,7 @@ class Entitlements
             LimitKey::StaffUsers => User::where('shop_id', $shop->id)->where('is_owner', false)->where('is_active', true)->count(),
             LimitKey::SalesPerMonth => Sale::withoutGlobalScopes()->where('shop_id', $shop->id)->where('status', '!=', SaleStatus::Cancelled->value)->whereBetween('created_at', [$start, $end])->count(),
             LimitKey::WhatsAppMessagesPerMonth => CustomerNotification::withoutGlobalScopes()->where('shop_id', $shop->id)->where('status', NotificationStatus::Sent->value)->whereBetween('created_at', [$start, $end])->count(),
+            LimitKey::Branches => Branch::withoutGlobalScopes()->where('shop_id', $shop->id)->whereNull('archived_at')->count(),
             LimitKey::MarketingPostsPerMonth => MarketingPost::withoutGlobalScopes()->where('shop_id', $shop->id)->where('kind', '!=', PostKind::QrCode->value)->whereBetween('created_at', [$start, $end])->count(),
         };
     }
@@ -108,29 +120,79 @@ class Entitlements
         }
     }
 
-    public function meters(Shop $shop, bool $fresh = false): array
+    /**
+     * $everyLimit keeps the Branches meter for a single-branch shop; only
+     * the owner's Plan & Usage screen asks for that, always fresh.
+     */
+    public function meters(Shop $shop, bool $fresh = false, bool $everyLimit = false): array
     {
         if (! $this->governed($shop)) {
             return [];
         }
 
-        $build = fn () => collect(LimitKey::cases())->map(function (LimitKey $key) use ($shop) {
-            $limit = $this->limit($shop, $key);
-            $used = $this->usage($shop, $key);
-            $percent = $limit === null ? 0 : ($limit === 0 ? ($used > 0 ? 100 : 0) : (int) min(100, round($used / $limit * 100)));
+        $build = fn () => collect(LimitKey::cases())
+            ->map(fn (LimitKey $key) => $this->meter($shop, $key))
+            // A single-branch shop must look exactly as it did before
+            // branches existed: no meter, no banner, no admin alert.
+            ->reject(fn (array $meter) => $meter['key'] === LimitKey::Branches->value && $meter['used'] <= 1 && ! $everyLimit)
+            ->values()
+            ->all();
 
-            return [
-                'key' => $key->value,
-                'label' => $key->label(),
-                'used' => $used,
-                'limit' => $limit,
-                'percent' => $percent,
-                'state' => $limit === null ? 'ok' : ($used >= $limit ? 'full' : ($percent >= self::WARNING_PERCENT ? 'warning' : 'ok')),
-                'over' => $limit !== null && $used > $limit,
-            ];
+        return $fresh || $everyLimit ? $build() : Cache::remember('entitlement-meters:'.$shop->id, 60, $build);
+    }
+
+    /** One limit's meter, always fresh (meters() lists them all, cached). */
+    public function meter(Shop $shop, LimitKey $key): array
+    {
+        $limit = $this->limit($shop, $key);
+        $used = $this->usage($shop, $key);
+        $percent = $limit === null ? 0 : ($limit === 0 ? ($used > 0 ? 100 : 0) : (int) min(100, round($used / $limit * 100)));
+
+        return [
+            'key' => $key->value,
+            'label' => $key->label(),
+            'used' => $used,
+            'limit' => $limit,
+            'percent' => $percent,
+            'state' => $limit === null ? 'ok' : ($used >= $limit ? 'full' : ($percent >= self::WARNING_PERCENT ? 'warning' : 'ok')),
+            'over' => $limit !== null && $used > $limit,
+            'alarm' => $key->alarmsAtLimit(),
+        ];
+    }
+
+    /**
+     * Each feature as the shop has it now, and why: 'hisabokitab' (an admin
+     * override, or a shop with no plan), 'addon' (an unlock in effect, with
+     * its latest end date; null means it doesn't end) or 'plan'. Follows the
+     * same order as syncFeatureFlags().
+     *
+     * @return array<int, array{key: FeatureKey, label: string, on: bool, source: string, until: ?\Carbon\CarbonInterface}>
+     */
+    public function features(Shop $shop): array
+    {
+        return collect(FeatureKey::cases())->map(function (FeatureKey $feature) use ($shop) {
+            $row = ['key' => $feature, 'label' => $feature->label(), 'on' => (bool) $shop->{$feature->column()}, 'source' => 'plan', 'until' => null];
+
+            if (! $this->governed($shop) || ($override = $this->featureOverride($shop, $feature)) !== null) {
+                return array_merge($row, ['on' => $override ?? $row['on'], 'source' => 'hisabokitab']);
+            }
+
+            $unlocks = ShopAddon::where('shop_id', $shop->id)
+                ->where('kind', AddonKind::FeatureUnlock->value)
+                ->where('feature_key', $feature->value)
+                ->inEffect()
+                ->get('ends_at');
+
+            if ($unlocks->isNotEmpty()) {
+                return array_merge($row, ['on' => true, 'source' => 'addon', 'until' => $unlocks->contains(fn (ShopAddon $a) => $a->ends_at === null) ? null : $unlocks->max('ends_at')]);
+            }
+
+            $planned = $this->planFeature($shop, $feature);
+
+            // A plan that says nothing about a feature leaves the shop's own
+            // switch alone, so an "on" there was set by HisabOKitab.
+            return $planned === null && $row['on'] ? array_merge($row, ['source' => 'hisabokitab']) : array_merge($row, ['on' => $planned ?? false]);
         })->all();
-
-        return $fresh ? $build() : Cache::remember('entitlement-meters:'.$shop->id, 60, $build);
     }
 
     public function forgetMeters(Shop $shop): void

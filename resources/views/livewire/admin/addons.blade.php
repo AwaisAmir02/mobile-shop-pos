@@ -66,6 +66,16 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
         $this->dispatch('open-modal', name: 'addon-form');
     }
 
+    /**
+     * Branch packs are the one recurring kind of limit pack: a branch is a
+     * standing thing, so its pack must not lapse when the plan renews.
+     * Every other pack stays one-off, until the plan renews.
+     */
+    protected function recurringPack(): bool
+    {
+        return $this->kind === AddonKind::LimitPack->value && $this->limitKey === LimitKey::Branches->value;
+    }
+
     public function save(): void
     {
         $this->authorizeSuperAdmin();
@@ -80,7 +90,7 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
             'quantity' => [$pack ? 'required' : 'nullable', 'integer', 'min:1', 'max:10000000'],
             'featureKey' => [$pack ? 'nullable' : 'required', Rule::enum(FeatureKey::class)],
             'price' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
-            'billing' => [$pack ? 'nullable' : 'required', 'in:monthly,yearly'],
+            'billing' => [$pack && ! $this->recurringPack() ? 'nullable' : 'required', 'in:monthly,yearly'],
         ]);
 
         $data = [
@@ -91,7 +101,7 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
             'quantity' => $pack ? (int) $this->quantity : null,
             'feature_key' => $pack ? null : $this->featureKey,
             'price' => $this->price,
-            'billing' => $pack ? AddonBilling::OneOff->value : $this->billing,
+            'billing' => $pack && ! $this->recurringPack() ? AddonBilling::OneOff->value : $this->billing,
             'is_active' => $this->isActive,
         ];
 
@@ -169,7 +179,7 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
         <h1 class="text-xl font-semibold text-slate-900">Add-ons</h1>
     </x-slot>
 
-    <x-ui.card title="Add-on catalogue" description="Shops on a plan can buy active add-ons from Plan & Billing. Payment goes through the same bank-transfer review as signups, and the add-on switches on when you confirm the payment.">
+    <x-ui.card title="Add-on catalogue" description="Shops on a plan can buy active add-ons from Plan & Usage. Payment goes through the same bank-transfer review as signups, and the add-on switches on when you confirm the payment.">
         <x-slot name="actions">
             <x-ui.button size="sm" wire:click="openCreate">New Add-on</x-ui.button>
         </x-slot>
@@ -237,7 +247,7 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
                 @if ($kind === 'limit_pack')
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-ui.field label="Adds to" name="limitKey" for="addonLimit">
-                            <x-ui.select wire:model="limitKey" id="addonLimit">
+                            <x-ui.select wire:model.live="limitKey" id="addonLimit">
                                 @foreach (LimitKey::cases() as $limit)
                                     <option value="{{ $limit->value }}">{{ $limit->label() }}</option>
                                 @endforeach
@@ -247,7 +257,19 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
                             <x-ui.input wire:model="quantity" id="addonQuantity" type="number" min="1" />
                         </x-ui.field>
                     </div>
-                    <p class="text-xs text-slate-500">Packs are one-off and last until the shop’s plan renews.</p>
+                    @if ($limitKey === 'branches')
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <x-ui.field label="Billed" name="billing" for="addonPackBilling">
+                                <x-ui.select wire:model="billing" id="addonPackBilling">
+                                    <option value="monthly">Every month</option>
+                                    <option value="yearly">Every year</option>
+                                </x-ui.select>
+                            </x-ui.field>
+                        </div>
+                        <p class="text-xs text-slate-500">Branch packs recur every month or year, so an extra branch never lapses when the plan renews. Buying it again renews it from the day it ends.</p>
+                    @else
+                        <p class="text-xs text-slate-500">Packs are one-off and last until the shop’s plan renews.</p>
+                    @endif
                 @else
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-ui.field label="Switches on" name="featureKey" for="addonFeature">

@@ -2,15 +2,28 @@
 
 use App\Enums\PartyLedgerDirection;
 use App\Enums\PartyLedgerEntryKind;
+use App\Enums\PaymentStatus;
 use App\Enums\RecordStatus;
 use App\Exports\TableExport;
 use App\Livewire\Concerns\GuardsExportSize;
 use App\Livewire\Concerns\Toasts;
+use App\Models\BalanceLoad;
+use App\Models\BillPayment;
 use App\Models\Customer;
+use App\Models\NadraVerification;
 use App\Models\PartyLedgerEntry;
+use App\Models\Repair;
 use App\Models\Sale;
+use App\Models\SalePayment;
+use App\Models\ServicePayment;
+use App\Models\SimSale;
+use App\Models\StockIn;
+use App\Models\StockInPayment;
 use App\Models\UdhaarTransaction;
+use App\Models\Vendor;
+use App\Models\WalletLoad;
 use App\Services\TableExportService;
+use App\Support\BranchContext;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -27,8 +40,14 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
 {
     use GuardsExportSize, Toasts;
 
+    #[Url(as: 'party')]
+    public string $partyType = 'customer';
+
     #[Url(as: 'customer')]
     public ?int $customerId = null;
+
+    #[Url(as: 'vendor')]
+    public ?int $vendorId = null;
 
     public string $from = '';
     public string $to = '';
@@ -42,20 +61,216 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
     public ?int $cancelingEntryId = null;
     public string $cancelReason = '';
 
+    public string $rangePreset = '3months';
+    public bool $withBalanceOnly = false;
+
+    /**
+     * Customers and vendors belong to the whole shop, so this screen shows
+     * every branch's lines and balances to everyone, restricted staff
+     * included. boot() runs on every Livewire request, not just the first.
+     */
+    public function boot(): void
+    {
+        BranchContext::current()->shopWideForRequest();
+    }
+
     public function mount(): void
     {
+        if (! $this->isVendorSide()) {
+            $this->partyType = 'customer';
+        }
+
         $this->from = now()->subMonthsNoOverflow(2)->startOfMonth()->toDateString();
         $this->to = now()->toDateString();
         $this->entryDate = now()->toDateString();
     }
 
     /**
-     * Customer lookups go through the tenant ShopScope, so an id from
-     * another shop simply resolves to nothing.
+     * Vendor data belongs to the Vendors permission, the same way Stock-In
+     * create only offers vendors to users who hold it.
      */
-    protected function customer(): ?Customer
+    protected function vendorsAvailable(): bool
     {
+        return Auth::user()->hasAccessTo('vendors');
+    }
+
+    protected function isVendorSide(): bool
+    {
+        return $this->partyType === 'vendor' && $this->vendorsAvailable();
+    }
+
+    /**
+     * Party lookups go through the tenant ShopScope, so an id from another
+     * shop simply resolves to nothing.
+     */
+    protected function party(): Customer|Vendor|null
+    {
+        if ($this->isVendorSide()) {
+            return $this->vendorId ? Vendor::find($this->vendorId) : null;
+        }
+
         return $this->customerId ? Customer::find($this->customerId) : null;
+    }
+
+    protected function partyColumn(): string
+    {
+        return $this->isVendorSide() ? 'vendor_id' : 'customer_id';
+    }
+
+    protected function partyNoun(): string
+    {
+        return $this->isVendorSide() ? 'vendor' : 'customer';
+    }
+
+    public function setPartyType(string $type): void
+    {
+        if (! in_array($type, ['customer', 'vendor'], true) || ($type === 'vendor' && ! $this->vendorsAvailable())) {
+            return;
+        }
+
+        $this->partyType = $type;
+        $this->resetErrorBag();
+        $this->refreshAllTime();
+    }
+
+    public function applyPreset(string $preset): void
+    {
+        $from = match ($preset) {
+            'month' => now()->startOfMonth(),
+            '3months' => now()->subMonthsNoOverflow(2)->startOfMonth(),
+            'year' => now()->startOfYear(),
+            'all' => $this->earliestDate() ?? now(),
+            default => null,
+        };
+
+        if ($from === null) {
+            return;
+        }
+
+        $this->rangePreset = $preset;
+        $this->from = $from->toDateString();
+        $this->to = now()->toDateString();
+    }
+
+    public function updatedFrom(): void
+    {
+        $this->rangePreset = '';
+    }
+
+    public function updatedTo(): void
+    {
+        $this->rangePreset = '';
+    }
+
+    public function updatedCustomerId(): void
+    {
+        $this->refreshAllTime();
+    }
+
+    public function updatedVendorId(): void
+    {
+        $this->refreshAllTime();
+    }
+
+    /**
+     * "All time" starts at the chosen party's first record, so it has to
+     * move when the party changes.
+     */
+    protected function refreshAllTime(): void
+    {
+        if ($this->rangePreset === 'all') {
+            $this->applyPreset('all');
+        }
+    }
+
+    protected function earliestDate(): ?Carbon
+    {
+        $party = $this->party();
+
+        if (! $party) {
+            return null;
+        }
+
+        $dates = $party instanceof Vendor
+            ? [
+                StockIn::where('vendor_id', $party->id)->min('stock_date'),
+                StockInPayment::whereIn('stock_in_id', StockIn::where('vendor_id', $party->id)->select('id'))->min('payment_date'),
+            ]
+            : [
+                Sale::where('customer_id', $party->id)->min('created_at'),
+                SalePayment::whereIn('sale_id', Sale::where('customer_id', $party->id)->select('id'))->min('payment_date'),
+                UdhaarTransaction::where('customer_id', $party->id)->min('transaction_date'),
+            ];
+        $dates[] = PartyLedgerEntry::where($this->partyColumn(), $party->id)->min('entry_date');
+
+        $earliest = collect($dates)->filter()->map(fn ($date) => Carbon::parse($date))->min();
+
+        return $earliest?->startOfDay();
+    }
+
+    /**
+     * Ids of parties with a non-zero balance on their statement (all time):
+     * Sales or Udhaar for a customer, what we owe for a vendor, or their own
+     * Opening & adjustments. Read from the same figures the statement uses.
+     *
+     * @return array<int, true>
+     */
+    protected function partyIdsWithBalance(): array
+    {
+        $column = $this->partyColumn();
+        $sign = $this->isVendorSide() ? -1 : 1;
+
+        $ids = PartyLedgerEntry::whereNotNull($column)->get([$column, 'direction', 'amount'])
+            ->groupBy($column)
+            ->filter(fn (Collection $entries) => round($entries->sum(fn (PartyLedgerEntry $e) => $sign * $e->direction->sign() * (float) $e->amount), 2) != 0.0)
+            ->keys();
+
+        if ($this->isVendorSide()) {
+            $ids = $ids->concat(
+                StockIn::whereNotNull('vendor_id')->where('payment_status', '!=', PaymentStatus::Paid->value)->get()
+                    ->groupBy('vendor_id')
+                    ->filter(fn (Collection $entries) => $entries->sum(fn (StockIn $entry) => $entry->amountOwed()) > 0)
+                    ->keys()
+            );
+        } else {
+            $ids = $ids
+                ->concat(
+                    Sale::whereNotNull('customer_id')->withSum('payments', 'amount')->get()
+                        ->filter(fn (Sale $sale) => $sale->amountDue() > 0)
+                        ->pluck('customer_id')
+                )
+                ->concat(UdhaarTransaction::balancesByCustomer()->filter(fn (float $balance) => round($balance, 2) != 0.0)->keys());
+        }
+
+        return $ids->mapWithKeys(fn ($id) => [(int) $id => true])->all();
+    }
+
+    /**
+     * Unsettled amounts from the other customer modules, listed for reference
+     * only — the same records and amountOwed() figures the Udhaar screen
+     * shows as "Other Amounts Owed". Sales are left out because they already
+     * have their own section. Nothing here is part of any balance above.
+     */
+    protected function otherDues(Customer $customer): Collection
+    {
+        $rows = collect();
+        $add = function (string $source, iterable $records, \Closure $describe) use ($rows) {
+            foreach ($records as $record) {
+                if ($record->amountOwed() > 0) {
+                    $rows->push(['source' => $source, 'description' => $describe($record), 'date' => $record->created_at, 'amountDue' => (float) $record->amountOwed()]);
+                }
+            }
+        };
+
+        $add('Wallet Load', WalletLoad::where('customer_id', $customer->id)->where('direction', 'cash_in')->get(), fn (WalletLoad $r) => $r->receiptNumber().' · '.$r->provider);
+        $add('Balance Load', BalanceLoad::where('customer_id', $customer->id)->get(), fn (BalanceLoad $r) => $r->receiptNumber().' · '.$r->network);
+        $add('Bill', BillPayment::where('customer_id', $customer->id)->with('billCategory')->get(), fn (BillPayment $r) => $r->receiptNumber().' · '.($r->billCategory?->name ?? $r->consumer_name));
+        $add('Repair', Repair::where('customer_id', $customer->id)->get(), fn (Repair $r) => $r->receiptNumber().' · '.$r->categoryLabel());
+        $add('NADRA Verification', NadraVerification::where('customer_id', $customer->id)->get(), fn (NadraVerification $r) => $r->receiptNumber());
+        $add('SIM Sale', SimSale::where('customer_id', $customer->id)->get(), fn (SimSale $r) => $r->receiptNumber().' · '.$r->network);
+        $add('Service', ServicePayment::where('customer_id', $customer->id)->with('serviceCategory')->get(), fn (ServicePayment $r) => $r->receiptNumber().' · '.($r->serviceCategory?->name ?? '—'));
+
+        return $rows->sortByDesc('date')->values();
     }
 
     /**
@@ -88,11 +303,13 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
     /**
      * One running-balance section from a list of dated movements: everything
      * before the range is folded into "brought forward", movements after the
-     * range are left out, and the rest are listed in order.
+     * range are left out, and the rest are listed in order. $sign is +1 when
+     * a debit raises the balance (a customer owes the shop) and -1 when a
+     * credit does (the shop owes a vendor).
      *
      * @param  Collection<int, array{date: Carbon, sort: string, debit: float, credit: float}>  $movements
      */
-    protected function section(Collection $movements): array
+    protected function section(Collection $movements, int $sign = 1): array
     {
         [$from, $to] = $this->range();
 
@@ -100,13 +317,13 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
 
         $opening = $movements
             ->filter(fn (array $m) => $m['date']->lt($from))
-            ->sum(fn (array $m) => $m['debit'] - $m['credit']);
+            ->sum(fn (array $m) => $sign * ($m['debit'] - $m['credit']));
 
         $running = $opening;
         $rows = $movements
             ->filter(fn (array $m) => $m['date']->between($from, $to))
-            ->map(function (array $m) use (&$running) {
-                $running += $m['debit'] - $m['credit'];
+            ->map(function (array $m) use (&$running, $sign) {
+                $running += $sign * ($m['debit'] - $m['credit']);
 
                 return $m + ['balance' => $running];
             })
@@ -126,6 +343,22 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
         return $date->format('Ymd').collect($parts)->map(fn (int $p) => '-'.str_pad((string) $p, 10, '0', STR_PAD_LEFT))->implode('');
     }
 
+    protected function movement(string $key, Carbon $date, string $sort, string $description, ?string $detail, ?string $url, string $side, float $amount, ?PartyLedgerEntry $entry = null): array
+    {
+        return [
+            'key' => $key,
+            'date' => $date->copy()->startOfDay(),
+            'sort' => $sort,
+            'description' => $description,
+            'detail' => $detail,
+            'url' => $url,
+            'side' => $side,
+            'debit' => $side === 'debit' ? $amount : 0.0,
+            'credit' => $side === 'credit' ? $amount : 0.0,
+            'entry' => $entry,
+        ];
+    }
+
     /**
      * Sales (debit) and their payments (credit). Cancelled sales — and so
      * their payments — are excluded by the Sale global scope, the same way
@@ -137,39 +370,16 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
 
         return Sale::where('customer_id', $customer->id)->with('payments')->get()
             ->flatMap(function (Sale $sale) use ($canOpen) {
-                $date = $sale->created_at->copy()->startOfDay();
                 $url = $canOpen ? route('sales.show', $sale) : null;
 
-                $movements = [[
-                    'key' => 'sale-'.$sale->id,
-                    'date' => $date,
-                    'sort' => $this->sortKey($date, $sale->id, 0, 0),
-                    'description' => 'Sale '.$sale->invoiceNumber(),
-                    'detail' => null,
-                    'url' => $url,
-                    'side' => 'debit',
-                    'debit' => (float) $sale->total,
-                    'credit' => 0.0,
-                    'entry' => null,
-                ]];
+                $movements = [$this->movement('sale-'.$sale->id, $sale->created_at, $this->sortKey($sale->created_at, $sale->id, 0, 0), 'Sale '.$sale->invoiceNumber(), null, $url, 'debit', (float) $sale->total)];
 
                 foreach ($sale->payments as $payment) {
                     if ((float) $payment->amount <= 0) {
                         continue;
                     }
 
-                    $movements[] = [
-                        'key' => 'sale-payment-'.$payment->id,
-                        'date' => $payment->payment_date->copy()->startOfDay(),
-                        'sort' => $this->sortKey($payment->payment_date, $sale->id, 1, $payment->id),
-                        'description' => 'Payment received',
-                        'detail' => $sale->invoiceNumber(),
-                        'url' => $url,
-                        'side' => 'credit',
-                        'debit' => 0.0,
-                        'credit' => (float) $payment->amount,
-                        'entry' => null,
-                    ];
+                    $movements[] = $this->movement('sale-payment-'.$payment->id, $payment->payment_date, $this->sortKey($payment->payment_date, $sale->id, 1, $payment->id), 'Payment received', $sale->invoiceNumber(), $url, 'credit', (float) $payment->amount);
                 }
 
                 return $movements;
@@ -185,75 +395,184 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
     {
         $url = Auth::user()->hasAccessTo('udhaar') ? route('udhaar.show', $customer) : null;
 
-        return $customer->udhaarTransactions->map(fn (UdhaarTransaction $transaction) => [
-            'key' => 'udhaar-'.$transaction->id,
-            'date' => $transaction->transaction_date->copy()->startOfDay(),
-            'sort' => $this->sortKey($transaction->transaction_date, $transaction->id),
-            'description' => $transaction->type->label(),
-            'detail' => $transaction->note,
-            'url' => $url,
-            'side' => $transaction->type->sign() > 0 ? 'debit' : 'credit',
-            'debit' => $transaction->type->sign() > 0 ? (float) $transaction->amount : 0.0,
-            'credit' => $transaction->type->sign() < 0 ? (float) $transaction->amount : 0.0,
-            'entry' => null,
-        ]);
-    }
-
-    protected function manualMovements(Customer $customer): Collection
-    {
-        return PartyLedgerEntry::where('customer_id', $customer->id)->with('user')->get()
-            ->map(fn (PartyLedgerEntry $entry) => [
-                'key' => 'entry-'.$entry->id,
-                'date' => $entry->entry_date->copy()->startOfDay(),
-                'sort' => $this->sortKey($entry->entry_date, $entry->id),
-                'description' => $entry->kind->label(),
-                'detail' => $entry->note.($entry->user ? ' · by '.$entry->user->name : ''),
-                'url' => null,
-                'side' => $entry->direction->value,
-                'debit' => $entry->direction === PartyLedgerDirection::Debit ? (float) $entry->amount : 0.0,
-                'credit' => $entry->direction === PartyLedgerDirection::Credit ? (float) $entry->amount : 0.0,
-                'entry' => $entry,
-            ]);
+        return $customer->udhaarTransactions->map(fn (UdhaarTransaction $transaction) => $this->movement(
+            'udhaar-'.$transaction->id,
+            $transaction->transaction_date,
+            $this->sortKey($transaction->transaction_date, $transaction->id),
+            $transaction->type->label(),
+            $transaction->note,
+            $url,
+            $transaction->type->sign() > 0 ? 'debit' : 'credit',
+            (float) $transaction->amount,
+        ));
     }
 
     /**
-     * Sales, Udhaar, and Opening & adjustments are three separate balances
-     * and are never combined or netted against each other — the first two
-     * always match the customer profile and Udhaar screen exactly.
+     * Stock-Ins (credit — the shop owes more) and their dated payments
+     * (debit). Read-only: cancelled Stock-Ins, and so their payment rows, are
+     * excluded by the HasCancellation global scope, as in Vendor::totalOwed().
+     *
+     * Where a Stock-In's cost minus its payment rows differs from what
+     * StockIn::amountOwed() says is owed (marked paid with a gap, an
+     * overpayment, no cost price), one computed, labelled line makes up the
+     * difference, so this balance always ends at Vendor::totalOwed().
      */
-    protected function statement(Customer $customer): array
+    protected function purchaseMovements(Vendor $vendor): Collection
     {
+        $url = Auth::user()->hasAccessTo('stock-ins') ? route('stock-ins.history', ['vendorFilter' => $vendor->id]) : null;
+
+        return StockIn::where('vendor_id', $vendor->id)->with('payments')->get()
+            ->flatMap(function (StockIn $entry) use ($url) {
+                $cost = (float) ($entry->total_cost ?? 0);
+                $movements = [$this->movement(
+                    'stock-in-'.$entry->id,
+                    $entry->stock_date,
+                    $this->sortKey($entry->stock_date, $entry->id, 0, 0),
+                    'Stock-In: '.$entry->product_name.' × '.$entry->quantity,
+                    $entry->total_cost === null ? 'No cost price recorded' : null,
+                    $url,
+                    'credit',
+                    $cost,
+                )];
+
+                $lastDate = $entry->stock_date;
+                foreach ($entry->payments as $payment) {
+                    $movements[] = $this->movement(
+                        'stock-in-payment-'.$payment->id,
+                        $payment->payment_date,
+                        $this->sortKey($payment->payment_date, $entry->id, 1, $payment->id),
+                        $payment->source->label(),
+                        null,
+                        $url,
+                        (float) $payment->amount >= 0 ? 'debit' : 'credit',
+                        abs((float) $payment->amount),
+                    );
+                    $lastDate = $payment->payment_date->gt($lastDate) ? $payment->payment_date : $lastDate;
+                }
+
+                $raw = $cost - (float) $entry->payments->sum('amount');
+                $difference = round($entry->amountOwed() - $raw, 2);
+
+                if ($difference != 0.0) {
+                    $label = match (true) {
+                        $entry->total_cost === null => 'No cost price: payments not counted',
+                        $entry->payment_status === PaymentStatus::Paid && $raw > 0 => 'Marked paid: remaining balance not owed',
+                        $raw < 0 => 'Overpayment: not counted by Stock-In',
+                        default => 'Adjusted to match Stock-In balance',
+                    };
+
+                    $movements[] = $this->movement(
+                        'stock-in-adjust-'.$entry->id,
+                        $lastDate,
+                        $this->sortKey($lastDate, $entry->id, 2, 0),
+                        $label,
+                        'Computed so this balance matches Stock-In',
+                        null,
+                        $difference > 0 ? 'credit' : 'debit',
+                        abs($difference),
+                    );
+                }
+
+                return $movements;
+            });
+    }
+
+    protected function manualMovements(Customer|Vendor $party): Collection
+    {
+        return PartyLedgerEntry::where($this->partyColumn(), $party->id)->with('user')->get()
+            ->map(fn (PartyLedgerEntry $entry) => $this->movement(
+                'entry-'.$entry->id,
+                $entry->entry_date,
+                $this->sortKey($entry->entry_date, $entry->id),
+                $entry->kind->label(),
+                $entry->note.($entry->user ? ' · by '.$entry->user->name : ''),
+                null,
+                $entry->direction->value,
+                (float) $entry->amount,
+                $entry,
+            ));
+    }
+
+    /**
+     * Every section is its own balance and they are never combined or netted
+     * against each other. Sales and Udhaar always match the customer profile
+     * and Udhaar screen; Purchases & payments always matches
+     * Vendor::totalOwed().
+     */
+    protected function statement(Customer|Vendor $party): array
+    {
+        if ($party instanceof Vendor) {
+            return [
+                'purchases' => $this->section($this->purchaseMovements($party), -1),
+                'manual' => $this->section($this->manualMovements($party), -1),
+            ];
+        }
+
         return [
-            'sales' => $this->section($this->salesMovements($customer)),
-            'udhaar' => $this->section($this->udhaarMovements($customer)),
-            'manual' => $this->section($this->manualMovements($customer)),
+            'sales' => $this->section($this->salesMovements($party)),
+            'udhaar' => $this->section($this->udhaarMovements($party)),
+            'manual' => $this->section($this->manualMovements($party)),
+        ];
+    }
+
+    protected function sectionMeta(): array
+    {
+        if ($this->isVendorSide()) {
+            return [
+                'purchases' => ['title' => 'Purchases & payments', 'description' => 'Each Stock-In is a credit (we owe more); each payment to the vendor is a debit.'],
+                'manual' => ['title' => 'Opening & adjustments', 'description' => 'Entered by hand on this screen. Kept separate from Stock-In.'],
+            ];
+        }
+
+        return [
+            'sales' => ['title' => 'Sales', 'description' => 'Sales on credit and the payments received against them.'],
+            'udhaar' => ['title' => 'Udhaar', 'description' => 'Udhaar given and repaid. Recorded on the Udhaar screen.'],
+            'manual' => ['title' => 'Opening & adjustments', 'description' => 'Entered by hand on this screen. Kept separate from Sales and Udhaar.'],
         ];
     }
 
     public function with(): array
     {
-        $customer = $this->customer();
+        $party = $this->party();
         [$rangeFrom, $rangeTo] = $this->range();
+        $vendorSide = $this->isVendorSide();
+
+        $options = ($vendorSide ? Vendor::query() : Customer::query())->orderBy('name')->get(['id', 'name', 'phone']);
+        if ($this->withBalanceOnly) {
+            $withBalance = $this->partyIdsWithBalance();
+            // Keep the chosen party in the list so the picker still shows it.
+            $options = $options->filter(fn ($option) => isset($withBalance[$option->id]) || $option->id === $party?->id)->values();
+        }
 
         return [
-            'customers' => Customer::query()->orderBy('name')->get(['id', 'name', 'phone']),
-            'customer' => $customer,
-            'statement' => $customer ? $this->statement($customer) : null,
+            'vendorSide' => $vendorSide,
+            'vendorsAvailable' => $this->vendorsAvailable(),
+            'customers' => $vendorSide ? collect() : $options,
+            'vendors' => $vendorSide ? $options : collect(),
+            'party' => $party,
+            'statement' => $party ? $this->statement($party) : null,
+            'otherDues' => $party instanceof Customer ? $this->otherDues($party) : collect(),
+            'udhaarUrl' => $party instanceof Customer && Auth::user()->hasAccessTo('udhaar') ? route('udhaar.show', $party) : null,
+            'sectionMeta' => $this->sectionMeta(),
             'rangeLabel' => $this->rangeLabel(),
             'rangeFrom' => $rangeFrom,
             'rangeTo' => $rangeTo,
         ];
     }
 
+    protected function hasOpeningEntry(Customer|Vendor $party): bool
+    {
+        return PartyLedgerEntry::where($this->partyColumn(), $party->id)->where('kind', PartyLedgerEntryKind::Opening)->exists();
+    }
+
     public function openAddEntry(): void
     {
-        abort_unless($this->customer(), 404);
+        $party = $this->party();
+        abort_unless($party, 404);
 
         $this->reset(['entryAmount', 'entryNote']);
-        $this->entryKind = PartyLedgerEntry::where('customer_id', $this->customerId)->where('kind', PartyLedgerEntryKind::Opening)->exists()
-            ? PartyLedgerEntryKind::Adjustment->value
-            : PartyLedgerEntryKind::Opening->value;
-        $this->entryDirection = PartyLedgerDirection::Debit->value;
+        $this->entryKind = $this->hasOpeningEntry($party) ? PartyLedgerEntryKind::Adjustment->value : PartyLedgerEntryKind::Opening->value;
+        $this->entryDirection = $this->isVendorSide() ? PartyLedgerDirection::Credit->value : PartyLedgerDirection::Debit->value;
         $this->entryDate = now()->toDateString();
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'ledger-entry-form');
@@ -262,8 +581,8 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
     public function saveEntry(): void
     {
         abort_unless(Auth::user()->hasAccessTo('party-ledger'), 403);
-        $customer = $this->customer();
-        abort_unless($customer, 404);
+        $party = $this->party();
+        abort_unless($party, 404);
 
         $this->validate([
             'entryKind' => ['required', Rule::enum(PartyLedgerEntryKind::class)],
@@ -279,16 +598,15 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
             'entryNote' => 'note',
         ]);
 
-        $saved = DB::transaction(function () use ($customer) {
-            Customer::whereKey($customer->id)->lockForUpdate()->first();
+        $saved = DB::transaction(function () use ($party) {
+            $party::whereKey($party->id)->lockForUpdate()->first();
 
-            if ($this->entryKind === PartyLedgerEntryKind::Opening->value
-                && PartyLedgerEntry::where('customer_id', $customer->id)->where('kind', PartyLedgerEntryKind::Opening)->exists()) {
+            if ($this->entryKind === PartyLedgerEntryKind::Opening->value && $this->hasOpeningEntry($party)) {
                 return false;
             }
 
             PartyLedgerEntry::create([
-                'customer_id' => $customer->id,
+                $this->partyColumn() => $party->id,
                 'user_id' => Auth::id(),
                 'kind' => $this->entryKind,
                 'direction' => $this->entryDirection,
@@ -301,7 +619,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
         });
 
         if (! $saved) {
-            $this->addError('entryKind', 'This customer already has an opening balance. Cancel it first, or add an adjustment instead.');
+            $this->addError('entryKind', 'This '.$this->partyNoun().' already has an opening balance. Cancel it first, or add an adjustment instead.');
 
             return;
         }
@@ -317,9 +635,17 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
         $this->resetErrorBag();
     }
 
+    protected function partyEntries()
+    {
+        $party = $this->party();
+        abort_unless($party, 404);
+
+        return PartyLedgerEntry::where($this->partyColumn(), $party->id);
+    }
+
     public function openCancelEntry(int $entryId): void
     {
-        $entry = PartyLedgerEntry::where('customer_id', $this->customerId)->findOrFail($entryId);
+        $entry = $this->partyEntries()->findOrFail($entryId);
 
         $this->cancelingEntryId = $entry->id;
         $this->cancelReason = '';
@@ -334,7 +660,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
         $this->validate(['cancelReason' => ['required', 'string', 'max:500']], [], ['cancelReason' => 'reason']);
 
         DB::transaction(function () {
-            $entry = PartyLedgerEntry::where('customer_id', $this->customerId)->lockForUpdate()->findOrFail($this->cancelingEntryId);
+            $entry = $this->partyEntries()->lockForUpdate()->findOrFail($this->cancelingEntryId);
 
             $entry->update([
                 'status' => RecordStatus::Cancelled,
@@ -357,8 +683,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
 
     protected function exportSections(bool $forExcel): array
     {
-        $customer = $this->customer();
-        $statement = $this->statement($customer);
+        $statement = $this->statement($this->party());
         [$from, $to] = $this->range();
 
         $money = fn (?float $amount) => $forExcel
@@ -366,13 +691,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
             : ($amount === null ? '' : 'Rs '.number_format(abs($amount), 2).($amount < 0 ? ' (advance)' : ''));
         $date = fn (Carbon $d) => $forExcel ? TableExport::excelDate($d) : $d->format('d M Y');
 
-        $titles = [
-            'sales' => 'Sales',
-            'udhaar' => 'Udhaar',
-            'manual' => 'Opening & adjustments',
-        ];
-
-        return collect($titles)->map(function (string $title, string $key) use ($statement, $money, $date, $from, $to) {
+        $sections = collect($this->sectionMeta())->map(function (array $meta, string $key) use ($statement, $money, $date, $from, $to) {
             $section = $statement[$key];
 
             $rows = collect([[$date($from), 'Balance brought forward', $money(null), $money(null), $money($section['opening'])]])
@@ -386,23 +705,44 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                 ->push([$date($to), 'Closing balance', $money($section['debits']), $money($section['credits']), $money($section['closing'])]);
 
             return [
-                'title' => $title,
+                'title' => $meta['title'],
                 'headers' => ['Date', 'Description', 'Debit', 'Credit', 'Balance'],
                 'rows' => $rows->all(),
                 'columnTypes' => ['date', 'string', 'currency', 'currency', 'currency'],
             ];
-        })->values()->all();
+        })->values();
+
+        $party = $this->party();
+        $dues = $party instanceof Customer ? $this->otherDues($party) : collect();
+
+        if ($dues->isNotEmpty()) {
+            $sections->push([
+                'title' => 'Other amounts owed (not part of the balances above)',
+                'headers' => ['Date', 'Source', 'Description', 'Amount due'],
+                'rows' => $dues->map(fn (array $due) => [
+                    $date($due['date']),
+                    $due['source'],
+                    TableExportService::sanitizeCell($due['description']),
+                    $money($due['amountDue']),
+                ])->all(),
+                'columnTypes' => ['date', 'string', 'string', 'currency'],
+            ]);
+        }
+
+        return $sections->all();
     }
 
     protected function exportTitle(): string
     {
-        return 'Party Ledger — '.$this->customer()->name;
+        return $this->isVendorSide()
+            ? 'Party Ledger — Vendor: '.$this->party()->name
+            : 'Party Ledger — '.$this->party()->name;
     }
 
     public function exportPdf(TableExportService $exportService): ?StreamedResponse
     {
-        if (! $this->customer()) {
-            $this->toastError('Choose a customer first.');
+        if (! $this->party()) {
+            $this->toastError('Choose a '.$this->partyNoun().' first.');
 
             return null;
         }
@@ -417,8 +757,8 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
 
     public function exportExcel(TableExportService $exportService): ?BinaryFileResponse
     {
-        if (! $this->customer()) {
-            $this->toastError('Choose a customer first.');
+        if (! $this->party()) {
+            $this->toastError('Choose a '.$this->partyNoun().' first.');
 
             return null;
         }
@@ -433,11 +773,6 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
 }; ?>
 
 @php
-    $sectionMeta = [
-        'sales' => ['title' => 'Sales', 'description' => 'Sales on credit and the payments received against them.'],
-        'udhaar' => ['title' => 'Udhaar', 'description' => 'Udhaar given and repaid. Recorded on the Udhaar screen.'],
-        'manual' => ['title' => 'Opening & adjustments', 'description' => 'Entered by hand on this screen. Kept separate from Sales and Udhaar.'],
-    ];
     $balanceText = fn (float $amount) => 'Rs '.number_format(abs($amount), 2);
 @endphp
 
@@ -446,16 +781,54 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
         <h1 class="text-xl font-semibold text-slate-900">Party Ledger</h1>
     </x-slot>
 
+    <div class="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+        @if ($vendorsAvailable)
+            <div class="inline-flex rounded-lg border border-slate-300 p-1" role="group" aria-label="Party type">
+                @foreach (['customer' => 'Customers', 'vendor' => 'Vendors'] as $type => $label)
+                    <button
+                        type="button"
+                        wire:click="setPartyType('{{ $type }}')"
+                        aria-pressed="{{ $partyType === $type ? 'true' : 'false' }}"
+                        @class([
+                            'rounded-md px-3 py-1.5 text-sm font-medium transition',
+                            'bg-brand-600 text-white' => $partyType === $type,
+                            'text-slate-600 hover:text-slate-900' => $partyType !== $type,
+                        ])
+                    >
+                        {{ $label }}
+                    </button>
+                @endforeach
+            </div>
+        @endif
+
+        <x-ui.checkbox wire:model.live="withBalanceOnly" label="Only {{ $vendorSide ? 'vendors' : 'customers' }} with a balance" />
+    </div>
+
     <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div class="flex w-full flex-wrap items-end gap-4 sm:w-auto">
-            <x-ui.field label="Customer" name="customerId" for="customerId" class="w-full sm:w-72">
-                <x-ui.select wire:model.live="customerId" id="customerId">
-                    <option value="">Choose a customer…</option>
-                    @foreach ($customers as $option)
-                        <option value="{{ $option->id }}">{{ $option->name }}{{ $option->phone ? ' · '.$option->phone : '' }}</option>
-                    @endforeach
-                </x-ui.select>
-            </x-ui.field>
+            {{-- Keyed by the filter: when the option list changes the native select loses its
+                 selection, so rebuild the picker and let it read the chosen party again. --}}
+            <div class="w-full sm:w-72" wire:key="picker-{{ $partyType }}-{{ $withBalanceOnly ? 'with-balance' : 'all' }}">
+                @if ($vendorSide)
+                    <x-ui.field label="Vendor" name="vendorId" for="vendorId">
+                        <x-ui.select wire:model.live="vendorId" id="vendorId">
+                            <option value="">Choose a vendor…</option>
+                            @foreach ($vendors as $option)
+                                <option value="{{ $option->id }}">{{ $option->name }}{{ $option->phone ? ' · '.$option->phone : '' }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                @else
+                    <x-ui.field label="Customer" name="customerId" for="customerId">
+                        <x-ui.select wire:model.live="customerId" id="customerId">
+                            <option value="">Choose a customer…</option>
+                            @foreach ($customers as $option)
+                                <option value="{{ $option->id }}">{{ $option->name }}{{ $option->phone ? ' · '.$option->phone : '' }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                @endif
+            </div>
 
             <x-ui.field label="From" name="from" for="from">
                 <x-ui.input wire:model.live="from" id="from" type="date" />
@@ -464,11 +837,28 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
             <x-ui.field label="To" name="to" for="to">
                 <x-ui.input wire:model.live="to" id="to" type="date" />
             </x-ui.field>
+
+            <div class="flex w-full flex-wrap gap-1.5 sm:w-auto sm:pb-1" role="group" aria-label="Date range">
+                @foreach (['month' => 'This month', '3months' => 'Last 3 months', 'year' => 'This year', 'all' => 'All time'] as $preset => $label)
+                    <button
+                        type="button"
+                        wire:click="applyPreset('{{ $preset }}')"
+                        aria-pressed="{{ $rangePreset === $preset ? 'true' : 'false' }}"
+                        @class([
+                            'rounded-full border px-3 py-1 text-xs font-medium transition',
+                            'border-brand-600 bg-brand-50 text-brand-700' => $rangePreset === $preset,
+                            'border-slate-300 text-slate-600 hover:border-slate-400 hover:text-slate-900' => $rangePreset !== $preset,
+                        ])
+                    >
+                        {{ $label }}
+                    </button>
+                @endforeach
+            </div>
         </div>
 
         <div class="flex items-center gap-2">
             <x-ui.export-dropdown />
-            @if ($customer)
+            @if ($party)
                 <x-ui.button wire:click="openAddEntry">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -479,36 +869,59 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
         </div>
     </div>
 
-    @if (! $customer)
-        <x-ui.empty-state
-            title="Choose a customer"
-            description="Pick a customer above to see their statement: Sales, Udhaar, and opening balances and adjustments, each with its own running balance."
-        />
+    @if (! $party)
+        @if ($vendorSide)
+            <x-ui.empty-state
+                title="Choose a vendor"
+                description="Pick a vendor above to see their statement: purchases and payments, and opening balances and adjustments, each with its own running balance."
+            />
+        @else
+            <x-ui.empty-state
+                title="Choose a customer"
+                description="Pick a customer above to see their statement: Sales, Udhaar, and opening balances and adjustments, each with its own running balance."
+            />
+        @endif
     @else
         <div class="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h2 class="text-base font-semibold text-slate-900">
-                <a href="{{ route('customers.show', $customer) }}" wire:navigate class="hover:text-brand-700">{{ $customer->name }}</a>
-                @if ($customer->phone)
-                    <span class="ml-1 text-sm font-normal text-slate-500">{{ $customer->phone }}</span>
+                <a href="{{ $vendorSide ? route('vendors.show', $party) : route('customers.show', $party) }}" wire:navigate class="hover:text-brand-700">{{ $party->name }}</a>
+                @if ($party->phone)
+                    <span class="ml-1 text-sm font-normal text-slate-500">{{ $party->phone }}</span>
                 @endif
             </h2>
             <p class="text-sm text-slate-500">Statement {{ $rangeLabel }}</p>
         </div>
 
-        <div class="mb-2 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <x-ui.stat label="Sales outstanding" :value="$balanceText($statement['sales']['closing'])" sub="Closing balance" />
-            <x-ui.stat
-                label="Udhaar balance"
-                :value="$balanceText($statement['udhaar']['closing'])"
-                :sub="match (true) { $statement['udhaar']['closing'] > 0 => 'Due', $statement['udhaar']['closing'] < 0 => 'Advance', default => 'Settled' }"
-            />
-            <x-ui.stat
-                label="Opening & adjustments"
-                :value="$balanceText($statement['manual']['closing'])"
-                :sub="$statement['manual']['closing'] < 0 ? 'In customer\'s favour' : 'Closing balance'"
-            />
-        </div>
-        <p class="mb-6 text-xs text-slate-500">Three separate balances. They are never added together.</p>
+        @if ($vendorSide)
+            <div class="mb-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <x-ui.stat
+                    label="Owed to vendor"
+                    :value="$balanceText($statement['purchases']['closing'])"
+                    :sub="$statement['purchases']['closing'] < 0 ? 'Paid in advance' : 'Purchases & payments closing balance'"
+                />
+                <x-ui.stat
+                    label="Opening & adjustments"
+                    :value="$balanceText($statement['manual']['closing'])"
+                    :sub="$statement['manual']['closing'] < 0 ? 'In our favour' : 'Closing balance'"
+                />
+            </div>
+            <p class="mb-6 text-xs text-slate-500">Two separate balances. They are never added together.</p>
+        @else
+            <div class="mb-2 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <x-ui.stat label="Sales outstanding" :value="$balanceText($statement['sales']['closing'])" sub="Closing balance" />
+                <x-ui.stat
+                    label="Udhaar balance"
+                    :value="$balanceText($statement['udhaar']['closing'])"
+                    :sub="match (true) { $statement['udhaar']['closing'] > 0 => 'Due', $statement['udhaar']['closing'] < 0 => 'Advance', default => 'Settled' }"
+                />
+                <x-ui.stat
+                    label="Opening & adjustments"
+                    :value="$balanceText($statement['manual']['closing'])"
+                    :sub="$statement['manual']['closing'] < 0 ? 'In customer\'s favour' : 'Closing balance'"
+                />
+            </div>
+            <p class="mb-6 text-xs text-slate-500">Three separate balances. They are never added together.</p>
+        @endif
 
         <div class="space-y-6">
             @foreach ($sectionMeta as $key => $meta)
@@ -542,8 +955,9 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                                     @endif
                                 </div>
                                 <div class="shrink-0 text-right tabular-nums">
-                                    <p @class(['whitespace-nowrap font-medium', 'text-red-600' => $row['side'] === 'debit', 'text-emerald-600' => $row['side'] === 'credit'])>
-                                        {{ $row['side'] === 'debit' ? '+' : '−' }} Rs {{ number_format($row['side'] === 'debit' ? $row['debit'] : $row['credit'], 2) }}
+                                    @php $raises = ($row['side'] === 'debit') !== $vendorSide; @endphp
+                                    <p @class(['whitespace-nowrap font-medium', 'text-red-600' => $raises, 'text-emerald-600' => ! $raises])>
+                                        {{ $raises ? '+' : '−' }} Rs {{ number_format($row['side'] === 'debit' ? $row['debit'] : $row['credit'], 2) }}
                                     </p>
                                     <p class="whitespace-nowrap text-xs text-slate-500">Bal {{ $balanceText($row['balance']) }}{{ $row['balance'] < 0 ? ' (adv.)' : '' }}</p>
                                 </div>
@@ -625,31 +1039,71 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                 </section>
             @endforeach
         </div>
+
+        @if ($otherDues->isNotEmpty())
+            <section class="mt-8">
+                <div class="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-900">Other amounts owed</h3>
+                        <p class="text-xs text-slate-500">Unsettled Wallet Loads, Balance Loads, Bills, Repairs, NADRA, SIM Sales and Services. For reference only: not part of any balance above.</p>
+                    </div>
+                    @if ($udhaarUrl)
+                        <a href="{{ $udhaarUrl }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Record payments on the Udhaar screen →</a>
+                    @endif
+                </div>
+                <x-ui.table :headers="['Date', 'Source', 'Description', 'Amount due']">
+                    @foreach ($otherDues as $due)
+                        <x-ui.table-row wire:key="due-{{ $loop->index }}">
+                            <x-ui.table-cell>{{ $due['date']->format('d M Y') }}</x-ui.table-cell>
+                            <x-ui.table-cell><x-ui.badge variant="neutral">{{ $due['source'] }}</x-ui.badge></x-ui.table-cell>
+                            <x-ui.table-cell class="whitespace-normal">{{ $due['description'] }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-medium text-slate-900">Rs {{ number_format($due['amountDue'], 2) }}</x-ui.table-cell>
+                        </x-ui.table-row>
+                    @endforeach
+                    <x-ui.table-row class="bg-slate-50">
+                        <x-ui.table-cell></x-ui.table-cell>
+                        <x-ui.table-cell></x-ui.table-cell>
+                        <x-ui.table-cell class="font-semibold text-slate-900">Total</x-ui.table-cell>
+                        <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($otherDues->sum('amountDue'), 2) }}</x-ui.table-cell>
+                    </x-ui.table-row>
+                </x-ui.table>
+            </section>
+        @endif
     @endif
 
     <x-ui.modal name="ledger-entry-form" max-width="sm">
         <form wire:submit="saveEntry" class="p-6">
             <h2 class="text-lg font-semibold text-slate-900">Add Entry</h2>
             <p class="mt-1 text-sm text-slate-500">
-                Counts only toward this customer's "Opening & adjustments" balance, never Sales or Udhaar. To record udhaar, use the Udhaar screen.
+                @if ($vendorSide)
+                    Counts only toward this vendor's "Opening & adjustments" balance, never Stock-In. To record a payment against a Stock-In, use Stock-In history.
+                @else
+                    Counts only toward this customer's "Opening & adjustments" balance, never Sales or Udhaar. To record udhaar, use the Udhaar screen.
+                @endif
             </p>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Type" name="entryKind" for="entryKind">
-                    <x-ui.select wire:model="entryKind" id="entryKind">
-                        @foreach (\App\Enums\PartyLedgerEntryKind::cases() as $kind)
-                            <option value="{{ $kind->value }}">{{ $kind->label() }}</option>
-                        @endforeach
-                    </x-ui.select>
-                </x-ui.field>
+                {{-- openAddEntry() sets these defaults on the server, and the select only reads its value
+                     when it starts, so key each one by its value (and party) to rebuild it on change. --}}
+                <div wire:key="entry-kind-{{ $entryKind }}">
+                    <x-ui.field label="Type" name="entryKind" for="entryKind">
+                        <x-ui.select wire:model="entryKind" id="entryKind">
+                            @foreach (\App\Enums\PartyLedgerEntryKind::cases() as $kind)
+                                <option value="{{ $kind->value }}">{{ $kind->label() }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                </div>
 
-                <x-ui.field label="Direction" name="entryDirection" for="entryDirection">
-                    <x-ui.select wire:model="entryDirection" id="entryDirection">
-                        @foreach (\App\Enums\PartyLedgerDirection::cases() as $direction)
-                            <option value="{{ $direction->value }}">{{ $direction->label() }}</option>
-                        @endforeach
-                    </x-ui.select>
-                </x-ui.field>
+                <div wire:key="entry-direction-{{ $partyType }}-{{ $entryDirection }}">
+                    <x-ui.field label="Direction" name="entryDirection" for="entryDirection">
+                        <x-ui.select wire:model="entryDirection" id="entryDirection">
+                            @foreach (\App\Enums\PartyLedgerDirection::cases() as $direction)
+                                <option value="{{ $direction->value }}">{{ $vendorSide ? $direction->vendorLabel() : $direction->label() }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                </div>
 
                 <x-ui.field label="Amount" name="entryAmount" for="entryAmount">
                     <x-ui.input wire:model="entryAmount" id="entryAmount" type="number" min="0.01" step="0.01" class="text-lg" />

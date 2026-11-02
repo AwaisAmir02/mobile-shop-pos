@@ -1,7 +1,9 @@
 <?php
 
 use App\Actions\CancelSale;
+use App\Actions\RecordSalePayment;
 use App\Livewire\Concerns\GuardsExportSize;
+use App\Livewire\Concerns\PicksPaymentMethod;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Sale;
 use App\Models\Scopes\ExcludesCancelledSalesScope;
@@ -18,7 +20,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
 {
-    use GuardsExportSize, Toasts, WithPagination;
+    use GuardsExportSize, PicksPaymentMethod, Toasts, WithPagination;
 
     public string $from = '';
     public string $to = '';
@@ -98,6 +100,7 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
 
         $this->payingId = $saleId;
         $this->paymentAmount = '';
+        $this->paymentMethod = '';
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'record-payment-form');
     }
@@ -111,21 +114,19 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
             'paymentAmount' => ['required', 'numeric', 'min:0.01', 'max:'.$sale->amountDue()],
         ]);
 
-        $sale->payments()->create([
-            'user_id' => Auth::id(),
-            'amount' => $this->paymentAmount,
-            'payment_date' => now()->toDateString(),
-        ]);
+        [$paymentMethod, $shopAccountId] = $this->chosenPaymentMethod();
+
+        RecordSalePayment::handle($sale, (float) $this->paymentAmount, Auth::id(), $paymentMethod, $shopAccountId);
 
         $this->toastSuccess('Payment recorded.');
         $this->dispatch('close-modal', name: 'record-payment-form');
-        $this->reset(['payingId', 'paymentAmount']);
+        $this->reset(['payingId', 'paymentAmount', 'paymentMethod']);
     }
 
     public function closePaymentForm(): void
     {
         $this->dispatch('close-modal', name: 'record-payment-form');
-        $this->reset(['payingId', 'paymentAmount']);
+        $this->reset(['payingId', 'paymentAmount', 'paymentMethod']);
     }
 
     public function openCancel(int $saleId): void
@@ -278,6 +279,8 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
                 <x-ui.field label="Amount Paid Now" name="paymentAmount" for="paymentAmount">
                     <x-ui.input wire:model="paymentAmount" id="paymentAmount" type="number" min="0.01" step="0.01" autofocus />
                 </x-ui.field>
+
+                <x-sales.payment-method-picker :accounts="$this->paymentAccounts()" :value="$paymentMethod" amount="paymentAmount" />
             </div>
 
             <div class="mt-6 flex justify-end gap-3">
@@ -316,4 +319,6 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
             </div>
         </form>
     </x-ui.modal>
+
+    <livewire:shop-accounts.quick-create />
 </div>

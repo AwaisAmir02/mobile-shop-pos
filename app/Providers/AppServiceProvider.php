@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\BranchContext;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use SocialiteProviders\Manager\SocialiteWasCalled;
@@ -14,7 +15,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(BranchContext::class);
+        $this->app->scoped(\App\Services\Billing\LimitNotices::class);
     }
 
     /**

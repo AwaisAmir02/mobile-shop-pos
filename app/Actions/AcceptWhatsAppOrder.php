@@ -20,8 +20,10 @@ class AcceptWhatsAppOrder
         ?int $customerId,
         float $amountPaid,
         int $userId,
+        ?string $paymentMethod = null,
+        ?int $shopAccountId = null,
     ): Sale {
-        $sale = DB::transaction(function () use ($order, $lines, $invoiceDiscount, $customerId, $amountPaid, $userId) {
+        $sale = DB::transaction(function () use ($order, $lines, $invoiceDiscount, $customerId, $amountPaid, $userId, $paymentMethod, $shopAccountId) {
             $order = WhatsAppOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
 
             if (! $order->isDecidable()) {
@@ -41,6 +43,8 @@ class AcceptWhatsAppOrder
                 amountPaid: $amountPaid,
                 shopId: $order->shop_id,
                 attributes: ['source' => SaleSource::WhatsApp->value],
+                paymentMethod: $paymentMethod,
+                shopAccountId: $shopAccountId,
             );
 
             $total = (float) $sale->total;
@@ -61,8 +65,8 @@ class AcceptWhatsAppOrder
                 'decided_at' => now(),
             ]);
 
-            if ($customerId !== null) {
-                WhatsAppContact::whereKey($order->whatsapp_contact_id)->whereNull('customer_id')->update(['customer_id' => $customerId]);
+            if ($customerId !== null && WhatsAppContact::whereKey($order->whatsapp_contact_id)->whereNull('customer_id')->update(['customer_id' => $customerId]) === 1) {
+                WhatsAppContact::whereKey($order->whatsapp_contact_id)->first()?->syncDeliveryToCustomer();
             }
 
             return $sale;

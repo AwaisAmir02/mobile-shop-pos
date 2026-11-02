@@ -112,6 +112,8 @@ class SubscriptionPaymentService
 
             if ($shopAddon) {
                 app(AddonService::class)->activate($shopAddon);
+            } elseif ($invoice->plan_id !== null) {
+                app(PlanChangeService::class)->apply($invoice);
             } else {
                 Shop::whereKey($payment->shop_id)->update([
                     'subscription_status' => SubscriptionStatus::Active->value,

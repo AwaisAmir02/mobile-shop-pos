@@ -16,6 +16,18 @@ enum PartyLedgerDirection: string
     }
 
     /**
+     * The same direction worded for a vendor statement, where the balance is
+     * what the shop owes the vendor.
+     */
+    public function vendorLabel(): string
+    {
+        return match ($this) {
+            self::Credit => 'Credit: we owe the vendor more',
+            self::Debit => 'Debit: we owe less',
+        };
+    }
+
+    /**
      * +1 increases what the customer owes, -1 decreases it.
      */
     public function sign(): int

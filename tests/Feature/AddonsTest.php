@@ -166,7 +166,9 @@ class AddonsTest extends TestCase
         [$shop, $owner] = $this->plannedShop(features: ['whatsapp' => true]);
         $unlock = $this->unlock();
 
-        $this->actingAs($owner)->get(route('billing.index'))->assertDontSee('WhatsApp ordering')->assertSee('Extra 500 products');
+        // The feature itself is listed under "What's included"; what must be
+        // missing is the catalogue's Buy button for the unlock.
+        $this->actingAs($owner)->get(route('billing.index'))->assertDontSee('buyAddon('.$unlock->id.')', false)->assertSee('Extra 500 products');
 
         try {
             app(AddonService::class)->purchase($shop, $unlock, $owner->id);

@@ -6,6 +6,7 @@ use App\Models\ShopChannelConnection;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 
 class WhatsAppClient
 {
@@ -153,6 +154,39 @@ class WhatsAppClient
             'type' => 'document',
             'document' => array_filter(['id' => $mediaId, 'filename' => $filename, 'caption' => $caption]),
         ]);
+    }
+
+    /**
+     * @return array{url: string, mime_type: ?string, file_size: ?int}
+     */
+    public function mediaInfo(string $mediaId): array
+    {
+        $response = $this->request()->get(self::graphUrl($mediaId));
+        $response->throw();
+
+        return [
+            'url' => (string) $response->json('url'),
+            'mime_type' => $response->json('mime_type'),
+            'file_size' => $response->json('file_size') !== null ? (int) $response->json('file_size') : null,
+        ];
+    }
+
+    /**
+     * Downloads inbound media with the shop's token. The token is only ever
+     * sent to Meta's own media hosts.
+     */
+    public function downloadMedia(string $url): string
+    {
+        $host = (string) parse_url($url, PHP_URL_HOST);
+
+        if (! str_starts_with($url, 'https://') || ! preg_match('/(^|\.)(fbsbx\.com|facebook\.com|whatsapp\.net)$/', $host)) {
+            throw new RuntimeException('Unexpected media host: '.$host);
+        }
+
+        $response = Http::withToken($this->connection->access_token)->timeout(30)->get($url);
+        $response->throw();
+
+        return $response->body();
     }
 
     public function markRead(string $messageId): void

@@ -14,6 +14,7 @@ use App\Models\SimSale;
 use App\Models\UdhaarTransaction;
 use App\Models\WalletLoad;
 use App\Services\TableExportService;
+use App\Support\BranchContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -47,9 +48,15 @@ class UdhaarReport implements ScreenReport
      * sources also surfaced on their own consolidated "Other Amounts Owed"
      * view, keyed by customer_id. Wallet Load Cash Out is intentionally
      * excluded — its "owed" amount means the shop owes the customer, not
-     * the other way around.
+     * the other way around. Shop-wide, like the Udhaar balances it is
+     * added to, whichever branch the viewer works in.
      */
     protected function otherDueTotalsByCustomer(): Collection
+    {
+        return BranchContext::current()->shopWide(fn () => $this->collectOtherDueTotals());
+    }
+
+    protected function collectOtherDueTotals(): Collection
     {
         $unpaidOrPartial = fn ($query) => $query
             ->whereNotNull('customer_id')

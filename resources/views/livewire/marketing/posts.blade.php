@@ -61,6 +61,8 @@ new #[Layout('layouts.app')] #[Title('Posts & Share kit')] class extends Compone
 
     <x-marketing.nav active="marketing.posts" />
 
+    <x-billing.limit-notice limit="marketing_posts_per_month" />
+
     <x-ui.card title="Promote a product" description="Pick a product — we'll make a feed image, a story image and a caption with a WhatsApp order link. Then post it to Facebook/Instagram or share it to your WhatsApp Status yourself.">
         <x-ui.input wire:model.live.debounce.300ms="search" placeholder="Search your products…" aria-label="Search products" />
         @if ($results->isNotEmpty())

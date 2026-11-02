@@ -2,6 +2,7 @@
 
 namespace App\Services\Billing;
 
+use App\Enums\AddonBilling;
 use App\Enums\AddonKind;
 use App\Enums\ShopAddonStatus;
 use App\Models\Addon;
@@ -77,11 +78,12 @@ class AddonService
         }
 
         $shop = Shop::findOrFail($shopAddon->shop_id);
+        $startsAt = $this->startsAt($shop, $shopAddon);
 
         $shopAddon->update([
             'status' => ShopAddonStatus::Active,
-            'starts_at' => now(),
-            'ends_at' => $this->endsAt($shop, $shopAddon),
+            'starts_at' => $startsAt,
+            'ends_at' => $this->endsAt($shop, $shopAddon, $startsAt),
         ]);
 
         $this->entitlements->syncFeatureFlags($shop->fresh());
@@ -90,8 +92,33 @@ class AddonService
         return $shopAddon->fresh();
     }
 
-    protected function endsAt(Shop $shop, ShopAddon $shopAddon): CarbonInterface
+    /**
+     * A recurring limit pack (Branches) bought again while the shop still
+     * holds it is a renewal: it starts when the current one ends, so the
+     * extra branch is never counted twice and never lapses in between.
+     */
+    protected function startsAt(Shop $shop, ShopAddon $shopAddon): CarbonInterface
     {
+        if ($shopAddon->kind !== AddonKind::LimitPack || $shopAddon->billing === AddonBilling::OneOff || $shopAddon->addon_id === null) {
+            return now();
+        }
+
+        $current = ShopAddon::where('shop_id', $shop->id)
+            ->where('addon_id', $shopAddon->addon_id)
+            ->whereKeyNot($shopAddon->id)
+            ->where('status', ShopAddonStatus::Active->value)
+            ->where('ends_at', '>', now())
+            ->max('ends_at');
+
+        return $current ? now()->parse($current) : now();
+    }
+
+    protected function endsAt(Shop $shop, ShopAddon $shopAddon, CarbonInterface $startsAt): CarbonInterface
+    {
+        if ($shopAddon->kind === AddonKind::LimitPack && $shopAddon->billing !== AddonBilling::OneOff) {
+            return $startsAt->copy()->addMonthsNoOverflow($shopAddon->billing->months());
+        }
+
         if ($shopAddon->kind === AddonKind::LimitPack) {
             $renewal = $shop->expectedRenewalDate();
 

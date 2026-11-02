@@ -1,14 +1,18 @@
 <?php
 
 use App\Enums\AddonKind;
+use App\Enums\FeatureKey;
+use App\Enums\LimitKey;
 use App\Enums\ShopAddonStatus;
 use App\Enums\SubscriptionPaymentStatus;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Addon;
+use App\Models\Plan;
 use App\Models\SubscriptionPayment;
 use App\Services\Billing\AddonService;
 use App\Services\Billing\Entitlements;
 use App\Services\Billing\PaymentGateways;
+use App\Services\Billing\PlanChangeService;
 use App\Services\Billing\SubscriptionPaymentService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -16,7 +20,7 @@ use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
 
-new #[Layout('layouts.app')] #[Title('Plan & Billing')] class extends Component
+new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
 {
     use Toasts, WithFileUploads;
 
@@ -71,33 +75,63 @@ new #[Layout('layouts.app')] #[Title('Plan & Billing')] class extends Component
         $this->toastSuccess('Add-on reserved — pay the invoice below and it switches on once we confirm.');
     }
 
-    public function with(PaymentGateways $gateways): array
+    public function switchPlan(int $planId, PlanChangeService $changes): void
+    {
+        abort_unless(Auth::user()->is_owner, 403);
+
+        try {
+            $changes->request(Auth::user()->shop, Plan::findOrFail($planId), Auth::id());
+        } catch (\RuntimeException $e) {
+            $this->toastError($e->getMessage());
+
+            return;
+        }
+
+        $this->toastSuccess('Plan change requested — pay the invoice above and your new plan starts the day we confirm it.');
+    }
+
+    public function with(PaymentGateways $gateways, Entitlements $entitlements, PlanChangeService $changes): array
     {
         $shop = Auth::user()->shop()->with('plan')->first();
-        $payment = $this->openPayment()?->load('invoice');
+        $payment = $this->openPayment()?->load('invoice.plan');
+        $governed = $entitlements->governed($shop);
+
+        // Packs for a limit the shop already has unlimited would add nothing.
+        $catalogue = Addon::active()->ordered()->get()
+            ->reject(fn (Addon $addon) => $addon->kind === AddonKind::FeatureUnlock && $entitlements->planFeature($shop, $addon->feature_key) === true)
+            ->reject(fn (Addon $addon) => $addon->kind === AddonKind::LimitPack && $addon->limit_key && $entitlements->limit($shop, $addon->limit_key) === null)
+            ->values();
+
+        $plans = $governed
+            ? Plan::active()->ordered()->get()->when($shop->plan && ! $shop->plan->is_active, fn ($plans) => $plans->prepend($shop->plan))
+            : collect();
 
         return [
             'shop' => $shop,
             'payment' => $payment,
             'step' => $payment ? $gateways->for($payment->gateway)->nextStep($payment) : null,
             'history' => SubscriptionPayment::where('shop_id', $shop->id)->with('invoice')->latest('id')->limit(10)->get(),
-            'meters' => app(Entitlements::class)->meters($shop, fresh: true),
-            'governed' => app(Entitlements::class)->governed($shop),
-            'catalogue' => Addon::active()->ordered()->get()->reject(fn (Addon $addon) => $addon->kind === AddonKind::FeatureUnlock && app(Entitlements::class)->planFeature($shop, $addon->feature_key) === true)->values(),
+            'meters' => $entitlements->meters($shop, fresh: true, everyLimit: true),
+            'governed' => $governed,
+            'features' => $entitlements->features($shop),
+            'catalogue' => $catalogue,
+            'packs' => $catalogue->where('kind', AddonKind::LimitPack)->groupBy(fn (Addon $addon) => $addon->limit_key->value)->map->first(),
             'myAddons' => $shop->addons()->whereIn('status', [ShopAddonStatus::Pending->value, ShopAddonStatus::Active->value])->latest('id')->get(),
+            'plans' => $plans,
+            'blockers' => $plans->mapWithKeys(fn (Plan $plan) => [$plan->id => $plan->id === $shop->plan_id ? null : $changes->blockerMessage($shop, $plan)]),
         ];
     }
 }; ?>
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Plan &amp; Billing</h1>
+        <h1 class="text-xl font-semibold text-slate-900">Plan &amp; Usage</h1>
     </x-slot>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
             @if ($payment)
-                <x-ui.card title="Complete your payment" :description="($payment->shopAddon ? 'For the '.$payment->shopAddon->name.' add-on. ' : '').'Transfer the amount below, then enter the transaction reference so we can confirm it.'">
+                <x-ui.card title="Complete your payment" :description="($payment->shopAddon ? 'For the '.$payment->shopAddon->name.' add-on. ' : '').($payment->invoice->plan ? 'For switching to '.$payment->invoice->plan->name.'. ' : '').'Transfer the amount below, then enter the transaction reference so we can confirm it.'">
                     @if ($payment->status === SubscriptionPaymentStatus::Rejected)
                         <div class="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                             <p class="font-semibold">We couldn’t confirm your last payment.</p>
@@ -149,6 +183,76 @@ new #[Layout('layouts.app')] #[Title('Plan & Billing')] class extends Component
                 </x-ui.card>
             @endif
 
+            @if ($meters !== [])
+                <x-ui.card title="Usage" description="Monthly counts reset on the 1st (Pakistan time).">
+                    <x-billing.usage-meters :meters="$meters" remaining :packs="$packs" :can-buy="$payment === null" />
+                    <p class="mt-4 text-xs text-slate-500">Out-of-stock products you no longer sell can be archived from Products so they stop counting.</p>
+                    @if ($payment && $packs->isNotEmpty())
+                        <p class="mt-1 text-xs text-slate-500">Finish your pending payment before adding more.</p>
+                    @endif
+                </x-ui.card>
+            @endif
+
+            @if ($governed && $plans->isNotEmpty())
+                <x-ui.card id="plans" title="Change plan" description="The new plan starts the day we confirm its payment, for its full price — no part-period charges.">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        @foreach ($plans as $plan)
+                            @php($isCurrent = $plan->id === $shop->plan_id)
+                            <div @class(['flex flex-col rounded-lg border p-4', 'border-brand-500 ring-1 ring-brand-500' => $isCurrent, 'border-slate-200' => ! $isCurrent]) wire:key="plan-{{ $plan->id }}">
+                                <div class="flex items-start justify-between gap-2">
+                                    <p class="font-semibold text-slate-900">{{ $plan->name }}</p>
+                                    @if ($isCurrent)
+                                        <x-ui.badge variant="brand">Current plan</x-ui.badge>
+                                    @endif
+                                </div>
+                                <p class="mt-1 text-sm text-slate-600"><span class="text-lg font-semibold text-slate-900">{{ $plan->priceLabel() }}</span> / {{ $plan->intervalLabel() }}</p>
+                                @if ($plan->tagline)
+                                    <p class="mt-1 text-xs text-slate-500">{{ $plan->tagline }}</p>
+                                @endif
+
+                                <ul class="mt-3 space-y-1 text-sm">
+                                    @foreach (LimitKey::cases() as $key)
+                                        @php($planLimit = ($plan->limits ?? [])[$key->value] ?? null)
+                                        <li class="flex justify-between gap-2">
+                                            <span class="text-slate-600">{{ $key->label() }}</span>
+                                            <span class="font-medium tabular-nums text-slate-900">{{ $planLimit === null ? 'Unlimited' : number_format((int) $planLimit) }}</span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+
+                                <ul class="mt-3 flex-1 space-y-1 border-t border-slate-100 pt-3 text-sm">
+                                    @foreach (FeatureKey::cases() as $feature)
+                                        @php($inPlan = (bool) (($plan->feature_flags ?? [])[$feature->value] ?? false))
+                                        <li @class(['flex items-center gap-2', 'text-slate-700' => $inPlan, 'text-slate-400' => ! $inPlan])>
+                                            <span aria-hidden="true" @class(['font-semibold', 'text-emerald-600' => $inPlan])>{{ $inPlan ? '✓' : '–' }}</span>
+                                            <span>{{ $feature->label() }}<span class="sr-only">: {{ $inPlan ? 'included' : 'not included' }}</span></span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+
+                                <div class="pt-4">
+                                    @if ($isCurrent)
+                                        <p class="text-sm text-slate-500">You’re on this plan.</p>
+                                    @elseif ($blockers[$plan->id])
+                                        <p class="mb-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800">{{ $blockers[$plan->id] }}</p>
+                                        <x-ui.button variant="secondary" class="w-full" disabled>Switch to this plan</x-ui.button>
+                                    @else
+                                        <x-ui.button class="w-full" wire:click="switchPlan({{ $plan->id }})" wire:confirm="Switch to {{ $plan->name }} for {{ $plan->priceLabel() }} / {{ $plan->intervalLabel() }}? We'll create an invoice for you to pay by bank transfer. Your plan changes the day we confirm it." :disabled="$payment !== null">Switch to this plan</x-ui.button>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                    @if ($payment)
+                        <p class="mt-3 text-xs text-slate-500">Finish your pending payment before changing your plan.</p>
+                    @endif
+                </x-ui.card>
+            @elseif (! $governed)
+                <x-ui.card title="Change plan">
+                    <p class="text-sm text-slate-600">Your shop’s plan is set up by HisabOKitab. Contact us to change it.</p>
+                </x-ui.card>
+            @endif
+
             @if ($history->isNotEmpty())
                 <x-ui.card title="Payment history">
                     <x-ui.table :headers="['Invoice', 'Amount', 'Reference', 'Status']">
@@ -176,10 +280,29 @@ new #[Layout('layouts.app')] #[Title('Plan & Billing')] class extends Component
                 <div class="mt-4">
                     <x-ui.badge :variant="$shop->isSubscriptionActive() ? 'success' : 'warning'">{{ $shop->isSubscriptionActive() ? 'Active' : 'Awaiting payment' }}</x-ui.badge>
                 </div>
+
+                <div class="mt-5 border-t border-slate-100 pt-4">
+                    <p class="text-sm font-semibold text-slate-900">What’s included</p>
+                    <ul class="mt-3 space-y-2.5">
+                        @foreach ($features as $feature)
+                            <li class="flex items-start gap-2 text-sm" wire:key="feature-{{ $feature['key']->value }}">
+                                <span aria-hidden="true" @class(['mt-0.5 font-semibold', 'text-emerald-600' => $feature['on'], 'text-slate-400' => ! $feature['on']])>{{ $feature['on'] ? '✓' : '–' }}</span>
+                                <span class="min-w-0">
+                                    <span @class(['font-medium', 'text-slate-900' => $feature['on'], 'text-slate-500' => ! $feature['on']])>{{ $feature['label'] }}</span>
+                                    <span class="block text-xs text-slate-500">{{ match ($feature['source']) {
+                                        'hisabokitab' => ($feature['on'] ? 'On' : 'Off').' — set by HisabOKitab',
+                                        'addon' => 'Add-on'.($feature['until'] ? ' until '.$feature['until']->format('d M Y') : ''),
+                                        default => $feature['on'] ? 'Included in your plan' : 'Not in your plan',
+                                    } }}</span>
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
             </x-ui.card>
 
             @if ($governed && ($catalogue->isNotEmpty() || $myAddons->isNotEmpty()))
-                <x-ui.card title="Add-ons" description="Need a bit more? Add it to your plan.">
+                <x-ui.card id="addons" title="Add-ons" description="Need a bit more? Add it to your plan.">
                     @if ($myAddons->isNotEmpty())
                         <ul class="mb-4 space-y-2">
                             @foreach ($myAddons as $mine)
@@ -211,13 +334,6 @@ new #[Layout('layouts.app')] #[Title('Plan & Billing')] class extends Component
                     @if ($payment)
                         <p class="mt-3 text-xs text-slate-500">Finish your pending payment before buying another add-on.</p>
                     @endif
-                </x-ui.card>
-            @endif
-
-            @if ($meters !== [])
-                <x-ui.card title="Usage" description="Monthly counts reset on the 1st (Pakistan time).">
-                    <x-billing.usage-meters :meters="$meters" />
-                    <p class="mt-4 text-xs text-slate-500">Out-of-stock products you no longer sell can be archived from Products so they stop counting.</p>
                 </x-ui.card>
             @endif
         </div>

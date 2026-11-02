@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Scopes\BranchScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -14,7 +15,9 @@ class Vendor extends Model
 
     public function stockIns(): HasMany
     {
-        return $this->hasMany(StockIn::class)->latest('stock_date');
+        // Stock-In isn't branch-scoped in Phase 1 (shared FIFO pool); kept
+        // explicit so a vendor's balance stays shop-wide if that changes.
+        return $this->hasMany(StockIn::class)->withoutGlobalScope(BranchScope::class)->latest('stock_date');
     }
 
     public function hasStockInHistory(): bool

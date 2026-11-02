@@ -60,9 +60,11 @@ class ShopAddon extends Model
         return $this->belongsTo(SubscriptionInvoice::class, 'subscription_invoice_id');
     }
 
+    /** A renewal queued behind the current period (starts_at in the future) isn't in effect yet. */
     public function scopeInEffect(Builder $query): Builder
     {
         return $query->where('status', ShopAddonStatus::Active->value)
+            ->where(fn ($q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
             ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>', now()));
     }
 }

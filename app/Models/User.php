@@ -23,6 +23,7 @@ class User extends Authenticatable
         'password',
         'shop_id',
         'role_id',
+        'branch_id',
         'is_super_admin',
         'is_owner',
         'is_active',
@@ -41,6 +42,17 @@ class User extends Authenticatable
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
+    }
+
+    /** The one branch this staff member is limited to; null means every branch. Ignored for the owner. */
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function isBranchRestricted(): bool
+    {
+        return ! $this->is_owner && $this->branch_id !== null;
     }
 
     public function socialAccounts(): HasMany

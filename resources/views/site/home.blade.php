@@ -70,8 +70,10 @@
     <section class="border-y border-slate-200 bg-slate-50/70" aria-label="Modules included">
         <div class="relative overflow-hidden py-5 [mask-image:linear-gradient(to_right,transparent,#000_10%,#000_90%,transparent)]">
             <div class="site-marquee flex w-max gap-3">
-                @foreach (array_merge(...array_fill(0, 2, ['Sales & invoices', 'Barcode scanning', 'Stock In', 'FIFO batch costing', 'Vendors', 'Udhaar ledger', 'Expenses', 'Party ledger', 'Reports', 'WhatsApp orders', 'Social posting', 'Meta ads', 'Staff roles', 'Repairs', 'SIM sales', 'Balance loads', 'Wallet loads', 'Bills & NADRA'])) as $i => $module)
-                    <span class="whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-medium text-slate-600" @if ($i >= 18) aria-hidden="true" @endif>{{ $module }}</span>
+                @php($modules = ['Sales & invoices', 'Barcode scanning', 'Stock In', 'FIFO batch costing', 'Vendors', 'Udhaar ledger', 'Expenses', 'Party ledger', 'Reports', 'Multi-branch', 'WhatsApp orders', 'Social posting', 'Meta ads', 'Staff roles', 'Repairs', 'SIM sales', 'Balance loads', 'Wallet loads', 'Bills & NADRA'])
+                {{-- Listed twice for the seamless loop; the second copy is hidden from screen readers. --}}
+                @foreach (array_merge($modules, $modules) as $i => $module)
+                    <span class="whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-medium text-slate-600" @if ($i >= count($modules)) aria-hidden="true" @endif>{{ $module }}</span>
                 @endforeach
             </div>
         </div>
@@ -117,6 +119,26 @@
                     </div>
                 @endforeach
             </div>
+        </div>
+    </section>
+
+    <section class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-28">
+        <x-site.section-heading eyebrow="Multi-branch" title="One account for every location you run" lead="Open another shop, a warehouse or an office in a new city without starting over. Products, customers, suppliers and stock stay shared — each branch records its own work, and you see every branch side by side." />
+        <div class="mt-14 grid grid-cols-1 gap-5 md:grid-cols-3">
+            @foreach ([
+                ['store', 'Shops with more than one location', 'A second shop across town keeps its own sales, udhaar and expenses, while your products and stock stay shared.'],
+                ['box', 'Online sellers with a warehouse', 'Run your warehouse as its own branch: its stock-ins and sales are recorded separately, from the same catalog and stock.'],
+                ['chart', 'Companies with several offices', 'Tie staff to their office, compare every branch side by side, and keep one balance per customer across all of them.'],
+            ] as $i => [$icon, $title, $text])
+                <div class="rounded-2xl border border-slate-200 bg-white p-6" data-reveal style="--reveal-delay: {{ $i * 80 }}ms">
+                    <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><x-site.icon :name="$icon" /></span>
+                    <h3 class="mt-5 text-base font-semibold text-slate-900">{{ $title }}</h3>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">{{ $text }}</p>
+                </div>
+            @endforeach
+        </div>
+        <div class="mt-10 text-center" data-reveal>
+            <a href="{{ route('site.feature', 'multi-branch') }}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800">See how multi-branch works <x-site.icon name="arrow-right" class="h-4 w-4" /></a>
         </div>
     </section>
 

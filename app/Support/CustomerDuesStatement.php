@@ -30,7 +30,13 @@ class CustomerDuesStatement
         return $this->customer->fresh()->udhaarBalance();
     }
 
+    /** Shop-wide on purpose: a customer's dues never depend on the viewer's branch. */
     public function items(): Collection
+    {
+        return BranchContext::current()->shopWide(fn () => $this->collectItems());
+    }
+
+    protected function collectItems(): Collection
     {
         $customerId = $this->customer->id;
         $rows = collect();
