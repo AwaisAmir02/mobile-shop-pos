@@ -181,6 +181,9 @@
                     <h2 class="text-sm font-semibold text-slate-900">Get in touch</h2>
                     <ul class="mt-4 space-y-3 text-sm text-slate-600">
                         <li><a href="https://wa.me/{{ $contact['whatsapp'] }}" class="hover:text-brand-700" rel="noopener">WhatsApp us</a></li>
+                        @foreach ($contact['whatsapp_numbers'] ?? [] as $number)
+                            <li><a href="https://wa.me/{{ preg_replace('/\D/', '', $number) }}" class="hover:text-brand-700" rel="noopener">{{ $number }}</a></li>
+                        @endforeach
                         <li><a href="mailto:{{ $contact['email'] }}" class="hover:text-brand-700">{{ $contact['email'] }}</a></li>
                         <li>{{ $contact['location'] }}</li>
                     </ul>

@@ -94,6 +94,21 @@ class MarketingSiteTest extends TestCase
             ->assertSee('Karachi, Pakistan');
     }
 
+    public function test_the_footer_links_to_each_page_and_lists_the_real_contact_details(): void
+    {
+        $footer = str($this->get('/')->assertOk()->getContent())->after('<footer')->before('</footer>')->toString();
+
+        foreach (['site.features' => 'Features', 'site.pricing' => 'Pricing', 'site.about' => 'About', 'login' => 'Log in'] as $route => $label) {
+            $this->assertStringContainsString('<a href="'.route($route).'" class="hover:text-brand-700">'.$label.'</a>', $footer);
+        }
+
+        $this->assertStringContainsString('<a href="https://wa.me/923272754688" class="hover:text-brand-700" rel="noopener">WhatsApp us</a>', $footer);
+        $this->assertStringContainsString('<a href="https://wa.me/923272754688" class="hover:text-brand-700" rel="noopener">+92 327 2754688</a>', $footer);
+        $this->assertStringContainsString('<a href="https://wa.me/923282827085" class="hover:text-brand-700" rel="noopener">+92 328 2827085</a>', $footer);
+        $this->assertStringContainsString('<a href="mailto:info@hisabokitab.com" class="hover:text-brand-700">info@hisabokitab.com</a>', $footer);
+        $this->assertStringNotContainsString('placeholder@', $footer);
+    }
+
     public function test_only_future_ad_channels_are_marked_coming_soon(): void
     {
         foreach (['/', '/features/meta-ads'] as $path) {
