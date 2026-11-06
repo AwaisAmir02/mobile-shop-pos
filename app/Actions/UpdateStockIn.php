@@ -54,6 +54,13 @@ class UpdateStockIn
                 throw ValidationException::withMessages(['editVendorId' => 'This stock came from a goods receipt, so its vendor can\'t be changed here. Cancel the receipt and record it again.']);
             }
 
+            // An approved invoice set this cost, and its total may not be cost × quantity.
+            $costHeldByInvoice = $entry->grn_line_id !== null && VendorInvoices::holdsCost($entry);
+
+            if ($costHeldByInvoice && ($fields['cost_price'] === null || round((float) $fields['cost_price'], 2) !== round((float) $entry->cost_price, 2))) {
+                throw ValidationException::withMessages(['editCostPrice' => 'An approved vendor invoice set this cost. Cancel the invoice to change it.']);
+            }
+
             $newQuantityRemaining = $entry->quantity_remaining;
 
             if ($entry->product_id === null) {
@@ -88,7 +95,9 @@ class UpdateStockIn
                 }
             }
 
-            $newTotalCost = $fields['cost_price'] !== null ? Quantity::money($fields['cost_price'], $newQuantity) : null;
+            $newTotalCost = $costHeldByInvoice
+                ? ($entry->total_cost !== null ? (float) $entry->total_cost : null)
+                : ($fields['cost_price'] !== null ? Quantity::money($fields['cost_price'], $newQuantity) : null);
             $newTotalCostFloat = $newTotalCost ?? 0.0;
 
             if ($newTotalCostFloat < (float) $entry->amount_paid) {

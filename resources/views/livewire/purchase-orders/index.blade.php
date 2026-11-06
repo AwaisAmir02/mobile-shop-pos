@@ -42,6 +42,7 @@ new #[Layout('layouts.app')] #[Title('Purchase Orders')] class extends Component
             'enabled' => (bool) $shop?->purchase_orders_enabled,
             'canCreate' => $shop?->purchase_orders_enabled && Auth::user()->hasAccessTo('purchase-orders'),
             'canSeeReceipts' => Auth::user()->hasAccessTo('receive-goods'),
+            'canSeeInvoices' => Auth::user()->hasAccessTo('vendor-invoices') || Auth::user()->hasAccessTo('vendor-invoices-approve'),
             'showBranch' => BranchContext::current()->hasMultipleBranches(Auth::user()->shop_id),
         ];
     }
@@ -52,6 +53,9 @@ new #[Layout('layouts.app')] #[Title('Purchase Orders')] class extends Component
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold text-slate-900">Purchase Orders</h1>
             <div class="flex items-center gap-4">
+                @if ($canSeeInvoices)
+                    <a href="{{ route('purchase-orders.invoices') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Vendor Invoices →</a>
+                @endif
                 @if ($canSeeReceipts)
                     <a href="{{ route('purchase-orders.receipts') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Goods Receipts →</a>
                 @endif

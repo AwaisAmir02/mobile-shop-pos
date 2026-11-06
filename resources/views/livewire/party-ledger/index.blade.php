@@ -421,9 +421,12 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
     {
         $url = Auth::user()->hasAccessTo('stock-ins') ? route('stock-ins.history', ['vendorFilter' => $vendor->id]) : null;
 
-        return StockIn::where('vendor_id', $vendor->id)->with('payments')->get()
+        return StockIn::where('vendor_id', $vendor->id)->with(['payments', 'correctedByInvoice.invoice'])->get()
             ->flatMap(function (StockIn $entry) use ($url) {
                 $cost = (float) ($entry->total_cost ?? 0);
+                // Shown as received, then corrected on the day: past statements don't change.
+                $correction = $entry->correctedByInvoice;
+                $received = $correction !== null ? (float) ($correction->previous_total_cost ?? 0) : $cost;
                 $movements = [$this->movement(
                     'stock-in-'.$entry->id,
                     $entry->stock_date,
@@ -432,8 +435,22 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                     $entry->total_cost === null ? 'No cost price recorded' : null,
                     $url,
                     'credit',
-                    $cost,
+                    $received,
                 )];
+
+                if ($correction !== null && round($cost - $received, 2) != 0.0) {
+                    $invoice = $correction->invoice;
+                    $movements[] = $this->movement(
+                        'vendor-invoice-correction-'.$correction->id,
+                        $invoice->reviewed_at,
+                        $this->sortKey($invoice->reviewed_at, $entry->id, 0, 1),
+                        'Vendor invoice '.$invoice->number().': cost corrected',
+                        $entry->product_name,
+                        $url,
+                        $cost > $received ? 'credit' : 'debit',
+                        abs(round($cost - $received, 2)),
+                    );
+                }
 
                 $lastDate = $entry->stock_date;
                 foreach ($entry->payments as $payment) {

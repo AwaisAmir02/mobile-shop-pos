@@ -23,7 +23,7 @@
             ['label' => 'Balance Loads', 'route' => 'balance-loads.index', 'icon' => 'signal', 'group' => 'counter', 'permission' => 'balance-loads'],
             ['label' => 'Bills', 'route' => 'bills.index', 'icon' => 'bolt', 'group' => 'counter', 'permission' => 'bills'],
             ['label' => 'Stock In', 'route' => 'stock-ins.index', 'icon' => 'stock-in', 'group' => 'stock', 'permission' => 'stock-ins'],
-            ['label' => 'Purchase Orders', 'route' => 'purchase-orders.index', 'icon' => 'receipt', 'group' => 'stock', 'permission' => ['purchase-orders', 'receive-goods']],
+            ['label' => 'Purchase Orders', 'route' => 'purchase-orders.index', 'icon' => 'receipt', 'group' => 'stock', 'permission' => ['purchase-orders', 'receive-goods', 'vendor-invoices', 'vendor-invoices-approve']],
             ['label' => 'Vendors', 'route' => 'vendors.index', 'icon' => 'vendor', 'group' => 'stock', 'permission' => 'vendors'],
             ['label' => 'Customers', 'route' => 'customers.index', 'icon' => 'customers', 'group' => 'sell', 'permission' => 'customers'],
             ['label' => 'Repairs', 'route' => 'repairs.index', 'icon' => 'wrench', 'group' => 'sell', 'permission' => 'repairs'],

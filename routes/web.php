@@ -61,8 +61,11 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('payroll/history', 'payroll.history')->name('payroll.history')->middleware('shop.access:payroll');
         Volt::route('payroll/deduction-types', 'payroll.deduction-types')->name('payroll.deduction-types')->middleware('shop.access:payroll');
         Volt::route('payroll/run', 'payroll.run')->name('payroll.run')->middleware('shop.access:payroll-run');
-        Volt::route('purchase-orders', 'purchase-orders.index')->name('purchase-orders.index')->middleware('shop.access:purchase-orders,receive-goods');
+        Volt::route('purchase-orders', 'purchase-orders.index')->name('purchase-orders.index')->middleware('shop.access:purchase-orders,receive-goods,vendor-invoices,vendor-invoices-approve');
         Volt::route('purchase-orders/create', 'purchase-orders.form')->name('purchase-orders.create')->middleware('shop.access:purchase-orders');
+        Volt::route('purchase-orders/invoices', 'purchase-orders.invoices')->name('purchase-orders.invoices')->middleware('shop.access:vendor-invoices,vendor-invoices-approve');
+        Volt::route('purchase-orders/invoices/create', 'purchase-orders.invoice-form')->name('purchase-orders.invoices.create')->middleware('shop.access:vendor-invoices');
+        Volt::route('purchase-orders/invoices/{invoice}', 'purchase-orders.invoice-show')->name('purchase-orders.invoices.show')->whereNumber('invoice')->middleware('shop.access:vendor-invoices,vendor-invoices-approve');
         Volt::route('purchase-orders/receipts', 'purchase-orders.receipts')->name('purchase-orders.receipts')->middleware('shop.access:receive-goods');
         Volt::route('purchase-orders/{order}', 'purchase-orders.show')->name('purchase-orders.show')->whereNumber('order')->middleware('shop.access:purchase-orders,receive-goods');
         Volt::route('purchase-orders/{order}/edit', 'purchase-orders.form')->name('purchase-orders.edit')->whereNumber('order')->middleware('shop.access:purchase-orders');

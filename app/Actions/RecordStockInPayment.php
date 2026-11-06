@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\DB;
  */
 class RecordStockInPayment
 {
-    public static function add(StockIn $entry, float $amount, ?int $userId): StockIn
+    public static function add(StockIn $entry, float $amount, ?int $userId, StockInPaymentSource $source = StockInPaymentSource::Payment, ?int $vendorInvoiceId = null): StockIn
     {
-        return DB::transaction(function () use ($entry, $amount, $userId) {
+        return DB::transaction(function () use ($entry, $amount, $userId, $source, $vendorInvoiceId) {
             $entry = self::lock($entry);
 
             $previousAmountPaid = (float) $entry->amount_paid;
@@ -31,7 +31,7 @@ class RecordStockInPayment
                     : PaymentStatus::Partial,
             ]);
 
-            self::recordRow($entry, (float) $entry->amount_paid - $previousAmountPaid, StockInPaymentSource::Payment, $userId);
+            self::recordRow($entry, (float) $entry->amount_paid - $previousAmountPaid, $source, $userId, $vendorInvoiceId);
 
             return $entry;
         });
@@ -64,7 +64,7 @@ class RecordStockInPayment
     }
 
     /** The exact change just stored, after decimal rounding. No change, no row. */
-    protected static function recordRow(StockIn $entry, float $change, StockInPaymentSource $source, ?int $userId): void
+    protected static function recordRow(StockIn $entry, float $change, StockInPaymentSource $source, ?int $userId, ?int $vendorInvoiceId = null): void
     {
         if (round($change, 2) == 0.0) {
             return;
@@ -76,6 +76,7 @@ class RecordStockInPayment
             'amount' => round($change, 2),
             'payment_date' => now()->toDateString(),
             'source' => $source,
+            'vendor_invoice_id' => $vendorInvoiceId,
         ]);
     }
 }

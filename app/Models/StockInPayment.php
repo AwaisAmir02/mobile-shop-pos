@@ -20,6 +20,7 @@ class StockInPayment extends Model
     protected $fillable = [
         'shop_id',
         'stock_in_id',
+        'vendor_invoice_id',
         'user_id',
         'amount',
         'payment_date',

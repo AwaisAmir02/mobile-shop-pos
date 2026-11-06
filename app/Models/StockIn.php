@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class StockIn extends Model
 {
@@ -86,6 +87,18 @@ class StockIn extends Model
     public function grnLine(): BelongsTo
     {
         return $this->belongsTo(GrnLine::class);
+    }
+
+    /** The invoice holding this batch, in any state but cancelled. */
+    public function activeInvoiceLine(): HasOne
+    {
+        return $this->hasOne(VendorInvoiceLine::class)->whereNotNull('active_marker');
+    }
+
+    /** Set once an approved invoice corrected this batch's cost. */
+    public function correctedByInvoice(): HasOne
+    {
+        return $this->activeInvoiceLine()->where('amended', true);
     }
 
     public function vendor(): BelongsTo

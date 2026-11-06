@@ -52,6 +52,8 @@ enum ShopScreen: string
     case Branches = 'branches';
     case PurchaseOrders = 'purchase-orders';
     case ReceiveGoods = 'receive-goods';
+    case VendorInvoices = 'vendor-invoices';
+    case VendorInvoicesApprove = 'vendor-invoices-approve';
     case Payroll = 'payroll';
     case PayrollRun = 'payroll-run';
 
@@ -106,6 +108,8 @@ enum ShopScreen: string
             self::Branches => 'Branches',
             self::PurchaseOrders => 'Purchase Orders',
             self::ReceiveGoods => 'Receive Goods',
+            self::VendorInvoices => 'Vendor Invoices: Record',
+            self::VendorInvoicesApprove => 'Vendor Invoices: Approve, Dispute & Pay',
             self::Payroll => 'Payroll: Employees, Advances & History (shows salaries)',
             self::PayrollRun => 'Payroll: Run Payroll (pays salaries)',
         };
@@ -162,6 +166,8 @@ enum ShopScreen: string
             self::Branches => 'branches.index',
             self::PurchaseOrders => 'purchase-orders.index',
             self::ReceiveGoods => 'purchase-orders.index',
+            self::VendorInvoices => 'purchase-orders.invoices',
+            self::VendorInvoicesApprove => 'purchase-orders.invoices',
             self::Payroll => 'payroll.employees',
             self::PayrollRun => 'payroll.run',
         };
@@ -179,7 +185,7 @@ enum ShopScreen: string
     {
         return [
             'Core' => [self::Dashboard, self::Products, self::Customers, self::Reports, self::PartyLedger],
-            'Inventory & Sales' => [self::StockIns, self::StockInsEditCancel, self::PurchaseOrders, self::ReceiveGoods, self::Vendors, self::Sales, self::SalesEditCancel, self::SalesViewCostPrice, self::SimSales, self::SimSalesEditCancel],
+            'Inventory & Sales' => [self::StockIns, self::StockInsEditCancel, self::PurchaseOrders, self::ReceiveGoods, self::VendorInvoices, self::VendorInvoicesApprove, self::Vendors, self::Sales, self::SalesEditCancel, self::SalesViewCostPrice, self::SimSales, self::SimSalesEditCancel],
             'Financial Services' => [self::BalanceLoads, self::BalanceLoadsEditCancel, self::WalletLoads, self::WalletLoadsEditCancel, self::Bills, self::BillsEditCancel, self::Repairs, self::RepairsEditCancel, self::NadraVerifications, self::NadraVerificationsEditCancel, self::Udhaar, self::Expenses, self::ExpensesEditCancel, self::Services, self::ServicesEditCancel],
             'Online Selling' => [self::WhatsAppOrders, self::WhatsAppOrdersDecide, self::WhatsAppMessages, self::Marketing, self::MarketingAnalytics, self::MarketingAds],
             'Administration' => [self::Users, self::ShopAccounts, self::Branches, self::Payroll, self::PayrollRun],

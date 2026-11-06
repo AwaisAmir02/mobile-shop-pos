@@ -9,6 +9,7 @@ use App\Models\ModuleRevision;
 use App\Models\PurchaseOrder;
 use App\Models\Scopes\ExcludesCancelledScope;
 use App\Models\StockIn;
+use App\Models\VendorInvoiceLine;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -29,6 +30,10 @@ class CancelGrn
             }
 
             $grn->load('lines');
+
+            if (VendorInvoiceLine::whereIn('grn_line_id', $grn->lines->pluck('id'))->whereNotNull('active_marker')->exists()) {
+                throw ValidationException::withMessages(['grn' => 'This receipt is on a vendor invoice. Cancel the invoice first.']);
+            }
 
             $entries = StockIn::whereIn('grn_line_id', $grn->lines->pluck('id'))->with('payments')->lockForUpdate()->get();
 

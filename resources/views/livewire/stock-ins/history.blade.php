@@ -3,6 +3,7 @@
 use App\Actions\CancelStockIn;
 use App\Actions\RecordStockInPayment;
 use App\Actions\UpdateStockIn;
+use App\Actions\VendorInvoices;
 use App\Enums\PaymentStatus;
 use App\Enums\QuantityUnit;
 use App\Livewire\Concerns\GuardsExportSize;
@@ -42,6 +43,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
     public string $editQuantity = '';
     public string $editUnit = 'piece';
     public bool $editFromGrn = false;
+    public bool $editCostLocked = false;
     public string $editVendorId = '';
     public string $editStockDate = '';
     public string $editNote = '';
@@ -199,6 +201,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
         $this->editQuantity = (string) $entry->quantity;
         $this->editUnit = $entry->unit->value;
         $this->editFromGrn = $entry->grn_line_id !== null;
+        $this->editCostLocked = $this->editFromGrn && VendorInvoices::holdsCost($entry);
         $this->editVendorId = $entry->vendor_id !== null ? (string) $entry->vendor_id : '';
         $this->editStockDate = $entry->stock_date->toDateString();
         $this->editNote = $entry->note ?? '';
@@ -237,13 +240,13 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
         $this->toastSuccess('Stock-in entry updated.');
         $this->dispatch('close-modal', name: 'edit-stock-in-form');
-        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editFromGrn', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate']);
+        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editFromGrn', 'editCostLocked', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate']);
     }
 
     public function closeEditForm(): void
     {
         $this->dispatch('close-modal', name: 'edit-stock-in-form');
-        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editFromGrn', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate']);
+        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editFromGrn', 'editCostLocked', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate']);
     }
 
     public function openCancel(int $entryId): void
@@ -534,8 +537,8 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                     <x-ui.input wire:model="editNote" id="editNote" />
                 </x-ui.field>
 
-                <x-ui.field label="Cost Price (per unit)" name="editCostPrice" for="editCostPrice" help="Optional">
-                    <x-ui.input wire:model="editCostPrice" id="editCostPrice" type="number" min="0" step="0.01" />
+                <x-ui.field label="Cost Price (per unit)" name="editCostPrice" for="editCostPrice" :help="$editCostLocked ? 'An approved vendor invoice set this cost. Cancel the invoice to change it.' : 'Optional'">
+                    <x-ui.input wire:model="editCostPrice" id="editCostPrice" type="number" min="0" step="0.01" :disabled="$editCostLocked" />
                 </x-ui.field>
 
                 <x-ui.field label="Selling Price (per unit)" name="editSellingPrice" for="editSellingPrice" help="Optional">
