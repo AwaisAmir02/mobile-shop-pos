@@ -22,6 +22,9 @@ class LedgerHealthReport
 {
     public const INVENTORY_ROUNDING_TOLERANCE = 1.0;
 
+    /** @var array<string, string> table => the column holding what's charged */
+    protected const MODULES = ['wallet_loads' => 'total', 'balance_loads' => 'total', 'bill_payments' => 'total', 'sim_sales' => 'total', 'repairs' => 'total', 'nadra_verifications' => 'total', 'service_payments' => 'amount'];
+
     public function __construct(protected Shop $shop) {}
 
     /** @return array<int, array{label: string, ledger: float, records: float, explained: float, unexplained: float, note: string}> */
@@ -32,6 +35,8 @@ class LedgerHealthReport
             $this->payable(),
             $this->inventory(),
             $this->netSales(),
+            $this->employeeAdvances(),
+            $this->withholdings(),
         ];
     }
 
@@ -78,9 +83,25 @@ class LedgerHealthReport
         ];
     }
 
-    protected function moduleDues(): float
+    /** @return array{0: float, 1: float} what the screens say is owed, and how far the plain sum differs */
+    protected function moduleDues(): array
     {
-        return 0.0;
+        $owed = 0.0;
+        $explained = 0.0;
+
+        foreach (self::MODULES as $table => $totalColumn) {
+            $rows = DB::table($table)->where('shop_id', $this->shop->id)->where('status', '!=', RecordStatus::Cancelled->value)
+                ->when($table === 'wallet_loads', fn ($query) => $query->where('direction', 'cash_in'))
+                ->get([$totalColumn.' as total', 'amount_paid', 'payment_status']);
+
+            foreach ($rows as $row) {
+                $screens = $row->payment_status === 'paid' ? 0.0 : max(0.0, (float) $row->total - (float) $row->amount_paid);
+                $owed += $screens;
+                $explained += (float) $row->total - (float) $row->amount_paid - $screens;
+            }
+        }
+
+        return [$owed, $explained];
     }
 
     protected function receivable(): array
@@ -100,7 +121,9 @@ class LedgerHealthReport
         $manual = (float) DB::table('party_ledger_entries')->where('shop_id', $this->shop->id)->whereNotNull('customer_id')->where('status', '!=', RecordStatus::Cancelled->value)
             ->selectRaw("SUM(CASE WHEN direction = 'debit' THEN amount ELSE -amount END) as net")->value('net');
 
-        return $this->check('Customers owe', $this->ledgerBalance(Chart::RECEIVABLE), $owed + $udhaar + $manual + $this->moduleDues(), $overpaid, 'Sales, udhaar and party ledger balances. Overpaid sales count against the customer here.');
+        [$moduleOwed, $moduleExplained] = $this->moduleDues();
+
+        return $this->check('Customers owe', $this->ledgerBalance(Chart::RECEIVABLE), $owed + $udhaar + $manual + $moduleOwed, $overpaid + $moduleExplained, 'Sales, counter services, udhaar and party ledger balances. Overpayments count against the customer here.');
     }
 
     protected function payable(): array
@@ -125,6 +148,21 @@ class LedgerHealthReport
     protected function inventory(): array
     {
         return $this->check('Inventory at cost', $this->ledgerBalance(Chart::INVENTORY), LedgerOpening::inventoryValue($this->shop->id), 0.0, 'Batches at their cost, and stock no batch covers at the product\'s cost. Rounding a billed total into a unit cost can leave a few paise.', self::INVENTORY_ROUNDING_TOLERANCE);
+    }
+
+    protected function employeeAdvances(): array
+    {
+        $balance = DB::table('employee_advances')->where('shop_id', $this->shop->id)->where('status', '!=', RecordStatus::Cancelled->value)
+            ->selectRaw("SUM(CASE WHEN type = 'given' THEN amount ELSE -amount END) as net")->value('net');
+
+        return $this->check('Employee advances owed', $this->ledgerBalance(Chart::EMPLOYEE_ADVANCES), (float) $balance, 0.0, 'What staff still owe on the Advances screen.');
+    }
+
+    protected function withholdings(): array
+    {
+        $held = (float) DB::table('payslips')->where('shop_id', $this->shop->id)->where('status', 'paid')->sum('held_deductions');
+
+        return $this->check('Salary amounts held', -$this->ledgerBalance(Chart::WITHHOLDINGS), $held, 0.0, 'Held for someone else on paid payslips, less what has been paid over.');
     }
 
     protected function netSales(): array

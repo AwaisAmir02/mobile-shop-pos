@@ -2,7 +2,16 @@
 
 namespace App\Ledger;
 
+use App\Models\BalanceLoad;
+use App\Models\BillPayment;
+use App\Models\EmployeeAdvance;
 use App\Models\Expense;
+use App\Models\NadraVerification;
+use App\Models\Payslip;
+use App\Models\Repair;
+use App\Models\ServicePayment;
+use App\Models\SimSale;
+use App\Models\WalletLoad;
 use App\Models\PartyLedgerEntry;
 use App\Models\Product;
 use App\Models\Sale;
@@ -30,6 +39,15 @@ class LedgerSources
         'udhaar' => ['model' => UdhaarTransaction::class, 'builder' => Builders\UdhaarBuilder::class],
         'party_ledger' => ['model' => PartyLedgerEntry::class, 'builder' => Builders\PartyLedgerBuilder::class],
         'product_stock' => ['model' => Product::class, 'builder' => Builders\ProductStockBuilder::class],
+        'payslip' => ['model' => Payslip::class, 'builder' => Builders\PayslipBuilder::class],
+        'employee_advance' => ['model' => EmployeeAdvance::class, 'builder' => Builders\EmployeeAdvanceBuilder::class],
+        'wallet_load' => ['model' => WalletLoad::class, 'builder' => Builders\WalletLoadBuilder::class],
+        'balance_load' => ['model' => BalanceLoad::class, 'builder' => Builders\BalanceLoadBuilder::class],
+        'bill_payment' => ['model' => BillPayment::class, 'builder' => Builders\BillPaymentBuilder::class],
+        'sim_sale' => ['model' => SimSale::class, 'builder' => Builders\SimSaleBuilder::class],
+        'repair' => ['model' => Repair::class, 'builder' => Builders\RepairBuilder::class],
+        'nadra_verification' => ['model' => NadraVerification::class, 'builder' => Builders\NadraVerificationBuilder::class],
+        'service_payment' => ['model' => ServicePayment::class, 'builder' => Builders\ServicePaymentBuilder::class],
     ];
 
     /** @var array<class-string<Model>, array{0: string, 1: string}> child model => [document key, foreign key] */
