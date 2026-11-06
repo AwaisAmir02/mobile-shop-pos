@@ -255,12 +255,15 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
         $this->cancelingId = $entryId;
         $this->cancelReason = '';
+        $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'cancel-stock-in-form');
     }
 
     public function cancelEntry(): void
     {
         abort_unless(Auth::user()->hasAccessTo('stock-ins-edit-cancel'), 403);
+
+        $this->resetErrorBag();
 
         $entry = StockIn::inCurrentBranch()->findOrFail($this->cancelingId);
         $result = CancelStockIn::handle($entry, Auth::id(), $this->cancelReason);
@@ -502,6 +505,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                 @php($editUnitCase = QuantityUnit::fromValue($editUnit))
                 <x-ui.field :label="$editUnitCase->allowsDecimals() ? 'Quantity ('.$editUnitCase->symbol().')' : 'Quantity'" name="editQuantity" for="editQuantity">
                     <x-ui.input wire:model="editQuantity" id="editQuantity" type="number" :min="$editUnitCase->inputMin()" :step="$editUnitCase->inputStep()" :disabled="$editFromGrn" />
+                    <x-ui.error :messages="$errors->get('quantity')" class="mt-1" />
                 </x-ui.field>
 
                 @if ($editFromGrn)
@@ -564,6 +568,8 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             <p class="mt-2 text-sm text-slate-600">
                 This entry will be marked <strong>Cancelled</strong> and its quantity will be removed from the product's current stock. It will no longer count toward any total, report, or outstanding balance. This cannot be undone.
             </p>
+
+            <x-ui.error :messages="$errors->get('quantity')" class="mt-3" />
 
             <div class="mt-5">
                 <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
