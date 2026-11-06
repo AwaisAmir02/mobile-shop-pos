@@ -310,8 +310,13 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
         </x-ui.card>
     @endif
 
-    @if (auth()->user()->shop?->expiry_tracking_enabled && auth()->user()->hasAccessTo('stock-ins'))
-        <p class="mb-4 text-sm"><a href="{{ route('stock-ins.expiry') }}" wire:navigate class="font-medium text-brand-700 hover:text-brand-800">Expiring &amp; expired stock report →</a></p>
+    @if (auth()->user()->hasAccessTo('stock-ins'))
+        <p class="mb-4 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            @if (auth()->user()->shop?->expiry_tracking_enabled)
+                <a href="{{ route('stock-ins.expiry') }}" wire:navigate class="font-medium text-brand-700 hover:text-brand-800">Expiring &amp; expired stock report →</a>
+            @endif
+            <a href="{{ route('stock-ins.write-offs') }}" wire:navigate class="font-medium text-brand-700 hover:text-brand-800">Stock write-offs →</a>
+        </p>
     @endif
 
     @if (empty($accessibleScreens))

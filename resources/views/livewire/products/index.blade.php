@@ -1323,7 +1323,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
                 @if ($editingHasBatches)
                     <p class="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                        Price now comes from this product's Stock In batches. To correct a price, edit the specific Stock In entry instead.
+                        Price now comes from this product's Stock In batches. To correct a price, edit the specific Stock In entry instead. To remove stock that was damaged, lost or expired, use a <a href="{{ route('stock-ins.write-offs') }}" wire:navigate class="font-medium text-brand-700 hover:text-brand-800">write-off</a>, which keeps batches and stock in step.
                     </p>
                 @endif
 

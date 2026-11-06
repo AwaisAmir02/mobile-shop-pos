@@ -327,6 +327,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                 @if ($expiryEnabled)
                     <a href="{{ route('stock-ins.expiry') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Expiring &amp; Expired →</a>
                 @endif
+                <a href="{{ route('stock-ins.write-offs') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Write-offs →</a>
                 <a href="{{ route('stock-ins.index') }}" wire:navigate>
                     <x-ui.button size="sm">Add Stock</x-ui.button>
                 </a>
@@ -478,6 +479,11 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                                     </x-ui.button>
                                 @endif
                                 @if (auth()->user()->hasAccessTo('stock-ins-edit-cancel'))
+                                    @if ($entry->quantity_remaining > 0 && $entry->product_id !== null)
+                                        <a href="{{ route('stock-ins.write-offs', ['batch' => $entry->id]) }}" wire:navigate>
+                                            <x-ui.button size="sm" variant="ghost">Write off</x-ui.button>
+                                        </a>
+                                    @endif
                                     <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $entry->id }})">
                                         Edit
                                     </x-ui.button>

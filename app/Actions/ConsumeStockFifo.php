@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\Product;
 use App\Models\StockIn;
 use App\Support\Quantity;
+use Illuminate\Validation\ValidationException;
 
 /**
  * All three walks count in whole thousandths (see Quantity), so a quantity
@@ -47,6 +48,26 @@ class ConsumeStockFifo
         }
 
         return $allocations;
+    }
+
+    /**
+     * Draws from one chosen batch rather than the next in order, for removing
+     * a specific batch's stock. Selling always goes through handle().
+     *
+     * @return array<int, array{stock_in_id: ?int, quantity: int|float, cost_price: ?float, selling_price: float}>
+     */
+    public static function handleFromBatch(Product $product, StockIn $batch, int|float|string $quantity): array
+    {
+        $batch = StockIn::whereKey($batch->id)->where('product_id', $product->id)->lockForUpdate()->firstOrFail();
+
+        if (Quantity::compare($batch->quantity_remaining, $quantity) < 0) {
+            throw ValidationException::withMessages(['quantity' => 'Only '.$batch->unit->amount($batch->quantity_remaining).' left in that batch.']);
+        }
+
+        $take = Quantity::toThousandths($quantity);
+        $batch->decrement('quantity_remaining', Quantity::fromThousandths($take));
+
+        return [self::allocationFromBatch($batch, $take, $product)];
     }
 
     /**

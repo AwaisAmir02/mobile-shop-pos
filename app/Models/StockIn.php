@@ -133,6 +133,14 @@ class StockIn extends Model
             ->inSellOrder($byExpiry);
     }
 
+    /** What to call quantity that has left this batch: not all of it was necessarily sold. */
+    public function consumedLabel(): string
+    {
+        return StockWriteOffItem::where('stock_in_id', $this->id)
+            ->whereHas('writeOff')
+            ->exists() ? 'sold or written off' : 'sold';
+    }
+
     public function isExpired(): bool
     {
         return $this->expiry_date !== null && $this->expiry_date->toDateString() < BatchExpiry::today();

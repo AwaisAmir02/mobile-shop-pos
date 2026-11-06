@@ -68,7 +68,7 @@ class UpdateStockIn
                         $left = $entry->unit->amount($entry->quantity_remaining);
 
                         throw ValidationException::withMessages([
-                            'quantity' => "Cannot reduce quantity: {$consumedLabel} from this entry have already been sold, leaving only {$left} available to remove. Adjust stock manually first.",
+                            'quantity' => "Cannot reduce quantity: {$consumedLabel} from this entry have already been {$entry->consumedLabel()}, leaving only {$left} available to remove. Adjust stock manually first.",
                         ]);
                     }
 

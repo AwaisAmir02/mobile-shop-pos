@@ -46,7 +46,7 @@ class CancelStockIn
                 $added = $entry->unit->allowsDecimals() ? $entry->unit->amount($entry->quantity) : Quantity::plain($entry->quantity).' units';
 
                 throw ValidationException::withMessages([
-                    'quantity' => "Cannot cancel: {$consumed} of the {$added} added by this entry have already been sold. Adjust stock manually first.",
+                    'quantity' => "Cannot cancel: {$consumed} of the {$added} added by this entry have already been {$entry->consumedLabel()}. Adjust stock manually first.",
                 ]);
             }
 

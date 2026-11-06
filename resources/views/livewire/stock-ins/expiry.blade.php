@@ -132,7 +132,7 @@ new #[Layout('layouts.app')] #[Title('Expiring & Expired')] class extends Compon
     </div>
 
     <div class="space-y-6">
-        @foreach ([['Expired', 'Can no longer be sold. Sales draw from these last and then refuse.', $expired, 'expired'], ['Expiring soon', 'Sold first, soonest date first.', $soon, 'soon'], ['No expiry date', 'Sold after dated stock. Fill in a date to bring old batches into the order.', $undated, 'undated']] as [$title, $description, $batches, $section])
+        @foreach ([['Expired', 'Can no longer be sold. Write them off to clear them from your stock and its value.', $expired, 'expired'], ['Expiring soon', 'Sold first, soonest date first.', $soon, 'soon'], ['No expiry date', 'Sold after dated stock. Fill in a date to bring old batches into the order.', $undated, 'undated']] as [$title, $description, $batches, $section])
             <x-ui.card :title="$title" :description="$description" :padding="false" wire:key="expiry-section-{{ $section }}">
                 @if ($batches->isEmpty())
                     <p class="px-5 py-4 text-sm text-slate-400">Nothing here.</p>
@@ -147,7 +147,12 @@ new #[Layout('layouts.app')] #[Title('Expiring & Expired')] class extends Compon
                                 <x-ui.table-cell>Rs {{ number_format(\App\ReportQueries\ExpiryReport::valueAtCost($batch), 2) }}</x-ui.table-cell>
                                 <x-ui.table-cell align="right">
                                     @if ($canEdit)
-                                        <x-ui.button size="sm" variant="ghost" wire:click="openDate({{ $batch->id }})">{{ $batch->expiry_date ? 'Change date' : 'Set date' }}</x-ui.button>
+                                        <div class="flex justify-end gap-2">
+                                            <x-ui.button size="sm" variant="ghost" wire:click="openDate({{ $batch->id }})">{{ $batch->expiry_date ? 'Change date' : 'Set date' }}</x-ui.button>
+                                            <a href="{{ route('stock-ins.write-offs', ['batch' => $batch->id]) }}" wire:navigate>
+                                                <x-ui.button size="sm" variant="ghost" @class(['text-red-600 hover:bg-red-50' => $section === 'expired'])>Write off</x-ui.button>
+                                            </a>
+                                        </div>
                                     @endif
                                 </x-ui.table-cell>
                             </x-ui.table-row>
