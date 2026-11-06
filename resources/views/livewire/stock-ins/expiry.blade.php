@@ -171,6 +171,7 @@ new #[Layout('layouts.app')] #[Title('Expiring & Expired')] class extends Compon
             <div class="mt-5">
                 <x-ui.field label="Expires on" name="datingDate" for="datingDate" help="The last day it can be sold">
                     <x-ui.input wire:model="datingDate" id="datingDate" type="date" />
+                    <x-ui.error :messages="$errors->get('quantity')" class="mt-1" />
                 </x-ui.field>
             </div>
 

@@ -141,6 +141,40 @@ class StockInHistoryRefusalsTest extends TestCase
             ->assertDontSeeHtml('Cannot cancel');
     }
 
+    public function test_the_expiry_screen_shows_why_a_date_was_refused(): void
+    {
+        $product = $this->piece($this->shop(['expiry_tracking_enabled' => true]));
+        $batch = $this->batch($product, 10);
+        // Overpaid, so UpdateStockIn refuses any edit to it.
+        RecordStockInPayment::add($batch, 3000, auth()->id());
+
+        Livewire::test('stock-ins.expiry')
+            ->call('openDate', $batch->id)
+            ->set('datingDate', now()->addMonth()->toDateString())
+            ->call('saveDate')
+            ->assertHasErrors('quantity')
+            ->assertSeeHtml('is less than Rs 3,000.00 already paid')
+            ->assertNotDispatched('close-modal');
+
+        $this->assertNull($batch->fresh()->expiry_date);
+    }
+
+    public function test_the_expiry_screen_still_saves_a_date_normally(): void
+    {
+        $product = $this->piece($this->shop(['expiry_tracking_enabled' => true]));
+        $batch = $this->batch($product, 10);
+        $date = now()->addMonth()->toDateString();
+
+        Livewire::test('stock-ins.expiry')
+            ->call('openDate', $batch->id)
+            ->set('datingDate', $date)
+            ->call('saveDate')
+            ->assertHasNoErrors()
+            ->assertDispatched('close-modal', name: 'batch-expiry-form');
+
+        $this->assertSame($date, $batch->fresh()->expiry_date->toDateString());
+    }
+
     public function test_a_forged_cancel_of_a_received_batch_shows_why(): void
     {
         $shop = $this->shop(['purchase_orders_enabled' => true]);
