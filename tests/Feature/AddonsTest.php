@@ -52,7 +52,7 @@ class AddonsTest extends TestCase
 
     public function test_the_example_pack_is_seeded_and_only_the_super_admin_manages_the_catalogue(): void
     {
-        $pack = Addon::sole();
+        $pack = Addon::where('name', 'Extra 500 products')->sole();
         $this->assertSame('Extra 500 products', $pack->name);
         $this->assertSame(AddonKind::LimitPack, $pack->kind);
         $this->assertSame(LimitKey::Products, $pack->limit_key);
@@ -87,7 +87,7 @@ class AddonsTest extends TestCase
     {
         [$shop, $owner] = $this->plannedShop();
         $startedOn = $shop->subscription_start_date->toDateString();
-        $pack = Addon::sole();
+        $pack = Addon::where('name', 'Extra 500 products')->sole();
 
         $this->actingAs($owner)->get(route('billing.index'))->assertSee('Extra 500 products')->assertSee('Rs 1,000 one-off');
 
@@ -191,7 +191,7 @@ class AddonsTest extends TestCase
     public function test_a_rejected_add_on_payment_can_be_resubmitted_and_hidden_add_ons_cannot_be_bought(): void
     {
         [$shop, $owner] = $this->plannedShop();
-        $pack = Addon::sole();
+        $pack = Addon::where('name', 'Extra 500 products')->sole();
         app(AddonService::class)->purchase($shop, $pack, $owner->id);
         $payments = app(SubscriptionPaymentService::class);
         $admin = $this->admin();

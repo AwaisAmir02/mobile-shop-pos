@@ -442,7 +442,7 @@ class PurchaseOrderTest extends TestCase
     {
         $this->assertTrue(FeatureKey::PurchaseOrders->planControlled());
         $this->assertTrue(Plan::where('name', 'Commerce')->sole()->feature_flags['purchase_orders']);
-        $this->assertArrayNotHasKey('purchase_orders', Plan::where('name', 'Growth')->sole()->feature_flags ?? []);
+        $this->assertFalse(Plan::where('name', 'Growth')->sole()->feature_flags['purchase_orders']);
 
         $shop = Shop::create(['name' => 'Starter', 'plan_id' => Plan::where('name', 'Starter')->sole()->id]);
         $this->assertFalse($shop->fresh()->purchase_orders_enabled);

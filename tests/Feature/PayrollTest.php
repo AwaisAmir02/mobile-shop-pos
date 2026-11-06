@@ -468,7 +468,7 @@ class PayrollTest extends TestCase
         $this->assertTrue(FeatureKey::Payroll->planControlled());
         $this->assertTrue(Plan::where('name', 'Growth')->sole()->feature_flags['payroll']);
         $this->assertTrue(Plan::where('name', 'Commerce')->sole()->feature_flags['payroll']);
-        $this->assertArrayNotHasKey('payroll', Plan::where('name', 'Starter')->sole()->feature_flags ?? []);
+        $this->assertFalse(Plan::where('name', 'Starter')->sole()->feature_flags['payroll']);
 
         $shop = Shop::create(['name' => 'Starter', 'plan_id' => Plan::where('name', 'Starter')->sole()->id]);
         $addon = Addon::create(['name' => 'Payroll', 'kind' => 'feature_unlock', 'feature_keys' => ['payroll'], 'price' => 1000, 'billing' => 'monthly']);
