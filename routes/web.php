@@ -136,6 +136,7 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('expenses', 'expenses.index')->name('expenses.index')->middleware('shop.access:expenses');
 
         Volt::route('reports', 'reports.index')->name('reports.index')->middleware('shop.access:reports');
+        Volt::route('gross-profit', 'reports.profit')->name('profit.index')->middleware('shop.access:reports');
 
         Volt::route('party-ledger', 'party-ledger.index')->name('party-ledger.index')->middleware('shop.access:party-ledger');
 
