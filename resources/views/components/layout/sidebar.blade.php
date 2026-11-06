@@ -23,6 +23,7 @@
             ['label' => 'Balance Loads', 'route' => 'balance-loads.index', 'icon' => 'signal', 'group' => 'counter', 'permission' => 'balance-loads'],
             ['label' => 'Bills', 'route' => 'bills.index', 'icon' => 'bolt', 'group' => 'counter', 'permission' => 'bills'],
             ['label' => 'Stock In', 'route' => 'stock-ins.index', 'icon' => 'stock-in', 'group' => 'stock', 'permission' => 'stock-ins'],
+            ['label' => 'Purchase Orders', 'route' => 'purchase-orders.index', 'icon' => 'receipt', 'group' => 'stock', 'permission' => ['purchase-orders', 'receive-goods']],
             ['label' => 'Vendors', 'route' => 'vendors.index', 'icon' => 'vendor', 'group' => 'stock', 'permission' => 'vendors'],
             ['label' => 'Customers', 'route' => 'customers.index', 'icon' => 'customers', 'group' => 'sell', 'permission' => 'customers'],
             ['label' => 'Repairs', 'route' => 'repairs.index', 'icon' => 'wrench', 'group' => 'sell', 'permission' => 'repairs'],
@@ -39,6 +40,7 @@
             ['label' => 'Plan & Usage', 'route' => 'billing.index', 'icon' => 'receipt', 'group' => 'manage', 'owner' => true],
         ])->filter(fn ($item) => $user && (($item['owner'] ?? false) ? $user->is_owner : collect((array) $item['permission'])->contains(fn ($p) => $user->hasAccessTo($p))))
             ->reject(fn ($item) => $item['route'] === 'services.index' && ! $user?->shop?->services_enabled)
+            ->reject(fn ($item) => $item['route'] === 'purchase-orders.index' && ! $user?->shop?->purchase_orders_enabled)
             ->reject(fn ($item) => $item['route'] === 'profit.index' && ! $user?->hasAccessTo('sales-view-cost-price'))
             ->reject(fn ($item) => $item['route'] === 'whatsapp-orders.index' && ! $user?->shop?->whatsapp_ordering_enabled)
             ->reject(fn ($item) => $item['route'] === 'whatsapp-messages.index' && ! $user?->shop?->whatsapp_messaging_enabled)

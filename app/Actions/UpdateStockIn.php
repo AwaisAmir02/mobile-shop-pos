@@ -43,6 +43,12 @@ class UpdateStockIn
 
             // Whole thousandths, so "no change" really is exactly zero.
             $delta = Quantity::toThousandths($newQuantity) - Quantity::toThousandths($entry->quantity);
+
+            // A PO's received quantity comes from its GRN, so the two can't disagree.
+            if ($delta !== 0 && $entry->grn_line_id !== null) {
+                throw ValidationException::withMessages(['quantity' => 'This stock came from a goods receipt, so its quantity can\'t be changed here. Cancel the receipt and record it again.']);
+            }
+
             $newQuantityRemaining = $entry->quantity_remaining;
 
             if ($entry->product_id === null) {

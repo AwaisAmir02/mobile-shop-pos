@@ -19,10 +19,10 @@ use Illuminate\Support\Facades\DB;
 class CreateStockIn
 {
     /**
-     * @param  array<int, array{product_id: int, quantity: int|float|string, cost_price: ?float, selling_price: float, expiry_date?: ?string}>  $lines
+     * @param  array<int, array{product_id: int, quantity: int|float|string, cost_price: ?float, selling_price: float, expiry_date?: ?string, grn_line_id?: int}>  $lines
      * @return Collection<int, StockIn> one per line, in order
      */
-    public static function handle(array $lines, ?int $vendorId, string $paymentStatus, ?float $amountPaid, string $stockDate, ?string $note, ?int $userId): Collection
+    public static function handle(array $lines, ?int $vendorId, string $paymentStatus, ?float $amountPaid, string $stockDate, ?string $note, ?int $userId, ?int $branchId = null): Collection
     {
         $lines = array_values($lines);
         $count = count($lines);
@@ -35,7 +35,7 @@ class CreateStockIn
             default => 0.0,
         };
 
-        return DB::transaction(function () use ($lines, $count, $grandTotal, $headerAmountPaid, $vendorId, $stockDate, $note, $userId) {
+        return DB::transaction(function () use ($lines, $count, $grandTotal, $headerAmountPaid, $vendorId, $stockDate, $note, $userId, $branchId) {
             $amountAllocated = 0.0;
             $entries = collect();
 
@@ -75,6 +75,9 @@ class CreateStockIn
                     'stock_date' => $stockDate,
                     'expiry_date' => $product->sellsByExpiry() ? ($line['expiry_date'] ?? null) : null,
                     'note' => $note !== null && $note !== '' ? $note : null,
+                    'grn_line_id' => $line['grn_line_id'] ?? null,
+                    // Otherwise the branch the person is working in, as always.
+                    ...($branchId !== null ? ['branch_id' => $branchId] : []),
                 ]);
 
                 // Dated history of this line's share of the purchase-time payment.

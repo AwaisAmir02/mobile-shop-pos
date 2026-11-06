@@ -15,9 +15,10 @@ enum FeatureKey: string
     case Variants = 'variants';
     case MeasuredUnits = 'measured_units';
     case ExpiryTracking = 'expiry_tracking';
+    case PurchaseOrders = 'purchase_orders';
 
     /** The order of the switches on the admin shop page; a case not listed goes last. */
-    protected const ADMIN_ORDER = [self::Barcode, self::Variants, self::MeasuredUnits, self::ExpiryTracking, self::Branding, self::Services, self::WhatsAppOrdering, self::WhatsAppMessaging, self::Social, self::Ads];
+    protected const ADMIN_ORDER = [self::Barcode, self::Variants, self::MeasuredUnits, self::ExpiryTracking, self::PurchaseOrders, self::Branding, self::Services, self::WhatsAppOrdering, self::WhatsAppMessaging, self::Social, self::Ads];
 
     /**
      * Whether plans and add-ons decide this feature. One that isn't is free
@@ -50,6 +51,7 @@ enum FeatureKey: string
             self::Variants => 'Product variants',
             self::MeasuredUnits => 'Weighed and measured items',
             self::ExpiryTracking => 'Expiry date tracking',
+            self::PurchaseOrders => 'Purchase orders & goods receipts',
         };
     }
 
@@ -93,6 +95,7 @@ enum FeatureKey: string
             self::Variants => ['Product Variants', 'Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off.', 'Product variants'],
             self::MeasuredUnits => ['Weighed & Measured Items', 'Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot.', 'Weighed and measured items'],
             self::ExpiryTracking => ['Expiry Date Tracking', 'Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored.', 'Expiry date tracking'],
+            self::PurchaseOrders => ['Purchase Orders', 'Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected.', 'Purchase orders'],
         };
 
         return ['label' => $label, 'description' => $description, 'toast' => $toast];

@@ -23,6 +23,7 @@ class StockIn extends Model
         'shop_id',
         'product_id',
         'vendor_id',
+        'grn_line_id',
         'product_name',
         'user_id',
         'quantity',
@@ -80,6 +81,11 @@ class StockIn extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function grnLine(): BelongsTo
+    {
+        return $this->belongsTo(GrnLine::class);
     }
 
     public function vendor(): BelongsTo

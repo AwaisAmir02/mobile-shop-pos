@@ -42,6 +42,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
     public ?int $editingId = null;
     public string $editQuantity = '';
     public string $editUnit = 'piece';
+    public bool $editFromGrn = false;
     public string $editVendorId = '';
     public string $editStockDate = '';
     public string $editNote = '';
@@ -99,6 +100,8 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'measuredTotals' => QuantityUnit::summarize($report->measuredTotals()),
             'showExpiry' => $report->showsExpiry(),
             'expiryEnabled' => $this->expiryEnabled(),
+            // Still reachable after a downgrade, when the sidebar link has gone.
+            'hasPurchaseOrders' => Auth::user()->hasAccessTo('purchase-orders') && (Auth::user()->shop?->purchase_orders_enabled || \App\Models\PurchaseOrder::query()->exists()),
             'totalOwed' => $report->totalOwed(),
             'products' => Product::query()->orderBy('name')->get(),
             'paymentStatuses' => PaymentStatus::cases(),
@@ -239,6 +242,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
         $this->editingId = $entry->id;
         $this->editQuantity = (string) $entry->quantity;
         $this->editUnit = $entry->unit->value;
+        $this->editFromGrn = $entry->grn_line_id !== null;
         $this->editVendorId = $entry->vendor_id !== null ? (string) $entry->vendor_id : '';
         $this->editStockDate = $entry->stock_date->toDateString();
         $this->editNote = $entry->note ?? '';
@@ -277,13 +281,13 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
         $this->toastSuccess('Stock-in entry updated.');
         $this->dispatch('close-modal', name: 'edit-stock-in-form');
-        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate']);
+        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editFromGrn', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate']);
     }
 
     public function closeEditForm(): void
     {
         $this->dispatch('close-modal', name: 'edit-stock-in-form');
-        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate']);
+        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editFromGrn', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate']);
     }
 
     public function openCancel(int $entryId): void
@@ -326,6 +330,9 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             <div class="flex items-center gap-4">
                 @if ($expiryEnabled)
                     <a href="{{ route('stock-ins.expiry') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Expiring &amp; Expired →</a>
+                @endif
+                @if ($hasPurchaseOrders)
+                    <a href="{{ route('purchase-orders.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Purchase Orders →</a>
                 @endif
                 <a href="{{ route('stock-ins.write-offs') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Write-offs →</a>
                 <a href="{{ route('stock-ins.index') }}" wire:navigate>
@@ -487,9 +494,11 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                                     <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $entry->id }})">
                                         Edit
                                     </x-ui.button>
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $entry->id }})" class="text-red-600 hover:bg-red-50">
-                                        Delete
-                                    </x-ui.button>
+                                    @if ($entry->grn_line_id === null)
+                                        <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $entry->id }})" class="text-red-600 hover:bg-red-50">
+                                            Delete
+                                        </x-ui.button>
+                                    @endif
                                 @endif
                             @endif
                         </div>
@@ -533,7 +542,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             <div class="mt-5 space-y-5">
                 @php($editUnitCase = QuantityUnit::fromValue($editUnit))
                 <x-ui.field :label="$editUnitCase->allowsDecimals() ? 'Quantity ('.$editUnitCase->symbol().')' : 'Quantity'" name="editQuantity" for="editQuantity">
-                    <x-ui.input wire:model="editQuantity" id="editQuantity" type="number" :min="$editUnitCase->inputMin()" :step="$editUnitCase->inputStep()" />
+                    <x-ui.input wire:model="editQuantity" id="editQuantity" type="number" :min="$editUnitCase->inputMin()" :step="$editUnitCase->inputStep()" :disabled="$editFromGrn" />
                 </x-ui.field>
 
                 @if (auth()->user()->hasAccessTo('vendors'))

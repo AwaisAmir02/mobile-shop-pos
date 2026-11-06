@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\QuantityCast;
+use App\Enums\PurchaseOrderStatus;
 use App\Enums\QuantityUnit;
 use App\Enums\SimForm;
 use App\Enums\SimType;
@@ -88,7 +89,7 @@ class Product extends Model
         }
 
         if ($this->exists && $this->isDirty('unit') && $this->unitIsLocked()) {
-            throw ValidationException::withMessages(['unit' => "{$this->name} already has stock-in or sales records, so its unit can't be changed."]);
+            throw ValidationException::withMessages(['unit' => "{$this->name} already has stock-in, sales or purchase order records, so its unit can't be changed."]);
         }
 
         if (($this->isDirty('stock_quantity') || $this->isDirty('unit')) && ! $unit->allowsDecimals() && ! Quantity::isWhole($this->stock_quantity)) {
@@ -107,10 +108,22 @@ class Product extends Model
     /**
      * Locked like its price once it has batches. Sales lock it too: cancelling
      * one puts its quantity back, which has to still make sense in this unit.
+     * So does an open purchase order line.
      */
     public function unitIsLocked(): bool
     {
-        return $this->hasBatches() || SaleItem::withoutGlobalScopes()->where('product_id', $this->id)->exists();
+        return $this->hasBatches()
+            || SaleItem::withoutGlobalScopes()->where('product_id', $this->id)->exists()
+            || $this->hasOpenPoLine();
+    }
+
+    /** An order on the way was placed in this unit, and will be received in it. */
+    public function hasOpenPoLine(): bool
+    {
+        return PoLine::withoutGlobalScopes()
+            ->where('product_id', $this->id)
+            ->whereHas('order', fn ($query) => $query->withoutGlobalScopes()->whereIn('status', collect(PurchaseOrderStatus::cases())->filter->locksProductUnit()->pluck('value')))
+            ->exists();
     }
 
     public function canUseMeasuredUnits(): bool

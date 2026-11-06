@@ -17,13 +17,18 @@ class CancelStockIn
     /**
      * @return array{entry: StockIn, reversed: bool}
      */
-    public static function handle(StockIn $entry, ?int $userId, ?string $reason = null): array
+    public static function handle(StockIn $entry, ?int $userId, ?string $reason = null, bool $fromGrn = false): array
     {
-        return DB::transaction(function () use ($entry, $userId, $reason) {
+        return DB::transaction(function () use ($entry, $userId, $reason, $fromGrn) {
             $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->whereKey($entry->id)->lockForUpdate()->firstOrFail();
 
             if ($entry->isCancelled()) {
                 throw new \RuntimeException('This stock-in entry has already been cancelled.');
+            }
+
+            // A PO's received quantity comes from its GRN, so the two have to go together.
+            if ($entry->grn_line_id !== null && ! $fromGrn) {
+                throw ValidationException::withMessages(['quantity' => 'This stock came from a goods receipt. Cancel the receipt instead.']);
             }
 
             $snapshot = [

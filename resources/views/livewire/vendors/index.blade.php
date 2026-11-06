@@ -4,6 +4,7 @@ use App\Actions\CreateVendor;
 use App\Livewire\Concerns\Toasts;
 use App\Models\PartyLedgerEntry;
 use App\Models\Scopes\ExcludesCancelledScope;
+use App\Models\PurchaseOrder;
 use App\Models\Vendor;
 use App\Support\BranchContext;
 use Livewire\Attributes\Layout;
@@ -102,6 +103,12 @@ new #[Layout('layouts.app')] #[Title('Vendors')] class extends Component
 
         if ($vendor->hasStockInHistory()) {
             $this->toastError("Cannot delete \"{$vendor->name}\" — it has existing stock-in entries.");
+
+            return;
+        }
+
+        if (PurchaseOrder::withoutGlobalScope(ExcludesCancelledScope::class)->where('vendor_id', $vendor->id)->exists()) {
+            $this->toastError("Cannot delete \"{$vendor->name}\" — it has purchase orders.");
 
             return;
         }

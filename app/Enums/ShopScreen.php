@@ -50,6 +50,8 @@ enum ShopScreen: string
     case MarketingAnalytics = 'marketing-analytics';
     case MarketingAds = 'marketing-ads';
     case Branches = 'branches';
+    case PurchaseOrders = 'purchase-orders';
+    case ReceiveGoods = 'receive-goods';
 
     public function label(): string
     {
@@ -100,6 +102,8 @@ enum ShopScreen: string
             self::MarketingAnalytics => 'Marketing: Overview & analytics',
             self::MarketingAds => 'Marketing: Meta ads (spends money)',
             self::Branches => 'Branches',
+            self::PurchaseOrders => 'Purchase Orders',
+            self::ReceiveGoods => 'Receive Goods',
         };
     }
 
@@ -152,6 +156,8 @@ enum ShopScreen: string
             self::MarketingAnalytics => 'marketing.index',
             self::MarketingAds => 'marketing.ads',
             self::Branches => 'branches.index',
+            self::PurchaseOrders => 'purchase-orders.index',
+            self::ReceiveGoods => 'purchase-orders.index',
         };
     }
 
@@ -167,7 +173,7 @@ enum ShopScreen: string
     {
         return [
             'Core' => [self::Dashboard, self::Products, self::Customers, self::Reports, self::PartyLedger],
-            'Inventory & Sales' => [self::StockIns, self::StockInsEditCancel, self::Vendors, self::Sales, self::SalesEditCancel, self::SalesViewCostPrice, self::SimSales, self::SimSalesEditCancel],
+            'Inventory & Sales' => [self::StockIns, self::StockInsEditCancel, self::PurchaseOrders, self::ReceiveGoods, self::Vendors, self::Sales, self::SalesEditCancel, self::SalesViewCostPrice, self::SimSales, self::SimSalesEditCancel],
             'Financial Services' => [self::BalanceLoads, self::BalanceLoadsEditCancel, self::WalletLoads, self::WalletLoadsEditCancel, self::Bills, self::BillsEditCancel, self::Repairs, self::RepairsEditCancel, self::NadraVerifications, self::NadraVerificationsEditCancel, self::Udhaar, self::Expenses, self::ExpensesEditCancel, self::Services, self::ServicesEditCancel],
             'Online Selling' => [self::WhatsAppOrders, self::WhatsAppOrdersDecide, self::WhatsAppMessages, self::Marketing, self::MarketingAnalytics, self::MarketingAds],
             'Administration' => [self::Users, self::ShopAccounts, self::Branches],
