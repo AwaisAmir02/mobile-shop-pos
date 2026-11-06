@@ -56,6 +56,7 @@ enum ShopScreen: string
     case VendorInvoicesApprove = 'vendor-invoices-approve';
     case Payroll = 'payroll';
     case PayrollRun = 'payroll-run';
+    case LedgerReports = 'ledger-reports';
 
     public function label(): string
     {
@@ -112,6 +113,7 @@ enum ShopScreen: string
             self::VendorInvoicesApprove => 'Vendor Invoices: Approve, Dispute & Pay',
             self::Payroll => 'Payroll: Employees, Advances & History (shows salaries)',
             self::PayrollRun => 'Payroll: Run Payroll (pays salaries)',
+            self::LedgerReports => 'Ledger Reports (shows all the shop\'s finances)',
         };
     }
 
@@ -170,6 +172,7 @@ enum ShopScreen: string
             self::VendorInvoicesApprove => 'purchase-orders.invoices',
             self::Payroll => 'payroll.employees',
             self::PayrollRun => 'payroll.run',
+            self::LedgerReports => 'ledger.trial-balance',
         };
     }
 
@@ -188,7 +191,7 @@ enum ShopScreen: string
             'Inventory & Sales' => [self::StockIns, self::StockInsEditCancel, self::PurchaseOrders, self::ReceiveGoods, self::VendorInvoices, self::VendorInvoicesApprove, self::Vendors, self::Sales, self::SalesEditCancel, self::SalesViewCostPrice, self::SimSales, self::SimSalesEditCancel],
             'Financial Services' => [self::BalanceLoads, self::BalanceLoadsEditCancel, self::WalletLoads, self::WalletLoadsEditCancel, self::Bills, self::BillsEditCancel, self::Repairs, self::RepairsEditCancel, self::NadraVerifications, self::NadraVerificationsEditCancel, self::Udhaar, self::Expenses, self::ExpensesEditCancel, self::Services, self::ServicesEditCancel],
             'Online Selling' => [self::WhatsAppOrders, self::WhatsAppOrdersDecide, self::WhatsAppMessages, self::Marketing, self::MarketingAnalytics, self::MarketingAds],
-            'Administration' => [self::Users, self::ShopAccounts, self::Branches, self::Payroll, self::PayrollRun],
+            'Administration' => [self::Users, self::ShopAccounts, self::Branches, self::Payroll, self::PayrollRun, self::LedgerReports],
             'Settings' => [self::Settings, self::SettingsCategories, self::SettingsNetworks, self::SettingsBillConfig, self::SettingsPercentage, self::SettingsBrands, self::SettingsBranding, self::SettingsServices, self::SettingsIntegrations],
         ];
     }

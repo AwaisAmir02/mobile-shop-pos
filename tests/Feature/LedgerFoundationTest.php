@@ -431,12 +431,12 @@ class LedgerFoundationTest extends TestCase
     {
         $shop = $this->shop();
         $this->get(route('ledger.trial-balance'))->assertForbidden();
-        $this->get(route('dashboard'))->assertDontSee('Trial Balance');
+        $this->get(route('dashboard'))->assertDontSee(route('ledger.trial-balance'));
 
         $shop->update(['ledger_enabled' => true]);
         auth()->user()->unsetRelation('shop');
         $this->get(route('ledger.trial-balance'))->assertOk();
-        $this->get(route('dashboard'))->assertSee('Trial Balance');
+        $this->get(route('dashboard'))->assertSee(route('ledger.trial-balance'));
 
         $role = Role::create(['shop_id' => $shop->id, 'name' => 'Manager', 'permissions' => ['expenses', 'sales']]);
         $this->actingAs(User::factory()->create(['shop_id' => $shop->id, 'is_owner' => false, 'role_id' => $role->id]));

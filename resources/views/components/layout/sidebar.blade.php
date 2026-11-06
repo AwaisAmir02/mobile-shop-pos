@@ -33,7 +33,7 @@
             ['label' => 'Marketing', 'route' => 'marketing.posts', 'icon' => 'megaphone', 'group' => 'online', 'permission' => ['marketing', 'marketing-analytics', 'marketing-ads']],
             ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'group' => 'money', 'permission' => 'reports'],
             ['label' => 'Gross Profit', 'route' => 'profit.index', 'icon' => 'chart', 'group' => 'money', 'permission' => 'reports'],
-            ['label' => 'Trial Balance', 'route' => 'ledger.trial-balance', 'icon' => 'chart', 'group' => 'money', 'owner' => true],
+            ['label' => 'Ledger', 'route' => 'ledger.trial-balance', 'icon' => 'chart', 'group' => 'money', 'permission' => ['ledger-reports']],
             ['label' => 'Payroll', 'route' => 'payroll.employees', 'icon' => 'users', 'group' => 'money', 'permission' => ['payroll', 'payroll-run']],
             ['label' => 'Party Ledger', 'route' => 'party-ledger.index', 'icon' => 'ledger', 'group' => 'money', 'permission' => 'party-ledger'],
             ['label' => 'Team', 'route' => 'users.index', 'icon' => 'users', 'group' => 'manage', 'permission' => 'users'],

@@ -1,7 +1,6 @@
 <?php
 
-use App\Ledger\LedgerPoster;
-use App\Livewire\Concerns\Toasts;
+use App\Livewire\Concerns\LedgerReportScreen;
 use App\Models\LedgerOutbox;
 use App\ReportQueries\TrialBalanceReport;
 use Illuminate\Support\Facades\Auth;
@@ -11,34 +10,45 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] #[Title('Trial Balance')] class extends Component
 {
-    use Toasts;
+    use LedgerReportScreen;
 
     public string $asOf = '';
-
-    /** Owner only until the ledger's reports are finished. */
-    public function boot(): void
-    {
-        abort_unless(Auth::user()->is_owner && Auth::user()->shop?->ledger_enabled, 403);
-    }
 
     public function mount(): void
     {
         $this->catchUp();
     }
 
-    /** Figures on screen shouldn't wait for the next sweep. */
-    protected function catchUp(): void
-    {
-        $shop = Auth::user()->shop;
-
-        if ($shop->ledger_ready_at !== null && $shop->ledger_frozen_at === null) {
-            app(LedgerPoster::class)->drain($shop->id);
-        }
-    }
-
     public function refresh(): void
     {
         $this->catchUp();
+    }
+
+    protected function reportTitle(): string
+    {
+        return 'Trial Balance';
+    }
+
+    protected function reportFilters(): string
+    {
+        return 'As of '.($this->asOf ?: 'today');
+    }
+
+    protected function reportHeaders(): array
+    {
+        return ['Code', 'Account', 'Debit', 'Credit'];
+    }
+
+    protected function reportColumnTypes(): array
+    {
+        return ['string', 'string', 'currency', 'currency'];
+    }
+
+    protected function reportRows(bool $forExcel): array
+    {
+        return (new TrialBalanceReport(Auth::user()->shop, $this->asOf))->rows()
+            ->map(fn (array $row) => [$row['code'], $row['name'], $this->money($row['debit'], $forExcel), $this->money($row['credit'], $forExcel)])
+            ->all();
     }
 
     public function with(): array
@@ -71,7 +81,9 @@ new #[Layout('layouts.app')] #[Title('Trial Balance')] class extends Component
         <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             This ledger was frozen on {{ $shop->ledger_frozen_at->format('d M Y') }}, so these figures no longer change. Nothing since then has been posted, and restarting needs a new setup.
             <div class="mt-2">
-                <a href="{{ route('ledger.setup') }}" wire:navigate><x-ui.button type="button" size="sm" variant="secondary">Start a New Ledger</x-ui.button></a>
+                @if (auth()->user()->is_owner)
+                    <a href="{{ route('ledger.setup') }}" wire:navigate><x-ui.button type="button" size="sm" variant="secondary">Start a New Ledger</x-ui.button></a>
+                @endif
             </div>
         </div>
     @endif
@@ -83,16 +95,21 @@ new #[Layout('layouts.app')] #[Title('Trial Balance')] class extends Component
     @if ($shop->ledger_ready_at === null && $shop->ledger_frozen_at === null)
         <x-ui.card title="Start the ledger">
             <p class="text-sm text-slate-600">From the day it starts, new records post to the ledger automatically. Your existing screens, dues and reports don't change.</p>
-            <a href="{{ route('ledger.setup') }}" wire:navigate><x-ui.button type="button" class="mt-4">Set Up the Ledger</x-ui.button></a>
+            @if (auth()->user()->is_owner)
+                <a href="{{ route('ledger.setup') }}" wire:navigate><x-ui.button type="button" class="mt-4">Set Up the Ledger</x-ui.button></a>
+            @endif
         </x-ui.card>
     @else
         <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <x-ui.field label="As of" name="asOf" for="asOf" class="sm:max-w-[12rem]">
                 <x-ui.input wire:model.live="asOf" id="asOf" type="date" />
             </x-ui.field>
-            @if ($waiting > 0)
-                <x-ui.button type="button" size="sm" variant="secondary" wire:click="refresh">Post Waiting Records ({{ $waiting }})</x-ui.button>
-            @endif
+            <div class="flex items-center gap-2">
+                @if ($waiting > 0)
+                    <x-ui.button type="button" size="sm" variant="secondary" wire:click="refresh">Post Waiting Records ({{ $waiting }})</x-ui.button>
+                @endif
+                <x-ui.export-dropdown />
+            </div>
         </div>
 
         @if ($failed > 0)

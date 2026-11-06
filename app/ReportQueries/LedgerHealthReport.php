@@ -11,6 +11,7 @@ use App\Ledger\LedgerOpening;
 use App\Models\LedgerBaseline;
 use App\Models\LedgerOutbox;
 use App\Models\Shop;
+use App\Support\Quantity;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -36,6 +37,7 @@ class LedgerHealthReport
             $this->payable(),
             $this->inventory(),
             $this->netSales(),
+            $this->costOfSales(),
             $this->employeeAdvances(),
             $this->withholdings(),
         ];
@@ -149,6 +151,28 @@ class LedgerHealthReport
     protected function inventory(): array
     {
         return $this->check('Inventory at cost', $this->ledgerBalance(Chart::INVENTORY), LedgerOpening::inventoryValue($this->shop->id), 0.0, 'Batches at their cost, and stock no batch covers at the product\'s cost. Rounding a billed total into a unit cost can leave a few paise.', self::INVENTORY_ROUNDING_TOLERANCE);
+    }
+
+    /** The cross-check with the Gross Profit report: both come from the cost frozen on each sale line. */
+    protected function costOfSales(): array
+    {
+        $startDate = $this->shop->ledger_started_at->toDateString();
+
+        $cost = DB::table('sale_items')
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->where('sales.shop_id', $this->shop->id)
+            ->where('sales.status', '!=', SaleStatus::Cancelled->value)
+            ->whereDate('sales.created_at', '>=', $startDate)
+            ->whereNotNull('sale_items.cost_price')
+            ->get(['sale_items.cost_price', 'sale_items.quantity'])
+            ->sum(fn ($item) => Quantity::money($item->cost_price, $item->quantity));
+
+        $alreadyInOpening = LedgerBaseline::where('shop_id', $this->shop->id)->where('epoch', $this->shop->ledger_epoch)->where('source_type', 'sale')
+            ->whereIn('source_id', DB::table('sales')->where('shop_id', $this->shop->id)->whereDate('created_at', '>=', $startDate)->select('id'))
+            ->get()
+            ->sum(fn (LedgerBaseline $baseline) => collect($baseline->lines)->where('account', Chart::COGS)->sum('paise'));
+
+        return $this->check('Cost of goods sold since the start', $this->ledgerBalance(Chart::COGS), $cost - $alreadyInOpening / 100, 0.0, 'The same cost the Gross Profit report uses, frozen on each sale line.');
     }
 
     protected function employeeAdvances(): array

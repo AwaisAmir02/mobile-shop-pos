@@ -11,7 +11,7 @@ new #[Layout('layouts.app')] #[Title('Ledger Health')] class extends Component
 {
     public function boot(): void
     {
-        abort_unless(Auth::user()->is_owner && Auth::user()->shop?->ledger_enabled, 403);
+        abort_unless(Auth::user()->hasAccessTo('ledger-reports') && Auth::user()->shop?->ledger_enabled, 403);
     }
 
     public function mount(): void
