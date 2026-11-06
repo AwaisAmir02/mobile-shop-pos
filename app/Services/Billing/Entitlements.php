@@ -91,7 +91,10 @@ class Entitlements
         [$start, $end] = $this->monthRange();
 
         return match ($key) {
-            LimitKey::Products => Product::withoutGlobalScopes()->where('shop_id', $shop->id)->whereNull('archived_at')->count(),
+            // A variant group counts as one product, however many variants it has.
+            LimitKey::Products => (int) Product::withoutGlobalScopes()->where('shop_id', $shop->id)->whereNull('archived_at')
+                ->selectRaw('COUNT(*) - COUNT(product_group_id) + COUNT(DISTINCT product_group_id) as aggregate')
+                ->value('aggregate'),
             LimitKey::StaffUsers => User::where('shop_id', $shop->id)->where('is_owner', false)->where('is_active', true)->count(),
             LimitKey::SalesPerMonth => Sale::withoutGlobalScopes()->where('shop_id', $shop->id)->where('status', '!=', SaleStatus::Cancelled->value)->whereBetween('created_at', [$start, $end])->count(),
             LimitKey::WhatsAppMessagesPerMonth => CustomerNotification::withoutGlobalScopes()->where('shop_id', $shop->id)->where('status', NotificationStatus::Sent->value)->whereBetween('created_at', [$start, $end])->count(),
@@ -176,7 +179,7 @@ class Entitlements
         return collect(FeatureKey::cases())->map(function (FeatureKey $feature) use ($shop) {
             $row = ['key' => $feature, 'label' => $feature->label(), 'on' => (bool) $shop->{$feature->column()}, 'source' => 'plan', 'until' => null];
 
-            if (! $this->governed($shop) || ($override = $this->featureOverride($shop, $feature)) !== null) {
+            if (! $this->governed($shop) || ! $feature->planControlled() || ($override = $this->featureOverride($shop, $feature)) !== null) {
                 return array_merge($row, ['on' => $override ?? $row['on'], 'source' => 'hisabokitab']);
             }
 
@@ -231,7 +234,7 @@ class Entitlements
             return;
         }
 
-        foreach (FeatureKey::cases() as $feature) {
+        foreach (FeatureKey::planCases() as $feature) {
             $value = $this->featureOverride($shop, $feature) ?? ($this->unlockedByAddon($shop, $feature) ? true : $this->planFeature($shop, $feature));
 
             if ($value !== null) {

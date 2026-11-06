@@ -48,13 +48,13 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
         $this->isActive = true;
         $this->features = [['label' => '', 'included' => true]];
         $this->limits = array_fill_keys(array_column(LimitKey::cases(), 'value'), '');
-        $this->featureFlags = array_fill_keys(array_column(FeatureKey::cases(), 'value'), false);
+        $this->featureFlags = array_fill_keys(array_column(FeatureKey::planCases(), 'value'), false);
         $this->limited = $this->pairedLimits()->mapWithKeys(fn (LimitKey $key) => [$key->value => false])->all();
     }
 
     protected function pairedLimits()
     {
-        return collect(FeatureKey::cases())->map(fn (FeatureKey $feature) => $feature->limit())->filter()->values();
+        return collect(FeatureKey::planCases())->map(fn (FeatureKey $feature) => $feature->limit())->filter()->values();
     }
 
     public function updatedLimited($value, string $key): void
@@ -92,7 +92,7 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
             $this->limits[$key->value] = $value === null ? '' : (string) $value;
         }
 
-        foreach (FeatureKey::cases() as $key) {
+        foreach (FeatureKey::planCases() as $key) {
             $this->featureFlags[$key->value] = (bool) ($plan->feature_flags[$key->value] ?? false);
         }
 
@@ -155,7 +155,7 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
             'is_active' => $this->isActive,
             'is_featured' => $this->isFeatured,
             'limits' => collect(LimitKey::cases())->mapWithKeys(fn (LimitKey $key) => [$key->value => ($this->limits[$key->value] ?? '') === '' ? null : (int) $this->limits[$key->value]])->all(),
-            'feature_flags' => collect(FeatureKey::cases())->mapWithKeys(fn (FeatureKey $key) => [$key->value => (bool) ($this->featureFlags[$key->value] ?? false)])->all(),
+            'feature_flags' => collect(FeatureKey::planCases())->mapWithKeys(fn (FeatureKey $key) => [$key->value => (bool) ($this->featureFlags[$key->value] ?? false)])->all(),
         ];
 
         if ($this->editingId) {
@@ -328,7 +328,7 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
                     <p class="text-sm font-medium text-slate-700">Features</p>
                     <p class="text-xs text-slate-500">Ticked features are switched on for every shop on the plan; you can still override a single shop from its page. A usage limit counts whether or not its feature is ticked.</p>
                     <div class="mt-3 divide-y divide-slate-100">
-                        @foreach (FeatureKey::cases() as $featureKey)
+                        @foreach (FeatureKey::planCases() as $featureKey)
                             @php $pairedLimit = $featureKey->limit(); @endphp
                             <div class="py-2.5" wire:key="plan-feature-{{ $featureKey->value }}">
                                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

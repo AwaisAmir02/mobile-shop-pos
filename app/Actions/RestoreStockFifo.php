@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\Product;
 use App\Models\SaleItem;
 use App\Models\StockIn;
+use App\Support\Quantity;
 use Illuminate\Support\Collection;
 
 class RestoreStockFifo
@@ -38,7 +39,7 @@ class RestoreStockFifo
                     continue;
                 }
 
-                $batch->increment('quantity_remaining', $item->quantity);
+                $batch->increment('quantity_remaining', Quantity::normalize($item->quantity));
             }
 
             $product = Product::whereKey($item->product_id)->lockForUpdate()->first();
@@ -49,7 +50,7 @@ class RestoreStockFifo
                 continue;
             }
 
-            $product->increment('stock_quantity', $item->quantity);
+            $product->increment('stock_quantity', Quantity::normalize($item->quantity));
         }
 
         return $skipped;

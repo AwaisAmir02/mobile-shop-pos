@@ -285,7 +285,10 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
                     'Stock-in units' => fn ($s) => $s['totalStockInUnits'],
                 ];
                 $counts = ['Items sold', 'Stock-in units'];
-                $cell = fn (string $label, array $summary) => in_array($label, $counts, true) ? number_format($columns[$label]($summary)) : 'Rs '.number_format($columns[$label]($summary), 2);
+                $measured = ['Items sold' => 'soldByUnit', 'Stock-in units' => 'stockInByUnit'];
+                $cell = fn (string $label, array $summary) => in_array($label, $counts, true)
+                    ? trim(number_format($columns[$label]($summary)).' '.(filled($by = \App\Enums\QuantityUnit::summarize($summary[$measured[$label]] ?? [])) ? '· '.$by : ''))
+                    : 'Rs '.number_format($columns[$label]($summary), 2);
             @endphp
 
             <x-ui.table :headers="array_merge(['Branch'], array_keys($columns))">

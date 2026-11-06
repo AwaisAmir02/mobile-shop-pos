@@ -126,7 +126,7 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                         <div>
                             <p class="text-sm font-medium text-slate-900">{{ $item->product_name }}</p>
                             <p class="text-xs text-slate-400">
-                                {{ $item->quantity }} × Rs {{ number_format($item->unit_price, 2) }}
+                                {{ $item->unit->amount($item->quantity) }} × Rs {{ number_format($item->unit_price, 2) }}
                                 @if ($item->discount_amount > 0)
                                     · Rs {{ number_format($item->discount_amount, 2) }} off
                                 @endif

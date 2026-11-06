@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\PaymentStatus;
+use App\Enums\QuantityUnit;
 use App\Enums\StockInPaymentSource;
 use App\Livewire\Concerns\Toasts;
 use App\Models\AccessoryCategoryOption;
@@ -8,6 +9,7 @@ use App\Models\MainCategory;
 use App\Models\Product;
 use App\Models\StockIn;
 use App\Models\Vendor;
+use App\Support\Quantity;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -163,22 +165,23 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
     {
         $this->validate([
             'productId' => ['required', 'integer', Rule::exists('products', 'id')->where('shop_id', Auth::user()->shop_id)],
-            'quantity' => ['required', 'integer', 'min:1'],
+            'quantity' => $this->selectedUnit()->quantityRules(),
             'costPrice' => ['nullable', 'numeric', 'min:0'],
             'sellingPrice' => ['required', 'numeric', 'min:0'],
         ]);
 
         $product = Product::findOrFail($this->productId);
-        $quantity = (int) $this->quantity;
+        $quantity = Quantity::normalize($this->quantity);
 
         if (isset($this->cart[$product->id])) {
-            $this->cart[$product->id]['quantity'] += $quantity;
+            $this->cart[$product->id]['quantity'] = Quantity::add($this->cart[$product->id]['quantity'], $quantity);
         } else {
             $this->cart[$product->id] = [
                 'product_id' => $product->id,
                 'name' => $product->name,
                 'category' => $product->typeLabel(),
                 'quantity' => $quantity,
+                'unit' => $product->unit->value,
                 'cost_price' => $this->costPrice !== '' ? (float) $this->costPrice : null,
                 'selling_price' => (float) $this->sellingPrice,
             ];
@@ -196,12 +199,17 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
 
     public function lineTotalCost(array $line): float
     {
-        return $line['cost_price'] !== null ? $line['cost_price'] * $line['quantity'] : 0.0;
+        return $line['cost_price'] !== null ? Quantity::money($line['cost_price'], $line['quantity']) : 0.0;
     }
 
     public function grandTotalCost(): float
     {
-        return array_sum(array_map(fn (array $line) => $this->lineTotalCost($line), $this->cart));
+        return round(array_sum(array_map(fn (array $line) => $this->lineTotalCost($line), $this->cart)), 2);
+    }
+
+    protected function selectedUnit(): QuantityUnit
+    {
+        return is_numeric($this->productId) ? (Product::find($this->productId)?->unit ?? QuantityUnit::Piece) : QuantityUnit::Piece;
     }
 
     public function with(): array
@@ -230,6 +238,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                 ->get(),
             'paymentStatuses' => PaymentStatus::cases(),
             'vendors' => Auth::user()->hasAccessTo('vendors') ? Vendor::query()->orderBy('name')->get() : collect(),
+            'selectedUnit' => $this->selectedUnit(),
         ];
     }
 
@@ -268,7 +277,9 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
 
             foreach ($lines as $index => $line) {
                 $product = Product::whereKey($line['product_id'])->lockForUpdate()->firstOrFail();
-                $product->increment('stock_quantity', $line['quantity']);
+                // The cart is client-held state, so the product's own unit decides here.
+                $product->unit->assertQuantity($line['quantity'], 'quantity', $product->name);
+                $product->increment('stock_quantity', Quantity::normalize($line['quantity']));
 
                 $lineTotalCost = $this->lineTotalCost($line);
 
@@ -289,10 +300,11 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                     'vendor_id' => $vendorId,
                     'product_name' => $product->name,
                     'user_id' => Auth::id(),
-                    'quantity' => $line['quantity'],
+                    'quantity' => Quantity::normalize($line['quantity']),
+                    'unit' => $product->unit,
                     'cost_price' => $line['cost_price'],
                     'selling_price' => $line['selling_price'],
-                    'quantity_remaining' => $line['quantity'],
+                    'quantity_remaining' => Quantity::normalize($line['quantity']),
                     'total_cost' => $line['cost_price'] !== null ? $lineTotalCost : null,
                     'payment_status' => $linePaymentStatus,
                     'amount_paid' => $lineAmountPaid,
@@ -379,7 +391,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                             <div>
                                 <p class="text-sm font-medium text-slate-900">{{ $line['name'] }}</p>
                                 <p class="text-xs text-slate-400">
-                                    {{ $line['category'] }} · Qty {{ number_format($line['quantity']) }}
+                                    {{ $line['category'] }} · Qty {{ QuantityUnit::fromValue($line['unit'] ?? 'piece')->groupedAmount($line['quantity']) }}
                                     · Cost {{ $line['cost_price'] !== null ? 'Rs '.number_format($line['cost_price'], 2) : '—' }}
                                     · Sell Rs {{ number_format($line['selling_price'], 2) }}
                                 </p>
@@ -425,22 +437,22 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                         <option value="">Select a product</option>
                         <option value="__create__">+ New Product</option>
                         @foreach ($products as $product)
-                            <option value="{{ $product->id }}">{{ $product->name }} (current stock: {{ $product->stock_quantity }})</option>
+                            <option value="{{ $product->id }}">{{ $product->name }} (current stock: {{ $product->stockLabel() }})</option>
                         @endforeach
                     </x-ui.select>
                 </x-ui.field>
             </div>
 
             <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <x-ui.field label="Quantity" name="quantity" for="quantity">
-                    <x-ui.input wire:model="quantity" id="quantity" type="number" min="1" step="1" />
+                <x-ui.field :label="$selectedUnit->allowsDecimals() ? 'Quantity ('.$selectedUnit->symbol().')' : 'Quantity'" name="quantity" for="quantity">
+                    <x-ui.input wire:model="quantity" id="quantity" type="number" :min="$selectedUnit->inputMin()" :step="$selectedUnit->inputStep()" />
                 </x-ui.field>
 
-                <x-ui.field label="Cost Price (per unit)" name="costPrice" for="costPrice" help="Optional">
+                <x-ui.field :label="'Cost Price (per '.($selectedUnit->allowsDecimals() ? $selectedUnit->symbol() : 'unit').')'" name="costPrice" for="costPrice" help="Optional">
                     <x-ui.input wire:model="costPrice" id="costPrice" type="number" min="0" step="0.01" />
                 </x-ui.field>
 
-                <x-ui.field label="Selling Price (per unit)" name="sellingPrice" for="sellingPrice">
+                <x-ui.field :label="'Selling Price (per '.($selectedUnit->allowsDecimals() ? $selectedUnit->symbol() : 'unit').')'" name="sellingPrice" for="sellingPrice">
                     <x-ui.input wire:model="sellingPrice" id="sellingPrice" type="number" min="0" step="0.01" />
                 </x-ui.field>
             </div>

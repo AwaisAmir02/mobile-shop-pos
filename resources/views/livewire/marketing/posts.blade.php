@@ -73,7 +73,7 @@ new #[Layout('layouts.app')] #[Title('Posts & Share kit')] class extends Compone
                             <x-ui.thumbnail :src="$product->imageUrl()" :label="$product->name" />
                             <div class="min-w-0">
                                 <p class="truncate font-medium text-slate-900">{{ $product->name }}</p>
-                                <p class="text-xs text-slate-500">Rs {{ number_format($product->currentSellingPrice()) }} · {{ $product->stock_quantity }} in stock</p>
+                                <p class="text-xs text-slate-500">Rs {{ number_format($product->currentSellingPrice()) }} · {{ $product->stockLabel() }} in stock</p>
                             </div>
                         </div>
                         <x-ui.button size="sm" wire:click="createFromProduct({{ $product->id }})" wire:loading.attr="disabled">Create post</x-ui.button>

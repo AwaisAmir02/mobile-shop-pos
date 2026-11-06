@@ -147,7 +147,7 @@
             @foreach ($sale->items as $item)
                 <tr>
                     <td>{{ $item->product_name }}</td>
-                    <td class="text-right">{{ $item->quantity }}</td>
+                    <td class="text-right">{{ $item->unit->amount($item->quantity) }}</td>
                     <td class="text-right">
                         Rs {{ number_format($item->unit_price, 2) }}
                         @if ($item->wasPriceOverridden())

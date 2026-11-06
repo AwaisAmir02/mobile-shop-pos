@@ -2,6 +2,7 @@
 
 use App\Actions\CreateProduct;
 use App\Enums\LimitKey;
+use App\Enums\QuantityUnit;
 use App\Exceptions\UsageLimitReached;
 use App\Livewire\Concerns\Toasts;
 use App\Livewire\Concerns\UploadsImages;
@@ -31,6 +32,7 @@ new class extends Component
     public string $price = '';
     public string $cost_price = '';
     public string $stock_quantity = '0';
+    public string $unit = 'piece';
     public string $barcode = '';
 
     public string $brand = '';
@@ -123,6 +125,18 @@ new class extends Component
         $this->category = $categoryName;
     }
 
+    protected function measuredEnabled(): bool
+    {
+        return (bool) Auth::user()->shop?->measured_units_enabled;
+    }
+
+    protected function formUnit(): QuantityUnit
+    {
+        return $this->measuredEnabled() && ! in_array($this->type, QuantityUnit::PIECE_ONLY_TYPES, true)
+            ? QuantityUnit::fromValue($this->unit)
+            : QuantityUnit::Piece;
+    }
+
     public function with(): array
     {
         $mainCategories = MainCategory::query()->orderBy('name')->get();
@@ -130,6 +144,8 @@ new class extends Component
 
         return [
             'mainCategories' => $mainCategories,
+            'formUnit' => $this->formUnit(),
+            'showUnitField' => $this->measuredEnabled() && ! in_array($this->type, QuantityUnit::PIECE_ONLY_TYPES, true),
             'brands' => Brand::query()->orderBy('name')->get(),
             'accessoryCategoryOptions' => collect([
                 ['value' => '__create__', 'label' => 'New Sub-Category', 'image' => null, 'special' => true, 'modal' => 'quick-create-accessory-category'],
@@ -150,7 +166,7 @@ new class extends Component
     public function save(): void
     {
         $this->barcode = trim($this->barcode);
-        $this->validate(CreateProduct::rules(Auth::user()->shop_id, $this->type));
+        $this->validate(CreateProduct::rules(Auth::user()->shop_id, $this->type, null, $this->formUnit()));
 
         try {
             app(Entitlements::class)->ensureCanAdd(Auth::user()->shop, LimitKey::Products);
@@ -166,6 +182,7 @@ new class extends Component
             'price' => $this->price,
             'cost_price' => $this->cost_price !== '' ? $this->cost_price : null,
             'stock_quantity' => $this->stock_quantity,
+            'unit' => $this->formUnit(),
             'details' => CreateProduct::detailsForType($this->type, $this->category, $this->brand, $this->model, $this->imei),
         ];
 
@@ -198,7 +215,7 @@ new class extends Component
             mainCategorySlug: $product->type,
             subCategoryName: $product->details['category'] ?? '',
         );
-        $this->reset(['name', 'image', 'price', 'cost_price', 'brand', 'model', 'imei', 'category', 'barcode']);
+        $this->reset(['name', 'image', 'price', 'cost_price', 'brand', 'model', 'imei', 'category', 'barcode', 'unit']);
         $this->stock_quantity = '0';
     }
 
@@ -213,7 +230,7 @@ new class extends Component
     public function close(): void
     {
         $this->dispatch('close-modal', name: 'quick-create-product');
-        $this->reset(['name', 'image', 'price', 'cost_price', 'brand', 'model', 'imei', 'category', 'barcode']);
+        $this->reset(['name', 'image', 'price', 'cost_price', 'brand', 'model', 'imei', 'category', 'barcode', 'unit']);
         $this->stock_quantity = '0';
         $this->syncDefaultType();
         $this->resetErrorBag();
@@ -281,6 +298,16 @@ new class extends Component
                     </x-ui.field>
                 </div>
 
+                @if ($showUnitField)
+                    <x-ui.field label="Sold By" name="unit" for="quickProductUnit" help="Piece for whole items. The others take quantities like 1.5.">
+                        <x-ui.select wire:model.live="unit" id="quickProductUnit">
+                            @foreach (QuantityUnit::cases() as $unitOption)
+                                <option value="{{ $unitOption->value }}">{{ $unitOption->label() }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                @endif
+
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <x-ui.field label="Selling Price" name="price" for="quickProductPrice">
                         <x-ui.input wire:model="price" id="quickProductPrice" type="number" step="0.01" min="0" />
@@ -290,8 +317,8 @@ new class extends Component
                         <x-ui.input wire:model="cost_price" id="quickProductCostPrice" type="number" step="0.01" min="0" />
                     </x-ui.field>
 
-                    <x-ui.field label="Stock Qty" name="stock_quantity" for="quickProductStockQuantity">
-                        <x-ui.input wire:model="stock_quantity" id="quickProductStockQuantity" type="number" step="1" min="0" />
+                    <x-ui.field :label="$formUnit->allowsDecimals() ? 'Stock Qty ('.$formUnit->symbol().')' : 'Stock Qty'" name="stock_quantity" for="quickProductStockQuantity">
+                        <x-ui.input wire:model="stock_quantity" id="quickProductStockQuantity" type="number" :step="$formUnit->inputStep()" min="0" />
                     </x-ui.field>
                 </div>
 

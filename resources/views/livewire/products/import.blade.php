@@ -55,6 +55,8 @@ new class extends Component
 
     public array $newBrandNames = [];
 
+    public array $newGroupNames = [];
+
     public array $similarWarnings = [];
 
     public array $notices = [];
@@ -69,6 +71,8 @@ new class extends Component
     public int $createdSubCategories = 0;
 
     public int $createdBrands = 0;
+
+    public int $createdGroups = 0;
 
     public int $limitSkippedCount = 0;
 
@@ -95,8 +99,8 @@ new class extends Component
             'importFile', 'storedPath', 'processing',
             'fileErrors', 'fileErrorsMore', 'rowErrors', 'rowErrorsMore',
             'toCreateCount', 'toSkipCount', 'skippedLines', 'skippedLinesMore',
-            'newMainCategoryNames', 'newSubCategoryNames', 'newBrandNames', 'similarWarnings', 'notices',
-            'createdCount', 'skippedCount', 'createdMainCategories', 'createdSubCategories', 'createdBrands',
+            'newMainCategoryNames', 'newSubCategoryNames', 'newBrandNames', 'newGroupNames', 'similarWarnings', 'notices',
+            'createdCount', 'skippedCount', 'createdMainCategories', 'createdSubCategories', 'createdBrands', 'createdGroups',
             'limitSkippedCount', 'limitSkippedLines',
         ]);
         $this->step = 'upload';
@@ -153,6 +157,7 @@ new class extends Component
         $this->newMainCategoryNames = $preview['newMainCategoryNames'];
         $this->newSubCategoryNames = $preview['newSubCategoryNames'];
         $this->newBrandNames = $preview['newBrandNames'];
+        $this->newGroupNames = $preview['newGroupNames'];
         $this->similarWarnings = $preview['similarWarnings'];
         $this->notices = $preview['notices'];
     }
@@ -196,6 +201,7 @@ new class extends Component
         $this->createdMainCategories = $outcome['createdMainCategories'];
         $this->createdSubCategories = $outcome['createdSubCategories'];
         $this->createdBrands = $outcome['createdBrands'];
+        $this->createdGroups = $outcome['createdGroups'];
         $this->limitSkippedCount = $outcome['limitSkippedProducts'];
         $this->limitSkippedLines = $outcome['limitSkippedLines'];
 
@@ -215,7 +221,7 @@ new class extends Component
     {
         $this->guard();
 
-        return app(ProductImportService::class)->templateResponse(Auth::user()->canUseBarcodes());
+        return app(ProductImportService::class)->templateResponse(Auth::user()->canUseBarcodes(), (bool) Auth::user()->shop?->variants_enabled, (bool) Auth::user()->shop?->measured_units_enabled);
     }
 }; ?>
 
@@ -238,6 +244,12 @@ new class extends Component
                         <p class="mb-2 font-medium text-slate-900">Required columns: Name, Main Category, Selling Price.</p>
                         <p class="mb-2">Optional: Cost Price, Stock Qty, Barcode (when barcode support is on for your shop — must be unique). Sub-Category is required only when Main Category is Accessory. Brand is required only when Main Category is Mobile Phone (Model and IMEI/Serial are optional and only apply to Mobile Phone).</p>
                         <p>A Main Category, Sub-Category, or Brand name that doesn't exist yet is created automatically. Images cannot be imported — add photos afterwards from the Products screen.</p>
+                        @if (auth()->user()->shop?->measured_units_enabled)
+                            <p class="mt-2">To sell by weight or length, fill in Unit (piece, kg, litre, metre, yard or gaz). Stock Qty can then have up to 3 decimals. Blank means piece.</p>
+                        @endif
+                        @if (auth()->user()->shop?->variants_enabled)
+                            <p class="mt-2">For variants, fill in Variant Group and Option 1 and/or Option 2 (for example M and Red). Rows with the same group become one product with variants, and Name can be left blank.</p>
+                        @endif
                     </div>
 
                     <x-ui.button type="button" variant="secondary" size="sm" wire:click="downloadTemplate" wire:loading.attr="disabled" wire:target="downloadTemplate">
@@ -301,7 +313,7 @@ new class extends Component
                         <x-ui.stat label="Skipped (Already Exist)" :value="number_format($toSkipCount)" />
                     </div>
 
-                    @if (! empty($newMainCategoryNames) || ! empty($newSubCategoryNames) || ! empty($newBrandNames))
+                    @if (! empty($newMainCategoryNames) || ! empty($newSubCategoryNames) || ! empty($newBrandNames) || ! empty($newGroupNames))
                         <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
                             <p class="mb-2 text-sm font-semibold text-amber-900">These are new and will be created — check carefully for typos before confirming:</p>
                             <div class="space-y-2 text-sm text-amber-800">
@@ -313,6 +325,9 @@ new class extends Component
                                 @endif
                                 @if (! empty($newBrandNames))
                                     <p><span class="font-semibold">New Brands:</span> {{ implode(', ', $newBrandNames) }}</p>
+                                @endif
+                                @if (! empty($newGroupNames))
+                                    <p><span class="font-semibold">New Variant Groups:</span> {{ implode(', ', $newGroupNames) }}</p>
                                 @endif
                             </div>
                         </div>
@@ -370,6 +385,9 @@ new class extends Component
                         <x-ui.stat label="Main Categories Created" :value="number_format($createdMainCategories)" />
                         <x-ui.stat label="Sub-Categories Created" :value="number_format($createdSubCategories)" />
                         <x-ui.stat label="Brands Created" :value="number_format($createdBrands)" />
+                        @if ($createdGroups > 0)
+                            <x-ui.stat label="Variant Groups Created" :value="number_format($createdGroups)" />
+                        @endif
                     </div>
 
                     @if ($limitSkippedCount > 0)

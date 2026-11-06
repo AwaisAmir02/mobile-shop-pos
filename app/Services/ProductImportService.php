@@ -5,13 +5,16 @@ namespace App\Services;
 use App\Actions\CreateAccessoryCategory;
 use App\Actions\CreateProduct;
 use App\Enums\LimitKey;
+use App\Enums\QuantityUnit;
 use App\Imports\ProductSheetReader;
 use App\Models\AccessoryCategoryOption;
 use App\Models\Brand;
 use App\Models\MainCategory;
 use App\Models\Product;
+use App\Models\ProductGroup;
 use App\Models\Shop;
 use App\Services\Billing\Entitlements;
+use App\Support\Quantity;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -37,7 +40,7 @@ class ProductImportService
     /** Canonical, lowercase header names this importer understands. */
     protected const REQUIRED_HEADERS = ['name', 'main category', 'selling price'];
 
-    protected const OPTIONAL_HEADERS = ['cost price', 'stock qty', 'sub-category', 'brand', 'model', 'imei/serial', 'barcode'];
+    protected const OPTIONAL_HEADERS = ['cost price', 'stock qty', 'sub-category', 'brand', 'model', 'imei/serial', 'barcode', 'variant group', 'option 1', 'option 2', 'unit'];
 
     /** A small-edit-distance flag against the shop's own existing names — cheap (php levenshtein()), not exhaustive. */
     protected const SIMILARITY_THRESHOLD = 2;
@@ -48,12 +51,27 @@ class ProductImportService
         $result = $this->analyze($absolutePath, $shopId);
         $summary = $this->summarize($result);
         $remaining = $this->remainingProductAllowance($shopId);
+        $counted = $this->rowsCountingTowardLimit($result['rows'], $shopId);
 
-        if ($remaining !== null && $summary['toCreateCount'] > $remaining) {
-            $summary['notices'][] = 'Your plan has room for '.number_format($remaining).' more product(s). The first '.number_format($remaining).' new row(s) will be imported and the other '.number_format($summary['toCreateCount'] - $remaining).' will be skipped — archive old products, upgrade your plan or buy an add-on to import them.';
+        if ($remaining !== null && $counted > $remaining) {
+            $summary['notices'][] = 'Your plan has room for '.number_format($remaining).' more product(s). The first '.number_format($remaining).' new row(s) will be imported and the other '.number_format($counted - $remaining).' will be skipped — archive old products, upgrade your plan or buy an add-on to import them.';
         }
 
         return $summary;
+    }
+
+    /** New products the rows add to the plan's count: a variant group counts once, however many rows it has. */
+    protected function rowsCountingTowardLimit(array $rows, int $shopId): int
+    {
+        $new = collect($rows)->reject(fn (array $row) => $row['skip']);
+        $groups = $new->pluck('groupName')->filter()->map($this->normalize(...))->unique();
+        $counted = ProductGroup::withoutGlobalScopes()
+            ->where('shop_id', $shopId)
+            ->whereHas('variants', fn ($query) => $query->withoutGlobalScopes()->whereNull('archived_at'))
+            ->pluck('name')
+            ->map($this->normalize(...));
+
+        return $new->whereNull('groupName')->count() + $groups->diff($counted)->count();
     }
 
     protected function remainingProductAllowance(int $shopId): ?int
@@ -83,23 +101,37 @@ class ProductImportService
         $createdSubCategories = 0;
         $createdBrands = 0;
         $createdProducts = 0;
+        $createdGroups = 0;
+        $countedTowardLimit = 0;
         $limitSkipped = [];
         $remaining = $this->remainingProductAllowance($shopId);
 
-        DB::transaction(function () use ($result, $shopId, $remaining, &$createdMainCategories, &$createdSubCategories, &$createdBrands, &$createdProducts, &$limitSkipped) {
+        DB::transaction(function () use ($result, $shopId, $remaining, &$createdMainCategories, &$createdSubCategories, &$createdBrands, &$createdProducts, &$createdGroups, &$countedTowardLimit, &$limitSkipped) {
             /** @var array<string, array{id: int, slug: string}> $mainCategories keyed by normalized name */
             $mainCategories = [];
             /** @var array<string, true> $subCategorySeen keyed by "mainCategoryId|normalized sub name" */
             $subCategorySeen = [];
             /** @var array<string, true> $brandSeen keyed by normalized name */
             $brandSeen = [];
+            /** @var array<string, ProductGroup> $groups keyed by normalized name */
+            $groups = [];
 
             foreach ($result['rows'] as $row) {
                 if ($row['skip']) {
                     continue;
                 }
 
-                if ($remaining !== null && $createdProducts >= $remaining) {
+                $groupKey = $row['groupName'] !== null ? $this->normalize($row['groupName']) : null;
+
+                if ($groupKey !== null && ! isset($groups[$groupKey])) {
+                    $groups[$groupKey] = ProductGroup::withoutGlobalScopes()->where('shop_id', $shopId)->whereRaw('LOWER(TRIM(name)) = ?', [$groupKey])->first();
+                }
+
+                // A variant whose group already counts adds nothing to the plan's product count.
+                $addsToCount = $groupKey === null || ($groups[$groupKey] ?? null) === null
+                    || ! $groups[$groupKey]->variants()->withoutGlobalScopes()->whereNull('archived_at')->exists();
+
+                if ($addsToCount && $remaining !== null && $countedTowardLimit >= $remaining) {
                     $limitSkipped[] = "Row {$row['excelRow']}: \"{$row['name']}\"";
 
                     continue;
@@ -171,25 +203,40 @@ class ProductImportService
                     $brandName = $row['brandName'];
                 }
 
+                $details = CreateProduct::detailsForType(
+                    $typeSlug,
+                    $subCategoryName ?? '',
+                    $brandName ?? '',
+                    $row['model'] ?? '',
+                    $row['imei'] ?? '',
+                );
+
+                if ($groupKey !== null && ($groups[$groupKey] ?? null) === null) {
+                    $groups[$groupKey] = ProductGroup::create(['shop_id' => $shopId, 'name' => $row['groupName'], 'type' => $typeSlug, 'unit' => $row['unit'], 'details' => $details]);
+                    $createdGroups++;
+                }
+
                 $product = new Product;
                 $product->shop_id = $shopId;
                 $product->fill([
+                    'product_group_id' => $groupKey !== null ? $groups[$groupKey]->id : null,
+                    'variant_label' => $row['variantLabel'],
                     'type' => $typeSlug,
-                    'name' => $row['name'],
+                    // The group's own spelling, whatever casing this row used.
+                    'name' => $groupKey !== null ? ProductGroupService::fullName($groups[$groupKey]->name, $row['variantLabel']) : $row['name'],
                     'barcode' => $row['barcode'],
                     'price' => $row['price'],
                     'cost_price' => $row['costPrice'],
                     'stock_quantity' => $row['stockQuantity'],
-                    'details' => CreateProduct::detailsForType(
-                        $typeSlug,
-                        $subCategoryName ?? '',
-                        $brandName ?? '',
-                        $row['model'] ?? '',
-                        $row['imei'] ?? '',
-                    ),
+                    'unit' => $row['unit'],
+                    'details' => $details,
                 ]);
                 $product->save();
                 $createdProducts++;
+
+                if ($addsToCount) {
+                    $countedTowardLimit++;
+                }
             }
         });
 
@@ -200,6 +247,7 @@ class ProductImportService
             'createdMainCategories' => $createdMainCategories,
             'createdSubCategories' => $createdSubCategories,
             'createdBrands' => $createdBrands,
+            'createdGroups' => $createdGroups,
             'limitSkippedProducts' => count($limitSkipped),
             'limitSkippedLines' => array_slice($limitSkipped, 0, 50),
         ];
@@ -279,6 +327,24 @@ class ProductImportService
             $notices[] = 'The Barcode column was ignored because barcode support is turned off for this shop.';
         }
 
+        $variantsEnabled = (bool) Shop::whereKey($shopId)->value('variants_enabled');
+        if (isset($headerIndex['variant group']) && ! $variantsEnabled) {
+            $notices[] = 'The Variant Group, Option 1 and Option 2 columns were ignored because product variants are turned off for this shop.';
+        }
+
+        $unitsEnabled = (bool) Shop::whereKey($shopId)->value('measured_units_enabled');
+        if (isset($headerIndex['unit']) && ! $unitsEnabled) {
+            $notices[] = 'The Unit column was ignored because weighed and measured items are turned off for this shop.';
+        }
+        $seenGroupUnits = []; // normalized group name => the unit its first row settled on
+
+        // Existing groups, by normalized name, so a row can join one but never disagree with its category.
+        $existingGroups = $variantsEnabled
+            ? ProductGroup::withoutGlobalScopes()->where('shop_id', $shopId)->get()->keyBy(fn (ProductGroup $group) => $this->normalize($group->name))
+            : collect();
+        $seenGroups = []; // normalized group name => ['main' => normalized, 'sub' => normalized], from the first row naming it
+        $newGroupNames = []; // normalized group name => original-cased name
+
         $existingMainCategoryNames = MainCategory::query()->pluck('name')->all();
         $existingBrandNames = Brand::query()->pluck('name')->all();
 
@@ -333,12 +399,30 @@ class ProductImportService
             $model = trim($cellAt($cells, 'model'));
             $imei = trim($cellAt($cells, 'imei/serial'));
             $barcode = $barcodesEnabled ? trim($cellAt($cells, 'barcode')) : '';
+            $groupName = $variantsEnabled ? trim($cellAt($cells, 'variant group')) : '';
+            $options = array_values(array_filter([trim($cellAt($cells, 'option 1')), trim($cellAt($cells, 'option 2'))], fn (string $option) => $option !== ''));
+            $variantLabel = $groupName !== '' ? implode(ProductGroupService::LABEL_SEPARATOR, $options) : '';
 
             $rowHadError = false;
             $addError = function (string $message) use (&$rowHadError, &$rowErrors, $excelRow) {
                 $rowErrors[] = "Row {$excelRow}: {$message}";
                 $rowHadError = true;
             };
+
+            if ($groupName !== '') {
+                if ($options === []) {
+                    $addError('Option 1 or Option 2 is required because Variant Group is filled in.');
+                } elseif (mb_strlen($variantLabel) > 100) {
+                    $addError('The variant options are too long (100 characters at most together).');
+                }
+
+                if (mb_strlen($groupName) > 150) {
+                    $addError('Variant Group is too long (150 characters at most).');
+                }
+
+                // The full name "Group - M / Red" is this row's identity, so Name may be left blank.
+                $name = ProductGroupService::fullName($groupName, $variantLabel);
+            }
 
             if ($name === '') {
                 $addError('Name is required.');
@@ -363,9 +447,26 @@ class ProductImportService
                 }
             }
 
+            // A blank Unit on a variant row follows its group rather than disagreeing with it.
+            $unitRaw = $unitsEnabled ? trim($cellAt($cells, 'unit')) : '';
+            $groupKeyForUnit = $groupName !== '' ? $this->normalize($groupName) : null;
+            $inheritedUnit = $groupKeyForUnit !== null ? ($existingGroups->get($groupKeyForUnit)?->unit ?? $seenGroupUnits[$groupKeyForUnit] ?? QuantityUnit::Piece) : QuantityUnit::Piece;
+            $unit = $unitRaw === '' ? $inheritedUnit : QuantityUnit::fromInput($unitRaw);
+
+            if ($unit === null) {
+                $addError('Unit must be piece, kg, litre, metre, yard or gaz.');
+                $unit = QuantityUnit::Piece;
+            }
+
             $stockQuantity = 0;
             if ($stockRaw !== '') {
-                if (! preg_match('/^\d+$/', $stockRaw)) {
+                if ($unit->allowsDecimals()) {
+                    if (preg_match('/^\d+(\.\d{1,3})?$/', $stockRaw) !== 1 || (float) $stockRaw > Quantity::MAX) {
+                        $addError('Stock Qty must be a number with at most 3 decimal places.');
+                    } else {
+                        $stockQuantity = Quantity::normalize($stockRaw);
+                    }
+                } elseif (! preg_match('/^\d+$/', $stockRaw) || (float) $stockRaw > 999999999) {
                     $addError('Stock Qty is not a valid whole number.');
                 } else {
                     $stockQuantity = (int) $stockRaw;
@@ -378,6 +479,10 @@ class ProductImportService
             $matchedSlug = $mainCategoryName !== '' ? ($mainCategorySlugByName[$this->normalize($mainCategoryName)] ?? null) : null;
             $isMobile = $matchedSlug === 'mobile';
             $isAccessory = $matchedSlug === 'accessory';
+
+            if ($unit->allowsDecimals() && ($isMobile || $matchedSlug === 'sim')) {
+                $addError('Mobiles and SIMs are sold by the piece.');
+            }
 
             if ($isAccessory && $subCategoryName === '') {
                 $addError('Sub-Category is required because Main Category is Accessory.');
@@ -394,6 +499,28 @@ class ProductImportService
                 $model = '';
                 $imei = '';
                 $brandName = '';
+            }
+
+            if ($groupName !== '') {
+                $groupKey = $this->normalize($groupName);
+                $mainKey = $this->normalize($mainCategoryName);
+                $subKey = $this->normalize($subCategoryName);
+                $existingGroup = $existingGroups->get($groupKey);
+
+                if ($isMobile || $this->normalize($mainCategoryName) === 'sim' || $matchedSlug === 'sim') {
+                    $addError("IMEI-tracked mobiles and SIMs can't have variants.");
+                } elseif ($existingGroup !== null && ($matchedSlug !== $existingGroup->type || $subKey !== $this->normalize((string) ($existingGroup->details['category'] ?? '')))) {
+                    $addError("Variant Group \"{$groupName}\" already exists under a different category.");
+                } elseif (isset($seenGroups[$groupKey]) && $seenGroups[$groupKey] !== ['main' => $mainKey, 'sub' => $subKey]) {
+                    $addError("Every row of Variant Group \"{$groupName}\" must have the same Main Category and Sub-Category.");
+                } elseif ($existingGroup !== null && $existingGroup->unit !== $unit) {
+                    $addError("Variant Group \"{$groupName}\" is sold by {$existingGroup->unit->symbol()}, and every variant in a group has to use the same unit.");
+                } elseif (isset($seenGroupUnits[$groupKey]) && $seenGroupUnits[$groupKey] !== $unit) {
+                    $addError("Every row of Variant Group \"{$groupName}\" must have the same Unit.");
+                } else {
+                    $seenGroups[$groupKey] = ['main' => $mainKey, 'sub' => $subKey];
+                    $seenGroupUnits[$groupKey] = $unit;
+                }
             }
 
             if ($rowHadError) {
@@ -435,6 +562,10 @@ class ProductImportService
             }
 
             if (! $skip) {
+                if ($groupName !== '' && ! $existingGroups->has($this->normalize($groupName))) {
+                    $newGroupNames[$this->normalize($groupName)] ??= $groupName;
+                }
+
                 $mainKey = $this->normalize($mainCategoryName);
                 if (! in_array($mainKey, array_map($this->normalize(...), $existingMainCategoryNames), true)) {
                     $pendingMainCategories[$mainKey] = $mainCategoryName;
@@ -465,9 +596,12 @@ class ProductImportService
                 'model' => $model !== '' ? $model : null,
                 'imei' => $imei !== '' ? $imei : null,
                 'barcode' => $barcode !== '' ? $barcode : null,
+                'groupName' => $groupName !== '' ? $groupName : null,
+                'variantLabel' => $groupName !== '' ? $variantLabel : null,
                 'price' => $price,
                 'costPrice' => $costPrice,
                 'stockQuantity' => $stockQuantity,
+                'unit' => $unit,
                 'skip' => $skip,
                 'skipReason' => $skip ? "already exists (same name and IMEI)" : null,
             ];
@@ -484,6 +618,7 @@ class ProductImportService
             'newMainCategoryNames' => array_values($pendingMainCategories),
             'newSubCategoryNames' => array_map(fn ($s) => "{$s['sub']} (under {$s['main']})", array_values($pendingSubCategories)),
             'newBrandNames' => array_values($pendingBrands),
+            'newGroupNames' => array_values($newGroupNames),
             'similarWarnings' => $valid ? $this->similarityWarnings($pendingMainCategories, $existingMainCategoryNames, $pendingBrands, $existingBrandNames) : [],
         ];
     }
@@ -499,6 +634,7 @@ class ProductImportService
             'newMainCategoryNames' => [],
             'newSubCategoryNames' => [],
             'newBrandNames' => [],
+            'newGroupNames' => [],
             'similarWarnings' => [],
         ];
     }
@@ -525,6 +661,7 @@ class ProductImportService
             'newMainCategoryNames' => $result['newMainCategoryNames'],
             'newSubCategoryNames' => $result['newSubCategoryNames'],
             'newBrandNames' => $result['newBrandNames'],
+            'newGroupNames' => $result['newGroupNames'],
             'similarWarnings' => $result['similarWarnings'],
         ];
     }
@@ -584,16 +721,25 @@ class ProductImportService
      * worked row and the required/optional notes — the importer only ever
      * reads the first sheet.
      */
-    public function templateResponse(bool $withBarcode = true): StreamedResponse
+    public function templateResponse(bool $withBarcode = true, bool $withVariants = false, bool $withUnits = false): StreamedResponse
     {
         $headers = ['Name', 'Main Category', 'Sub-Category', 'Brand', 'Model', 'IMEI/Serial', 'Selling Price', 'Cost Price', 'Stock Qty'];
         if ($withBarcode) {
             $headers[] = 'Barcode';
         }
 
+        $barcodeColumn = $withBarcode ? chr(ord('A') + count($headers) - 1) : null;
+
+        if ($withVariants) {
+            array_push($headers, 'Variant Group', 'Option 1', 'Option 2');
+        }
+
+        if ($withUnits) {
+            $headers[] = 'Unit';
+        }
+
         $lastColumn = chr(ord('A') + count($headers) - 1);
         $columns = range('A', $lastColumn);
-        $barcodeColumn = $withBarcode ? $lastColumn : null;
 
         $spreadsheet = new Spreadsheet;
 
@@ -626,6 +772,23 @@ class ProductImportService
             ...($withBarcode ? [''] : []),
         ], null, 'A3');
 
+        if ($withVariants) {
+            $example->fromArray([
+                '', 'Clothing', '', '', '', '', '1500', '900', '10',
+                ...($withBarcode ? [''] : []),
+                'Cotton Shirt', 'M', 'Red',
+            ], null, 'A4');
+        }
+
+        if ($withUnits) {
+            $example->fromArray([
+                'Basmati Rice', 'Grocery', '', '', '', '', '320', '280', '25.5',
+                ...($withBarcode ? [''] : []),
+                ...($withVariants ? ['', '', ''] : []),
+                'kg',
+            ], null, 'A5');
+        }
+
         $notes = [
             ['Column', 'Required?', 'Notes'],
             ['Name', 'Required', ''],
@@ -636,14 +799,19 @@ class ProductImportService
             ['IMEI/Serial', 'Optional, Mobile Phone only', 'Kept as text — do not reformat this column as a number.'],
             ['Selling Price', 'Required', 'Numbers only ("Rs"/commas are stripped automatically).'],
             ['Cost Price', 'Optional', ''],
-            ['Stock Qty', 'Optional', 'Whole number. Defaults to 0 if left blank.'],
+            ['Stock Qty', 'Optional', $withUnits ? 'Defaults to 0 if left blank. A whole number for pieces; up to 3 decimals for every other unit.' : 'Whole number. Defaults to 0 if left blank.'],
             ...($withBarcode ? [['Barcode', 'Optional', 'Kept as text. Must be unique in your shop — a barcode already used by another product, or repeated on another row, is an error. Leave blank if the product has none.']] : []),
+            ...($withVariants ? [
+                ['Variant Group', 'Optional', 'Rows with the same Variant Group become variants of one product and count as one product on your plan. They must share a Main Category and Sub-Category. Not for Mobile Phone. Name can be left blank: the full name is built as "Cotton Shirt - M / Red", and a row matching an existing full name is skipped.'],
+                ['Option 1, Option 2', 'At least one, when Variant Group is filled in', 'For example a size and a colour.'],
+            ] : []),
+            ...($withUnits ? [['Unit', 'Optional', 'piece, kg, litre, metre, yard or gaz. Blank means piece. Mobile phones are always pieces, and every variant in a group has to use the same unit.']] : []),
             ['', '', ''],
             ['Note:', '', 'Images cannot be imported from a spreadsheet — add product photos afterwards from the Products screen.'],
             ['Note:', '', 'A row whose Name and IMEI/Serial exactly match an existing product is skipped, not overwritten.'],
         ];
-        $example->fromArray($notes, null, 'A6');
-        $example->getStyle('A6:C6')->getFont()->setBold(true);
+        $example->fromArray($notes, null, 'A7');
+        $example->getStyle('A7:C7')->getFont()->setBold(true);
         foreach ($columns as $letter) {
             $example->getColumnDimension($letter)->setWidth(22);
         }

@@ -2,10 +2,14 @@
 
 use App\Actions\ConsumeStockFifo;
 use App\Actions\CreateSale;
+use App\Enums\QuantityUnit;
 use App\Livewire\Concerns\PicksPaymentMethod;
+use App\Livewire\Concerns\PromptsForMeasuredQuantity;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\ProductGroup;
+use App\Support\Quantity;
 use App\Support\SaleCartMath;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -17,7 +21,7 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 {
-    use PicksPaymentMethod, Toasts;
+    use PicksPaymentMethod, PromptsForMeasuredQuantity, Toasts;
 
     const MAX_LINE_PRICE = 9999999.99;
 
@@ -27,11 +31,85 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
     public string $customerId = '';
     public string $amountPaidNow = '';
     public string $saleDate = '';
+    public ?int $pickerGroupId = null;
 
     public function mount(): void
     {
         $this->saleDate = now()->toDateString();
         $this->paymentMethod = 'cash';
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->pickerGroupId = null;
+    }
+
+    public function openVariantPicker(int $groupId): void
+    {
+        $this->pickerGroupId = ProductGroup::findOrFail($groupId)->id;
+    }
+
+    public function closeVariantPicker(): void
+    {
+        $this->pickerGroupId = null;
+    }
+
+    protected function searchMatches()
+    {
+        return Product::query()
+            ->where('stock_quantity', '>', 0)
+            ->where('name', 'like', "%{$this->search}%");
+    }
+
+    /**
+     * What each collapsed group shows. A group with one matching variant is
+     * left out: that variant is listed directly, under its full name.
+     *
+     * @return array<int, array{name: string, count: int, stock: int|float, unit: QuantityUnit, fromPrice: float}> keyed by group id
+     */
+    protected function groupEntries($results): array
+    {
+        $groupIds = $results->pluck('product_group_id')->filter()->unique()->values();
+
+        if ($groupIds->isEmpty()) {
+            return [];
+        }
+
+        $matched = $this->searchMatches()->whereIn('product_group_id', $groupIds)->selectRaw('product_group_id, COUNT(*) as matched')->groupBy('product_group_id')->pluck('matched', 'product_group_id');
+        $collapsing = $matched->filter(fn ($count) => (int) $count > 1)->keys();
+        $inStock = Product::query()->whereIn('product_group_id', $collapsing)->where('stock_quantity', '>', 0)->get();
+        $prices = Product::sellingPricesFor($inStock);
+        $names = ProductGroup::whereIn('id', $collapsing)->pluck('name', 'id');
+
+        return $inStock->groupBy('product_group_id')->map(fn ($variants, $groupId) => [
+            'name' => $names[$groupId],
+            'count' => $variants->count(),
+            'stock' => Quantity::sum($variants->pluck('stock_quantity')),
+            'unit' => $variants->first()->unit,
+            'fromPrice' => min(array_intersect_key($prices, $variants->keyBy('id')->all())),
+        ])->all();
+    }
+
+    /** Every variant of the open group, so the cashier can see which sizes have run out. */
+    protected function pickerVariants()
+    {
+        if ($this->pickerGroupId === null) {
+            return null;
+        }
+
+        $group = ProductGroup::with('variants')->find($this->pickerGroupId);
+
+        if ($group === null) {
+            return null;
+        }
+
+        $variants = $group->variants->whereNull('archived_at')->values();
+        $prices = Product::sellingPricesFor($variants);
+
+        return [
+            'name' => $group->name,
+            'rows' => $variants->map(fn (Product $variant) => ['variant' => $variant, 'price' => $prices[$variant->id]]),
+        ];
     }
 
     public function updatedCustomerId(): void
@@ -50,18 +128,22 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
     public function with(): array
     {
+        $results = $this->search !== ''
+            ? $this->searchMatches()
+                ->oneRowPerGroup($this->searchMatches())
+                ->orderBy('name')
+                ->limit(8)
+                ->get()
+            : collect();
+
         return [
-            'results' => $this->search !== ''
-                ? Product::query()
-                    ->where('stock_quantity', '>', 0)
-                    ->where('name', 'like', "%{$this->search}%")
-                    ->orderBy('name')
-                    ->limit(8)
-                    ->get()
-                : collect(),
+            'results' => $results,
+            'groupEntries' => $this->groupEntries($results),
+            'picker' => $this->pickerVariants(),
             'customers' => Customer::query()->orderBy('name')->get(),
             'paymentAccounts' => $this->paymentAccounts(),
             'barcodeEnabled' => Auth::user()->canUseBarcodes(),
+            'promptProduct' => $this->quantityPromptId !== null ? Product::find($this->quantityPromptId) : null,
         ];
     }
 
@@ -69,14 +151,22 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
     {
         $product = Product::findOrFail($productId);
 
-        if ($product->stock_quantity < 1) {
+        if ($product->stock_quantity <= 0) {
             $this->toastError("{$product->name} is out of stock.");
 
             return;
         }
 
+        if ($product->unit->allowsDecimals()) {
+            $this->search = '';
+            $this->pickerGroupId = null;
+            $this->promptForQuantity($product);
+
+            return;
+        }
+
         if (isset($this->cart[$productId])) {
-            $newQuantity = $this->cart[$productId]['quantity'] + 1;
+            $newQuantity = Quantity::add($this->cart[$productId]['quantity'], 1);
 
             if ($newQuantity > $product->stock_quantity) {
                 $this->toastError("Only {$product->stock_quantity} of {$product->name} in stock.");
@@ -90,9 +180,15 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         }
 
         $this->search = '';
+        $this->pickerGroupId = null;
     }
 
-    protected function cartLineFor(Product $product): array
+    protected function quantityLimitFor(Product $product): int|float
+    {
+        return $product->stock_quantity;
+    }
+
+    protected function cartLineFor(Product $product, int|float $quantity = 1): array
     {
         return [
             'product_id' => $product->id,
@@ -101,7 +197,8 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             'list_price' => (string) $product->currentSellingPrice(),
             'cost_price' => Auth::user()->hasAccessTo('sales-view-cost-price') ? $product->currentCostPrice() : null,
             'custom_price' => '',
-            'quantity' => 1,
+            'quantity' => $quantity,
+            'unit' => $product->unit->value,
             'discount' => '0',
             'max_stock' => $product->stock_quantity,
         ];
@@ -138,13 +235,19 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         $this->search = '';
         $this->dispatch('focus-scan');
 
-        if ($product->stock_quantity < 1) {
+        if ($product->stock_quantity <= 0) {
             $this->toastError("{$product->name} is out of stock.");
 
             return;
         }
 
-        $inCart = $this->cart[$product->id]['quantity'] ?? 0;
+        if ($product->unit->allowsDecimals()) {
+            $this->promptForQuantity($product);
+
+            return;
+        }
+
+        $inCart = Quantity::normalize($this->cart[$product->id]['quantity'] ?? 0);
 
         if ($inCart + 1 > $product->stock_quantity) {
             $this->toastError("Only {$product->stock_quantity} in stock — already in cart.");
@@ -181,7 +284,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             return 0.0;
         }
 
-        $allocations = ConsumeStockFifo::preview($product, (int) $item['quantity']);
+        $allocations = ConsumeStockFifo::preview($product, Quantity::normalize($item['quantity']));
         $overridePrice = $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null;
         $subLines = SaleCartMath::allocateLines($overridePrice, (float) $item['discount'], $allocations);
 
@@ -190,14 +293,14 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
     public function subtotal(): float
     {
-        return array_sum(array_map(fn (array $item) => $this->lineTotal($item), $this->cart));
+        return round(array_sum(array_map(fn (array $item) => $this->lineTotal($item), $this->cart)), 2);
     }
 
     public function total(): float
     {
         $subtotal = $this->subtotal();
 
-        return max(0.0, $subtotal - min((float) $this->invoiceDiscount, $subtotal));
+        return round(max(0.0, $subtotal - min((float) $this->invoiceDiscount, $subtotal)), 2);
     }
 
     public function completeSale(): void
@@ -224,7 +327,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         ];
 
         foreach ($this->cart as $id => $item) {
-            $rules["cart.$id.quantity"] = ['required', 'integer', 'min:1'];
+            $rules["cart.$id.quantity"] = QuantityUnit::fromValue($item['unit'] ?? 'piece')->quantityRules();
             $rules["cart.$id.discount"] = ['required', 'numeric', 'min:0'];
             $rules["cart.$id.custom_price"] = ['nullable', 'numeric', 'min:0', 'max:'.self::MAX_LINE_PRICE];
         }
@@ -236,7 +339,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         foreach ($this->cart as $productId => $item) {
             $lines[] = [
                 'product_id' => (int) $productId,
-                'quantity' => (int) $item['quantity'],
+                'quantity' => $item['quantity'],
                 'discount' => (float) $item['discount'],
                 'custom_price' => $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null,
             ];
@@ -298,9 +401,52 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                         class="text-base"
                     />
 
-                    @if ($search !== '')
+                    @if ($search !== '' && $picker)
+                        <div class="mt-3 rounded-lg border border-slate-200">
+                            <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5">
+                                <p class="text-sm font-semibold text-slate-900">{{ $picker['name'] }}: choose a variant</p>
+                                <button type="button" wire:click="closeVariantPicker" class="text-sm font-medium text-brand-700 hover:text-brand-800">Back to results</button>
+                            </div>
+                            <div class="max-h-80 divide-y divide-slate-100 overflow-y-auto">
+                                @foreach ($picker['rows'] as $row)
+                                    <button
+                                        type="button"
+                                        wire:click="addToCart({{ $row['variant']->id }})"
+                                        wire:key="picker-{{ $row['variant']->id }}"
+                                        @disabled($row['variant']->stock_quantity <= 0)
+                                        class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <div>
+                                            <p class="text-sm font-medium text-slate-900">{{ $row['variant']->variant_label }}</p>
+                                            <p class="text-xs text-slate-400">{{ $row['variant']->stock_quantity > 0 ? $row['variant']->stockLabel().' in stock' : 'Out of stock' }}</p>
+                                        </div>
+                                        <span class="text-sm font-semibold text-slate-700">Rs {{ number_format($row['price'], 2) }}{{ $row['variant']->unit->perSuffix() }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @elseif ($search !== '')
                         <div class="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200">
                             @forelse ($results as $product)
+                                @if (isset($groupEntries[$product->product_group_id]))
+                                    @php($entry = $groupEntries[$product->product_group_id])
+                                    <button
+                                        type="button"
+                                        wire:click="openVariantPicker({{ $product->product_group_id }})"
+                                        wire:key="result-group-{{ $product->product_group_id }}"
+                                        class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50"
+                                    >
+                                        <div class="flex items-center gap-3">
+                                            <x-ui.thumbnail :src="$product->imageUrl()" :label="$entry['name']" />
+                                            <div>
+                                                <p class="text-sm font-medium text-slate-900">{{ $entry['name'] }}</p>
+                                                <p class="text-xs text-slate-400">{{ $product->typeLabel() }} · {{ $entry['count'] }} variants · {{ $entry['unit']->amount($entry['stock']) }} in stock</p>
+                                            </div>
+                                        </div>
+                                        <span class="text-sm font-semibold text-slate-700">From Rs {{ number_format($entry['fromPrice'], 2) }}{{ $entry['unit']->perSuffix() }}</span>
+                                    </button>
+                                    @continue
+                                @endif
                                 <button
                                     type="button"
                                     wire:click="addToCart({{ $product->id }})"
@@ -311,10 +457,10 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                                         <x-ui.thumbnail :src="$product->imageUrl()" :label="$product->name" />
                                         <div>
                                             <p class="text-sm font-medium text-slate-900">{{ $product->name }}</p>
-                                            <p class="text-xs text-slate-400">{{ $product->typeLabel() }} · {{ $product->stock_quantity }} in stock</p>
+                                            <p class="text-xs text-slate-400">{{ $product->typeLabel() }} · {{ $product->stockLabel() }} in stock</p>
                                         </div>
                                     </div>
-                                    <span class="text-sm font-semibold text-slate-700">Rs {{ number_format($product->currentSellingPrice(), 2) }}</span>
+                                    <span class="text-sm font-semibold text-slate-700">Rs {{ number_format($product->currentSellingPrice(), 2) }}{{ $product->unit->perSuffix() }}</span>
                                 </button>
                             @empty
                                 <p class="px-4 py-3 text-sm text-slate-400">No in-stock products match "{{ $search }}".</p>
@@ -375,13 +521,20 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                                             @enderror
                                         </td>
                                         <td class="whitespace-nowrap px-4 py-3">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max="{{ $item['max_stock'] }}"
-                                                wire:model.live="cart.{{ $productId }}.quantity"
-                                                class="w-16 rounded-lg border-slate-300 py-1.5 text-right text-sm focus:border-brand-500 focus:ring-brand-500"
-                                            />
+                                            @php($lineUnit = \App\Enums\QuantityUnit::fromValue($item['unit'] ?? 'piece'))
+                                            <div class="flex items-center justify-end gap-1.5">
+                                                <input
+                                                    type="number"
+                                                    min="{{ $lineUnit->inputMin() }}"
+                                                    step="{{ $lineUnit->inputStep() }}"
+                                                    max="{{ $item['max_stock'] }}"
+                                                    wire:model.live="cart.{{ $productId }}.quantity"
+                                                    @class(['rounded-lg border-slate-300 py-1.5 text-right text-sm focus:border-brand-500 focus:ring-brand-500', 'w-16' => ! $lineUnit->allowsDecimals(), 'w-24' => $lineUnit->allowsDecimals()])
+                                                />
+                                                @if ($lineUnit->allowsDecimals())
+                                                    <span class="text-xs text-slate-500">{{ $lineUnit->symbol() }}</span>
+                                                @endif
+                                            </div>
                                             @error("cart.$productId.quantity")
                                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                             @enderror
@@ -473,6 +626,8 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             </x-ui.card>
         </div>
     </div>
+
+    <x-sales.quantity-prompt :product="$promptProduct" :limit="$promptProduct?->stock_quantity" />
 
     <livewire:customers.quick-create />
     <livewire:shop-accounts.quick-create />

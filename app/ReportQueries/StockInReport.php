@@ -3,16 +3,20 @@
 namespace App\ReportQueries;
 
 use App\Enums\PaymentStatus;
+use App\Enums\QuantityUnit;
 use App\Exports\TableExport;
 use App\Models\Product;
 use App\Models\Scopes\ExcludesCancelledScope;
 use App\Models\StockIn;
 use App\Models\Vendor;
 use App\Services\TableExportService;
+use App\Support\Quantity;
 use Illuminate\Database\Eloquent\Builder;
 
 class StockInReport implements ScreenReport
 {
+    protected ?bool $showsUnitsCache = null;
+
     public function __construct(
         protected string $from = '',
         protected string $to = '',
@@ -42,7 +46,31 @@ class StockInReport implements ScreenReport
     /** Totals always exclude cancelled entries, regardless of $includeCancelled. */
     public function totalUnits(): int
     {
-        return (int) $this->query()->where('stock_ins.status', '!=', 'cancelled')->sum('quantity');
+        return (int) $this->query()->where('stock_ins.status', '!=', 'cancelled')->where('stock_ins.unit', QuantityUnit::Piece->value)->sum('quantity');
+    }
+
+    /**
+     * Weight, volume and length beside the piece count, one total per unit,
+     * because adding kg to pieces means nothing.
+     *
+     * @return array<string, int|float> unit value => total
+     */
+    public function measuredTotals(): array
+    {
+        return $this->query()
+            ->where('stock_ins.status', '!=', 'cancelled')
+            ->where('stock_ins.unit', '!=', QuantityUnit::Piece->value)
+            ->selectRaw('stock_ins.unit as unit_value, SUM(stock_ins.quantity) as total')
+            ->groupBy('stock_ins.unit')
+            ->toBase()
+            ->pluck('total', 'unit_value')
+            ->map(fn ($total) => Quantity::normalize($total))
+            ->all();
+    }
+
+    protected function showsUnits(): bool
+    {
+        return $this->showsUnitsCache ??= $this->query()->where('stock_ins.unit', '!=', QuantityUnit::Piece->value)->exists();
     }
 
     /** Deliberately unfiltered — a running balance of everything still owed, not scoped to the date range being viewed. */
@@ -83,13 +111,14 @@ class StockInReport implements ScreenReport
     {
         return [
             ['label' => 'Total Units', 'value' => number_format($this->totalUnits())],
+            ...(($measured = QuantityUnit::summarize($this->measuredTotals())) !== '' ? [['label' => 'Weight, Volume & Length', 'value' => $measured]] : []),
             ['label' => 'Total Owed to Suppliers', 'value' => 'Rs '.number_format($this->totalOwed(), 2)],
         ];
     }
 
     public function tableHeaders(): array
     {
-        return ['Date', 'Product', 'Vendor', 'Quantity', 'Remaining', 'Cost Price', 'Selling Price', 'Payment', 'Owed', 'Note', 'Entered By'];
+        return ['Date', 'Product', 'Vendor', 'Quantity', 'Remaining', ...($this->showsUnits() ? ['Unit'] : []), 'Cost Price', 'Selling Price', 'Payment', 'Owed', 'Note', 'Entered By'];
     }
 
     public function tableRows(bool $forExcel): array
@@ -102,15 +131,16 @@ class StockInReport implements ScreenReport
             $enteredBy = TableExportService::sanitizeCell($entry->user?->name ?? '—');
             $costPrice = $entry->cost_price !== null ? (float) $entry->cost_price : null;
             $sellingPrice = $entry->selling_price !== null ? (float) $entry->selling_price : null;
+            $unitCell = $this->showsUnits() ? [$entry->unit->symbol()] : [];
 
             return $forExcel
-                ? [TableExport::excelDate($entry->stock_date), $product, $vendor, (int) $entry->quantity, (int) $entry->quantity_remaining, $costPrice, $sellingPrice, $status, (float) $entry->amountOwed(), $note, $enteredBy]
-                : [$entry->stock_date->format('d M Y'), $product, $vendor, (string) $entry->quantity, (string) $entry->quantity_remaining, $costPrice !== null ? 'Rs '.number_format($costPrice, 2) : '—', $sellingPrice !== null ? 'Rs '.number_format($sellingPrice, 2) : '—', $status, $entry->amountOwed() > 0 ? 'Rs '.number_format($entry->amountOwed(), 2) : '—', $note ?: '—', $enteredBy];
+                ? [TableExport::excelDate($entry->stock_date), $product, $vendor, $entry->quantity, $entry->quantity_remaining, ...$unitCell, $costPrice, $sellingPrice, $status, (float) $entry->amountOwed(), $note, $enteredBy]
+                : [$entry->stock_date->format('d M Y'), $product, $vendor, Quantity::plain($entry->quantity), Quantity::plain($entry->quantity_remaining), ...$unitCell, $costPrice !== null ? 'Rs '.number_format($costPrice, 2) : '—', $sellingPrice !== null ? 'Rs '.number_format($sellingPrice, 2) : '—', $status, $entry->amountOwed() > 0 ? 'Rs '.number_format($entry->amountOwed(), 2) : '—', $note ?: '—', $enteredBy];
         })->all();
     }
 
     public function columnTypes(): array
     {
-        return ['date', 'string', 'string', 'integer', 'integer', 'currency', 'currency', 'string', 'currency', 'string', 'string'];
+        return ['date', 'string', 'string', 'quantity', 'quantity', ...($this->showsUnits() ? ['string'] : []), 'currency', 'currency', 'string', 'currency', 'string', 'string'];
     }
 }

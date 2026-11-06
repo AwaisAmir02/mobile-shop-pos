@@ -2,10 +2,13 @@
 
 use App\Actions\ConsumeStockFifo;
 use App\Actions\UpdateSale;
+use App\Enums\QuantityUnit;
+use App\Livewire\Concerns\PromptsForMeasuredQuantity;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Support\Quantity;
 use App\Support\SaleCartMath;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -17,7 +20,7 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
 {
-    use Toasts;
+    use PromptsForMeasuredQuantity, Toasts;
 
     const MAX_LINE_PRICE = 9999999.99;
 
@@ -53,6 +56,7 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
                         'product_name' => $item->product_name,
                         'product_type' => $item->product_type,
                         'quantity' => $item->quantity,
+                        'unit' => $item->unit->value,
                         'unit_price' => (float) $item->unit_price,
                         'discount_amount' => (float) $item->discount_amount,
                         'line_total' => (float) $item->line_total,
@@ -66,7 +70,7 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
             $firstItem = $itemsForProduct->first();
             $listPrice = $product->currentSellingPrice();
             $wasOverridden = $firstItem->list_price !== null && (float) $firstItem->list_price !== (float) $firstItem->unit_price;
-            $totalQuantity = (int) $itemsForProduct->sum('quantity');
+            $totalQuantity = Quantity::sum($itemsForProduct->pluck('quantity'));
             $frozenCostPrice = $firstItem->cost_price !== null ? (float) $firstItem->cost_price : $product->currentCostPrice();
 
             $this->cart[$product->id] = [
@@ -78,8 +82,9 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
                 'cost_price' => $canViewCostPrice ? $frozenCostPrice : null,
                 'custom_price' => $wasOverridden ? (string) $firstItem->unit_price : '',
                 'quantity' => $totalQuantity,
+                'unit' => $product->unit->value,
                 'discount' => (string) $itemsForProduct->sum('discount_amount'),
-                'max_stock' => $product->stock_quantity + $totalQuantity,
+                'max_stock' => Quantity::add($product->stock_quantity, $totalQuantity),
             ];
         }
     }
@@ -110,6 +115,8 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
                     ->get()
                 : collect(),
             'customers' => Customer::query()->orderBy('name')->get(),
+            'promptProduct' => ($promptProduct = $this->quantityPromptId !== null ? Product::find($this->quantityPromptId) : null),
+            'promptLimit' => $promptProduct ? $this->quantityLimitFor($promptProduct) : null,
         ];
     }
 
@@ -117,24 +124,42 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
     {
         $product = Product::findOrFail($productId);
 
-        if (isset($this->cart[$productId])) {
-            $this->cart[$productId]['quantity'] = $this->cart[$productId]['quantity'] + 1;
-        } else {
-            $this->cart[$productId] = [
-                'product_id' => $product->id,
-                'name' => $product->name,
-                'category' => $product->typeLabel(),
-                'type' => $product->type,
-                'list_price' => (string) $product->currentSellingPrice(),
-                'cost_price' => Auth::user()->hasAccessTo('sales-view-cost-price') ? $product->currentCostPrice() : null,
-                'custom_price' => '',
-                'quantity' => 1,
-                'discount' => '0',
-                'max_stock' => $product->stock_quantity,
-            ];
+        $this->search = '';
+
+        if ($product->unit->allowsDecimals()) {
+            $this->promptForQuantity($product);
+
+            return;
         }
 
-        $this->search = '';
+        if (isset($this->cart[$productId])) {
+            $this->cart[$productId]['quantity'] = Quantity::add($this->cart[$productId]['quantity'], 1);
+        } else {
+            $this->cart[$productId] = $this->cartLineFor($product);
+        }
+    }
+
+    /** Stock on hand, plus whatever this sale already holds (saving puts that back first). */
+    protected function quantityLimitFor(Product $product): int|float
+    {
+        return $this->cart[$product->id]['max_stock'] ?? $product->stock_quantity;
+    }
+
+    protected function cartLineFor(Product $product, int|float $quantity = 1): array
+    {
+        return [
+            'product_id' => $product->id,
+            'name' => $product->name,
+            'category' => $product->typeLabel(),
+            'type' => $product->type,
+            'list_price' => (string) $product->currentSellingPrice(),
+            'cost_price' => Auth::user()->hasAccessTo('sales-view-cost-price') ? $product->currentCostPrice() : null,
+            'custom_price' => '',
+            'quantity' => $quantity,
+            'unit' => $product->unit->value,
+            'discount' => '0',
+            'max_stock' => $product->stock_quantity,
+        ];
     }
 
     public function removeFromCart(int $productId): void
@@ -167,10 +192,10 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
             ->where('product_id', $item['product_id'])
             ->whereNotNull('stock_in_id')
             ->groupBy('stock_in_id')
-            ->map(fn ($group) => $group->sum('quantity'))
+            ->map(fn ($group) => Quantity::sum($group->pluck('quantity')))
             ->all();
 
-        $allocations = ConsumeStockFifo::previewForEdit($product, (int) $item['quantity'], $originalHoldings);
+        $allocations = ConsumeStockFifo::previewForEdit($product, Quantity::normalize($item['quantity']), $originalHoldings);
         $overridePrice = $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null;
         $subLines = SaleCartMath::allocateLines($overridePrice, (float) $item['discount'], $allocations);
 
@@ -184,12 +209,12 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
 
     public function subtotal(): float
     {
-        return array_sum(array_map(fn (array $item) => $this->lineTotal($item), $this->cart)) + $this->legacySubtotal();
+        return round(array_sum(array_map(fn (array $item) => $this->lineTotal($item), $this->cart)) + $this->legacySubtotal(), 2);
     }
 
     public function total(): float
     {
-        return max(0.0, $this->subtotal() - min((float) $this->invoiceDiscount, $this->subtotal()));
+        return round(max(0.0, $this->subtotal() - min((float) $this->invoiceDiscount, $this->subtotal())), 2);
     }
 
     public function alreadyPaid(): float
@@ -218,7 +243,7 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
         ];
 
         foreach ($this->cart as $id => $item) {
-            $rules["cart.$id.quantity"] = ['required', 'integer', 'min:1'];
+            $rules["cart.$id.quantity"] = QuantityUnit::fromValue($item['unit'] ?? 'piece')->quantityRules();
             $rules["cart.$id.discount"] = ['required', 'numeric', 'min:0'];
             $rules["cart.$id.custom_price"] = ['nullable', 'numeric', 'min:0', 'max:'.self::MAX_LINE_PRICE];
         }
@@ -230,7 +255,7 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
             'product_name' => $item['name'],
             'product_type' => $item['type'],
             'custom_price' => $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null,
-            'quantity' => (int) $item['quantity'],
+            'quantity' => $item['quantity'],
             'discount' => (float) $item['discount'],
         ])->values()->all();
 
@@ -241,6 +266,7 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
                 'product_type' => $legacy['product_type'],
                 'custom_price' => $legacy['unit_price'],
                 'quantity' => $legacy['quantity'],
+                'unit' => $legacy['unit'] ?? 'piece',
                 'discount' => $legacy['discount_amount'],
             ];
         }
@@ -313,10 +339,10 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
                                         <x-ui.thumbnail :src="$product->imageUrl()" :label="$product->name" />
                                         <div>
                                             <p class="text-sm font-medium text-slate-900">{{ $product->name }}</p>
-                                            <p class="text-xs text-slate-400">{{ $product->typeLabel() }} · {{ $product->stock_quantity }} in stock</p>
+                                            <p class="text-xs text-slate-400">{{ $product->typeLabel() }} · {{ $product->stockLabel() }} in stock</p>
                                         </div>
                                     </div>
-                                    <span class="text-sm font-semibold text-slate-700">Rs {{ number_format($product->currentSellingPrice(), 2) }}</span>
+                                    <span class="text-sm font-semibold text-slate-700">Rs {{ number_format($product->currentSellingPrice(), 2) }}{{ $product->unit->perSuffix() }}</span>
                                 </button>
                             @empty
                                 <p class="px-4 py-3 text-sm text-slate-400">No in-stock products match "{{ $search }}".</p>
@@ -355,7 +381,7 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
                                             <p class="text-xs text-slate-400">Product no longer exists — read-only</p>
                                         </td>
                                         <td class="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-600">Rs {{ number_format($item['unit_price'], 2) }}</td>
-                                        <td class="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-600">{{ $item['quantity'] }}</td>
+                                        <td class="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-600">{{ \App\Enums\QuantityUnit::fromValue($item['unit'] ?? 'piece')->amount($item['quantity']) }}</td>
                                         <td class="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-600">—</td>
                                         <td class="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-slate-900">Rs {{ number_format($item['line_total'], 2) }}</td>
                                         <td class="whitespace-nowrap px-4 py-3 text-right">
@@ -398,13 +424,20 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
                                             @enderror
                                         </td>
                                         <td class="whitespace-nowrap px-4 py-3">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max="{{ $item['max_stock'] }}"
-                                                wire:model.live="cart.{{ $productId }}.quantity"
-                                                class="w-16 rounded-lg border-slate-300 py-1.5 text-right text-sm focus:border-brand-500 focus:ring-brand-500"
-                                            />
+                                            @php($lineUnit = \App\Enums\QuantityUnit::fromValue($item['unit'] ?? 'piece'))
+                                            <div class="flex items-center justify-end gap-1.5">
+                                                <input
+                                                    type="number"
+                                                    min="{{ $lineUnit->inputMin() }}"
+                                                    step="{{ $lineUnit->inputStep() }}"
+                                                    max="{{ $item['max_stock'] }}"
+                                                    wire:model.live="cart.{{ $productId }}.quantity"
+                                                    @class(['rounded-lg border-slate-300 py-1.5 text-right text-sm focus:border-brand-500 focus:ring-brand-500', 'w-16' => ! $lineUnit->allowsDecimals(), 'w-24' => $lineUnit->allowsDecimals()])
+                                                />
+                                                @if ($lineUnit->allowsDecimals())
+                                                    <span class="text-xs text-slate-500">{{ $lineUnit->symbol() }}</span>
+                                                @endif
+                                            </div>
                                             @error("cart.$productId.quantity")
                                                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                             @enderror
@@ -494,6 +527,8 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
             </x-ui.card>
         </div>
     </div>
+
+    <x-sales.quantity-prompt :product="$promptProduct" :limit="$promptLimit" />
 
     <livewire:customers.quick-create />
 </div>

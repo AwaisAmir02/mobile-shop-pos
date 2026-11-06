@@ -3,6 +3,7 @@
 use App\Actions\CancelStockIn;
 use App\Actions\UpdateStockIn;
 use App\Enums\PaymentStatus;
+use App\Enums\QuantityUnit;
 use App\Enums\StockInPaymentSource;
 use App\Livewire\Concerns\GuardsExportSize;
 use App\Livewire\Concerns\Toasts;
@@ -40,6 +41,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     public ?int $editingId = null;
     public string $editQuantity = '';
+    public string $editUnit = 'piece';
     public string $editVendorId = '';
     public string $editStockDate = '';
     public string $editNote = '';
@@ -93,6 +95,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
         return [
             'entries' => $report->query()->latest('stock_date')->latest('id')->paginate(15),
             'totalUnits' => $report->totalUnits(),
+            'measuredTotals' => QuantityUnit::summarize($report->measuredTotals()),
             'totalOwed' => $report->totalOwed(),
             'products' => Product::query()->orderBy('name')->get(),
             'paymentStatuses' => PaymentStatus::cases(),
@@ -227,6 +230,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
         $this->editingId = $entry->id;
         $this->editQuantity = (string) $entry->quantity;
+        $this->editUnit = $entry->unit->value;
         $this->editVendorId = $entry->vendor_id !== null ? (string) $entry->vendor_id : '';
         $this->editStockDate = $entry->stock_date->toDateString();
         $this->editNote = $entry->note ?? '';
@@ -240,8 +244,10 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
     {
         abort_unless(Auth::user()->hasAccessTo('stock-ins-edit-cancel'), 403);
 
+        $entry = StockIn::inCurrentBranch()->findOrFail($this->editingId);
+
         $this->validate([
-            'editQuantity' => ['required', 'integer', 'min:1'],
+            'editQuantity' => $entry->unit->quantityRules(),
             'editVendorId' => ['nullable', 'integer'],
             'editStockDate' => ['required', 'date', 'before_or_equal:today'],
             'editNote' => ['nullable', 'string', 'max:255'],
@@ -249,10 +255,8 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'editSellingPrice' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $entry = StockIn::inCurrentBranch()->findOrFail($this->editingId);
-
         UpdateStockIn::handle($entry, [
-            'quantity' => (int) $this->editQuantity,
+            'quantity' => $this->editQuantity,
             'vendor_id' => $this->editVendorId !== '' ? (int) $this->editVendorId : null,
             'stock_date' => $this->editStockDate,
             'note' => $this->editNote !== '' ? $this->editNote : null,
@@ -262,13 +266,13 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
         $this->toastSuccess('Stock-in entry updated.');
         $this->dispatch('close-modal', name: 'edit-stock-in-form');
-        $this->reset(['editingId', 'editQuantity', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice']);
+        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice']);
     }
 
     public function closeEditForm(): void
     {
         $this->dispatch('close-modal', name: 'edit-stock-in-form');
-        $this->reset(['editingId', 'editQuantity', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice']);
+        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice']);
     }
 
     public function openCancel(int $entryId): void
@@ -372,6 +376,15 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                 </div>
             </x-ui.card>
 
+            @if ($measuredTotals !== '')
+                <x-ui.card :padding="false">
+                    <div class="px-5 py-3 text-right">
+                        <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Weight, Volume &amp; Length</p>
+                        <p class="whitespace-nowrap text-xl font-bold text-slate-900">{{ $measuredTotals }}</p>
+                    </div>
+                </x-ui.card>
+            @endif
+
             <x-ui.card :padding="false">
                 <div class="px-5 py-3 text-right">
                     <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Owed to Suppliers</p>
@@ -402,8 +415,8 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                     @if ($showVendorColumn)
                         <x-ui.table-cell>{{ $entry->vendor?->name ?? '—' }}</x-ui.table-cell>
                     @endif
-                    <x-ui.table-cell class="font-semibold text-emerald-600">+{{ number_format($entry->quantity) }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $entry->isCancelled() ? '—' : number_format($entry->quantity_remaining) }}</x-ui.table-cell>
+                    <x-ui.table-cell class="font-semibold text-emerald-600">+{{ $entry->unit->groupedAmount($entry->quantity) }}</x-ui.table-cell>
+                    <x-ui.table-cell>{{ $entry->isCancelled() ? '—' : $entry->unit->groupedAmount($entry->quantity_remaining) }}</x-ui.table-cell>
                     <x-ui.table-cell>
                         {{ $entry->cost_price !== null ? 'Rs '.number_format($entry->cost_price, 2) : '—' }}
                         /
@@ -493,8 +506,9 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             <p class="mt-2 text-sm text-slate-600">The product on this entry cannot be changed. Changing the quantity adjusts the product's current stock by the difference.</p>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Quantity" name="editQuantity" for="editQuantity">
-                    <x-ui.input wire:model="editQuantity" id="editQuantity" type="number" min="1" step="1" />
+                @php($editUnitCase = QuantityUnit::fromValue($editUnit))
+                <x-ui.field :label="$editUnitCase->allowsDecimals() ? 'Quantity ('.$editUnitCase->symbol().')' : 'Quantity'" name="editQuantity" for="editQuantity">
+                    <x-ui.input wire:model="editQuantity" id="editQuantity" type="number" :min="$editUnitCase->inputMin()" :step="$editUnitCase->inputStep()" />
                 </x-ui.field>
 
                 @if (auth()->user()->hasAccessTo('vendors'))

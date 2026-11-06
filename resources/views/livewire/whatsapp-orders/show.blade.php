@@ -3,6 +3,8 @@
 use App\Actions\AcceptWhatsAppOrder;
 use App\Actions\UpdateWhatsAppOrderFulfillment;
 use App\Enums\FulfillmentStatus;
+use App\Enums\QuantityUnit;
+use App\Support\Quantity;
 use App\Actions\CreateCustomer;
 use App\Actions\RejectWhatsAppOrder;
 use App\Enums\WhatsAppOrderStatus;
@@ -48,6 +50,7 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
                 'product_id' => $item->product_id,
                 'name' => $item->product_name,
                 'quantity' => (string) $item->quantity,
+                'unit' => ($item->product?->unit ?? $item->unit)->value,
                 'unit_price' => (string) $item->quoted_unit_price,
                 'quoted_price' => (float) $item->quoted_unit_price,
                 'current_price' => $item->product?->currentSellingPrice(),
@@ -121,17 +124,17 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
 
     public function subtotal(): float
     {
-        return array_sum(array_map(
-            fn (array $line) => max(0, (float) $line['unit_price']) * max(0, (int) $line['quantity']),
+        return round(array_sum(array_map(
+            fn (array $line) => Quantity::money(max(0, (float) $line['unit_price']), max(0, Quantity::normalize($line['quantity']))),
             $this->activeLines()
-        ));
+        )), 2);
     }
 
     public function total(): float
     {
         $subtotal = $this->subtotal();
 
-        return max(0.0, $subtotal - min(max(0, (float) $this->invoiceDiscount), $subtotal));
+        return round(max(0.0, $subtotal - min(max(0, (float) $this->invoiceDiscount), $subtotal)), 2);
     }
 
     protected function authorizeDecision(): void
@@ -150,7 +153,7 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
         ];
 
         foreach ($this->activeLines() as $id => $line) {
-            $rules["lines.$id.quantity"] = ['required', 'integer', 'min:1'];
+            $rules["lines.$id.quantity"] = QuantityUnit::fromValue($line['unit'] ?? 'piece')->quantityRules();
             $rules["lines.$id.unit_price"] = ['required', 'numeric', 'min:0', 'max:'.self::MAX_LINE_PRICE];
         }
 
@@ -162,7 +165,7 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
         foreach ($this->activeLines() as $id => $line) {
             $lines[] = [
                 'product_id' => (int) $line['product_id'],
-                'quantity' => (int) $line['quantity'],
+                'quantity' => $line['quantity'],
                 'discount' => 0.0,
                 'custom_price' => (float) $line['unit_price'],
             ];
@@ -264,15 +267,15 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
                                         @if ($line['current_price'] !== null && abs($line['current_price'] - $line['quoted_price']) > 0.009)
                                             · <span class="text-amber-700">now Rs {{ number_format($line['current_price'], 2) }}</span>
                                         @endif
-                                        · <span @class(['text-red-600' => $line['stock'] < (int) $line['quantity']])>{{ $line['stock'] }} in stock</span>
+                                        · <span @class(['text-red-600' => Quantity::compare($line['stock'], $line['quantity']) < 0])>{{ QuantityUnit::fromValue($line['unit'])->amount($line['stock']) }} in stock</span>
                                     @endif
                                 </p>
                             </div>
 
                             @if ($order->isDecidable() && $canDecide)
                                 <div class="flex items-start gap-2">
-                                    <x-ui.field name="lines.{{ $id }}.quantity" class="w-20">
-                                        <x-ui.input wire:model.live.debounce.400ms="lines.{{ $id }}.quantity" type="number" min="1" aria-label="Quantity" :disabled="$line['removed']" />
+                                    <x-ui.field name="lines.{{ $id }}.quantity" class="w-24">
+                                        <x-ui.input wire:model.live.debounce.400ms="lines.{{ $id }}.quantity" type="number" :min="QuantityUnit::fromValue($line['unit'])->inputMin()" :step="QuantityUnit::fromValue($line['unit'])->inputStep()" :aria-label="QuantityUnit::fromValue($line['unit'])->allowsDecimals() ? 'Quantity in '.$line['unit'] : 'Quantity'" :disabled="$line['removed']" />
                                     </x-ui.field>
                                     <x-ui.field name="lines.{{ $id }}.unit_price" class="w-32">
                                         <x-ui.input wire:model.live.debounce.400ms="lines.{{ $id }}.unit_price" type="number" step="0.01" min="0" aria-label="Unit price" :disabled="$line['removed']" />
@@ -282,7 +285,7 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
                                     </x-ui.button>
                                 </div>
                             @else
-                                <p class="text-sm text-slate-700">{{ $line['quantity'] }} × Rs {{ number_format((float) $line['unit_price'], 2) }}</p>
+                                <p class="text-sm text-slate-700">{{ QuantityUnit::fromValue($line['unit'])->amount($line['quantity']) }} × Rs {{ number_format((float) $line['unit_price'], 2) }}</p>
                             @endif
                         </div>
                     @endforeach

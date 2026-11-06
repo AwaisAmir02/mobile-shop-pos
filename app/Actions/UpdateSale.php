@@ -2,11 +2,13 @@
 
 namespace App\Actions;
 
+use App\Enums\QuantityUnit;
 use App\Enums\SaleRevisionAction;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleRevision;
 use App\Models\Scopes\ExcludesCancelledSalesScope;
+use App\Support\Quantity;
 use App\Support\SaleCartMath;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 class UpdateSale
 {
     /**
-     * @param  array<int, array{product_id: ?int, product_name: string, product_type: string, quantity: int, discount: float, custom_price: ?float}>  $lines
+     * @param  array<int, array{product_id: ?int, product_name: string, product_type: string, quantity: int|float|string, unit?: string, discount: float, custom_price: ?float}>  $lines
      */
     public static function handle(Sale $sale, array $lines, float $invoiceDiscount, ?int $customerId, ?int $userId, string $saleDate): Sale
     {
@@ -44,7 +46,8 @@ class UpdateSale
                     'unit_price' => (float) $item->unit_price,
                     'list_price' => $item->list_price !== null ? (float) $item->list_price : null,
                     'cost_price' => $item->cost_price !== null ? (float) $item->cost_price : null,
-                    'quantity' => (int) $item->quantity,
+                    'quantity' => $item->quantity,
+                    'unit' => $item->unit->value,
                     'discount_amount' => (float) $item->discount_amount,
                     'line_total' => (float) $item->line_total,
                 ])->all(),
@@ -57,6 +60,9 @@ class UpdateSale
 
             foreach ($lines as $line) {
                 if ($line['product_id'] === null) {
+                    // A line whose product is gone keeps the unit it was sold in.
+                    $unit = QuantityUnit::fromValue($line['unit'] ?? QuantityUnit::Piece);
+                    $unit->assertQuantity($line['quantity'], 'lines', $line['product_name']);
                     $unitPrice = (float) $line['custom_price'];
                     $discount = (float) $line['discount'];
                     $lineTotal = SaleCartMath::lineTotal(['unit_price' => $unitPrice, 'quantity' => $line['quantity'], 'discount' => $discount]);
@@ -70,7 +76,8 @@ class UpdateSale
                         'unit_price' => $unitPrice,
                         'list_price' => $unitPrice,
                         'cost_price' => null,
-                        'quantity' => $line['quantity'],
+                        'quantity' => Quantity::normalize($line['quantity']),
+                        'unit' => $unit,
                         'discount_amount' => $discount,
                         'line_total' => $lineTotal,
                     ];
@@ -86,13 +93,16 @@ class UpdateSale
                     ]);
                 }
 
-                if ($product->stock_quantity < $line['quantity']) {
+                $product->unit->assertQuantity($line['quantity'], 'lines', $product->name);
+                $quantity = Quantity::normalize($line['quantity']);
+
+                if (Quantity::compare($product->stock_quantity, $quantity) < 0) {
                     throw ValidationException::withMessages([
-                        'lines' => "Only {$product->stock_quantity} left in stock for {$product->name}.",
+                        'lines' => 'Only '.$product->stockLabel()." left in stock for {$product->name}.",
                     ]);
                 }
 
-                $allocations = ConsumeStockFifo::handle($product, $line['quantity']);
+                $allocations = ConsumeStockFifo::handle($product, $quantity);
                 $overridePrice = $line['custom_price'] !== null ? (float) $line['custom_price'] : null;
                 $subLines = SaleCartMath::allocateLines($overridePrice, (float) $line['discount'], $allocations);
 
@@ -107,16 +117,19 @@ class UpdateSale
                         'list_price' => $subLine['list_price'],
                         'cost_price' => $subLine['cost_price'],
                         'quantity' => $subLine['quantity'],
+                        'unit' => $product->unit,
                         'discount_amount' => $subLine['discount_amount'],
                         'line_total' => $subLine['line_total'],
                     ];
                 }
 
-                $product->decrement('stock_quantity', $line['quantity']);
+                $product->decrement('stock_quantity', $quantity);
             }
 
+            // Whole paisas, so "less than already paid" can't trip on float noise.
+            $subtotal = round($subtotal, 2);
             $clampedDiscount = min($invoiceDiscount, $subtotal);
-            $newTotal = max(0.0, $subtotal - $clampedDiscount);
+            $newTotal = round(max(0.0, $subtotal - $clampedDiscount), 2);
 
             if ($newTotal < $alreadyPaid) {
                 throw ValidationException::withMessages([

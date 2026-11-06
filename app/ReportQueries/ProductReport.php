@@ -2,10 +2,12 @@
 
 namespace App\ReportQueries;
 
+use App\Enums\QuantityUnit;
 use App\Models\MainCategory;
 use App\Models\Product;
 use App\Models\StockIn;
 use App\Services\TableExportService;
+use App\Support\Quantity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,6 +15,8 @@ class ProductReport implements ScreenReport
 {
     /** @var array{selling: float, cost: float}|null */
     protected ?array $valuationCache = null;
+
+    protected ?bool $showsUnitsCache = null;
 
     public function __construct(
         protected string $search = '',
@@ -65,12 +69,12 @@ class ProductReport implements ScreenReport
 
         foreach ($products as $product) {
             $batches = $batchesByProduct->get($product->id, collect());
-            $remainingInBatches = (int) $batches->sum('quantity_remaining');
+            $remainingInBatches = Quantity::sum($batches->pluck('quantity_remaining'));
 
             $sellingTotal += (float) $batches->sum(fn (StockIn $batch) => $batch->quantity_remaining * (float) ($batch->selling_price ?? $product->price));
             $costTotal += (float) $batches->sum(fn (StockIn $batch) => $batch->quantity_remaining * (float) ($batch->cost_price ?? $product->cost_price ?? 0));
 
-            $uncovered = max(0, $product->stock_quantity - $remainingInBatches);
+            $uncovered = max(0, Quantity::subtract($product->stock_quantity, $remainingInBatches));
             $sellingTotal += $uncovered * (float) $product->price;
             $costTotal += $uncovered * (float) ($product->cost_price ?? 0);
         }
@@ -116,9 +120,15 @@ class ProductReport implements ScreenReport
         ];
     }
 
+    /** A Unit column only appears once there's something other than pieces to explain. */
+    protected function showsUnits(): bool
+    {
+        return $this->showsUnitsCache ??= $this->query()->where('unit', '!=', QuantityUnit::Piece->value)->exists();
+    }
+
     public function tableHeaders(): array
     {
-        return collect(['Product', 'Category', 'Details', ...($this->barcodesEnabled() ? ['Barcode'] : []), 'Price', 'Cost Price', 'Stock'])->all();
+        return collect(['Product', 'Category', 'Details', ...($this->barcodesEnabled() ? ['Barcode'] : []), 'Price', 'Cost Price', 'Stock', ...($this->showsUnits() ? ['Unit'] : [])])->all();
     }
 
     public function tableRows(bool $forExcel): array
@@ -130,15 +140,16 @@ class ProductReport implements ScreenReport
             $barcode = TableExportService::sanitizeCell((string) ($product->barcode ?? ''));
 
             $barcodeCell = $this->barcodesEnabled() ? [$forExcel ? $barcode : ($barcode ?: '—')] : [];
+            $unitCell = $this->showsUnits() ? [$product->unit->symbol()] : [];
 
             return $forExcel
-                ? [$name, $category, $details, ...$barcodeCell, (float) $product->price, $product->cost_price !== null ? (float) $product->cost_price : null, (int) $product->stock_quantity]
-                : [$name, $category, $details ?: '—', ...$barcodeCell, 'Rs '.number_format($product->price, 2), $product->cost_price !== null ? 'Rs '.number_format($product->cost_price, 2) : '—', (string) $product->stock_quantity];
+                ? [$name, $category, $details, ...$barcodeCell, (float) $product->price, $product->cost_price !== null ? (float) $product->cost_price : null, $product->stock_quantity, ...$unitCell]
+                : [$name, $category, $details ?: '—', ...$barcodeCell, 'Rs '.number_format($product->price, 2), $product->cost_price !== null ? 'Rs '.number_format($product->cost_price, 2) : '—', Quantity::plain($product->stock_quantity), ...$unitCell];
         })->all();
     }
 
     public function columnTypes(): array
     {
-        return collect(['string', 'string', 'string', ...($this->barcodesEnabled() ? ['string'] : []), 'currency', 'currency', 'integer'])->all();
+        return collect(['string', 'string', 'string', ...($this->barcodesEnabled() ? ['string'] : []), 'currency', 'currency', 'quantity', ...($this->showsUnits() ? ['string'] : [])])->all();
     }
 }

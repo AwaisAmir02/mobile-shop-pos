@@ -272,7 +272,7 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
 
                 <div class="{{ $row }}">
                     <dt class="{{ $term }}">Items Sold<p class="{{ $note }}">{{ $categories->firstWhere('slug', 'mobile')['units'] ?? 0 }} mobile · {{ $categories->firstWhere('slug', 'accessory')['units'] ?? 0 }} accessory · {{ $categories->firstWhere('slug', 'sim')['units'] ?? 0 }} SIM</p></dt>
-                    <dd class="{{ $figure }}">{{ number_format($totalItemsSold) }}</dd>
+                    <dd class="{{ $figure }}">{{ number_format($totalItemsSold) }}@if ($soldByUnit)<p class="{{ $note }}">{{ \App\Enums\QuantityUnit::summarize($soldByUnit) }}</p>@endif</dd>
                 </div>
                 @unless (auth()->user()->shop?->isScreenHidden('balance-loads'))
                 <div class="{{ $row }}">

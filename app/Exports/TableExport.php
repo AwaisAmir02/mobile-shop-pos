@@ -18,7 +18,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
  * @param  array<int, string>  $headers
  * @param  array<int, array<int, mixed>>  $rows  Each inner array is already ordered to match $headers, with
  *                                               date columns pre-converted via self::excelDate().
- * @param  array<int, string>  $columnTypes  Same order as $headers: 'string'|'integer'|'currency'|'date'.
+ * @param  array<int, string>  $columnTypes  Same order as $headers: 'string'|'integer'|'quantity'|'currency'|'date'.
  */
 class TableExport implements FromArray, WithColumnWidths, WithEvents
 {

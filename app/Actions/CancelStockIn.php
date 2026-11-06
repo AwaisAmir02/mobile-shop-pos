@@ -8,6 +8,7 @@ use App\Models\ModuleRevision;
 use App\Models\Product;
 use App\Models\Scopes\ExcludesCancelledScope;
 use App\Models\StockIn;
+use App\Support\Quantity;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -31,6 +32,7 @@ class CancelStockIn
                 'vendor_id' => $entry->vendor_id,
                 'quantity' => $entry->quantity,
                 'quantity_remaining' => $entry->quantity_remaining,
+                'unit' => $entry->unit->value,
                 'cost_price' => $entry->cost_price !== null ? (float) $entry->cost_price : null,
                 'selling_price' => $entry->selling_price !== null ? (float) $entry->selling_price : null,
                 'total_cost' => $entry->total_cost !== null ? (float) $entry->total_cost : null,
@@ -38,11 +40,12 @@ class CancelStockIn
                 'note' => $entry->note,
             ];
 
-            if ($entry->quantity_remaining < $entry->quantity) {
-                $consumed = $entry->quantity - $entry->quantity_remaining;
+            if (Quantity::compare($entry->quantity_remaining, $entry->quantity) < 0) {
+                $consumed = Quantity::plain(Quantity::subtract($entry->quantity, $entry->quantity_remaining));
+                $added = $entry->unit->allowsDecimals() ? $entry->unit->amount($entry->quantity) : Quantity::plain($entry->quantity).' units';
 
                 throw ValidationException::withMessages([
-                    'quantity' => "Cannot cancel: {$consumed} of the {$entry->quantity} units added by this entry have already been sold. Adjust stock manually first.",
+                    'quantity' => "Cannot cancel: {$consumed} of the {$added} added by this entry have already been sold. Adjust stock manually first.",
                 ]);
             }
 

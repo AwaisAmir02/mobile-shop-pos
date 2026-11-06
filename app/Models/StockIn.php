@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Casts\QuantityCast;
 use App\Enums\PaymentStatus;
+use App\Enums\QuantityUnit;
 use App\Enums\RecordStatus;
 use App\Models\Concerns\BelongsToBranch;
 use App\Models\Concerns\BelongsToShop;
@@ -22,6 +24,7 @@ class StockIn extends Model
         'product_name',
         'user_id',
         'quantity',
+        'unit',
         'cost_price',
         'selling_price',
         'quantity_remaining',
@@ -36,6 +39,8 @@ class StockIn extends Model
         'cancel_reason',
     ];
 
+    protected $attributes = ['unit' => 'piece'];
+
     /**
      * Stock is one shared pool across branches in Phase 1, and these rows
      * are also the FIFO batches every branch sells from, so they must never
@@ -49,10 +54,11 @@ class StockIn extends Model
     protected function casts(): array
     {
         return [
-            'quantity' => 'integer',
+            'quantity' => QuantityCast::class,
+            'unit' => QuantityUnit::class,
             'cost_price' => 'decimal:2',
             'selling_price' => 'decimal:2',
-            'quantity_remaining' => 'integer',
+            'quantity_remaining' => QuantityCast::class,
             'total_cost' => 'decimal:2',
             'payment_status' => PaymentStatus::class,
             'amount_paid' => 'decimal:2',

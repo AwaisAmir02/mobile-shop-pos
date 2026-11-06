@@ -66,7 +66,7 @@ class PostComposer
         return trim(implode("\n", array_filter([
             '✨ '.$product->name,
             '💰 Rs '.number_format($product->currentSellingPrice()),
-            $product->stock_quantity > 0 && $product->stock_quantity <= 3 ? '⚡ Only '.$product->stock_quantity.' left!' : null,
+            $product->stock_quantity > 0 && $product->stock_quantity <= 3 ? '⚡ Only '.$product->stockLabel().' left!' : null,
             '',
             $link ? '📲 Order on WhatsApp: '.$link : '📍 Visit '.$shop->invoiceDisplayName(),
         ], fn ($line) => $line !== null)));

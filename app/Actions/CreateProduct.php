@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Enums\QuantityUnit;
 use App\Models\MainCategory;
 use App\Models\Product;
 use App\Models\Shop;
@@ -11,7 +12,7 @@ use Illuminate\Validation\Rule;
 
 class CreateProduct
 {
-    public static function rules(int $shopId, string $type, ?int $ignoreProductId = null): array
+    public static function rules(int $shopId, string $type, ?int $ignoreProductId = null, QuantityUnit $unit = QuantityUnit::Piece): array
     {
         $mainCategoryId = MainCategory::where('slug', $type)->where('shop_id', $shopId)->value('id');
 
@@ -21,7 +22,7 @@ class CreateProduct
             'image' => ['nullable', 'image', 'max:2048'],
             'price' => ['required', 'numeric', 'min:0'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
-            'stock_quantity' => ['required', 'integer', 'min:0'],
+            'stock_quantity' => $unit->stockRules(),
             'category' => [
                 $type === 'accessory' ? 'required' : 'nullable',
                 'string', 'max:255',

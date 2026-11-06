@@ -97,7 +97,7 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
             'kind' => $this->kind,
             'limit_key' => $pack ? $this->limitKey : null,
             'quantity' => $pack ? (int) $this->quantity : null,
-            'feature_keys' => $pack ? null : collect(FeatureKey::cases())->filter(fn (FeatureKey $feature) => in_array($feature->value, $this->featureKeys, true))->values()->all(),
+            'feature_keys' => $pack ? null : collect(FeatureKey::planCases())->filter(fn (FeatureKey $feature) => in_array($feature->value, $this->featureKeys, true))->values()->all(),
             'price' => $this->price,
             'billing' => $pack && ! $this->recurringPack() ? AddonBilling::OneOff->value : $this->billing,
             'is_active' => $this->isActive,
@@ -271,7 +271,7 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
                 @else
                     <x-ui.field label="Switches on" name="featureKeys" help="Tick more than one to sell them together as a bundle.">
                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            @foreach (FeatureKey::cases() as $feature)
+                            @foreach (FeatureKey::planCases() as $feature)
                                 <x-ui.checkbox wire:model="featureKeys" :value="$feature->value" :label="$feature->label()" />
                             @endforeach
                         </div>

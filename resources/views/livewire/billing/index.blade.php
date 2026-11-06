@@ -221,7 +221,7 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
                                 </ul>
 
                                 <ul class="mt-3 flex-1 space-y-1 border-t border-slate-100 pt-3 text-sm">
-                                    @foreach (FeatureKey::cases() as $feature)
+                                    @foreach (FeatureKey::planCases() as $feature)
                                         @php($inPlan = (bool) (($plan->feature_flags ?? [])[$feature->value] ?? false))
                                         <li @class(['flex items-center gap-2', 'text-slate-700' => $inPlan, 'text-slate-400' => ! $inPlan])>
                                             <span aria-hidden="true" @class(['font-semibold', 'text-emerald-600' => $inPlan])>{{ $inPlan ? '✓' : '–' }}</span>

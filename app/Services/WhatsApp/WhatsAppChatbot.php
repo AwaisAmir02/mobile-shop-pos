@@ -3,6 +3,7 @@
 namespace App\Services\WhatsApp;
 
 use App\Enums\LimitKey;
+use App\Enums\QuantityUnit;
 use App\Enums\WhatsAppOrderStatus;
 use App\Enums\WhatsAppPaymentChoice;
 use App\Models\AccessoryCategoryOption;
@@ -10,6 +11,7 @@ use App\Models\Customer;
 use App\Models\CustomerReview;
 use App\Models\MainCategory;
 use App\Models\Product;
+use App\Models\ProductGroup;
 use App\Models\RestockSubscription;
 use App\Models\Scopes\ShopScope;
 use App\Models\Shop;
@@ -21,6 +23,7 @@ use App\Models\WhatsAppOrderItem;
 use App\Services\Billing\Entitlements;
 use App\Exceptions\UsageLimitReached;
 use App\Support\PhoneNumber;
+use App\Support\Quantity;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -245,8 +248,9 @@ class WhatsAppChatbot
                 return;
             }
 
-            if ($step === 'awaiting_quantity' && $text !== null && ctype_digit($text)) {
-                $this->addToCart((int) ($this->contact->bot_state['product_id'] ?? 0), (int) $text);
+            // "1.5" is a quantity attempt too, not a product search.
+            if ($step === 'awaiting_quantity' && $text !== null && preg_match('/^\d+([.,]\d+)?$/', $text) === 1) {
+                $this->addToCart((int) ($this->contact->bot_state['product_id'] ?? 0), str_replace(',', '.', $text));
 
                 return;
             }
@@ -300,6 +304,7 @@ class WhatsAppChatbot
             str_starts_with($id, 'cat:') => $this->sendCategory(...array_map('intval', array_slice(explode(':', $id), 1, 2))),
             str_starts_with($id, 'list:') => $this->sendCatalog((int) (explode(':', $id)[2] ?? 1), (string) (explode(':', $id)[1] ?? '')),
             str_starts_with($id, 'product:') => $this->sendProduct((int) substr($id, 8)),
+            str_starts_with($id, 'group:') => $this->sendVariants(...array_map('intval', array_slice(explode(':', $id), 1, 2))),
             str_starts_with($id, 'qty:') => $this->addToCart(...array_map('intval', array_slice(explode(':', $id), 1, 2))),
             str_starts_with($id, 'notify:') => $this->subscribeRestock((int) substr($id, 7)),
             str_starts_with($id, 'rate:') => $this->captureRating((int) substr($id, 5)),
@@ -333,16 +338,24 @@ class WhatsAppChatbot
         );
     }
 
+    /** Ordering by weight or length isn't offered here yet, so only pieces can be reached. */
     protected function listedQuery()
     {
         return Product::withoutGlobalScope(ShopScope::class)
             ->where('shop_id', $this->shop->id)
-            ->where('whatsapp_listed', true);
+            ->where('whatsapp_listed', true)
+            ->where('unit', QuantityUnit::Piece->value);
     }
 
+    /** The catalogue: a variant group appears once, standing in for all its variants. */
     protected function listedProducts(): Collection
     {
-        return $this->listedQuery()->where('stock_quantity', '>', 0)->orderBy('name')->get();
+        return $this->oneEntryPerGroup($this->listedQuery()->where('stock_quantity', '>', 0)->orderBy('name')->get());
+    }
+
+    protected function oneEntryPerGroup(Collection $products): Collection
+    {
+        return $products->unique(fn (Product $product) => $product->product_group_id !== null ? 'group-'.$product->product_group_id : 'product-'.$product->id)->values();
     }
 
     protected function findListedProduct(int $productId): ?Product
@@ -352,12 +365,95 @@ class WhatsAppChatbot
 
     protected function productRow(Product $product): array
     {
+        if ($product->product_group_id !== null && ($group = $this->findGroup($product->product_group_id)) !== null) {
+            return $this->groupRow($group);
+        }
+
         return [
             'id' => 'product:'.$product->id,
             'title' => $product->name,
-            'description' => 'Rs '.CustomerNotifications::money($product->currentSellingPrice()).' · '
-                .($product->stock_quantity > 0 ? $this->t('in_stock_tag', ['stock' => $product->stock_quantity]) : $this->t('out_of_stock_tag')),
+            'description' => $this->priceAndStock($product),
         ];
+    }
+
+    protected function priceAndStock(Product $product): string
+    {
+        return 'Rs '.CustomerNotifications::money($product->currentSellingPrice()).' · '
+            .($product->stock_quantity > 0 ? $this->t('in_stock_tag', ['stock' => $product->stock_quantity]) : $this->t('out_of_stock_tag'));
+    }
+
+    protected function findGroup(int $groupId): ?ProductGroup
+    {
+        return ProductGroup::withoutGlobalScope(ShopScope::class)
+            ->where('shop_id', $this->shop->id)
+            ->whereKey($groupId)
+            ->first();
+    }
+
+    protected function listedVariants(ProductGroup $group): Collection
+    {
+        return $this->listedQuery()->where('product_group_id', $group->id)->orderBy('id')->get();
+    }
+
+    /** One catalogue row for a whole group, priced from its cheapest variant in stock. */
+    protected function groupRow(ProductGroup $group): array
+    {
+        $variants = $this->listedVariants($group);
+        $inStock = $variants->where('stock_quantity', '>', 0);
+        $prices = Product::sellingPricesFor($inStock->isNotEmpty() ? $inStock : $variants);
+
+        return [
+            'id' => 'group:'.$group->id,
+            'title' => $group->name,
+            'description' => $prices === []
+                ? $this->t('out_of_stock_tag')
+                : $this->t('group_row', ['price' => CustomerNotifications::money(min($prices)), 'count' => $variants->count()]),
+        ];
+    }
+
+    /**
+     * The picker shown after choosing a group. List titles are cut at 24
+     * characters, so each row shows only the variant's label ("M / Red"); a
+     * label too long for that repeats in full in the description. Out-of-stock
+     * variants stay listed: tapping one offers the restock alert.
+     */
+    protected function sendVariants(int $groupId, int $page = 1): void
+    {
+        $group = $this->findGroup($groupId);
+        $variants = $group ? $this->listedVariants($group) : collect();
+
+        if ($variants->isEmpty()) {
+            $this->client->sendText($this->contact->wa_id, $this->t('product_unavailable'));
+            $this->browse();
+
+            return;
+        }
+
+        if ($variants->count() === 1) {
+            $this->sendProduct($variants->first()->id);
+
+            return;
+        }
+
+        $page = max(1, $page);
+        $slice = $variants->forPage($page, self::PAGE_SIZE);
+
+        if ($slice->isEmpty()) {
+            $page = 1;
+            $slice = $variants->forPage(1, self::PAGE_SIZE);
+        }
+
+        $rows = $slice->map(fn (Product $variant) => [
+            'id' => 'product:'.$variant->id,
+            'title' => (string) $variant->variant_label,
+            'description' => (mb_strlen((string) $variant->variant_label) > 24 ? $variant->variant_label.' · ' : '').$this->priceAndStock($variant),
+        ])->values()->all();
+
+        if ($variants->count() > $page * self::PAGE_SIZE) {
+            $rows[] = ['id' => 'group:'.$group->id.':'.($page + 1), 'title' => $this->t('more_options')];
+        }
+
+        $this->client->sendList($this->contact->wa_id, $this->t('choose_variant', ['name' => $group->name]), $this->t('btn_view_options'), $rows, $this->t('section_options'));
     }
 
     /**
@@ -621,14 +717,24 @@ class WhatsAppChatbot
             })
             ->orderByDesc('stock_quantity')
             ->orderBy('name')
-            ->limit(self::SEARCH_LIMIT)
             ->get();
 
-        if ($matches->count() === 1) {
-            $this->sendProduct($matches->first()->id);
+        // A search naming one exact variant goes straight to it; a group's several matches share one row.
+        $entries = $this->oneEntryPerGroup($matches)->take(self::SEARCH_LIMIT)->values();
+
+        if ($entries->count() === 1 && $matches->count() === 1) {
+            $this->sendProduct($entries->first()->id);
 
             return;
         }
+
+        if ($entries->count() === 1 && $entries->first()->product_group_id !== null) {
+            $this->sendVariants($entries->first()->product_group_id);
+
+            return;
+        }
+
+        $matches = $entries;
 
         if ($matches->isEmpty()) {
             $this->client->sendText($this->contact->wa_id, $this->t('search_no_match', ['query' => mb_substr($query, 0, 40)]));
@@ -656,7 +762,7 @@ class WhatsAppChatbot
             return;
         }
 
-        if ($product->stock_quantity < 1) {
+        if ($product->stock_quantity <= 0) {
             $this->client->sendButtons(
                 $this->contact->wa_id,
                 $this->t('out_of_stock_offer', ['name' => $product->name]),
@@ -746,15 +852,23 @@ class WhatsAppChatbot
             ->get();
     }
 
-    protected function addToCart(int $productId, int $quantity = 1): void
+    protected function addToCart(int $productId, int|string $quantity = 1): void
     {
         $product = $this->findListedProduct($productId);
 
-        if ($product === null || $product->stock_quantity < 1) {
+        if ($product === null || $product->stock_quantity <= 0) {
             $this->client->sendText($this->contact->wa_id, $this->t('product_unavailable'));
 
             return;
         }
+
+        if (! Quantity::fitsScale($quantity) || ! Quantity::isWhole($quantity)) {
+            $this->client->sendText($this->contact->wa_id, $this->t('qty_whole'));
+
+            return;
+        }
+
+        $quantity = Quantity::normalize($quantity);
 
         if ($quantity < 1 || $quantity > self::MAX_LINE_QUANTITY) {
             $this->client->sendText($this->contact->wa_id, $this->t('qty_range', ['max' => min(self::MAX_LINE_QUANTITY, max(1, $product->stock_quantity))]));
@@ -783,6 +897,7 @@ class WhatsAppChatbot
             'shop_id' => $this->shop->id,
             'product_name' => $product->name,
             'quantity' => $newQuantity,
+            'unit' => $product->unit,
             'quoted_unit_price' => $product->currentSellingPrice(),
         ])->save();
 
@@ -799,7 +914,7 @@ class WhatsAppChatbot
     protected function cartSummary(WhatsAppOrder $order): string
     {
         $lines = $this->orderItems($order)->map(
-            fn (WhatsAppOrderItem $item) => "• {$item->quantity} × {$item->product_name} — Rs ".CustomerNotifications::money($item->lineTotal())
+            fn (WhatsAppOrderItem $item) => "• {$item->unit->amount($item->quantity)} × {$item->product_name} — Rs ".CustomerNotifications::money($item->lineTotal())
         )->implode("\n");
 
         return $lines."\n\n".$this->t('total_line', ['total' => CustomerNotifications::money((float) $order->quoted_total)]);

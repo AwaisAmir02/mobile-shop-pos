@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Casts\QuantityCast;
+use App\Enums\QuantityUnit;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -23,9 +25,12 @@ class SaleItem extends Model
         'list_price',
         'cost_price',
         'quantity',
+        'unit',
         'discount_amount',
         'line_total',
     ];
+
+    protected $attributes = ['unit' => 'piece'];
 
     protected function casts(): array
     {
@@ -33,7 +38,8 @@ class SaleItem extends Model
             'unit_price' => 'decimal:2',
             'list_price' => 'decimal:2',
             'cost_price' => 'decimal:2',
-            'quantity' => 'integer',
+            'quantity' => QuantityCast::class,
+            'unit' => QuantityUnit::class,
             'discount_amount' => 'decimal:2',
             'line_total' => 'decimal:2',
         ];

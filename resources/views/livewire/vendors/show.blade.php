@@ -31,7 +31,8 @@ new #[Layout('layouts.app')] #[Title('Vendor Profile')] class extends Component
 
         return [
             'stockIns' => $this->vendor->stockIns,
-            'totalUnits' => $this->vendor->stockIns->sum('quantity'),
+            'totalUnits' => \App\Support\Quantity::sum($this->vendor->stockIns->filter(fn ($entry) => ! $entry->unit->allowsDecimals())->pluck('quantity')),
+            'measuredTotals' => \App\Enums\QuantityUnit::summarize($this->vendor->stockIns->filter(fn ($entry) => $entry->unit->allowsDecimals())->groupBy(fn ($entry) => $entry->unit->value)->map(fn ($entries) => \App\Support\Quantity::sum($entries->pluck('quantity')))->all()),
             'totalCost' => $this->vendor->stockIns->sum('total_cost'),
             'totalOwed' => $this->vendor->totalOwed(),
         ];
@@ -51,6 +52,9 @@ new #[Layout('layouts.app')] #[Title('Vendor Profile')] class extends Component
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <x-ui.stat label="Stock Entries" :value="number_format($stockIns->count())" />
         <x-ui.stat label="Total Units Purchased" :value="number_format($totalUnits)" />
+        @if ($measuredTotals !== '')
+            <x-ui.stat label="Weight, Volume & Length" :value="$measuredTotals" />
+        @endif
         <x-ui.stat label="Total Purchase Cost" value="Rs {{ number_format($totalCost, 2) }}" />
         <x-ui.stat label="Total Owed to Vendor" value="Rs {{ number_format($totalOwed, 2) }}" />
     </div>
@@ -89,7 +93,7 @@ new #[Layout('layouts.app')] #[Title('Vendor Profile')] class extends Component
                         <x-ui.table-row wire:key="vendor-stock-in-{{ $entry->id }}">
                             <x-ui.table-cell>{{ $entry->stock_date->format('d M Y') }}</x-ui.table-cell>
                             <x-ui.table-cell class="font-medium text-slate-900">{{ $entry->product_name }}</x-ui.table-cell>
-                            <x-ui.table-cell class="font-semibold text-emerald-600">+{{ number_format($entry->quantity) }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-semibold text-emerald-600">+{{ $entry->unit->groupedAmount($entry->quantity) }}</x-ui.table-cell>
                             <x-ui.table-cell>{{ $entry->total_cost !== null ? 'Rs '.number_format($entry->total_cost, 2) : '—' }}</x-ui.table-cell>
                             <x-ui.table-cell>
                                 @if ($entry->payment_status->value === 'paid')

@@ -4,7 +4,12 @@ namespace App\Actions;
 
 use App\Models\Product;
 use App\Models\StockIn;
+use App\Support\Quantity;
 
+/**
+ * All three walks count in whole thousandths (see Quantity), so a quantity
+ * exactly covered by its batches leaves nothing over.
+ */
 class ConsumeStockFifo
 {
     /**
@@ -14,12 +19,12 @@ class ConsumeStockFifo
      * predates batch tracking). Caller is expected to already hold a lock on
      * $product and to have validated $product->stock_quantity >= $quantity.
      *
-     * @return array<int, array{stock_in_id: ?int, quantity: int, cost_price: ?float, selling_price: float}>
+     * @return array<int, array{stock_in_id: ?int, quantity: int|float, cost_price: ?float, selling_price: float}>
      */
-    public static function handle(Product $product, int $quantity): array
+    public static function handle(Product $product, int|float|string|null $quantity): array
     {
         $allocations = [];
-        $remaining = $quantity;
+        $remaining = Quantity::toThousandths($quantity);
 
         $batches = StockIn::availableBatchesFor($product->id)->lockForUpdate()->get();
 
@@ -28,8 +33,8 @@ class ConsumeStockFifo
                 break;
             }
 
-            $take = min($remaining, $batch->quantity_remaining);
-            $batch->decrement('quantity_remaining', $take);
+            $take = min($remaining, Quantity::toThousandths($batch->quantity_remaining));
+            $batch->decrement('quantity_remaining', Quantity::fromThousandths($take));
 
             $allocations[] = self::allocationFromBatch($batch, $take, $product);
             $remaining -= $take;
@@ -46,12 +51,12 @@ class ConsumeStockFifo
      * Same allocation logic as handle(), without locking or mutating any
      * row — used to preview a correct split-aware total before checkout.
      *
-     * @return array<int, array{stock_in_id: ?int, quantity: int, cost_price: ?float, selling_price: float}>
+     * @return array<int, array{stock_in_id: ?int, quantity: int|float, cost_price: ?float, selling_price: float}>
      */
-    public static function preview(Product $product, int $quantity): array
+    public static function preview(Product $product, int|float|string|null $quantity): array
     {
         $allocations = [];
-        $remaining = $quantity;
+        $remaining = Quantity::toThousandths($quantity);
 
         $batches = StockIn::availableBatchesFor($product->id)->get();
 
@@ -60,7 +65,7 @@ class ConsumeStockFifo
                 break;
             }
 
-            $take = min($remaining, $batch->quantity_remaining);
+            $take = min($remaining, Quantity::toThousandths($batch->quantity_remaining));
             $allocations[] = self::allocationFromBatch($batch, $take, $product);
             $remaining -= $take;
         }
@@ -79,10 +84,10 @@ class ConsumeStockFifo
      * so the preview matches what UpdateSale will actually do (restore the
      * old consumption in full, then re-run FIFO fresh).
      *
-     * @param  array<int, int>  $originalHoldingsByBatchId  stock_in_id => quantity this sale's own items currently hold against it
-     * @return array<int, array{stock_in_id: ?int, quantity: int, cost_price: ?float, selling_price: float}>
+     * @param  array<int, int|float>  $originalHoldingsByBatchId  stock_in_id => quantity this sale's own items currently hold against it
+     * @return array<int, array{stock_in_id: ?int, quantity: int|float, cost_price: ?float, selling_price: float}>
      */
-    public static function previewForEdit(Product $product, int $quantity, array $originalHoldingsByBatchId): array
+    public static function previewForEdit(Product $product, int|float|string|null $quantity, array $originalHoldingsByBatchId): array
     {
         $batchIds = array_keys($originalHoldingsByBatchId);
 
@@ -94,14 +99,14 @@ class ConsumeStockFifo
             ->get();
 
         $allocations = [];
-        $remaining = $quantity;
+        $remaining = Quantity::toThousandths($quantity);
 
         foreach ($batches as $batch) {
             if ($remaining <= 0) {
                 break;
             }
 
-            $virtualRemaining = $batch->quantity_remaining + ($originalHoldingsByBatchId[$batch->id] ?? 0);
+            $virtualRemaining = Quantity::toThousandths($batch->quantity_remaining) + Quantity::toThousandths($originalHoldingsByBatchId[$batch->id] ?? 0);
             $take = min($remaining, $virtualRemaining);
 
             if ($take <= 0) {
@@ -119,21 +124,21 @@ class ConsumeStockFifo
         return $allocations;
     }
 
-    private static function allocationFromBatch(StockIn $batch, int $quantity, Product $product): array
+    private static function allocationFromBatch(StockIn $batch, int $thousandths, Product $product): array
     {
         return [
             'stock_in_id' => $batch->id,
-            'quantity' => $quantity,
+            'quantity' => Quantity::fromThousandths($thousandths),
             'cost_price' => $batch->cost_price !== null ? (float) $batch->cost_price : null,
             'selling_price' => $batch->selling_price !== null ? (float) $batch->selling_price : (float) $product->price,
         ];
     }
 
-    private static function fallbackAllocation(int $quantity, Product $product): array
+    private static function fallbackAllocation(int $thousandths, Product $product): array
     {
         return [
             'stock_in_id' => null,
-            'quantity' => $quantity,
+            'quantity' => Quantity::fromThousandths($thousandths),
             'cost_price' => $product->cost_price !== null ? (float) $product->cost_price : null,
             'selling_price' => (float) $product->price,
         ];

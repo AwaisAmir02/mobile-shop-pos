@@ -7,13 +7,14 @@ use App\Models\ModuleRevision;
 use App\Models\Product;
 use App\Models\Scopes\ExcludesCancelledScope;
 use App\Models\StockIn;
+use App\Support\Quantity;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class UpdateStockIn
 {
     /**
-     * @param  array{quantity: int, vendor_id: ?int, stock_date: string, note: ?string, cost_price: ?float, selling_price: ?float}  $fields
+     * @param  array{quantity: int|float|string, vendor_id: ?int, stock_date: string, note: ?string, cost_price: ?float, selling_price: ?float}  $fields
      */
     public static function handle(StockIn $entry, array $fields, ?int $userId): StockIn
     {
@@ -27,6 +28,7 @@ class UpdateStockIn
             $snapshot = [
                 'quantity' => $entry->quantity,
                 'quantity_remaining' => $entry->quantity_remaining,
+                'unit' => $entry->unit->value,
                 'vendor_id' => $entry->vendor_id,
                 'cost_price' => $entry->cost_price !== null ? (float) $entry->cost_price : null,
                 'selling_price' => $entry->selling_price !== null ? (float) $entry->selling_price : null,
@@ -35,11 +37,15 @@ class UpdateStockIn
                 'note' => $entry->note,
             ];
 
-            $delta = $fields['quantity'] - $entry->quantity;
+            $entry->unit->assertQuantity($fields['quantity'], 'quantity', $entry->product_name);
+            $newQuantity = Quantity::normalize($fields['quantity']);
+
+            // Whole thousandths, so "no change" really is exactly zero.
+            $delta = Quantity::toThousandths($newQuantity) - Quantity::toThousandths($entry->quantity);
             $newQuantityRemaining = $entry->quantity_remaining;
 
             if ($entry->product_id === null) {
-                $newQuantityRemaining = $fields['quantity'];
+                $newQuantityRemaining = $newQuantity;
             } elseif ($delta !== 0) {
                 $product = Product::whereKey($entry->product_id)->lockForUpdate()->first();
 
@@ -49,26 +55,28 @@ class UpdateStockIn
                     ]);
                 }
 
-                if ($delta > 0) {
-                    $product->increment('stock_quantity', $delta);
-                    $newQuantityRemaining += $delta;
-                } else {
-                    $decreaseBy = abs($delta);
+                $change = Quantity::fromThousandths(abs($delta));
 
-                    if ($entry->quantity_remaining < $decreaseBy) {
-                        $consumed = $entry->quantity - $entry->quantity_remaining;
+                if ($delta > 0) {
+                    $product->increment('stock_quantity', $change);
+                    $newQuantityRemaining = Quantity::add($newQuantityRemaining, $change);
+                } else {
+                    if (Quantity::compare($entry->quantity_remaining, $change) < 0) {
+                        $consumed = Quantity::plain(Quantity::subtract($entry->quantity, $entry->quantity_remaining));
+                        $consumedLabel = $entry->unit->allowsDecimals() ? $entry->unit->amount($consumed) : "{$consumed} units";
+                        $left = $entry->unit->amount($entry->quantity_remaining);
 
                         throw ValidationException::withMessages([
-                            'quantity' => "Cannot reduce quantity: {$consumed} units from this entry have already been sold, leaving only {$entry->quantity_remaining} available to remove. Adjust stock manually first.",
+                            'quantity' => "Cannot reduce quantity: {$consumedLabel} from this entry have already been sold, leaving only {$left} available to remove. Adjust stock manually first.",
                         ]);
                     }
 
-                    $product->decrement('stock_quantity', $decreaseBy);
-                    $newQuantityRemaining -= $decreaseBy;
+                    $product->decrement('stock_quantity', $change);
+                    $newQuantityRemaining = Quantity::subtract($newQuantityRemaining, $change);
                 }
             }
 
-            $newTotalCost = $fields['cost_price'] !== null ? $fields['cost_price'] * $fields['quantity'] : null;
+            $newTotalCost = $fields['cost_price'] !== null ? Quantity::money($fields['cost_price'], $newQuantity) : null;
             $newTotalCostFloat = $newTotalCost ?? 0.0;
 
             if ($newTotalCostFloat < (float) $entry->amount_paid) {
@@ -78,7 +86,7 @@ class UpdateStockIn
             }
 
             $entry->update([
-                'quantity' => $fields['quantity'],
+                'quantity' => $newQuantity,
                 'quantity_remaining' => $newQuantityRemaining,
                 'vendor_id' => $fields['vendor_id'],
                 'cost_price' => $fields['cost_price'],

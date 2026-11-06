@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use App\Casts\QuantityCast;
+use App\Enums\QuantityUnit;
 use App\Models\Concerns\BelongsToShop;
+use App\Support\Quantity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -18,13 +21,17 @@ class WhatsAppOrderItem extends Model
         'product_id',
         'product_name',
         'quantity',
+        'unit',
         'quoted_unit_price',
     ];
+
+    protected $attributes = ['unit' => 'piece'];
 
     protected function casts(): array
     {
         return [
-            'quantity' => 'integer',
+            'quantity' => QuantityCast::class,
+            'unit' => QuantityUnit::class,
             'quoted_unit_price' => 'decimal:2',
         ];
     }
@@ -41,6 +48,6 @@ class WhatsAppOrderItem extends Model
 
     public function lineTotal(): float
     {
-        return (float) $this->quoted_unit_price * $this->quantity;
+        return Quantity::money($this->quoted_unit_price, $this->quantity);
     }
 }

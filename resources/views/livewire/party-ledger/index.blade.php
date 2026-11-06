@@ -428,7 +428,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                     'stock-in-'.$entry->id,
                     $entry->stock_date,
                     $this->sortKey($entry->stock_date, $entry->id, 0, 0),
-                    'Stock-In: '.$entry->product_name.' × '.$entry->quantity,
+                    'Stock-In: '.$entry->product_name.' × '.$entry->unit->amount($entry->quantity),
                     $entry->total_cost === null ? 'No cost price recorded' : null,
                     $url,
                     'credit',

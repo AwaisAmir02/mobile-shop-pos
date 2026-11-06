@@ -60,7 +60,7 @@ class SendWhatsAppFollowUps extends Command
         RestockSubscription::withoutGlobalScopes()
             ->waiting()
             ->whereIn('shop_id', $enabledShopIds)
-            ->whereIn('product_id', Product::withoutGlobalScopes()->where('whatsapp_listed', true)->where('stock_quantity', '>', 0)->select('id'))
+            ->whereIn('product_id', Product::withoutGlobalScopes()->where('whatsapp_listed', true)->where('unit', 'piece')->where('stock_quantity', '>', 0)->select('id'))
             ->orderBy('id')
             ->limit($limit)
             ->get()

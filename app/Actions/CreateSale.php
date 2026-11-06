@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Enums\SalePaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Support\Quantity;
 use App\Support\SaleCartMath;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -36,11 +37,12 @@ class CreateSale
                 }
 
                 $product = $productQuery->lockForUpdate()->firstOrFail();
-                $quantity = (int) $line['quantity'];
+                $product->unit->assertQuantity($line['quantity'], "lines.{$product->id}", $product->name);
+                $quantity = Quantity::normalize($line['quantity']);
 
-                if ($product->stock_quantity < $quantity) {
+                if (Quantity::compare($product->stock_quantity, $quantity) < 0) {
                     throw ValidationException::withMessages([
-                        "lines.{$product->id}" => "Only {$product->stock_quantity} left in stock for {$product->name}.",
+                        "lines.{$product->id}" => 'Only '.$product->stockLabel()." left in stock for {$product->name}.",
                     ]);
                 }
 
@@ -53,12 +55,14 @@ class CreateSale
                         'product_id' => $product->id,
                         'product_name' => $product->name,
                         'product_type' => $product->type,
+                        'unit' => $product->unit,
                     ]);
                 }
 
                 $product->decrement('stock_quantity', $quantity);
             }
 
+            $subtotal = round($subtotal, 2);
             $invoiceDiscount = min($invoiceDiscount, $subtotal);
 
             $sale = new Sale(array_merge($attributes, [

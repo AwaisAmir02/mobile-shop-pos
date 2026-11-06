@@ -2,6 +2,7 @@
 
 namespace App\Exports\Concerns;
 
+use App\Support\Quantity;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
@@ -59,7 +60,7 @@ trait FormatsExportSheet
             $widths[$letter] = match ($type) {
                 'date' => 18,
                 'currency' => 16,
-                'integer' => 12,
+                'integer', 'quantity' => 12,
                 default => max(16, strlen((string) $header) + 6),
             };
         }
@@ -106,6 +107,25 @@ trait FormatsExportSheet
                 $sheet->getStyle("{$letter}{$firstDataRow}:{$letter}{$lastDataRow}")
                     ->getNumberFormat()->setFormatCode($format);
             }
+
+            if ($type === 'quantity') {
+                $this->formatQuantityCells($sheet, $i, $letter, $firstDataRow);
+            }
+        }
+    }
+
+    /**
+     * Whole numbers read as "5" and fractions as "1.5". One format can't do
+     * both: "#,##0.###" shows a whole number as "5." in Excel, and "#,##0"
+     * shows 1.5 as 2. So each cell gets the one that suits its own value.
+     */
+    protected function formatQuantityCells($sheet, int $columnIndex, string $letter, int $firstDataRow): void
+    {
+        foreach (array_values($this->rows) as $offset => $row) {
+            $value = $row[$columnIndex] ?? null;
+
+            $sheet->getStyle($letter.($firstDataRow + $offset))->getNumberFormat()
+                ->setFormatCode(is_numeric($value) && ! Quantity::isWhole($value) ? '#,##0.###' : '#,##0');
         }
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\QuantityUnit;
 use App\Models\BalanceLoad;
 use App\Models\BillPayment;
 use App\Models\Expense;
@@ -16,6 +17,7 @@ use App\Models\Branch;
 use App\Models\StockIn;
 use App\Models\WalletLoad;
 use App\Support\BranchContext;
+use App\Support\Quantity;
 use Carbon\Carbon;
 
 class ShopReportService
@@ -43,10 +45,13 @@ class ShopReportService
         $itemDiscount = (float) $saleItemsQuery()->sum('discount_amount');
 
         $categoryRows = $saleItemsQuery()
-            ->selectRaw('product_type, SUM(line_total) as revenue, SUM(quantity) as units')
+            ->selectRaw("product_type, SUM(line_total) as revenue, SUM(CASE WHEN unit = 'piece' THEN quantity ELSE 0 END) as units")
             ->groupBy('product_type')
             ->get()
             ->keyBy('product_type');
+
+        // Piece counts stay piece counts; weight, volume and length sit beside them, per unit.
+        $soldByUnit = $this->measuredTotals($saleItemsQuery());
 
         $categories = MainCategory::where('shop_id', $shop->id)->orderBy('name')->get()
             ->map(fn (MainCategory $category) => [
@@ -91,10 +96,12 @@ class ShopReportService
             ->whereBetween('expense_date', [$start->toDateString(), $end->toDateString()])
             ->sum('amount');
 
-        $totalStockInUnits = (int) StockIn::where('shop_id', $shop->id)
+        $stockInQuery = fn () => StockIn::where('shop_id', $shop->id)
             ->inCurrentBranch()
-            ->whereBetween('stock_date', [$start->toDateString(), $end->toDateString()])
-            ->sum('quantity');
+            ->whereBetween('stock_date', [$start->toDateString(), $end->toDateString()]);
+
+        $totalStockInUnits = (int) $stockInQuery()->where('unit', QuantityUnit::Piece->value)->sum('quantity');
+        $stockInByUnit = $this->measuredTotals($stockInQuery());
 
         $simSalesQuery = fn () => SimSale::where('shop_id', $shop->id)->whereBetween('created_at', [$start, $end]);
 
@@ -120,6 +127,8 @@ class ShopReportService
             'totalDiscount' => $invoiceDiscount + $itemDiscount,
             'categories' => $categories,
             'totalItemsSold' => (int) $categories->sum('units'),
+            'soldByUnit' => $soldByUnit,
+            'stockInByUnit' => $stockInByUnit,
             'totalBalanceLoaded' => $totalBalanceLoaded,
             'totalBalanceLoadFees' => $totalBalanceLoadFees,
             'totalWalletCashInAmount' => $totalWalletCashInAmount,
@@ -138,6 +147,18 @@ class ShopReportService
             'totalNadraRevenue' => $totalNadraRevenue,
             'netSummary' => $totalRevenue - $totalExpenses,
         ];
+    }
+
+    /** @return array<string, int|float> unit value => total, for everything not sold by the piece */
+    protected function measuredTotals($query): array
+    {
+        return $query->where('unit', '!=', QuantityUnit::Piece->value)
+            ->selectRaw('unit as unit_value, SUM(quantity) as total')
+            ->groupBy('unit')
+            ->toBase()
+            ->pluck('total', 'unit_value')
+            ->map(fn ($total) => Quantity::normalize($total))
+            ->all();
     }
 
     /**

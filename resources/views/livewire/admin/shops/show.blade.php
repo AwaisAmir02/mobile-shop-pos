@@ -222,7 +222,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $entitlements = app(Entitlements::class);
         $value = ! $this->shop->{$feature->column()};
 
-        if ($entitlements->governed($this->shop)) {
+        if ($feature->planControlled() && $entitlements->governed($this->shop)) {
             $entitlements->setFeatureOverride($this->shop, $feature, $value);
         } else {
             $this->shop->update([$feature->column() => $value]);
@@ -526,7 +526,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         <x-ui.stat label="Total Wallet Cash In" value="Rs {{ number_format($totalWalletCashInAmount, 2) }}" />
         <x-ui.stat label="Total Wallet Cash Out" value="Rs {{ number_format($totalWalletCashOutAmount, 2) }}" />
         <x-ui.stat label="Total Expenses" value="Rs {{ number_format($totalExpenses, 2) }}" />
-        <x-ui.stat label="Stock-In Units" :value="number_format($totalStockInUnits)" />
+        <x-ui.stat label="Stock-In Units" :value="trim(number_format($totalStockInUnits).' '.(filled($stockInMeasured = \App\Enums\QuantityUnit::summarize($stockInByUnit ?? [])) ? '· '.$stockInMeasured : ''))" />
     </div>
 
     <div class="mt-4 rounded-xl border border-brand-200 bg-brand-50 px-5 py-4">

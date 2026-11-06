@@ -12,9 +12,28 @@ enum FeatureKey: string
     case Barcode = 'barcode';
     case Branding = 'branding';
     case Services = 'services';
+    case Variants = 'variants';
+    case MeasuredUnits = 'measured_units';
 
     /** The order of the switches on the admin shop page; a case not listed goes last. */
-    protected const ADMIN_ORDER = [self::Barcode, self::Branding, self::Services, self::WhatsAppOrdering, self::WhatsAppMessaging, self::Social, self::Ads];
+    protected const ADMIN_ORDER = [self::Barcode, self::Variants, self::MeasuredUnits, self::Branding, self::Services, self::WhatsAppOrdering, self::WhatsAppMessaging, self::Social, self::Ads];
+
+    /**
+     * Whether plans and add-ons decide this feature. One that isn't is free
+     * and set per shop from the admin shop page alone: the Plan editor saves
+     * every feature it lists, so listing one there would switch it off for
+     * the plan's shops the next time the plan is saved.
+     */
+    public function planControlled(): bool
+    {
+        return ! in_array($this, [self::Variants, self::MeasuredUnits], true);
+    }
+
+    /** @return array<int, self> */
+    public static function planCases(): array
+    {
+        return array_values(array_filter(self::cases(), fn (self $feature) => $feature->planControlled()));
+    }
 
     public function label(): string
     {
@@ -27,6 +46,8 @@ enum FeatureKey: string
             self::Barcode => 'Barcodes',
             self::Branding => 'Invoice branding',
             self::Services => 'Services module',
+            self::Variants => 'Product variants',
+            self::MeasuredUnits => 'Weighed and measured items',
         };
     }
 
@@ -67,6 +88,8 @@ enum FeatureKey: string
             self::Barcode => ['Barcodes', 'Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off.', 'Barcodes'],
             self::Branding => ['Branding', 'Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name.', 'Custom branding'],
             self::Services => ['Services', 'A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop.', 'Services'],
+            self::Variants => ['Product Variants', 'Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off.', 'Product variants'],
+            self::MeasuredUnits => ['Weighed & Measured Items', 'Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot.', 'Weighed and measured items'],
         };
 
         return ['label' => $label, 'description' => $description, 'toast' => $toast];

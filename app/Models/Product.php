@@ -2,22 +2,32 @@
 
 namespace App\Models;
 
+use App\Casts\QuantityCast;
+use App\Enums\QuantityUnit;
 use App\Enums\SimForm;
 use App\Enums\SimType;
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Concerns\HasImage;
+use App\Support\Quantity;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 class Product extends Model
 {
-    use BelongsToShop, HasImage;
+    use BelongsToShop, HasImage {
+        imageUrl as ownImageUrl;
+    }
 
     public const LOW_STOCK_THRESHOLD = 5;
 
     protected $fillable = [
         'shop_id',
+        'product_group_id',
+        'variant_label',
         'type',
         'name',
         'barcode',
@@ -25,17 +35,21 @@ class Product extends Model
         'price',
         'cost_price',
         'stock_quantity',
+        'unit',
         'whatsapp_listed',
         'archived_at',
         'details',
     ];
+
+    protected $attributes = ['unit' => 'piece'];
 
     protected function casts(): array
     {
         return [
             'price' => 'decimal:2',
             'cost_price' => 'decimal:2',
-            'stock_quantity' => 'integer',
+            'stock_quantity' => QuantityCast::class,
+            'unit' => QuantityUnit::class,
             'whatsapp_listed' => 'boolean',
             'archived_at' => 'datetime',
             'details' => 'array',
@@ -44,12 +58,67 @@ class Product extends Model
 
     protected static function booted(): void
     {
+        // Every save, whichever screen or service it came from.
+        static::saving(function (Product $product) {
+            $product->enforceUnitRules();
+        });
+
         static::updated(function (Product $product) {
             if ($product->archived_at !== null && $product->stock_quantity > 0) {
                 $product->archived_at = null;
                 $product->saveQuietly();
             }
         });
+    }
+
+    protected function enforceUnitRules(): void
+    {
+        $unit = $this->unit ?? QuantityUnit::Piece;
+
+        if ($unit->allowsDecimals()) {
+            if (in_array($this->type, QuantityUnit::PIECE_ONLY_TYPES, true) || ! empty($this->details['imei'])) {
+                throw ValidationException::withMessages(['unit' => 'Mobiles, IMEI-tracked items and SIMs are sold by the piece.']);
+            }
+
+            // Ordering by weight on WhatsApp isn't offered, so a measured product can't be listed.
+            $this->whatsapp_listed = false;
+        }
+
+        if ($this->exists && $this->isDirty('unit') && $this->unitIsLocked()) {
+            throw ValidationException::withMessages(['unit' => "{$this->name} already has stock-in or sales records, so its unit can't be changed."]);
+        }
+
+        if (($this->isDirty('stock_quantity') || $this->isDirty('unit')) && ! $unit->allowsDecimals() && ! Quantity::isWhole($this->stock_quantity)) {
+            throw ValidationException::withMessages(['stock_quantity' => 'This product is sold by the piece, so its stock must be a whole number.']);
+        }
+
+        if ($this->product_group_id !== null && ($this->isDirty('unit') || $this->isDirty('product_group_id'))) {
+            $groupUnit = ProductGroup::withoutGlobalScopes()->whereKey($this->product_group_id)->first()?->unit;
+
+            if ($groupUnit !== null && $groupUnit !== $unit) {
+                throw ValidationException::withMessages(['unit' => 'Every variant in a group has to use the same unit.']);
+            }
+        }
+    }
+
+    /**
+     * Locked like its price once it has batches. Sales lock it too: cancelling
+     * one puts its quantity back, which has to still make sense in this unit.
+     */
+    public function unitIsLocked(): bool
+    {
+        return $this->hasBatches() || SaleItem::withoutGlobalScopes()->where('product_id', $this->id)->exists();
+    }
+
+    public function canUseMeasuredUnits(): bool
+    {
+        return ! in_array($this->type, QuantityUnit::PIECE_ONLY_TYPES, true) && empty($this->details['imei']);
+    }
+
+    /** "1.5 kg" of stock; a piece count is just the number. */
+    public function stockLabel(): string
+    {
+        return $this->unit->amount($this->stock_quantity);
     }
 
     public function isArchived(): bool
@@ -70,6 +139,67 @@ class Product extends Model
     public function stockIns(): HasMany
     {
         return $this->hasMany(StockIn::class);
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(ProductGroup::class, 'product_group_id');
+    }
+
+    public function isVariant(): bool
+    {
+        return $this->product_group_id !== null;
+    }
+
+    /** IMEI-tracked mobiles and legacy SIMs are one physical unit per row. */
+    public function canHaveVariants(): bool
+    {
+        return ! in_array($this->type, ProductGroup::EXCLUDED_TYPES, true) && empty($this->details['imei']);
+    }
+
+    /** A variant with no photo of its own shows its group's. */
+    public function imageUrl(): ?string
+    {
+        return $this->ownImageUrl() ?? ($this->product_group_id !== null ? $this->group?->imageUrl() : null);
+    }
+
+    /**
+     * Narrows to one row per variant group among $matching (the same filters,
+     * as a fresh query); products with no group are unaffected.
+     */
+    public function scopeOneRowPerGroup(Builder $query, Builder $matching): void
+    {
+        $query->where(fn (Builder $q) => $q
+            ->whereNull('products.product_group_id')
+            ->orWhereIn('products.id', $matching
+                ->whereNotNull('products.product_group_id')
+                ->selectRaw('MIN(products.id)')
+                ->groupBy('products.product_group_id')));
+    }
+
+    /**
+     * currentSellingPrice() for many products in one query: the oldest
+     * available batch's price, else the product's own.
+     *
+     * @param  Collection<int, Product>  $products
+     * @return array<int, float> keyed by product id
+     */
+    public static function sellingPricesFor(Collection $products): array
+    {
+        $batches = StockIn::query()
+            ->whereIn('product_id', $products->pluck('id'))
+            ->where('quantity_remaining', '>', 0)
+            ->orderBy('stock_date')
+            ->orderBy('id')
+            ->get(['id', 'product_id', 'selling_price'])
+            ->unique('product_id')
+            ->keyBy('product_id');
+
+        return $products->mapWithKeys(function (Product $product) use ($batches) {
+            $batchPrice = $batches->get($product->id)?->selling_price;
+
+            return [$product->id => $batchPrice !== null ? (float) $batchPrice : (float) $product->price];
+        })->all();
     }
 
     public function oldestAvailableBatch(): ?StockIn
