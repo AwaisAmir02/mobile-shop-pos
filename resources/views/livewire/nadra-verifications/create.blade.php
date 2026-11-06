@@ -15,6 +15,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('NADRA Verification')] class extends Component
 {
+    use \App\Livewire\Concerns\ChoosesPaymentSource;
+
     use Toasts;
 
     public string $customerId = '';
@@ -121,6 +123,7 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification')] class extends Compon
             'payment_status' => $this->paymentStatus,
             'amount_paid' => $amountPaid,
         ]);
+        $this->notePaymentSource($verification, (float) $verification->amount_paid);
 
         $this->toastSuccess('NADRA verification recorded.');
         $this->lastVerificationId = $verification->id;
@@ -224,6 +227,7 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification')] class extends Compon
                             <x-ui.input wire:model="amountPaid" id="amountPaid" type="number" min="0" step="0.01" />
                         </x-ui.field>
                     @endif
+                            <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
 
                     <div class="flex items-center justify-between rounded-lg bg-brand-50 px-4 py-3">
                         <span class="text-sm font-medium text-brand-700">Total Collected</span>

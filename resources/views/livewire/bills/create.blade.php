@@ -19,6 +19,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
 {
+    use \App\Livewire\Concerns\ChoosesPaymentSource;
+
     use Toasts;
 
     public string $billCategoryId = '';
@@ -226,6 +228,7 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
             'payment_status' => $this->paymentStatus,
             'amount_paid' => $amountPaid,
         ]);
+        $this->notePaymentSource($payment, (float) $payment->amount_paid);
 
         $this->toastSuccess('Bill payment recorded.');
         $this->lastPaymentId = $payment->id;
@@ -391,6 +394,7 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
                                 <x-ui.input wire:model="amountPaid" id="amountPaid" type="number" min="0" step="0.01" />
                             </x-ui.field>
                         @endif
+                            <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
                     </div>
 
                     <div class="flex items-center justify-between rounded-lg bg-brand-50 px-4 py-3">

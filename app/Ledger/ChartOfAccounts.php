@@ -91,6 +91,19 @@ class ChartOfAccounts
         return in_array($type, [LedgerAccount::INCOME, LedgerAccount::EXPENSE], true);
     }
 
+    /** Where money moved, as far as it was recorded. */
+    public static function paidThrough(mixed $method, ?int $shopAccountId, string $unrecorded = self::NOT_CLASSIFIED): string
+    {
+        $method = $method instanceof \BackedEnum ? $method->value : $method;
+
+        return match (true) {
+            $shopAccountId !== null => self::bankCode($shopAccountId),
+            $method === 'cash' => self::CASH,
+            $method === 'account' => self::BANK,
+            default => $unrecorded,
+        };
+    }
+
     public static function bankCode(int $shopAccountId): string
     {
         return self::BANK.'-'.$shopAccountId;

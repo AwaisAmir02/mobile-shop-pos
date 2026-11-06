@@ -17,6 +17,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
 {
+    use \App\Livewire\Concerns\ChoosesPaymentSource;
+
     use Toasts;
 
     public string $customerId = '';
@@ -220,6 +222,7 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
         ]);
         $repair->created_at = $utcDatetime;
         $repair->save();
+        $this->notePaymentSource($repair, (float) $repair->amount_paid);
 
         $this->toastSuccess('Repair recorded.');
         $this->lastRepairId = $repair->id;
@@ -348,6 +351,7 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
                         <x-ui.field label="Amount Paid" name="amountPaid" for="amountPaid" help="How much the customer actually paid">
                             <x-ui.input wire:model.live="amountPaid" id="amountPaid" type="number" min="0" step="0.01" />
                         </x-ui.field>
+                            <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
                     </div>
 
                     <div class="flex items-center justify-between rounded-lg bg-brand-50 px-4 py-3">

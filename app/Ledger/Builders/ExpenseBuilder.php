@@ -12,14 +12,14 @@ class ExpenseBuilder implements EntryBuilder
 {
     public function lines(Model $document): array
     {
-        // A paid salary posts from its payslip, which knows the cash and deductions. Posting both would count it twice.
-        if ($document->status === RecordStatus::Cancelled || $document->payslip_id !== null) {
+        // A paid salary posts from its payslip, and a written-off advance from its advance: no cash moved for that one. Posting both would count them twice.
+        if ($document->status === RecordStatus::Cancelled || $document->payslip_id !== null || $document->employee_advance_id !== null) {
             return [];
         }
 
         return [
             Line::debit(Chart::EXPENSES, $document->amount, $document->expense_date, $document->branch_id),
-            Line::credit(Chart::NOT_CLASSIFIED, $document->amount, $document->expense_date, $document->branch_id),
+            Line::credit(Chart::paidThrough($document->payment_method, $document->shop_account_id), $document->amount, $document->expense_date, $document->branch_id),
         ];
     }
 

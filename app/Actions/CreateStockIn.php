@@ -22,7 +22,7 @@ class CreateStockIn
      * @param  array<int, array{product_id: int, quantity: int|float|string, cost_price: ?float, selling_price: float, expiry_date?: ?string, grn_line_id?: int}>  $lines
      * @return Collection<int, StockIn> one per line, in order
      */
-    public static function handle(array $lines, ?int $vendorId, string $paymentStatus, ?float $amountPaid, string $stockDate, ?string $note, ?int $userId, ?int $branchId = null): Collection
+    public static function handle(array $lines, ?int $vendorId, string $paymentStatus, ?float $amountPaid, string $stockDate, ?string $note, ?int $userId, ?int $branchId = null, ?string $paymentMethod = null, ?int $shopAccountId = null): Collection
     {
         $lines = array_values($lines);
         $count = count($lines);
@@ -35,7 +35,7 @@ class CreateStockIn
             default => 0.0,
         };
 
-        return DB::transaction(function () use ($lines, $count, $grandTotal, $headerAmountPaid, $vendorId, $stockDate, $note, $userId, $branchId) {
+        return DB::transaction(function () use ($lines, $count, $grandTotal, $headerAmountPaid, $vendorId, $stockDate, $note, $userId, $branchId, $paymentMethod, $shopAccountId) {
             $amountAllocated = 0.0;
             $entries = collect();
 
@@ -88,6 +88,8 @@ class CreateStockIn
                         'amount' => $lineAmountPaid,
                         'payment_date' => $stockDate,
                         'source' => StockInPaymentSource::Initial,
+                        'payment_method' => $paymentMethod,
+                        'shop_account_id' => $shopAccountId,
                     ]);
                 }
 

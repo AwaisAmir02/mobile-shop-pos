@@ -22,6 +22,11 @@ class EmployeeAdvanceBuilder implements EntryBuilder
         $employee = $document->employee_id;
         $account = $document->shop_account_id !== null ? Chart::bankCode($document->shop_account_id) : Chart::CASH;
 
+        // No cash moves on a write-off: the shop just stops expecting it back. It's a cost, through the linked Expense.
+        if ($document->type === AdvanceType::WrittenOff) {
+            return [Line::debit(Chart::EXPENSES, $document->amount, $date), Line::credit(Chart::EMPLOYEE_ADVANCES, $document->amount, $date, null, 'employee', $employee)];
+        }
+
         return $document->type === AdvanceType::Given
             ? [Line::debit(Chart::EMPLOYEE_ADVANCES, $document->amount, $date, null, 'employee', $employee), Line::credit($account, $document->amount, $date)]
             : [Line::debit($account, $document->amount, $date), Line::credit(Chart::EMPLOYEE_ADVANCES, $document->amount, $date, null, 'employee', $employee)];

@@ -11,6 +11,8 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] #[Title('Vendor Invoice')] class extends Component
 {
+    use \App\Livewire\Concerns\ChoosesPaymentSource;
+
     use Toasts;
 
     public int $invoiceId;
@@ -155,7 +157,8 @@ new #[Layout('layouts.app')] #[Title('Vendor Invoice')] class extends Component
 
         $this->validate(['payAmount' => ['required', 'numeric', 'min:0.01']], [], ['payAmount' => 'amount']);
 
-        VendorInvoices::pay($this->invoice(), (float) $this->payAmount, Auth::id());
+        VendorInvoices::pay($this->invoice(), (float) $this->payAmount, Auth::id(), ...$this->paidFromParts());
+        $this->paidFrom = '';
 
         $this->dispatch('close-modal', name: 'invoice-pay');
         $this->toastSuccess('Payment recorded.');
@@ -372,6 +375,7 @@ new #[Layout('layouts.app')] #[Title('Vendor Invoice')] class extends Component
                 <x-ui.field label="Amount Paid Now" name="payAmount" for="payAmount">
                     <x-ui.input wire:model="payAmount" id="payAmount" type="number" min="0.01" step="0.01" />
                 </x-ui.field>
+                <div class="mt-4"><x-ledger.paid-from :value="$paidFrom" /></div>
             </div>
             <div class="mt-6 flex justify-end gap-3">
                 <x-ui.button type="button" variant="secondary" wire:click="closePay">Cancel</x-ui.button>

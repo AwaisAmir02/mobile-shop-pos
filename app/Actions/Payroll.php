@@ -260,8 +260,8 @@ class Payroll
 
     public static function recordAdvance(Employee $employee, AdvanceType $type, float $amount, string $date, ?string $note, ?int $shopAccountId, ?int $userId): EmployeeAdvance
     {
-        if ($type === AdvanceType::Deducted) {
-            throw new \LogicException('Deductions only come from paying a payslip.');
+        if ($type === AdvanceType::Deducted || $type === AdvanceType::WrittenOff) {
+            throw new \LogicException('Deductions only come from paying a payslip, and write-offs have their own action.');
         }
 
         $amount = round($amount, 2);
@@ -289,6 +289,52 @@ class Payroll
         });
     }
 
+    /**
+     * Stop expecting an advance back. It costs the shop, so it reaches Net through
+     * a linked Expense. No cash moves, so that Expense doesn't post to the ledger;
+     * this row does. Only with the ledger on: otherwise a normal Expense does the job.
+     */
+    public static function writeOffAdvance(Employee $employee, float $amount, string $date, ?string $note, ?int $userId): EmployeeAdvance
+    {
+        OwnerMoney::assertLedgerOn(Shop::findOrFail($employee->shop_id));
+
+        $amount = round($amount, 2);
+
+        if ($amount <= 0) {
+            throw ValidationException::withMessages(['advanceAmount' => 'Enter an amount above zero.']);
+        }
+
+        return DB::transaction(function () use ($employee, $amount, $date, $note, $userId) {
+            $employee = Employee::whereKey($employee->id)->lockForUpdate()->firstOrFail();
+
+            if ($amount > $employee->advanceBalance()) {
+                throw ValidationException::withMessages(['advanceAmount' => "{$employee->name} only owes Rs ".number_format($employee->advanceBalance(), 2).'.']);
+            }
+
+            $row = $employee->advances()->create([
+                'shop_id' => $employee->shop_id,
+                'user_id' => $userId,
+                'type' => AdvanceType::WrittenOff,
+                'amount' => $amount,
+                'transaction_date' => $date,
+                'note' => filled($note) ? $note : null,
+            ]);
+
+            $expense = new Expense([
+                'user_id' => $userId,
+                'employee_advance_id' => $row->id,
+                'description' => 'Advance written off: '.$employee->name,
+                'amount' => $amount,
+                'expense_date' => $date,
+            ]);
+            $expense->shop_id = $employee->shop_id;
+            $expense->branch_id = $employee->branch_id ?? BranchContext::current()->mainBranchIdFor($employee->shop_id);
+            $expense->save();
+
+            return $row;
+        });
+    }
+
     public static function cancelAdvance(EmployeeAdvance $row, ?int $userId, ?string $reason = null): void
     {
         DB::transaction(function () use ($row, $userId, $reason) {
@@ -305,6 +351,16 @@ class Payroll
 
             if ($row->type === AdvanceType::Given && $employee->advanceBalance() < (float) $row->amount) {
                 throw ValidationException::withMessages(['advance' => 'Part of this advance has already been repaid, so it can\'t be cancelled.']);
+            }
+
+            if ($row->type === AdvanceType::WrittenOff) {
+                BranchContext::current()->shopWide(function () use ($row, $userId, $reason) {
+                    $expense = Expense::where('employee_advance_id', $row->id)->first();
+
+                    if ($expense !== null) {
+                        CancelExpense::handle($expense, $userId, $reason, fromPayslip: true);
+                    }
+                });
             }
 
             $snapshot = ['type' => $row->type->value, 'amount' => (float) $row->amount, 'transaction_date' => $row->transaction_date->toDateString(), 'note' => $row->note];

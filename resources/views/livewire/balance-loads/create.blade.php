@@ -17,6 +17,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
 {
+    use \App\Livewire\Concerns\ChoosesPaymentSource;
+
     use Toasts;
 
     public string $networkChoice = '';
@@ -145,6 +147,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
             'payment_status' => $this->derivePaymentStatus($received, $total),
             'amount_paid' => $received,
         ]);
+        $this->notePaymentSource($load, (float) $load->amount_paid);
 
         $this->toastSuccess('Balance loaded.');
         $this->lastLoadId = $load->id;
@@ -281,6 +284,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                         <x-ui.field label="Cash Received" name="amountReceivedNow" for="amountReceivedNow" help="How much cash did the customer hand you just now?">
                             <x-ui.input wire:model.live="amountReceivedNow" id="amountReceivedNow" type="number" min="0" step="0.01" placeholder="0" />
                         </x-ui.field>
+                            <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
                     </div>
 
                     <div class="rounded-lg bg-brand-50 px-4 py-3">

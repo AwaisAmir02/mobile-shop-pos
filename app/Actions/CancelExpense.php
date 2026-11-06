@@ -21,7 +21,7 @@ class CancelExpense
                 throw new \RuntimeException('This expense has already been cancelled.');
             }
 
-            if ($expense->payslip_id !== null && ! $fromPayslip) {
+            if (($expense->payslip_id !== null || $expense->employee_advance_id !== null) && ! $fromPayslip) {
                 throw ValidationException::withMessages(['cancelReason' => 'This is a salary from Payroll. Cancel the payslip there instead.']);
             }
 

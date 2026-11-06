@@ -13,6 +13,8 @@ use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
 {
+    use \App\Livewire\Concerns\ChoosesPaymentSource;
+
     use Toasts, WithPagination;
 
     public string $description = '';
@@ -68,7 +70,11 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
             'expenseDate' => ['required', 'date'],
         ]);
 
+        [$paymentMethod, $shopAccountId] = $this->paidFromParts();
+
         Expense::create([
+            'payment_method' => $paymentMethod,
+            'shop_account_id' => $shopAccountId,
             'user_id' => Auth::id(),
             'description' => $this->description,
             'amount' => $this->amount,
@@ -76,7 +82,7 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
         ]);
 
         $this->toastSuccess('Expense logged.');
-        $this->reset(['description', 'amount']);
+        $this->reset(['description', 'amount', 'paidFrom']);
         $this->expenseDate = now()->toDateString();
         $this->resetPage();
     }
@@ -169,6 +175,8 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
                 <x-ui.input wire:model="amount" id="amount" type="number" min="0.01" step="0.01" />
             </x-ui.field>
 
+            <x-ledger.paid-from :value="$paidFrom" class="sm:w-48" />
+
             <x-ui.field label="Date" name="expenseDate" for="expenseDate" class="sm:w-48">
                 <x-ui.input wire:model="expenseDate" id="expenseDate" type="date" />
             </x-ui.field>
@@ -228,7 +236,9 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
                         @endif
                     </x-ui.table-cell>
                     <x-ui.table-cell align="right">
-                        @if ($expense->payslip_id !== null)
+                        @if ($expense->employee_advance_id !== null)
+                            <span class="text-xs text-slate-400">Advance written off</span>
+                        @elseif ($expense->payslip_id !== null)
                             <span class="text-xs text-slate-400">From Payroll</span>
                         @elseif (! $expense->isCancelled() && auth()->user()->hasAccessTo('expenses-edit-cancel'))
                             <div class="flex justify-end gap-2">

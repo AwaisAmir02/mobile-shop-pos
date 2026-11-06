@@ -268,9 +268,9 @@ class VendorInvoices
      * Capped at what's owed and shared by what each batch still owes, through
      * the same path as Stock In History. The invoice itself stores nothing.
      */
-    public static function pay(VendorInvoice $invoice, float $amount, ?int $userId): VendorInvoice
+    public static function pay(VendorInvoice $invoice, float $amount, ?int $userId, ?string $paymentMethod = null, ?int $shopAccountId = null): VendorInvoice
     {
-        return DB::transaction(function () use ($invoice, $amount, $userId) {
+        return DB::transaction(function () use ($invoice, $amount, $userId, $paymentMethod, $shopAccountId) {
             $invoice = self::lock($invoice);
             self::assertBranch($invoice);
 
@@ -303,7 +303,7 @@ class VendorInvoices
                 $remainingOwed -= $rowOwed;
 
                 if ($share > 0) {
-                    RecordStockInPayment::add($line->stockIn, $share / 100, $userId, StockInPaymentSource::InvoicePayment, $invoice->id);
+                    RecordStockInPayment::add($line->stockIn, $share / 100, $userId, StockInPaymentSource::InvoicePayment, $invoice->id, $paymentMethod, $shopAccountId);
                 }
             }
 

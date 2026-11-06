@@ -18,6 +18,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
 {
+    use \App\Livewire\Concerns\ChoosesPaymentSource;
+
     use GuardsExportSize, Toasts;
 
     public string $customerId = '';
@@ -89,7 +91,8 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
 
         $customer = Customer::findOrFail($this->customerId);
 
-        CreateUdhaarTransaction::handle($customer, $this->type, $this->amount, $this->transaction_date, $this->note);
+        CreateUdhaarTransaction::handle($customer, $this->type, $this->amount, $this->transaction_date, $this->note, ...$this->paidFromParts());
+        $this->paidFrom = '';
 
         $this->toastSuccess('Transaction recorded.');
         $this->dispatch('close-modal', name: 'quick-transaction-form');
@@ -223,6 +226,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
                 <x-ui.field label="Amount" name="amount" for="amount">
                     <x-ui.input wire:model="amount" id="amount" type="number" min="0.01" step="0.01" class="text-lg" />
                 </x-ui.field>
+                <x-ledger.paid-from :value="$paidFrom" label="Cash or Account" blank="Not recorded" />
 
                 <x-ui.field label="Note" name="note" for="note" help="Optional">
                     <x-ui.input wire:model="note" id="note" />

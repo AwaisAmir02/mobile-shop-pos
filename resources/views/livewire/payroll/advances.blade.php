@@ -53,7 +53,7 @@ new #[Layout('layouts.app')] #[Title('Salary Advances')] class extends Component
 
     public function openForm(string $type): void
     {
-        abort_unless(in_array($type, ['given', 'repaid'], true), 404);
+        abort_unless(in_array($type, ['given', 'repaid', 'written_off'], true), 404);
 
         $this->advanceType = $type;
         $this->advanceAmount = '';
@@ -74,16 +74,21 @@ new #[Layout('layouts.app')] #[Title('Salary Advances')] class extends Component
         $person = Employee::query()->inBranchOrShared()->findOrFail((int) $this->employee);
 
         $this->validate([
-            'advanceType' => ['required', Rule::in(['given', 'repaid'])],
+            'advanceType' => ['required', Rule::in(['given', 'repaid', 'written_off'])],
             'advanceAmount' => ['required', 'numeric', 'min:0.01', 'max:9999999999.99'],
             'advanceDate' => ['required', 'date', 'before_or_equal:'.BatchExpiry::today()],
             'advanceNote' => ['nullable', 'string', 'max:255'],
             'advanceAccountId' => ['nullable', 'integer', Rule::exists('shop_accounts', 'id')->where('shop_id', Auth::user()->shop_id)],
         ], [], ['advanceAmount' => 'amount', 'advanceDate' => 'date']);
 
-        Payroll::recordAdvance($person, AdvanceType::from($this->advanceType), (float) $this->advanceAmount, $this->advanceDate, $this->advanceNote, $this->advanceAccountId !== '' ? (int) $this->advanceAccountId : null, Auth::id());
+        if ($this->advanceType === 'written_off') {
+            Payroll::writeOffAdvance($person, (float) $this->advanceAmount, $this->advanceDate, $this->advanceNote, Auth::id());
+            $this->toastSuccess('Advance written off and added to Expenses.');
+        } else {
+            Payroll::recordAdvance($person, AdvanceType::from($this->advanceType), (float) $this->advanceAmount, $this->advanceDate, $this->advanceNote, $this->advanceAccountId !== '' ? (int) $this->advanceAccountId : null, Auth::id());
+            $this->toastSuccess($this->advanceType === 'given' ? 'Advance recorded.' : 'Repayment recorded.');
+        }
 
-        $this->toastSuccess($this->advanceType === 'given' ? 'Advance recorded.' : 'Repayment recorded.');
         $this->closeForm();
     }
 
@@ -121,6 +126,9 @@ new #[Layout('layouts.app')] #[Title('Salary Advances')] class extends Component
             <div class="flex gap-2">
                 <x-ui.button size="sm" wire:click="openForm('given')">Give Advance</x-ui.button>
                 <x-ui.button size="sm" variant="secondary" wire:click="openForm('repaid')">Record Repayment</x-ui.button>
+                @if (auth()->user()->shop?->ledger_ready_at && ! auth()->user()->shop?->ledger_frozen_at && $balance > 0)
+                    <x-ui.button size="sm" variant="ghost" wire:click="openForm('written_off')">Write Off</x-ui.button>
+                @endif
             </div>
         @endif
     </div>
@@ -167,7 +175,7 @@ new #[Layout('layouts.app')] #[Title('Salary Advances')] class extends Component
 
     <x-ui.modal name="advance-form" max-width="sm">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">{{ $advanceType === 'given' ? 'Give Advance' : 'Record Repayment' }}</h2>
+            <h2 class="text-lg font-semibold text-slate-900">{{ ['given' => 'Give Advance', 'repaid' => 'Record Repayment', 'written_off' => 'Write Off Advance'][$advanceType] }}</h2>
             <p class="mt-1 text-sm text-slate-500">{{ $selected?->name }}</p>
 
             <div class="mt-5 space-y-4">
@@ -177,7 +185,9 @@ new #[Layout('layouts.app')] #[Title('Salary Advances')] class extends Component
                 <x-ui.field label="Date" name="advanceDate" for="advanceDate">
                     <x-ui.input wire:model="advanceDate" id="advanceDate" type="date" />
                 </x-ui.field>
-                @if ($accounts->isNotEmpty())
+                @if ($advanceType === 'written_off')
+                    <p class="text-sm text-slate-600">You no longer expect this back. It's added to Expenses as a cost, and no cash moves.</p>
+                @elseif ($accounts->isNotEmpty())
                     <x-ui.field :label="$advanceType === 'given' ? 'Paid From' : 'Received Into'" name="advanceAccountId" for="advanceAccountId" help="Optional">
                         <x-ui.select wire:model="advanceAccountId" id="advanceAccountId">
                             <option value="">Cash</option>

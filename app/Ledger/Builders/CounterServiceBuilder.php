@@ -5,7 +5,9 @@ namespace App\Ledger\Builders;
 use App\Enums\RecordStatus;
 use App\Ledger\ChartOfAccounts as Chart;
 use App\Ledger\EntryBuilder;
+use App\Ledger\LedgerSources;
 use App\Ledger\Line;
+use App\Models\CounterServicePayment;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -44,13 +46,26 @@ abstract class CounterServiceBuilder implements EntryBuilder
         $total = $this->total($document);
         $passThrough = $this->passThrough($document);
 
-        return [
+        $lines = [
             Line::debit(Chart::RECEIVABLE, $total, $date, $branch, 'customer', $customer),
             Line::credit(Chart::CLEARING, $passThrough, $date, $branch),
             Line::credit($this->incomeAccount(), round($total - $passThrough, 2), $date, $branch),
-            Line::debit(Chart::NOT_CLASSIFIED, $document->amount_paid, $date, $branch),
-            Line::credit(Chart::RECEIVABLE, $document->amount_paid, $date, $branch, 'customer', $customer),
         ];
+
+        // Money with a recorded source posts through it, on its date. Whatever's left has no record.
+        $unrecorded = (float) $document->amount_paid;
+        $key = LedgerSources::documentFor($document)[0];
+
+        foreach (CounterServicePayment::withoutGlobalScopes()->where('source_type', $key)->where('source_id', $document->id)->get() as $payment) {
+            $lines[] = Line::debit(Chart::paidThrough($payment->payment_method, $payment->shop_account_id), $payment->amount, $payment->paid_on, $branch);
+            $lines[] = Line::credit(Chart::RECEIVABLE, $payment->amount, $payment->paid_on, $branch, 'customer', $customer);
+            $unrecorded -= (float) $payment->amount;
+        }
+
+        $lines[] = Line::debit(Chart::NOT_CLASSIFIED, round($unrecorded, 2), $date, $branch);
+        $lines[] = Line::credit(Chart::RECEIVABLE, round($unrecorded, 2), $date, $branch, 'customer', $customer);
+
+        return $lines;
     }
 
     public function description(Model $document): string

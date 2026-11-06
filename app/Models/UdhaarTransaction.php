@@ -26,6 +26,8 @@ class UdhaarTransaction extends Model
         'transaction_date',
         'note',
         'reverses_transaction_id',
+        'payment_method',
+        'shop_account_id',
         'status',
         'cancelled_at',
         'cancelled_by',

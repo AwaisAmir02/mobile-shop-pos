@@ -4,6 +4,9 @@ namespace App\Ledger;
 
 use App\Models\BalanceLoad;
 use App\Models\BillPayment;
+use App\Models\CounterServicePayment;
+use App\Models\OwnerWithdrawal;
+use App\Models\WithholdingPayment;
 use App\Models\EmployeeAdvance;
 use App\Models\Expense;
 use App\Models\NadraVerification;
@@ -41,6 +44,8 @@ class LedgerSources
         'product_stock' => ['model' => Product::class, 'builder' => Builders\ProductStockBuilder::class],
         'payslip' => ['model' => Payslip::class, 'builder' => Builders\PayslipBuilder::class],
         'employee_advance' => ['model' => EmployeeAdvance::class, 'builder' => Builders\EmployeeAdvanceBuilder::class],
+        'owner_withdrawal' => ['model' => OwnerWithdrawal::class, 'builder' => Builders\OwnerWithdrawalBuilder::class],
+        'withholding_payment' => ['model' => WithholdingPayment::class, 'builder' => Builders\WithholdingPaymentBuilder::class],
         'wallet_load' => ['model' => WalletLoad::class, 'builder' => Builders\WalletLoadBuilder::class],
         'balance_load' => ['model' => BalanceLoad::class, 'builder' => Builders\BalanceLoadBuilder::class],
         'bill_payment' => ['model' => BillPayment::class, 'builder' => Builders\BillPaymentBuilder::class],
@@ -61,12 +66,17 @@ class LedgerSources
     /** @return array<int, class-string<Model>> */
     public static function observed(): array
     {
-        return [...array_column(self::DOCUMENTS, 'model'), ...array_keys(self::CHILDREN)];
+        return [...array_column(self::DOCUMENTS, 'model'), ...array_keys(self::CHILDREN), CounterServicePayment::class];
     }
 
     /** @return array{0: string, 1: int}|null [document key, id] */
     public static function documentFor(Model $model): ?array
     {
+        // Belongs to whichever counter service it was paid on.
+        if ($model instanceof CounterServicePayment) {
+            return [$model->source_type, (int) $model->source_id];
+        }
+
         if (isset(self::CHILDREN[$model::class])) {
             [$key, $foreignKey] = self::CHILDREN[$model::class];
 

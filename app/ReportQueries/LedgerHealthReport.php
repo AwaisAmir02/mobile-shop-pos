@@ -2,6 +2,7 @@
 
 namespace App\ReportQueries;
 
+use App\Actions\OwnerMoney;
 use App\Enums\RecordStatus;
 use App\Enums\SaleStatus;
 use App\Enums\UdhaarTransactionType;
@@ -160,7 +161,7 @@ class LedgerHealthReport
 
     protected function withholdings(): array
     {
-        $held = (float) DB::table('payslips')->where('shop_id', $this->shop->id)->where('status', 'paid')->sum('held_deductions');
+        $held = OwnerMoney::withheldBalance($this->shop->id);
 
         return $this->check('Salary amounts held', -$this->ledgerBalance(Chart::WITHHOLDINGS), $held, 0.0, 'Held for someone else on paid payslips, less what has been paid over.');
     }

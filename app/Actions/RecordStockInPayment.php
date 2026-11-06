@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\DB;
  */
 class RecordStockInPayment
 {
-    public static function add(StockIn $entry, float $amount, ?int $userId, StockInPaymentSource $source = StockInPaymentSource::Payment, ?int $vendorInvoiceId = null): StockIn
+    public static function add(StockIn $entry, float $amount, ?int $userId, StockInPaymentSource $source = StockInPaymentSource::Payment, ?int $vendorInvoiceId = null, ?string $paymentMethod = null, ?int $shopAccountId = null): StockIn
     {
-        return DB::transaction(function () use ($entry, $amount, $userId, $source, $vendorInvoiceId) {
+        return DB::transaction(function () use ($entry, $amount, $userId, $source, $vendorInvoiceId, $paymentMethod, $shopAccountId) {
             $entry = self::lock($entry);
 
             $previousAmountPaid = (float) $entry->amount_paid;
@@ -31,7 +31,7 @@ class RecordStockInPayment
                     : PaymentStatus::Partial,
             ]);
 
-            self::recordRow($entry, (float) $entry->amount_paid - $previousAmountPaid, $source, $userId, $vendorInvoiceId);
+            self::recordRow($entry, (float) $entry->amount_paid - $previousAmountPaid, $source, $userId, $vendorInvoiceId, $paymentMethod, $shopAccountId);
 
             return $entry;
         });
@@ -64,7 +64,7 @@ class RecordStockInPayment
     }
 
     /** The exact change just stored, after decimal rounding. No change, no row. */
-    protected static function recordRow(StockIn $entry, float $change, StockInPaymentSource $source, ?int $userId, ?int $vendorInvoiceId = null): void
+    protected static function recordRow(StockIn $entry, float $change, StockInPaymentSource $source, ?int $userId, ?int $vendorInvoiceId = null, ?string $paymentMethod = null, ?int $shopAccountId = null): void
     {
         if (round($change, 2) == 0.0) {
             return;
@@ -77,6 +77,8 @@ class RecordStockInPayment
             'payment_date' => now()->toDateString(),
             'source' => $source,
             'vendor_invoice_id' => $vendorInvoiceId,
+            'payment_method' => $paymentMethod,
+            'shop_account_id' => $shopAccountId,
         ]);
     }
 }

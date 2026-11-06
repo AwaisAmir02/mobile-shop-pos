@@ -26,6 +26,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Component
 {
+    use \App\Livewire\Concerns\ChoosesPaymentSource;
+
     use GuardsExportSize, Toasts, WithPagination;
 
     public string $from = '';
@@ -177,7 +179,10 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'paymentAmount' => ['required', 'numeric', 'min:0.01'],
         ]);
 
-        RecordStockInPayment::add($entry, (float) $this->paymentAmount, Auth::id());
+        [$paymentMethod, $shopAccountId] = $this->paidFromParts();
+        $this->paidFrom = '';
+
+        RecordStockInPayment::add($entry, (float) $this->paymentAmount, Auth::id(), paymentMethod: $paymentMethod, shopAccountId: $shopAccountId);
 
         $this->toastSuccess('Payment recorded.');
         $this->dispatch('close-modal', name: 'add-payment-form');
@@ -482,6 +487,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                 <x-ui.field label="Amount Paid Now" name="paymentAmount" for="paymentAmount">
                     <x-ui.input wire:model="paymentAmount" id="paymentAmount" type="number" min="0.01" step="0.01" autofocus />
                 </x-ui.field>
+                <x-ledger.paid-from :value="$paidFrom" />
             </div>
 
             <div class="mt-6 flex justify-end gap-3">

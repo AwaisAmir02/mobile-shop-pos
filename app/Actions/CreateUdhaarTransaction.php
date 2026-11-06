@@ -20,7 +20,7 @@ class CreateUdhaarTransaction
         ];
     }
 
-    public static function handle(Customer $customer, string $type, string $amount, string $transactionDate, ?string $note = null): UdhaarTransaction
+    public static function handle(Customer $customer, string $type, string $amount, string $transactionDate, ?string $note = null, ?string $paymentMethod = null, ?int $shopAccountId = null): UdhaarTransaction
     {
         return UdhaarTransaction::create([
             'customer_id' => $customer->id,
@@ -29,6 +29,8 @@ class CreateUdhaarTransaction
             'amount' => $amount,
             'transaction_date' => $transactionDate,
             'note' => $note !== null && $note !== '' ? $note : null,
+            'payment_method' => $paymentMethod,
+            'shop_account_id' => $shopAccountId,
         ]);
     }
 }

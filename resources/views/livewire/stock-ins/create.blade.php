@@ -20,6 +20,8 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
 {
+    use \App\Livewire\Concerns\ChoosesPaymentSource;
+
     use Toasts;
 
     public string $categoryFilter = '';
@@ -312,6 +314,8 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
             $this->stock_date,
             $this->note,
             Auth::id(),
+            paymentMethod: $this->paidFromParts()[0],
+            shopAccountId: $this->paidFromParts()[1],
         );
 
         $this->toastSuccess(count($lines) > 1 ? 'Stock added for '.count($lines).' products.' : 'Stock added.');
@@ -358,6 +362,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                 <x-ui.field label="Amount Paid" name="amountPaid" for="amountPaid" help="How much you actually paid the vendor">
                     <x-ui.input wire:model.live="amountPaid" id="amountPaid" type="number" min="0" step="0.01" />
                 </x-ui.field>
+                <x-ledger.paid-from :value="$paidFrom" />
 
                 <x-ui.field label="Date Received" name="stock_date" for="stock_date">
                     <x-ui.input wire:model="stock_date" id="stock_date" type="date" max="{{ now()->toDateString() }}" />

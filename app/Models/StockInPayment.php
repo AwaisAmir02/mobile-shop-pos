@@ -21,6 +21,8 @@ class StockInPayment extends Model
         'shop_id',
         'stock_in_id',
         'vendor_invoice_id',
+        'payment_method',
+        'shop_account_id',
         'user_id',
         'amount',
         'payment_date',

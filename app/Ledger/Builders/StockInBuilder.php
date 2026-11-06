@@ -31,7 +31,7 @@ class StockInBuilder implements EntryBuilder
         if ($document->status === RecordStatus::Cancelled) {
             foreach ($payments as $payment) {
                 $lines[] = Line::debit(Chart::CANCELLED_UNCONFIRMED, $payment->amount, $payment->payment_date, $branch, 'vendor', $vendor);
-                $lines[] = Line::credit(Chart::NOT_CLASSIFIED, $payment->amount, $payment->payment_date, $branch);
+                $lines[] = Line::credit(Chart::paidThrough($payment->payment_method, $payment->shop_account_id), $payment->amount, $payment->payment_date, $branch);
             }
 
             return $lines;
@@ -57,7 +57,7 @@ class StockInBuilder implements EntryBuilder
 
         foreach ($payments as $payment) {
             $lines[] = Line::debit(Chart::PAYABLE, $payment->amount, $payment->payment_date, $branch, 'vendor', $vendor);
-            $lines[] = Line::credit(Chart::NOT_CLASSIFIED, $payment->amount, $payment->payment_date, $branch);
+            $lines[] = Line::credit(Chart::paidThrough($payment->payment_method, $payment->shop_account_id), $payment->amount, $payment->payment_date, $branch);
         }
 
         return $lines;

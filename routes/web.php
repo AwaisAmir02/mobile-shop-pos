@@ -59,6 +59,7 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('ledger/setup', 'ledger.setup')->name('ledger.setup');
         Volt::route('ledger/trial-balance', 'ledger.trial-balance')->name('ledger.trial-balance');
         Volt::route('ledger/health', 'ledger.health')->name('ledger.health');
+        Volt::route('ledger/owner-money', 'ledger.owner-money')->name('ledger.owner-money');
         Volt::route('ledger/accounts/{code}', 'ledger.account')->name('ledger.account');
         Volt::route('payroll/employees', 'payroll.employees')->name('payroll.employees')->middleware('shop.access:payroll');
         Volt::route('payroll/advances', 'payroll.advances')->name('payroll.advances')->middleware('shop.access:payroll');

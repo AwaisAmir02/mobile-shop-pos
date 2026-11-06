@@ -15,6 +15,8 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] #[Title('Services')] class extends Component
 {
+    use \App\Livewire\Concerns\ChoosesPaymentSource;
+
     use Toasts;
 
     public string $serviceCategoryId = '';
@@ -142,6 +144,7 @@ new #[Layout('layouts.app')] #[Title('Services')] class extends Component
             'payment_status' => $this->paymentStatus,
             'amount_paid' => $amountPaid,
         ]);
+        $this->notePaymentSource($payment, (float) $payment->amount_paid);
 
         $this->toastSuccess('Service recorded.');
         $this->lastPaymentId = $payment->id;
@@ -240,6 +243,7 @@ new #[Layout('layouts.app')] #[Title('Services')] class extends Component
                                 <x-ui.input wire:model="amountPaid" id="amountPaid" type="number" min="0" step="0.01" />
                             </x-ui.field>
                         @endif
+                            <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
                     </div>
 
                     <x-ui.button type="submit" size="lg" class="w-full justify-center sm:w-auto" wire:loading.attr="disabled" wire:target="save">

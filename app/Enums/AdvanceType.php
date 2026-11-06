@@ -7,6 +7,7 @@ enum AdvanceType: string
     case Given = 'given';
     case Repaid = 'repaid';
     case Deducted = 'deducted';
+    case WrittenOff = 'written_off';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum AdvanceType: string
             self::Given => 'Advance given',
             self::Repaid => 'Repaid in cash',
             self::Deducted => 'Deducted from salary',
+            self::WrittenOff => 'Written off',
         };
     }
 

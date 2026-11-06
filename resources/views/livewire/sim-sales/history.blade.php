@@ -21,6 +21,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Component
 {
+    use \App\Livewire\Concerns\ChoosesPaymentSource;
+
     use Toasts, WithPagination;
 
     public string $from = '';
@@ -138,6 +140,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
                 ? PaymentStatus::Paid
                 : PaymentStatus::Partial,
         ]);
+        $this->notePaymentSource($sale, (float) $this->paymentAmount);
 
         $this->toastSuccess('Payment recorded.');
         $this->dispatch('close-modal', name: 'add-payment-form');
@@ -404,6 +407,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
                 <x-ui.field label="Amount Paid Now" name="paymentAmount" for="paymentAmount">
                     <x-ui.input wire:model="paymentAmount" id="paymentAmount" type="number" min="0.01" step="0.01" autofocus />
                 </x-ui.field>
+                <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
             </div>
 
             <div class="mt-6 flex justify-end gap-3">

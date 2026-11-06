@@ -20,7 +20,7 @@ class UpdateExpense
                 throw new \RuntimeException('A cancelled expense cannot be edited.');
             }
 
-            if ($expense->payslip_id !== null) {
+            if ($expense->payslip_id !== null || $expense->employee_advance_id !== null) {
                 throw ValidationException::withMessages(['editAmount' => 'This is a salary from Payroll. Cancel the payslip there instead.']);
             }
 
