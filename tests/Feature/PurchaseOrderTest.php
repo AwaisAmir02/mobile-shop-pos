@@ -438,6 +438,64 @@ class PurchaseOrderTest extends TestCase
 
     // ── Plan ───────────────────────────────────────────────────────────
 
+    public function test_a_received_batchs_vendor_is_locked_like_its_quantity(): void
+    {
+        $shop = $this->poShop();
+        $product = $this->piece($shop);
+        $order = $this->order([[$product, 5]]);
+        $this->receive($order, [['po_line_id' => $order->lines->first()->id, 'quantity' => 5]]);
+        $batch = StockIn::sole();
+        $other = Vendor::create(['shop_id' => $shop->id, 'name' => 'Other Vendor']);
+        $fields = ['quantity' => 5, 'vendor_id' => $batch->vendor_id, 'stock_date' => now()->toDateString(), 'note' => 'Fixed', 'cost_price' => 100.0, 'selling_price' => 150.0];
+
+        foreach ([$other->id, null] as $vendorId) {
+            try {
+                UpdateStockIn::handle($batch, ['vendor_id' => $vendorId] + $fields, auth()->id());
+                $this->fail('A received batch must keep its vendor.');
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                $this->assertStringContainsString('came from a goods receipt', $e->errors()['editVendorId'][0]);
+            }
+        }
+
+        $this->assertSame($this->vendor->id, $batch->fresh()->vendor_id);
+        $this->assertSame(500.0, $this->vendor->fresh()->totalOwed());
+        $this->assertSame(0.0, $other->fresh()->totalOwed());
+
+        // Other fields still save, with the vendor as it was.
+        UpdateStockIn::handle($batch, $fields, auth()->id());
+        $this->assertSame('Fixed', $batch->fresh()->note);
+
+        // Through the screen: the field is read-only, and a forged value is refused.
+        Livewire::test('stock-ins.history')
+            ->call('openEdit', $batch->id)
+            ->assertSee('its quantity and vendor can\'t be changed here', false)
+            ->assertSeeHtml('id="editVendorId"')
+            ->assertDontSeeHtml('wire:model="editVendorId"')
+            ->set('editVendorId', (string) $other->id)
+            ->call('saveEdit')
+            ->assertHasErrors('editVendorId');
+
+        $this->assertSame($this->vendor->id, $batch->fresh()->vendor_id);
+    }
+
+    public function test_a_batch_from_plain_stock_in_can_still_change_vendor(): void
+    {
+        $shop = $this->poShop();
+        $product = $this->piece($shop);
+        $batch = \App\Actions\CreateStockIn::handle([['product_id' => $product->id, 'quantity' => 5, 'cost_price' => 100.0, 'selling_price' => 150.0]], $this->vendor->id, 'unpaid', null, now()->toDateString(), null, auth()->id())->first();
+        $other = Vendor::create(['shop_id' => $shop->id, 'name' => 'Other Vendor']);
+
+        Livewire::test('stock-ins.history')
+            ->call('openEdit', $batch->id)
+            ->assertSeeHtml('wire:model="editVendorId"')
+            ->set('editVendorId', (string) $other->id)
+            ->call('saveEdit')
+            ->assertHasNoErrors();
+
+        $this->assertSame($other->id, $batch->fresh()->vendor_id);
+        $this->assertSame(500.0, $other->fresh()->totalOwed());
+    }
+
     public function test_it_is_plan_controlled_included_in_commerce_only_and_can_be_an_add_on(): void
     {
         $this->assertTrue(FeatureKey::PurchaseOrders->planControlled());

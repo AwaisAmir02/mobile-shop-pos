@@ -545,7 +545,15 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                     <x-ui.input wire:model="editQuantity" id="editQuantity" type="number" :min="$editUnitCase->inputMin()" :step="$editUnitCase->inputStep()" :disabled="$editFromGrn" />
                 </x-ui.field>
 
-                @if (auth()->user()->hasAccessTo('vendors'))
+                @if ($editFromGrn)
+                    <p class="text-sm text-slate-500">This stock came from a goods receipt, so its quantity and vendor can't be changed here. Cancel the receipt and record it again.</p>
+                @endif
+
+                @if ($editFromGrn && auth()->user()->hasAccessTo('vendors'))
+                    <x-ui.field label="Vendor" name="editVendorId" for="editVendorId">
+                        <x-ui.input id="editVendorId" :value="$vendors->firstWhere('id', (int) $editVendorId)?->name ?? 'No vendor'" disabled />
+                    </x-ui.field>
+                @elseif (auth()->user()->hasAccessTo('vendors'))
                     <x-ui.field label="Vendor" name="editVendorId" for="editVendorId" help="Optional">
                         <x-ui.select wire:model="editVendorId" id="editVendorId">
                             <option value="">No vendor</option>

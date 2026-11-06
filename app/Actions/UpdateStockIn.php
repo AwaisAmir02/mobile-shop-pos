@@ -49,6 +49,11 @@ class UpdateStockIn
                 throw ValidationException::withMessages(['quantity' => 'This stock came from a goods receipt, so its quantity can\'t be changed here. Cancel the receipt and record it again.']);
             }
 
+            // Its dues stay with the vendor on its Purchase Order.
+            if ($entry->grn_line_id !== null && (int) ($fields['vendor_id'] ?? 0) !== (int) $entry->vendor_id) {
+                throw ValidationException::withMessages(['editVendorId' => 'This stock came from a goods receipt, so its vendor can\'t be changed here. Cancel the receipt and record it again.']);
+            }
+
             $newQuantityRemaining = $entry->quantity_remaining;
 
             if ($entry->product_id === null) {
