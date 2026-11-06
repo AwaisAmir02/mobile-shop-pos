@@ -1,10 +1,10 @@
 <?php
 
 use App\Actions\CancelStockIn;
+use App\Actions\RecordStockInPayment;
 use App\Actions\UpdateStockIn;
 use App\Enums\PaymentStatus;
 use App\Enums\QuantityUnit;
-use App\Enums\StockInPaymentSource;
 use App\Livewire\Concerns\GuardsExportSize;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Product;
@@ -14,7 +14,6 @@ use App\Models\Vendor;
 use App\ReportQueries\StockInReport;
 use App\Services\TableExportService;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -148,19 +147,10 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     public function markAsPaid(int $id): void
     {
-        DB::transaction(function () use ($id) {
-            $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->inCurrentBranch()->lockForUpdate()->findOrFail($id);
-            abort_if($entry->isCancelled(), 403);
+        $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->inCurrentBranch()->findOrFail($id);
+        abort_if($entry->isCancelled(), 403);
 
-            $previousAmountPaid = (float) $entry->amount_paid;
-
-            $entry->update([
-                'payment_status' => PaymentStatus::Paid,
-                'amount_paid' => $entry->total_cost ?? $entry->amount_paid,
-            ]);
-
-            $this->recordPaymentRow($entry, (float) $entry->amount_paid - $previousAmountPaid, StockInPaymentSource::MarkPaid);
-        });
+        RecordStockInPayment::markPaid($entry, Auth::id());
 
         $this->toastSuccess('Marked as paid.');
     }
@@ -185,47 +175,13 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'paymentAmount' => ['required', 'numeric', 'min:0.01'],
         ]);
 
-        DB::transaction(function () {
-            $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->inCurrentBranch()->lockForUpdate()->findOrFail($this->payingId);
-            abort_if($entry->isCancelled(), 403);
-
-            $previousAmountPaid = (float) $entry->amount_paid;
-            $newAmountPaid = $previousAmountPaid + (float) $this->paymentAmount;
-
-            $entry->update([
-                'amount_paid' => $newAmountPaid,
-                'payment_status' => $entry->total_cost !== null && $newAmountPaid >= (float) $entry->total_cost
-                    ? PaymentStatus::Paid
-                    : PaymentStatus::Partial,
-            ]);
-
-            $this->recordPaymentRow($entry, (float) $entry->amount_paid - $previousAmountPaid, StockInPaymentSource::Payment);
-        });
+        RecordStockInPayment::add($entry, (float) $this->paymentAmount, Auth::id());
 
         $this->toastSuccess('Payment recorded.');
         $this->dispatch('close-modal', name: 'add-payment-form');
         $this->reset(['payingId', 'paymentAmount']);
     }
 
-    /**
-     * Dated history for a change to amount_paid. The row is the exact change
-     * just stored (after decimal rounding), so a Stock-In's rows always add
-     * up to its amount_paid. No change, no row.
-     */
-    protected function recordPaymentRow(StockIn $entry, float $change, StockInPaymentSource $source): void
-    {
-        if (round($change, 2) == 0.0) {
-            return;
-        }
-
-        $entry->payments()->create([
-            'shop_id' => $entry->shop_id,
-            'user_id' => Auth::id(),
-            'amount' => round($change, 2),
-            'payment_date' => now()->toDateString(),
-            'source' => $source,
-        ]);
-    }
 
     public function closePaymentForm(): void
     {
