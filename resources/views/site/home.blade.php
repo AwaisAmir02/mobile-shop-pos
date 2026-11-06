@@ -216,7 +216,7 @@
                         <x-site.mockup.pos />
                     </x-site.browser>
                     <h3 class="mt-6 text-lg font-semibold text-slate-900">FIFO batch costing on every sale</h3>
-                    <p class="mt-2 text-slate-600">Bought the same item at three different prices? Each sale takes the oldest stock first at its true cost, so the profit you see is the profit you made.</p>
+                    <p class="mt-2 text-slate-600">Bought the same item at three different prices? Each sale is costed at the true price of the batch it came from, oldest stock first, or closest to expiry first if you track expiry dates, so the profit you see is the profit you made.</p>
                 </div>
                 <div data-reveal="right">
                     <x-site.browser url="hisabokitab.com/udhaar" label="Customer udhaar ledger listing each due by its source">

@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Enums\SalePaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Support\BatchExpiry;
 use App\Support\Quantity;
 use App\Support\SaleCartMath;
 use Carbon\Carbon;
@@ -47,6 +48,7 @@ class CreateSale
                 }
 
                 $allocations = ConsumeStockFifo::handle($product, $quantity);
+                BatchExpiry::assertNotDrawingExpired($product, $allocations, "lines.{$product->id}");
                 $subLines = SaleCartMath::allocateLines($line['custom_price'], (float) $line['discount'], $allocations);
 
                 foreach ($subLines as $subLine) {

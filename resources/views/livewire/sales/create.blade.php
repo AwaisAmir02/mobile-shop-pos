@@ -9,6 +9,7 @@ use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\ProductGroup;
+use App\Support\BatchExpiry;
 use App\Support\Quantity;
 use App\Support\SaleCartMath;
 use Illuminate\Support\Facades\Auth;
@@ -291,6 +292,14 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         return array_sum(array_column($subLines, 'line_total'));
     }
 
+    /** @return array{expired: int|float, soonest: mixed}|null */
+    public function expiryNote(array $item): ?array
+    {
+        $product = Product::find($item['product_id']);
+
+        return $product ? BatchExpiry::noteFor($product, ConsumeStockFifo::preview($product, Quantity::normalize($item['quantity']))) : null;
+    }
+
     public function subtotal(): float
     {
         return round(array_sum(array_map(fn (array $item) => $this->lineTotal($item), $this->cart)), 2);
@@ -500,6 +509,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                                                 @endif
                                             </div>
                                             <p class="text-xs text-slate-400">{{ $item['category'] }}</p>
+                                            <x-sales.expiry-note :note="$this->expiryNote($item)" :unit="\App\Enums\QuantityUnit::fromValue($item['unit'] ?? 'piece')" />
                                         </td>
                                         <td class="whitespace-nowrap px-4 py-3 text-right">
                                             <input
@@ -536,7 +546,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                                                 @endif
                                             </div>
                                             @error("cart.$productId.quantity")
-                                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                                <p class="mt-1 max-w-48 whitespace-normal text-right text-xs text-red-600">{{ $message }}</p>
                                             @enderror
                                         </td>
                                         <td class="whitespace-nowrap px-4 py-3">

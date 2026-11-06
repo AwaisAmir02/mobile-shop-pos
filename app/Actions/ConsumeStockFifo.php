@@ -8,7 +8,9 @@ use App\Support\Quantity;
 
 /**
  * All three walks count in whole thousandths (see Quantity), so a quantity
- * exactly covered by its batches leaves nothing over.
+ * exactly covered by its batches leaves nothing over. Which batch goes first
+ * is StockIn::scopeInSellOrder's call: oldest first, or by expiry date for a
+ * shop that tracks expiry. Each sub-line carries its own batch's price and cost.
  */
 class ConsumeStockFifo
 {
@@ -26,7 +28,7 @@ class ConsumeStockFifo
         $allocations = [];
         $remaining = Quantity::toThousandths($quantity);
 
-        $batches = StockIn::availableBatchesFor($product->id)->lockForUpdate()->get();
+        $batches = StockIn::availableBatchesFor($product->id, $product->sellsByExpiry())->lockForUpdate()->get();
 
         foreach ($batches as $batch) {
             if ($remaining <= 0) {
@@ -58,7 +60,7 @@ class ConsumeStockFifo
         $allocations = [];
         $remaining = Quantity::toThousandths($quantity);
 
-        $batches = StockIn::availableBatchesFor($product->id)->get();
+        $batches = StockIn::availableBatchesFor($product->id, $product->sellsByExpiry())->get();
 
         foreach ($batches as $batch) {
             if ($remaining <= 0) {
@@ -94,8 +96,7 @@ class ConsumeStockFifo
         $batches = StockIn::query()
             ->where('product_id', $product->id)
             ->where(fn ($query) => $query->where('quantity_remaining', '>', 0)->orWhereIn('id', $batchIds))
-            ->orderBy('stock_date')
-            ->orderBy('id')
+            ->inSellOrder($product->sellsByExpiry())
             ->get();
 
         $allocations = [];

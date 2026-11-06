@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleRevision;
 use App\Models\Scopes\ExcludesCancelledSalesScope;
+use App\Support\BatchExpiry;
 use App\Support\Quantity;
 use App\Support\SaleCartMath;
 use Carbon\Carbon;
@@ -52,6 +53,9 @@ class UpdateSale
                     'line_total' => (float) $item->line_total,
                 ])->all(),
             ];
+
+            $alreadyHeld = $sale->items->whereNotNull('stock_in_id')->groupBy('stock_in_id')
+                ->map(fn ($items) => Quantity::sum($items->pluck('quantity')))->all();
 
             RestoreStockFifo::handle($sale->items);
 
@@ -103,6 +107,7 @@ class UpdateSale
                 }
 
                 $allocations = ConsumeStockFifo::handle($product, $quantity);
+                BatchExpiry::assertNotDrawingExpired($product, $allocations, 'lines', $alreadyHeld);
                 $overridePrice = $line['custom_price'] !== null ? (float) $line['custom_price'] : null;
                 $subLines = SaleCartMath::allocateLines($overridePrice, (float) $line['discount'], $allocations);
 

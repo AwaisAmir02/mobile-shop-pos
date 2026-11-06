@@ -53,6 +53,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public string $stock_quantity = '0';
     public string $unit = 'piece';
     public bool $unitLocked = false;
+    public string $shelf_life_days = '';
 
     public string $brand = '';
     public string $model = '';
@@ -201,6 +202,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             'measuredEnabled' => $this->measuredEnabled(),
             'formUnit' => $this->formUnit(),
             'showUnitField' => $this->showUnitField(),
+            'expiryEnabled' => (bool) Auth::user()->shop?->expiry_tracking_enabled,
             'groupTypeOptions' => $mainCategories->reject(fn (MainCategory $category) => in_array($category->slug, ProductGroup::EXCLUDED_TYPES, true))->values(),
             'groupCategoryOptions' => $this->groupCategoryOptions($mainCategories),
             'generatedLabels' => $this->generatedLabels(),
@@ -627,6 +629,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->stock_quantity = (string) $product->stock_quantity;
         $this->unit = $product->unit->value;
         $this->unitLocked = $product->unitIsLocked();
+        $this->shelf_life_days = (string) ($product->shelf_life_days ?? '');
 
         $this->brand = $product->details['brand'] ?? '';
         $this->model = $product->details['model'] ?? '';
@@ -673,6 +676,10 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 'unit' => $this->formUnit(),
                 'details' => $this->detailsForType(),
             ]);
+        }
+
+        if (Auth::user()->shop?->expiry_tracking_enabled) {
+            $product->shelf_life_days = $this->shelf_life_days !== '' ? (int) $this->shelf_life_days : null;
         }
 
         if (! $this->editingHasBatches) {
@@ -994,6 +1001,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     protected function rules(): array
     {
         $rules = CreateProduct::rules(auth()->user()->shop_id, $this->type, $this->editingId, $this->formUnit());
+        $rules['shelf_life_days'] = ['nullable', 'integer', 'min:1', 'max:3650'];
         $groupId = $this->editingId ? Product::whereKey($this->editingId)->value('product_group_id') : null;
 
         if ($groupId === null) {
@@ -1016,7 +1024,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     protected function resetForm(): void
     {
         $this->reset([
-            'editingId', 'editingHasBatches', 'unit', 'unitLocked', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
+            'editingId', 'editingHasBatches', 'unit', 'unitLocked', 'shelf_life_days', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
             'brand', 'model', 'imei', 'category', 'barcode', 'variantLabel', 'editingVariantGroupName',
         ]);
 
@@ -1305,6 +1313,12 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                             </div>
                         </x-ui.field>
                     @endif
+                @endif
+
+                @if ($expiryEnabled)
+                    <x-ui.field label="Shelf Life (days)" name="shelf_life_days" for="shelf_life_days" help="Optional. Pre-fills the expiry date on Stock In">
+                        <x-ui.input wire:model="shelf_life_days" id="shelf_life_days" type="number" min="1" max="3650" step="1" />
+                    </x-ui.field>
                 @endif
 
                 @if ($editingHasBatches)

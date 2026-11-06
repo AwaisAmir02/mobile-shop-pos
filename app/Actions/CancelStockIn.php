@@ -37,6 +37,7 @@ class CancelStockIn
                 'selling_price' => $entry->selling_price !== null ? (float) $entry->selling_price : null,
                 'total_cost' => $entry->total_cost !== null ? (float) $entry->total_cost : null,
                 'stock_date' => $entry->stock_date->toDateString(),
+                'expiry_date' => $entry->expiry_date?->toDateString(),
                 'note' => $entry->note,
             ];
 

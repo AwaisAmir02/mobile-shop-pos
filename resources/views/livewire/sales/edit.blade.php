@@ -8,6 +8,7 @@ use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Support\BatchExpiry;
 use App\Support\Quantity;
 use App\Support\SaleCartMath;
 use Illuminate\Support\Facades\Auth;
@@ -188,6 +189,15 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
             return 0.0;
         }
 
+        $allocations = $this->previewAllocations($product, $item);
+        $overridePrice = $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null;
+        $subLines = SaleCartMath::allocateLines($overridePrice, (float) $item['discount'], $allocations);
+
+        return array_sum(array_column($subLines, 'line_total'));
+    }
+
+    protected function previewAllocations(Product $product, array $item): array
+    {
         $originalHoldings = $this->sale->items
             ->where('product_id', $item['product_id'])
             ->whereNotNull('stock_in_id')
@@ -195,11 +205,15 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
             ->map(fn ($group) => Quantity::sum($group->pluck('quantity')))
             ->all();
 
-        $allocations = ConsumeStockFifo::previewForEdit($product, Quantity::normalize($item['quantity']), $originalHoldings);
-        $overridePrice = $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null;
-        $subLines = SaleCartMath::allocateLines($overridePrice, (float) $item['discount'], $allocations);
+        return ConsumeStockFifo::previewForEdit($product, Quantity::normalize($item['quantity']), $originalHoldings);
+    }
 
-        return array_sum(array_column($subLines, 'line_total'));
+    /** @return array{expired: int|float, soonest: mixed}|null */
+    public function expiryNote(array $item): ?array
+    {
+        $product = Product::find($item['product_id']);
+
+        return $product ? BatchExpiry::noteFor($product, $this->previewAllocations($product, $item)) : null;
     }
 
     public function legacySubtotal(): float
@@ -403,6 +417,7 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
                                                 @endif
                                             </div>
                                             <p class="text-xs text-slate-400">{{ $item['category'] }}</p>
+                                            <x-sales.expiry-note :note="$this->expiryNote($item)" :unit="QuantityUnit::fromValue($item['unit'] ?? 'piece')" />
                                         </td>
                                         <td class="whitespace-nowrap px-4 py-3 text-right">
                                             <input
@@ -439,7 +454,7 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
                                                 @endif
                                             </div>
                                             @error("cart.$productId.quantity")
-                                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                                <p class="mt-1 max-w-48 whitespace-normal text-right text-xs text-red-600">{{ $message }}</p>
                                             @enderror
                                         </td>
                                         <td class="whitespace-nowrap px-4 py-3">

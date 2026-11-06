@@ -9,6 +9,8 @@ use App\Enums\RecordStatus;
 use App\Models\Concerns\BelongsToBranch;
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Concerns\HasCancellation;
+use App\Support\BatchExpiry;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -32,6 +34,7 @@ class StockIn extends Model
         'payment_status',
         'amount_paid',
         'stock_date',
+        'expiry_date',
         'note',
         'status',
         'cancelled_at',
@@ -63,6 +66,7 @@ class StockIn extends Model
             'payment_status' => PaymentStatus::class,
             'amount_paid' => 'decimal:2',
             'stock_date' => 'date',
+            'expiry_date' => 'date',
             'status' => RecordStatus::class,
             'cancelled_at' => 'datetime',
         ];
@@ -101,12 +105,36 @@ class StockIn extends Model
         return max(0.0, (float) ($this->total_cost ?? 0) - (float) $this->amount_paid);
     }
 
-    public static function availableBatchesFor(int $productId)
+    /**
+     * The one definition of which batch sells next. Off: oldest received
+     * first (FIFO). On (FEFO): unexpired with the soonest date, then undated,
+     * then expired last, so naive date order can't sell expired stock first.
+     * The CASE also settles NULLs, which MySQL would otherwise sort first.
+     * Whatever the date order, ties fall back to FIFO.
+     */
+    public function scopeInSellOrder(Builder $query, bool $byExpiry): void
     {
+        if ($byExpiry) {
+            $query->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 WHEN expiry_date < ? THEN 2 ELSE 0 END', [BatchExpiry::today()])
+                ->orderBy('expiry_date');
+        }
+
+        $query->orderBy('stock_date')->orderBy('id');
+    }
+
+    /** $byExpiry comes from the caller when it has the product; otherwise it's looked up, never assumed. */
+    public static function availableBatchesFor(int $productId, ?bool $byExpiry = null)
+    {
+        $byExpiry ??= (bool) Product::withoutGlobalScopes()->whereKey($productId)->first()?->sellsByExpiry();
+
         return static::query()
             ->where('product_id', $productId)
             ->where('quantity_remaining', '>', 0)
-            ->orderBy('stock_date')
-            ->orderBy('id');
+            ->inSellOrder($byExpiry);
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->expiry_date !== null && $this->expiry_date->toDateString() < BatchExpiry::today();
     }
 }

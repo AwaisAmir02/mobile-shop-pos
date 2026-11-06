@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\StockIn;
 use App\Models\Vendor;
 use App\Support\Quantity;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -29,7 +30,9 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
     public string $quantity = '1';
     public string $costPrice = '';
     public string $sellingPrice = '';
+    public string $expiryDate = '';
 
+    /** @var array<int|string, array<string, mixed>> keyed by line, since one product can have several batches on a receipt */
     public array $cart = [];
 
     public string $vendorId = '';
@@ -107,7 +110,15 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
             $product = Product::find($this->productId);
             $this->costPrice = $product?->cost_price !== null ? (string) $product->cost_price : '';
             $this->sellingPrice = $product !== null ? (string) $product->price : '';
+            $this->expiryDate = $this->expiryEnabled() && $product?->shelf_life_days
+                ? Carbon::parse($this->stock_date)->addDays($product->shelf_life_days)->toDateString()
+                : '';
         }
+    }
+
+    protected function expiryEnabled(): bool
+    {
+        return (bool) Auth::user()->shop?->expiry_tracking_enabled;
     }
 
     #[On('product-created')]
@@ -168,32 +179,62 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
             'quantity' => $this->selectedUnit()->quantityRules(),
             'costPrice' => ['nullable', 'numeric', 'min:0'],
             'sellingPrice' => ['required', 'numeric', 'min:0'],
+            'expiryDate' => ['nullable', 'date'],
         ]);
 
         $product = Product::findOrFail($this->productId);
         $quantity = Quantity::normalize($this->quantity);
 
-        if (isset($this->cart[$product->id])) {
-            $this->cart[$product->id]['quantity'] = Quantity::add($this->cart[$product->id]['quantity'], $quantity);
+        $costPrice = $this->costPrice !== '' ? (float) $this->costPrice : null;
+        $sellingPrice = (float) $this->sellingPrice;
+        $expiryDate = $this->expiryEnabled() && $this->expiryDate !== '' ? $this->expiryDate : null;
+        $key = $this->lineKeyFor($product->id, $costPrice, $sellingPrice, $expiryDate);
+
+        if (isset($this->cart[$key])) {
+            $this->cart[$key]['quantity'] = Quantity::add($this->cart[$key]['quantity'], $quantity);
         } else {
-            $this->cart[$product->id] = [
+            $this->cart[$key] = [
                 'product_id' => $product->id,
                 'name' => $product->name,
                 'category' => $product->typeLabel(),
                 'quantity' => $quantity,
                 'unit' => $product->unit->value,
-                'cost_price' => $this->costPrice !== '' ? (float) $this->costPrice : null,
-                'selling_price' => (float) $this->sellingPrice,
+                'cost_price' => $costPrice,
+                'selling_price' => $sellingPrice,
+                'expiry_date' => $expiryDate,
             ];
         }
 
-        $this->reset(['productId', 'quantity', 'costPrice', 'sellingPrice']);
+        $this->reset(['productId', 'quantity', 'costPrice', 'sellingPrice', 'expiryDate']);
         $this->refreshAmountPaidForTotalChange();
     }
 
-    public function removeLine(int $productId): void
+    /**
+     * Each line becomes its own batch, so only a truly identical line adds to
+     * an existing one. A different price or expiry date stays a separate line
+     * rather than silently taking on the first line's figures.
+     */
+    protected function lineKeyFor(int $productId, ?float $costPrice, float $sellingPrice, ?string $expiryDate): int|string
     {
-        unset($this->cart[$productId]);
+        foreach ($this->cart as $key => $line) {
+            // Loose on purpose: a float like 250.0 comes back from the browser as the integer 250.
+            if ($line['product_id'] === $productId && $line['cost_price'] == $costPrice && ($line['cost_price'] === null) === ($costPrice === null) && $line['selling_price'] == $sellingPrice && ($line['expiry_date'] ?? null) === $expiryDate) {
+                return $key;
+            }
+        }
+
+        if (! isset($this->cart[$productId])) {
+            return $productId;
+        }
+
+        for ($n = 2; isset($this->cart["{$productId}-{$n}"]); $n++);
+
+        return "{$productId}-{$n}";
+    }
+
+    public function removeLine(int|string $key): void
+    {
+        unset($this->cart[$key]);
         $this->refreshAmountPaidForTotalChange();
     }
 
@@ -239,6 +280,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
             'paymentStatuses' => PaymentStatus::cases(),
             'vendors' => Auth::user()->hasAccessTo('vendors') ? Vendor::query()->orderBy('name')->get() : collect(),
             'selectedUnit' => $this->selectedUnit(),
+            'expiryEnabled' => $this->expiryEnabled(),
         ];
     }
 
@@ -258,6 +300,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
             'amountPaid' => ['nullable', 'numeric', 'min:0', 'required_if:paymentStatus,partial'],
             'stock_date' => ['required', 'date', 'before_or_equal:today'],
             'note' => ['nullable', 'string', 'max:255'],
+            'cart.*.expiry_date' => ['nullable', 'date'],
         ]);
 
         $grandTotal = $this->grandTotalCost();
@@ -309,6 +352,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                     'payment_status' => $linePaymentStatus,
                     'amount_paid' => $lineAmountPaid,
                     'stock_date' => $this->stock_date,
+                    'expiry_date' => $this->expiryEnabled() ? ($line['expiry_date'] ?? null) : null,
                     'note' => $this->note !== '' ? $this->note : null,
                 ]);
 
@@ -394,12 +438,15 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                                     {{ $line['category'] }} · Qty {{ QuantityUnit::fromValue($line['unit'] ?? 'piece')->groupedAmount($line['quantity']) }}
                                     · Cost {{ $line['cost_price'] !== null ? 'Rs '.number_format($line['cost_price'], 2) : '—' }}
                                     · Sell Rs {{ number_format($line['selling_price'], 2) }}
+                                    @if (! empty($line['expiry_date']))
+                                        · Expires {{ Carbon::parse($line['expiry_date'])->format('d M Y') }}
+                                    @endif
                                 </p>
                             </div>
                         </div>
                         <div class="flex items-center gap-4">
                             <span class="whitespace-nowrap text-sm font-semibold text-slate-900">Rs {{ number_format($this->lineTotalCost($line), 2) }}</span>
-                            <button type="button" wire:click="removeLine({{ $productId }})" class="text-slate-400 hover:text-red-600">
+                            <button type="button" wire:click="removeLine(@js($productId))" class="text-slate-400 hover:text-red-600">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -443,7 +490,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                 </x-ui.field>
             </div>
 
-            <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div @class(['mt-4 grid grid-cols-1 gap-4', 'sm:grid-cols-3' => ! $expiryEnabled, 'sm:grid-cols-2 lg:grid-cols-4' => $expiryEnabled])>
                 <x-ui.field :label="$selectedUnit->allowsDecimals() ? 'Quantity ('.$selectedUnit->symbol().')' : 'Quantity'" name="quantity" for="quantity">
                     <x-ui.input wire:model="quantity" id="quantity" type="number" :min="$selectedUnit->inputMin()" :step="$selectedUnit->inputStep()" />
                 </x-ui.field>
@@ -455,6 +502,12 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                 <x-ui.field :label="'Selling Price (per '.($selectedUnit->allowsDecimals() ? $selectedUnit->symbol() : 'unit').')'" name="sellingPrice" for="sellingPrice">
                     <x-ui.input wire:model="sellingPrice" id="sellingPrice" type="number" min="0" step="0.01" />
                 </x-ui.field>
+
+                @if ($expiryEnabled)
+                    <x-ui.field label="Expiry Date" name="expiryDate" for="expiryDate" help="Optional. The last day it can be sold">
+                        <x-ui.input wire:model="expiryDate" id="expiryDate" type="date" />
+                    </x-ui.field>
+                @endif
             </div>
 
             <div class="mt-4">

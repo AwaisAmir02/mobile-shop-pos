@@ -338,13 +338,17 @@ class WhatsAppChatbot
         );
     }
 
-    /** Ordering by weight or length isn't offered here yet, so only pieces can be reached. */
+    /**
+     * Ordering by weight or length isn't offered here yet, so only pieces can
+     * be reached. A product whose remaining stock has all expired is hidden.
+     */
     protected function listedQuery()
     {
         return Product::withoutGlobalScope(ShopScope::class)
             ->where('shop_id', $this->shop->id)
             ->where('whatsapp_listed', true)
-            ->where('unit', QuantityUnit::Piece->value);
+            ->where('unit', QuantityUnit::Piece->value)
+            ->when($this->shop->expiry_tracking_enabled, fn ($query) => $query->notEntirelyExpired());
     }
 
     /** The catalogue: a variant group appears once, standing in for all its variants. */
@@ -379,7 +383,13 @@ class WhatsAppChatbot
     protected function priceAndStock(Product $product): string
     {
         return 'Rs '.CustomerNotifications::money($product->currentSellingPrice()).' · '
-            .($product->stock_quantity > 0 ? $this->t('in_stock_tag', ['stock' => $product->stock_quantity]) : $this->t('out_of_stock_tag'));
+            .($product->stock_quantity > 0 ? $this->t('in_stock_tag', ['stock' => $this->sellable($product)]) : $this->t('out_of_stock_tag'));
+    }
+
+    /** What a customer can order: never counts expired batches. */
+    protected function sellable(Product $product): int|float
+    {
+        return $this->shop->expiry_tracking_enabled ? $product->sellableStock() : $product->stock_quantity;
     }
 
     protected function findGroup(int $groupId): ?ProductGroup
@@ -775,7 +785,7 @@ class WhatsAppChatbot
         $caption = $this->t('product_caption', [
             'name' => $product->name,
             'price' => CustomerNotifications::money($product->currentSellingPrice()),
-            'stock' => $product->stock_quantity,
+            'stock' => $this->sellable($product),
         ]);
         $imageUrl = $product->imageUrl();
         $hasImage = $imageUrl !== null && str_starts_with($imageUrl, 'https://');
@@ -788,7 +798,7 @@ class WhatsAppChatbot
 
         $buttons = ['qty:'.$product->id.':1' => $this->t('btn_add_1')];
 
-        if ($product->stock_quantity >= 2) {
+        if ($this->sellable($product) >= 2) {
             $buttons['qty:'.$product->id.':2'] = $this->t('btn_add_2');
         }
 
@@ -856,7 +866,9 @@ class WhatsAppChatbot
     {
         $product = $this->findListedProduct($productId);
 
-        if ($product === null || $product->stock_quantity <= 0) {
+        $available = $product !== null ? $this->sellable($product) : 0;
+
+        if ($product === null || $available <= 0) {
             $this->client->sendText($this->contact->wa_id, $this->t('product_unavailable'));
 
             return;
@@ -871,7 +883,7 @@ class WhatsAppChatbot
         $quantity = Quantity::normalize($quantity);
 
         if ($quantity < 1 || $quantity > self::MAX_LINE_QUANTITY) {
-            $this->client->sendText($this->contact->wa_id, $this->t('qty_range', ['max' => min(self::MAX_LINE_QUANTITY, max(1, $product->stock_quantity))]));
+            $this->client->sendText($this->contact->wa_id, $this->t('qty_range', ['max' => min(self::MAX_LINE_QUANTITY, max(1, $available))]));
 
             return;
         }
@@ -885,10 +897,10 @@ class WhatsAppChatbot
 
         $newQuantity = ($item->exists ? $item->quantity : 0) + $quantity;
 
-        if ($newQuantity > $product->stock_quantity) {
+        if ($newQuantity > $available) {
             $this->client->sendText($this->contact->wa_id, $item->exists
-                ? $this->t('only_available_in_cart', ['stock' => $product->stock_quantity, 'name' => $product->name, 'qty' => $item->quantity])
-                : $this->t('only_available', ['stock' => $product->stock_quantity, 'name' => $product->name]));
+                ? $this->t('only_available_in_cart', ['stock' => $available, 'name' => $product->name, 'qty' => $item->quantity])
+                : $this->t('only_available', ['stock' => $available, 'name' => $product->name]));
 
             return;
         }

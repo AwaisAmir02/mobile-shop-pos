@@ -8,6 +8,7 @@ use App\Enums\SimForm;
 use App\Enums\SimType;
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Concerns\HasImage;
+use App\Support\BatchExpiry;
 use App\Support\Quantity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -36,6 +37,7 @@ class Product extends Model
         'cost_price',
         'stock_quantity',
         'unit',
+        'shelf_life_days',
         'whatsapp_listed',
         'archived_at',
         'details',
@@ -50,6 +52,7 @@ class Product extends Model
             'cost_price' => 'decimal:2',
             'stock_quantity' => QuantityCast::class,
             'unit' => QuantityUnit::class,
+            'shelf_life_days' => 'integer',
             'whatsapp_listed' => 'boolean',
             'archived_at' => 'datetime',
             'details' => 'array',
@@ -178,8 +181,36 @@ class Product extends Model
     }
 
     /**
-     * currentSellingPrice() for many products in one query: the oldest
-     * available batch's price, else the product's own.
+     * Whether this product's shop sells by expiry date. Read from the shop
+     * directly: ShopScope only applies when someone is signed in, and the
+     * WhatsApp webhook and order acceptance reach here without a user.
+     */
+    public function sellsByExpiry(): bool
+    {
+        return (bool) Shop::whereKey($this->shop_id)->value('expiry_tracking_enabled');
+    }
+
+    /** Stock that can actually be sold: everything except what sits in expired batches. */
+    public function sellableStock(): int|float
+    {
+        if (! $this->sellsByExpiry()) {
+            return $this->stock_quantity;
+        }
+
+        $expired = StockIn::availableBatchesFor($this->id, true)->where('expiry_date', '<', BatchExpiry::today())->get(['id', 'quantity_remaining'])->pluck('quantity_remaining');
+
+        return max(0, Quantity::subtract($this->stock_quantity, Quantity::sum($expired)));
+    }
+
+    /** Leaves out products with stock left, all of it in expired batches. Out-of-stock products stay. */
+    public function scopeNotEntirelyExpired(Builder $query): void
+    {
+        $query->whereRaw('NOT (products.stock_quantity > 0 AND products.stock_quantity <= (SELECT COALESCE(SUM(expiring.quantity_remaining), 0) FROM stock_ins AS expiring WHERE expiring.product_id = products.id AND expiring.expiry_date < ?))', [BatchExpiry::today()]);
+    }
+
+    /**
+     * currentSellingPrice() for many products in one query: the next
+     * batch to sell's price, else the product's own.
      *
      * @param  Collection<int, Product>  $products
      * @return array<int, float> keyed by product id
@@ -189,8 +220,7 @@ class Product extends Model
         $batches = StockIn::query()
             ->whereIn('product_id', $products->pluck('id'))
             ->where('quantity_remaining', '>', 0)
-            ->orderBy('stock_date')
-            ->orderBy('id')
+            ->inSellOrder($products->isNotEmpty() && $products->first()->sellsByExpiry())
             ->get(['id', 'product_id', 'selling_price'])
             ->unique('product_id')
             ->keyBy('product_id');
@@ -202,9 +232,9 @@ class Product extends Model
         })->all();
     }
 
-    public function oldestAvailableBatch(): ?StockIn
+    public function nextBatchToSell(): ?StockIn
     {
-        return StockIn::availableBatchesFor($this->id)->first();
+        return StockIn::availableBatchesFor($this->id, $this->sellsByExpiry())->first();
     }
 
     public function hasBatches(): bool
@@ -214,14 +244,14 @@ class Product extends Model
 
     public function currentSellingPrice(): float
     {
-        $batch = $this->oldestAvailableBatch();
+        $batch = $this->nextBatchToSell();
 
         return $batch?->selling_price !== null ? (float) $batch->selling_price : (float) $this->price;
     }
 
     public function currentCostPrice(): ?float
     {
-        $batch = $this->oldestAvailableBatch();
+        $batch = $this->nextBatchToSell();
 
         if ($batch !== null) {
             return $batch->cost_price !== null ? (float) $batch->cost_price : null;

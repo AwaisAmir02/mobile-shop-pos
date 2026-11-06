@@ -33,6 +33,7 @@ new class extends Component
     public string $cost_price = '';
     public string $stock_quantity = '0';
     public string $unit = 'piece';
+    public string $shelf_life_days = '';
     public string $barcode = '';
 
     public string $brand = '';
@@ -144,6 +145,7 @@ new class extends Component
 
         return [
             'mainCategories' => $mainCategories,
+            'expiryEnabled' => (bool) Auth::user()->shop?->expiry_tracking_enabled,
             'formUnit' => $this->formUnit(),
             'showUnitField' => $this->measuredEnabled() && ! in_array($this->type, QuantityUnit::PIECE_ONLY_TYPES, true),
             'brands' => Brand::query()->orderBy('name')->get(),
@@ -166,7 +168,7 @@ new class extends Component
     public function save(): void
     {
         $this->barcode = trim($this->barcode);
-        $this->validate(CreateProduct::rules(Auth::user()->shop_id, $this->type, null, $this->formUnit()));
+        $this->validate([...CreateProduct::rules(Auth::user()->shop_id, $this->type, null, $this->formUnit()), 'shelf_life_days' => ['nullable', 'integer', 'min:1', 'max:3650']]);
 
         try {
             app(Entitlements::class)->ensureCanAdd(Auth::user()->shop, LimitKey::Products);
@@ -183,6 +185,7 @@ new class extends Component
             'cost_price' => $this->cost_price !== '' ? $this->cost_price : null,
             'stock_quantity' => $this->stock_quantity,
             'unit' => $this->formUnit(),
+            'shelf_life_days' => Auth::user()->shop?->expiry_tracking_enabled && $this->shelf_life_days !== '' ? (int) $this->shelf_life_days : null,
             'details' => CreateProduct::detailsForType($this->type, $this->category, $this->brand, $this->model, $this->imei),
         ];
 
@@ -215,7 +218,7 @@ new class extends Component
             mainCategorySlug: $product->type,
             subCategoryName: $product->details['category'] ?? '',
         );
-        $this->reset(['name', 'image', 'price', 'cost_price', 'brand', 'model', 'imei', 'category', 'barcode', 'unit']);
+        $this->reset(['name', 'image', 'price', 'cost_price', 'brand', 'model', 'imei', 'category', 'barcode', 'unit', 'shelf_life_days']);
         $this->stock_quantity = '0';
     }
 
@@ -230,7 +233,7 @@ new class extends Component
     public function close(): void
     {
         $this->dispatch('close-modal', name: 'quick-create-product');
-        $this->reset(['name', 'image', 'price', 'cost_price', 'brand', 'model', 'imei', 'category', 'barcode', 'unit']);
+        $this->reset(['name', 'image', 'price', 'cost_price', 'brand', 'model', 'imei', 'category', 'barcode', 'unit', 'shelf_life_days']);
         $this->stock_quantity = '0';
         $this->syncDefaultType();
         $this->resetErrorBag();
@@ -305,6 +308,12 @@ new class extends Component
                                 <option value="{{ $unitOption->value }}">{{ $unitOption->label() }}</option>
                             @endforeach
                         </x-ui.select>
+                    </x-ui.field>
+                @endif
+
+                @if ($expiryEnabled)
+                    <x-ui.field label="Shelf Life (days)" name="shelf_life_days" for="quickProductShelfLife" help="Optional. Pre-fills the expiry date on Stock In">
+                        <x-ui.input wire:model="shelf_life_days" id="quickProductShelfLife" type="number" min="1" max="3650" step="1" />
                     </x-ui.field>
                 @endif
 

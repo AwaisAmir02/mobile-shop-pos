@@ -141,6 +141,7 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
             'periodLabel' => $this->periodLabel(),
             'chart' => $this->buildTrendChart($trend),
             'totalSalesOutstanding' => $totalSalesOutstanding,
+            'expiryCards' => Auth::user()->shop?->expiry_tracking_enabled && Auth::user()->hasAccessTo('stock-ins') ? (new \App\ReportQueries\ExpiryReport)->summaryCards() : null,
             ...$summary,
         ];
     }
@@ -194,6 +195,22 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
         <x-ui.stat label="Sales Outstanding" value="Rs {{ number_format($totalSalesOutstanding, 2) }}" sub="Across all unpaid/partial sales" />
         <x-ui.stat label="Expenses" value="Rs {{ number_format($totalExpenses, 2) }}" :sub="$periodLabel" />
     </div>
+
+    @if ($expiryCards)
+        <a href="{{ route('stock-ins.expiry') }}" wire:navigate class="mt-4 block">
+            <x-ui.card title="Expiring & Expired Stock" description="Stock on hand today, whatever period is selected above. Open the full list.">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    @foreach ($expiryCards as $card)
+                        <div>
+                            <p class="text-sm text-slate-500">{{ $card['label'] }}</p>
+                            <p class="text-lg font-semibold text-slate-900">{{ $card['value'] }}</p>
+                            <p class="text-xs text-slate-400">{{ $card['sub'] }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </x-ui.card>
+        </a>
+    @endif
 
     <div class="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-3">
         <x-ui.card title="Revenue Trend" :description="'Sales revenue by '.($periodType === 'year' ? 'year' : ($periodType === 'month' ? 'month' : 'day')).', up to '.$periodLabel" class="xl:col-span-2">

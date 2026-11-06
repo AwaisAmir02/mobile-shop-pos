@@ -310,6 +310,10 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
         </x-ui.card>
     @endif
 
+    @if (auth()->user()->shop?->expiry_tracking_enabled && auth()->user()->hasAccessTo('stock-ins'))
+        <p class="mb-4 text-sm"><a href="{{ route('stock-ins.expiry') }}" wire:navigate class="font-medium text-brand-700 hover:text-brand-800">Expiring &amp; expired stock report →</a></p>
+    @endif
+
     @if (empty($accessibleScreens))
         <x-ui.empty-state
             title="No reports available"

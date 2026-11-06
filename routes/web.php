@@ -54,6 +54,7 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('stock-ins', 'stock-ins.create')->name('stock-ins.index')->middleware('shop.access:stock-ins');
         Volt::route('stock-ins/history', 'stock-ins.history')->name('stock-ins.history')->middleware('shop.access:stock-ins');
+        Volt::route('stock-ins/expiry', 'stock-ins.expiry')->name('stock-ins.expiry')->middleware('shop.access:stock-ins');
 
         Volt::route('vendors', 'vendors.index')->name('vendors.index')->middleware('shop.access:vendors');
         Volt::route('vendors/{vendor}', 'vendors.show')->name('vendors.show')->middleware('shop.access:vendors');

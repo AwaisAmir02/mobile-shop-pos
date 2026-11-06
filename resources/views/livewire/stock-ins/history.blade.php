@@ -47,6 +47,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
     public string $editNote = '';
     public string $editCostPrice = '';
     public string $editSellingPrice = '';
+    public string $editExpiryDate = '';
 
     public ?int $cancelingId = null;
     public string $cancelReason = '';
@@ -96,11 +97,18 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'entries' => $report->query()->latest('stock_date')->latest('id')->paginate(15),
             'totalUnits' => $report->totalUnits(),
             'measuredTotals' => QuantityUnit::summarize($report->measuredTotals()),
+            'showExpiry' => $report->showsExpiry(),
+            'expiryEnabled' => $this->expiryEnabled(),
             'totalOwed' => $report->totalOwed(),
             'products' => Product::query()->orderBy('name')->get(),
             'paymentStatuses' => PaymentStatus::cases(),
             'vendors' => Auth::user()->hasAccessTo('vendors') ? Vendor::query()->orderBy('name')->get() : collect(),
         ];
+    }
+
+    protected function expiryEnabled(): bool
+    {
+        return (bool) Auth::user()->shop?->expiry_tracking_enabled;
     }
 
     public function exportPdf(TableExportService $exportService): ?StreamedResponse
@@ -236,6 +244,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
         $this->editNote = $entry->note ?? '';
         $this->editCostPrice = $entry->cost_price !== null ? (string) $entry->cost_price : '';
         $this->editSellingPrice = $entry->selling_price !== null ? (string) $entry->selling_price : '';
+        $this->editExpiryDate = $entry->expiry_date?->toDateString() ?? '';
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'edit-stock-in-form');
     }
@@ -253,6 +262,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'editNote' => ['nullable', 'string', 'max:255'],
             'editCostPrice' => ['nullable', 'numeric', 'min:0'],
             'editSellingPrice' => ['nullable', 'numeric', 'min:0'],
+            'editExpiryDate' => ['nullable', 'date'],
         ]);
 
         UpdateStockIn::handle($entry, [
@@ -262,17 +272,18 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'note' => $this->editNote !== '' ? $this->editNote : null,
             'cost_price' => $this->editCostPrice !== '' ? (float) $this->editCostPrice : null,
             'selling_price' => $this->editSellingPrice !== '' ? (float) $this->editSellingPrice : null,
+            ...($this->expiryEnabled() ? ['expiry_date' => $this->editExpiryDate !== '' ? $this->editExpiryDate : null] : []),
         ], Auth::id());
 
         $this->toastSuccess('Stock-in entry updated.');
         $this->dispatch('close-modal', name: 'edit-stock-in-form');
-        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice']);
+        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate']);
     }
 
     public function closeEditForm(): void
     {
         $this->dispatch('close-modal', name: 'edit-stock-in-form');
-        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice']);
+        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate']);
     }
 
     public function openCancel(int $entryId): void
@@ -312,9 +323,14 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold text-slate-900">Stock In History</h1>
-            <a href="{{ route('stock-ins.index') }}" wire:navigate>
-                <x-ui.button size="sm">Add Stock</x-ui.button>
-            </a>
+            <div class="flex items-center gap-4">
+                @if ($expiryEnabled)
+                    <a href="{{ route('stock-ins.expiry') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Expiring &amp; Expired →</a>
+                @endif
+                <a href="{{ route('stock-ins.index') }}" wire:navigate>
+                    <x-ui.button size="sm">Add Stock</x-ui.button>
+                </a>
+            </div>
         </div>
     </x-slot>
 
@@ -407,7 +423,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
         </x-ui.empty-state>
     @else
         @php $showVendorColumn = auth()->user()->hasAccessTo('vendors'); @endphp
-        <x-ui.table :headers="$showVendorColumn ? ['Date', 'Product', 'Vendor', 'Quantity', 'Remaining', 'Cost / Sell', 'Payment', 'Owed', 'Note', 'Entered By', ''] : ['Date', 'Product', 'Quantity', 'Remaining', 'Cost / Sell', 'Payment', 'Owed', 'Note', 'Entered By', '']">
+        <x-ui.table :headers="['Date', 'Product', ...($showVendorColumn ? ['Vendor'] : []), 'Quantity', 'Remaining', ...($showExpiry ? ['Expires'] : []), 'Cost / Sell', 'Payment', 'Owed', 'Note', 'Entered By', '']">
             @foreach ($entries as $entry)
                 <x-ui.table-row wire:key="stock-in-{{ $entry->id }}" @class(['opacity-50' => $entry->isCancelled()])>
                     <x-ui.table-cell>{{ $entry->stock_date->format('d M Y') }}</x-ui.table-cell>
@@ -417,6 +433,9 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                     @endif
                     <x-ui.table-cell class="font-semibold text-emerald-600">+{{ $entry->unit->groupedAmount($entry->quantity) }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $entry->isCancelled() ? '—' : $entry->unit->groupedAmount($entry->quantity_remaining) }}</x-ui.table-cell>
+                    @if ($showExpiry)
+                        <x-ui.table-cell><span @class(['font-semibold text-red-600' => $entry->isExpired() && $entry->quantity_remaining > 0])>{{ $entry->expiry_date?->format('d M Y') ?? '—' }}</span></x-ui.table-cell>
+                    @endif
                     <x-ui.table-cell>
                         {{ $entry->cost_price !== null ? 'Rs '.number_format($entry->cost_price, 2) : '—' }}
                         /
@@ -525,6 +544,12 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                 <x-ui.field label="Date Received" name="editStockDate" for="editStockDate">
                     <x-ui.input wire:model="editStockDate" id="editStockDate" type="date" max="{{ now()->toDateString() }}" />
                 </x-ui.field>
+
+                @if ($expiryEnabled)
+                    <x-ui.field label="Expiry Date" name="editExpiryDate" for="editExpiryDate" help="Optional. The last day it can be sold">
+                        <x-ui.input wire:model="editExpiryDate" id="editExpiryDate" type="date" />
+                    </x-ui.field>
+                @endif
 
                 <x-ui.field label="Note" name="editNote" for="editNote" help="Optional">
                     <x-ui.input wire:model="editNote" id="editNote" />

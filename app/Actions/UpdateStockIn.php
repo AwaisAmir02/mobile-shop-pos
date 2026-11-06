@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 class UpdateStockIn
 {
     /**
-     * @param  array{quantity: int|float|string, vendor_id: ?int, stock_date: string, note: ?string, cost_price: ?float, selling_price: ?float}  $fields
+     * @param  array{quantity: int|float|string, vendor_id: ?int, stock_date: string, note: ?string, cost_price: ?float, selling_price: ?float, expiry_date?: ?string}  $fields
      */
     public static function handle(StockIn $entry, array $fields, ?int $userId): StockIn
     {
@@ -34,6 +34,7 @@ class UpdateStockIn
                 'selling_price' => $entry->selling_price !== null ? (float) $entry->selling_price : null,
                 'total_cost' => $entry->total_cost !== null ? (float) $entry->total_cost : null,
                 'stock_date' => $entry->stock_date->toDateString(),
+                'expiry_date' => $entry->expiry_date?->toDateString(),
                 'note' => $entry->note,
             ];
 
@@ -93,6 +94,7 @@ class UpdateStockIn
                 'selling_price' => $fields['selling_price'],
                 'total_cost' => $newTotalCost,
                 'stock_date' => $fields['stock_date'],
+                ...(array_key_exists('expiry_date', $fields) ? ['expiry_date' => $fields['expiry_date']] : []),
                 'note' => $fields['note'],
             ]);
 

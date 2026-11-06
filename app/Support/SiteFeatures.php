@@ -67,7 +67,7 @@ class SiteFeatures
                 ],
                 'mockup' => ['component' => 'dashboard', 'frame' => 'browser', 'url' => 'hisabokitab.com/dashboard', 'label' => 'Dashboard with revenue chart, items sold and outstanding dues'],
                 'spotlights' => [
-                    ['FIFO batch costing on every sale', 'Bought the same item at three different prices? Each sale takes the oldest stock first at its true cost, so the profit you see is the profit you made.'],
+                    ['FIFO batch costing on every sale', 'Bought the same item at three different prices? Each sale is costed at the true price of the batch it came from, oldest stock first, or closest to expiry first if you track expiry dates, so the profit you see is the profit you made.'],
                 ],
                 'related' => ['pos', 'reports', 'udhaar'],
             ],
@@ -109,7 +109,7 @@ class SiteFeatures
                 ],
                 'mockup' => ['component' => 'dashboard', 'frame' => 'browser', 'url' => 'hisabokitab.com/dashboard', 'label' => 'Dashboard with revenue chart, items sold and outstanding dues'],
                 'spotlights' => [
-                    ['FIFO batch costing on every sale', 'Bought the same item at three different prices? Each sale takes the oldest stock first at its true cost, so the profit you see is the profit you made.'],
+                    ['FIFO batch costing on every sale', 'Bought the same item at three different prices? Each sale is costed at the true price of the batch it came from, oldest stock first, or closest to expiry first if you track expiry dates, so the profit you see is the profit you made.'],
                     ['Udhaar that explains itself', 'Cash udhaar and unpaid sales roll into one total — itemised, so there’s never an argument about what’s owed.'],
                 ],
                 'related' => ['multi-branch', 'stock', 'udhaar'],
