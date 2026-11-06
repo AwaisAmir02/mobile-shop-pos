@@ -7,6 +7,7 @@ use App\Models\Expense;
 use App\Models\ModuleRevision;
 use App\Models\Scopes\ExcludesCancelledScope;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class UpdateExpense
 {
@@ -17,6 +18,10 @@ class UpdateExpense
 
             if ($expense->isCancelled()) {
                 throw new \RuntimeException('A cancelled expense cannot be edited.');
+            }
+
+            if ($expense->payslip_id !== null) {
+                throw ValidationException::withMessages(['editAmount' => 'This is a salary from Payroll. Cancel the payslip there instead.']);
             }
 
             $snapshot = [

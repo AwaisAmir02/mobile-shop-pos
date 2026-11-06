@@ -182,6 +182,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             $tabs[] = 'percentage';
         }
 
+        if (Auth::user()->shop?->payroll_enabled && Auth::user()->hasAccessTo('payroll')) {
+            $tabs[] = 'deduction-types';
+        }
+
         if (Auth::user()->hasAccessTo('shop-accounts')) {
             $tabs[] = 'shop-accounts';
         }
@@ -1065,6 +1069,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             'services' => 'Services',
             'integrations' => 'Integrations',
             'percentage' => 'Percentage',
+            'deduction-types' => 'Deduction Types',
             'profile' => 'Profile',
             'roles' => 'Roles',
             'modules' => 'Modules',
@@ -1076,7 +1081,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $tabGroups = collect([
             'Your shop' => ['profile', 'branding', 'shop-accounts'],
             'Catalogue' => ['accessory-categories', 'brands', 'networks'],
-            'Pricing & services' => ['percentage', 'bills', 'services'],
+            'Pricing & services' => ['percentage', 'bills', 'services', 'deduction-types'],
             'Team & access' => ['roles', 'modules'],
             'Connections' => ['integrations'],
         ])->map(fn ($keys) => array_values(array_intersect($keys, $accessibleTabs)))->filter();
@@ -1134,6 +1139,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         </nav>
 
         <div class="min-w-0">
+    @if ($tab === 'deduction-types')
+        <livewire:payroll.deduction-types embedded />
+    @endif
+
     @if ($tab === 'accessory-categories')
         <div class="space-y-6">
             <x-ui.card title="Main Categories" description="The top-level categories a Product can be. Mobile Phone and Accessory are built in; add your own for anything else your shop sells.">

@@ -56,6 +56,11 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('stock-ins/history', 'stock-ins.history')->name('stock-ins.history')->middleware('shop.access:stock-ins');
         Volt::route('stock-ins/expiry', 'stock-ins.expiry')->name('stock-ins.expiry')->middleware('shop.access:stock-ins');
         Volt::route('stock-ins/write-offs', 'stock-ins.write-offs')->name('stock-ins.write-offs')->middleware('shop.access:stock-ins');
+        Volt::route('payroll/employees', 'payroll.employees')->name('payroll.employees')->middleware('shop.access:payroll');
+        Volt::route('payroll/advances', 'payroll.advances')->name('payroll.advances')->middleware('shop.access:payroll');
+        Volt::route('payroll/history', 'payroll.history')->name('payroll.history')->middleware('shop.access:payroll');
+        Volt::route('payroll/deduction-types', 'payroll.deduction-types')->name('payroll.deduction-types')->middleware('shop.access:payroll');
+        Volt::route('payroll/run', 'payroll.run')->name('payroll.run')->middleware('shop.access:payroll-run');
         Volt::route('purchase-orders', 'purchase-orders.index')->name('purchase-orders.index')->middleware('shop.access:purchase-orders,receive-goods');
         Volt::route('purchase-orders/create', 'purchase-orders.form')->name('purchase-orders.create')->middleware('shop.access:purchase-orders');
         Volt::route('purchase-orders/receipts', 'purchase-orders.receipts')->name('purchase-orders.receipts')->middleware('shop.access:receive-goods');

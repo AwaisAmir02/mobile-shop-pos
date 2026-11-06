@@ -52,6 +52,8 @@ enum ShopScreen: string
     case Branches = 'branches';
     case PurchaseOrders = 'purchase-orders';
     case ReceiveGoods = 'receive-goods';
+    case Payroll = 'payroll';
+    case PayrollRun = 'payroll-run';
 
     public function label(): string
     {
@@ -104,6 +106,8 @@ enum ShopScreen: string
             self::Branches => 'Branches',
             self::PurchaseOrders => 'Purchase Orders',
             self::ReceiveGoods => 'Receive Goods',
+            self::Payroll => 'Payroll: Employees, Advances & History (shows salaries)',
+            self::PayrollRun => 'Payroll: Run Payroll (pays salaries)',
         };
     }
 
@@ -158,6 +162,8 @@ enum ShopScreen: string
             self::Branches => 'branches.index',
             self::PurchaseOrders => 'purchase-orders.index',
             self::ReceiveGoods => 'purchase-orders.index',
+            self::Payroll => 'payroll.employees',
+            self::PayrollRun => 'payroll.run',
         };
     }
 
@@ -176,7 +182,7 @@ enum ShopScreen: string
             'Inventory & Sales' => [self::StockIns, self::StockInsEditCancel, self::PurchaseOrders, self::ReceiveGoods, self::Vendors, self::Sales, self::SalesEditCancel, self::SalesViewCostPrice, self::SimSales, self::SimSalesEditCancel],
             'Financial Services' => [self::BalanceLoads, self::BalanceLoadsEditCancel, self::WalletLoads, self::WalletLoadsEditCancel, self::Bills, self::BillsEditCancel, self::Repairs, self::RepairsEditCancel, self::NadraVerifications, self::NadraVerificationsEditCancel, self::Udhaar, self::Expenses, self::ExpensesEditCancel, self::Services, self::ServicesEditCancel],
             'Online Selling' => [self::WhatsAppOrders, self::WhatsAppOrdersDecide, self::WhatsAppMessages, self::Marketing, self::MarketingAnalytics, self::MarketingAds],
-            'Administration' => [self::Users, self::ShopAccounts, self::Branches],
+            'Administration' => [self::Users, self::ShopAccounts, self::Branches, self::Payroll, self::PayrollRun],
             'Settings' => [self::Settings, self::SettingsCategories, self::SettingsNetworks, self::SettingsBillConfig, self::SettingsPercentage, self::SettingsBrands, self::SettingsBranding, self::SettingsServices, self::SettingsIntegrations],
         ];
     }

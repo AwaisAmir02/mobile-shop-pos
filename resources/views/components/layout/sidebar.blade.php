@@ -33,6 +33,7 @@
             ['label' => 'Marketing', 'route' => 'marketing.posts', 'icon' => 'megaphone', 'group' => 'online', 'permission' => ['marketing', 'marketing-analytics', 'marketing-ads']],
             ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'group' => 'money', 'permission' => 'reports'],
             ['label' => 'Gross Profit', 'route' => 'profit.index', 'icon' => 'chart', 'group' => 'money', 'permission' => 'reports'],
+            ['label' => 'Payroll', 'route' => 'payroll.employees', 'icon' => 'users', 'group' => 'money', 'permission' => ['payroll', 'payroll-run']],
             ['label' => 'Party Ledger', 'route' => 'party-ledger.index', 'icon' => 'ledger', 'group' => 'money', 'permission' => 'party-ledger'],
             ['label' => 'Team', 'route' => 'users.index', 'icon' => 'users', 'group' => 'manage', 'permission' => 'users'],
             ['label' => 'Branches', 'route' => 'branches.index', 'icon' => 'building', 'group' => 'manage', 'permission' => 'branches'],
@@ -40,6 +41,8 @@
             ['label' => 'Plan & Usage', 'route' => 'billing.index', 'icon' => 'receipt', 'group' => 'manage', 'owner' => true],
         ])->filter(fn ($item) => $user && (($item['owner'] ?? false) ? $user->is_owner : collect((array) $item['permission'])->contains(fn ($p) => $user->hasAccessTo($p))))
             ->reject(fn ($item) => $item['route'] === 'services.index' && ! $user?->shop?->services_enabled)
+            ->reject(fn ($item) => $item['route'] === 'payroll.employees' && ! $user?->shop?->payroll_enabled)
+            ->map(fn ($item) => $item['route'] === 'payroll.employees' && ! $user?->hasAccessTo('payroll') ? array_merge($item, ['route' => 'payroll.run']) : $item)
             ->reject(fn ($item) => $item['route'] === 'purchase-orders.index' && ! $user?->shop?->purchase_orders_enabled)
             ->reject(fn ($item) => $item['route'] === 'profit.index' && ! $user?->hasAccessTo('sales-view-cost-price'))
             ->reject(fn ($item) => $item['route'] === 'whatsapp-orders.index' && ! $user?->shop?->whatsapp_ordering_enabled)

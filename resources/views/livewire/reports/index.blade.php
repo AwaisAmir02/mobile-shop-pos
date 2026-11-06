@@ -311,6 +311,9 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
     @endif
 
     <p class="mb-4 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+        @if (auth()->user()->hasAccessTo('payroll') && (auth()->user()->shop?->payroll_enabled || \App\Models\Payslip::query()->exists()))
+            <a href="{{ route('payroll.history') }}" wire:navigate class="font-medium text-brand-700 hover:text-brand-800">Payroll history →</a>
+        @endif
         @if (auth()->user()->hasAccessTo('sales-view-cost-price'))
             <a href="{{ route('profit.index') }}" wire:navigate class="font-medium text-brand-700 hover:text-brand-800">Gross profit report →</a>
         @endif

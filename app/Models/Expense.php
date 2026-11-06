@@ -13,9 +13,16 @@ class Expense extends Model
 {
     use BelongsToShop, BelongsToBranch, HasCancellation;
 
+    /** Set on a paid salary: this row belongs to its payslip and only changes through it. */
+    public function payslip(): BelongsTo
+    {
+        return $this->belongsTo(Payslip::class);
+    }
+
     protected $fillable = [
         'shop_id',
         'user_id',
+        'payslip_id',
         'description',
         'amount',
         'expense_date',

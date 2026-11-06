@@ -228,7 +228,9 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
                         @endif
                     </x-ui.table-cell>
                     <x-ui.table-cell align="right">
-                        @if (! $expense->isCancelled() && auth()->user()->hasAccessTo('expenses-edit-cancel'))
+                        @if ($expense->payslip_id !== null)
+                            <span class="text-xs text-slate-400">From Payroll</span>
+                        @elseif (! $expense->isCancelled() && auth()->user()->hasAccessTo('expenses-edit-cancel'))
                             <div class="flex justify-end gap-2">
                                 <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $expense->id }})">
                                     Edit

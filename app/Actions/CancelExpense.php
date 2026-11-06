@@ -8,16 +8,21 @@ use App\Models\Expense;
 use App\Models\ModuleRevision;
 use App\Models\Scopes\ExcludesCancelledScope;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CancelExpense
 {
-    public static function handle(Expense $expense, ?int $userId, ?string $reason = null): Expense
+    public static function handle(Expense $expense, ?int $userId, ?string $reason = null, bool $fromPayslip = false): Expense
     {
-        return DB::transaction(function () use ($expense, $userId, $reason) {
+        return DB::transaction(function () use ($expense, $userId, $reason, $fromPayslip) {
             $expense = Expense::withoutGlobalScope(ExcludesCancelledScope::class)->whereKey($expense->id)->lockForUpdate()->firstOrFail();
 
             if ($expense->isCancelled()) {
                 throw new \RuntimeException('This expense has already been cancelled.');
+            }
+
+            if ($expense->payslip_id !== null && ! $fromPayslip) {
+                throw ValidationException::withMessages(['cancelReason' => 'This is a salary from Payroll. Cancel the payslip there instead.']);
             }
 
             $snapshot = [
