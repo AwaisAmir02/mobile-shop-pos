@@ -1,18 +1,16 @@
 <?php
 
+use App\Actions\CreateStockIn;
 use App\Enums\PaymentStatus;
 use App\Enums\QuantityUnit;
-use App\Enums\StockInPaymentSource;
 use App\Livewire\Concerns\Toasts;
 use App\Models\AccessoryCategoryOption;
 use App\Models\MainCategory;
 use App\Models\Product;
-use App\Models\StockIn;
 use App\Models\Vendor;
 use App\Support\Quantity;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -240,12 +238,12 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
 
     public function lineTotalCost(array $line): float
     {
-        return $line['cost_price'] !== null ? Quantity::money($line['cost_price'], $line['quantity']) : 0.0;
+        return CreateStockIn::lineTotalCost($line);
     }
 
     public function grandTotalCost(): float
     {
-        return round(array_sum(array_map(fn (array $line) => $this->lineTotalCost($line), $this->cart)), 2);
+        return CreateStockIn::grandTotalCost($this->cart);
     }
 
     protected function selectedUnit(): QuantityUnit
@@ -303,71 +301,18 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
             'cart.*.expiry_date' => ['nullable', 'date'],
         ]);
 
-        $grandTotal = $this->grandTotalCost();
-
-        $headerAmountPaid = match ($this->paymentStatus) {
-            'paid' => $grandTotal,
-            'partial' => $this->amountPaid !== '' ? (float) $this->amountPaid : 0.0,
-            default => 0.0,
-        };
-
         $vendorId = $canUseVendors && $this->vendorId !== '' ? (int) $this->vendorId : null;
         $lines = array_values($this->cart);
-        $count = count($lines);
 
-        DB::transaction(function () use ($lines, $count, $grandTotal, $headerAmountPaid, $vendorId) {
-            $amountAllocated = 0.0;
-
-            foreach ($lines as $index => $line) {
-                $product = Product::whereKey($line['product_id'])->lockForUpdate()->firstOrFail();
-                // The cart is client-held state, so the product's own unit decides here.
-                $product->unit->assertQuantity($line['quantity'], 'quantity', $product->name);
-                $product->increment('stock_quantity', Quantity::normalize($line['quantity']));
-
-                $lineTotalCost = $this->lineTotalCost($line);
-
-                $isLast = $index === $count - 1;
-                $lineAmountPaid = $grandTotal > 0
-                    ? ($isLast ? round($headerAmountPaid - $amountAllocated, 2) : round($headerAmountPaid * ($lineTotalCost / $grandTotal), 2))
-                    : 0.0;
-                $amountAllocated += $lineAmountPaid;
-
-                $linePaymentStatus = match (true) {
-                    $lineTotalCost > 0 && $lineAmountPaid >= $lineTotalCost => PaymentStatus::Paid,
-                    $lineAmountPaid > 0 => PaymentStatus::Partial,
-                    default => PaymentStatus::Unpaid,
-                };
-
-                $entry = StockIn::create([
-                    'product_id' => $product->id,
-                    'vendor_id' => $vendorId,
-                    'product_name' => $product->name,
-                    'user_id' => Auth::id(),
-                    'quantity' => Quantity::normalize($line['quantity']),
-                    'unit' => $product->unit,
-                    'cost_price' => $line['cost_price'],
-                    'selling_price' => $line['selling_price'],
-                    'quantity_remaining' => Quantity::normalize($line['quantity']),
-                    'total_cost' => $line['cost_price'] !== null ? $lineTotalCost : null,
-                    'payment_status' => $linePaymentStatus,
-                    'amount_paid' => $lineAmountPaid,
-                    'stock_date' => $this->stock_date,
-                    'expiry_date' => $this->expiryEnabled() ? ($line['expiry_date'] ?? null) : null,
-                    'note' => $this->note !== '' ? $this->note : null,
-                ]);
-
-                // Dated history of this line's share of the purchase-time payment.
-                if (round($lineAmountPaid, 2) != 0.0) {
-                    $entry->payments()->create([
-                        'shop_id' => $entry->shop_id,
-                        'user_id' => Auth::id(),
-                        'amount' => $lineAmountPaid,
-                        'payment_date' => $this->stock_date,
-                        'source' => StockInPaymentSource::Initial,
-                    ]);
-                }
-            }
-        });
+        CreateStockIn::handle(
+            $lines,
+            $vendorId,
+            $this->paymentStatus,
+            $this->amountPaid !== '' ? (float) $this->amountPaid : null,
+            $this->stock_date,
+            $this->note,
+            Auth::id(),
+        );
 
         $this->toastSuccess(count($lines) > 1 ? 'Stock added for '.count($lines).' products.' : 'Stock added.');
         $this->reset(['cart', 'vendorId', 'note', 'amountPaid']);
