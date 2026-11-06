@@ -2,11 +2,13 @@
 
 namespace App\Ledger;
 
+use App\Models\LedgerAccount;
 use App\Models\LedgerBaseline;
 use App\Models\LedgerEntry;
 use App\Models\LedgerLine;
 use App\Models\LedgerOutbox;
 use App\Models\Shop;
+use App\Models\ShopAccount;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Throwable;
@@ -94,7 +96,7 @@ class LedgerPoster
             return;
         }
 
-        $this->write($shop, $key, $id, $document !== null ? $builder->description($document) : "{$key} #{$id} removed", $difference, $accounts);
+        $this->write($shop, $key, $id, $document !== null ? $builder->description($document) : "{$key} #{$id} removed", $difference, $accounts, $builder instanceof PostsOnChangeDate);
     }
 
     /** @return array<int, Line> what's posted so far, as the document asked for it */
@@ -120,7 +122,22 @@ class LedgerPoster
         $difference[$line->key()]['paise'] += $paise;
     }
 
-    protected function write(Shop $shop, string $key, int $id, string $description, array $difference, array $accounts): void
+    /** A shop's bank and wallet accounts come and go, so each gets its ledger account the first time it's used. */
+    protected function bankAccount(Shop $shop, string $code): int
+    {
+        if (ChartOfAccounts::parentCode($code) !== ChartOfAccounts::BANK || $code === ChartOfAccounts::BANK) {
+            throw new RuntimeException("No account {$code}.");
+        }
+
+        $shopAccount = ShopAccount::withoutGlobalScopes()->where('shop_id', $shop->id)->find((int) explode('-', $code)[1]);
+
+        return LedgerAccount::withoutGlobalScopes()->firstOrCreate(
+            ['shop_id' => $shop->id, 'code' => $code],
+            ['name' => $shopAccount?->name ?? 'Bank account', 'type' => LedgerAccount::ASSET, 'shop_account_id' => $shopAccount?->id],
+        )->id;
+    }
+
+    protected function write(Shop $shop, string $key, int $id, string $description, array $difference, array $accounts, bool $onChangeDate = false): void
     {
         $startDate = $shop->ledger_started_at->toDateString();
         $today = now()->toDateString();
@@ -129,10 +146,10 @@ class LedgerPoster
         foreach ($difference as $row) {
             /** @var Line $line */
             $line = $row['line'];
-            $beforeStart = $line->date < $startDate;
+            $beforeStart = ! $onChangeDate && $line->date < $startDate;
 
             // A change to something from before the ledger began can't rewrite what came before it.
-            $date = $beforeStart ? $today : $line->date;
+            $date = $beforeStart || $onChangeDate ? $today : $line->date;
             $account = $beforeStart && ChartOfAccounts::isProfitAndLoss($line->account) ? ChartOfAccounts::PRIOR_PERIOD : $line->account;
 
             $entries[$date][] = ['line' => $line, 'account' => $account, 'paise' => $row['paise']];
@@ -154,7 +171,7 @@ class LedgerPoster
             ]);
 
             foreach ($lines as $item) {
-                $accountId = $accounts[$item['account']] ?? throw new RuntimeException("No account {$item['account']}.");
+                $accountId = $accounts[$item['account']] ?? $this->bankAccount($shop, $item['account']);
 
                 LedgerLine::create([
                     'shop_id' => $shop->id,

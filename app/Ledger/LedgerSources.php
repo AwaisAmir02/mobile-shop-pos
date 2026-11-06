@@ -3,6 +3,16 @@
 namespace App\Ledger;
 
 use App\Models\Expense;
+use App\Models\PartyLedgerEntry;
+use App\Models\Product;
+use App\Models\Sale;
+use App\Models\SaleItem;
+use App\Models\SalePayment;
+use App\Models\StockIn;
+use App\Models\StockInPayment;
+use App\Models\StockWriteOff;
+use App\Models\UdhaarTransaction;
+use App\Models\VendorInvoiceLine;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -14,10 +24,21 @@ class LedgerSources
     /** @var array<string, array{model: class-string<Model>, builder: class-string<EntryBuilder>}> */
     public const DOCUMENTS = [
         'expense' => ['model' => Expense::class, 'builder' => Builders\ExpenseBuilder::class],
+        'sale' => ['model' => Sale::class, 'builder' => Builders\SaleBuilder::class],
+        'stock_in' => ['model' => StockIn::class, 'builder' => Builders\StockInBuilder::class],
+        'stock_write_off' => ['model' => StockWriteOff::class, 'builder' => Builders\StockWriteOffBuilder::class],
+        'udhaar' => ['model' => UdhaarTransaction::class, 'builder' => Builders\UdhaarBuilder::class],
+        'party_ledger' => ['model' => PartyLedgerEntry::class, 'builder' => Builders\PartyLedgerBuilder::class],
+        'product_stock' => ['model' => Product::class, 'builder' => Builders\ProductStockBuilder::class],
     ];
 
     /** @var array<class-string<Model>, array{0: string, 1: string}> child model => [document key, foreign key] */
-    public const CHILDREN = [];
+    public const CHILDREN = [
+        SaleItem::class => ['sale', 'sale_id'],
+        SalePayment::class => ['sale', 'sale_id'],
+        StockInPayment::class => ['stock_in', 'stock_in_id'],
+        VendorInvoiceLine::class => ['stock_in', 'stock_in_id'],
+    ];
 
     /** @return array<int, class-string<Model>> */
     public static function observed(): array

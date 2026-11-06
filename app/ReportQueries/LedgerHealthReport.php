@@ -1,0 +1,145 @@
+<?php
+
+namespace App\ReportQueries;
+
+use App\Enums\RecordStatus;
+use App\Enums\SaleStatus;
+use App\Enums\UdhaarTransactionType;
+use App\Ledger\ChartOfAccounts as Chart;
+use App\Models\LedgerOutbox;
+use App\Models\Shop;
+use App\Support\Quantity;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Proves the ledger against the numbers the shop already trusts. Records is what
+ * today's screens say. Explained is a known way they differ, such as an
+ * overpayment, which the screens floor at zero and the ledger keeps. What's left
+ * should be nothing, or a few paise of unit-cost rounding on Inventory.
+ */
+class LedgerHealthReport
+{
+    public const INVENTORY_ROUNDING_TOLERANCE = 1.0;
+
+    public function __construct(protected Shop $shop) {}
+
+    /** @return array<int, array{label: string, ledger: float, records: float, explained: float, unexplained: float, note: string}> */
+    public function checks(): array
+    {
+        return [
+            $this->receivable(),
+            $this->payable(),
+            $this->inventory(),
+            $this->netSales(),
+        ];
+    }
+
+    public function isHealthy(): bool
+    {
+        return collect($this->checks())->every(fn (array $check) => abs($check['unexplained']) <= ($check['tolerance'] ?? 0.0));
+    }
+
+    /** @return array<string, int> */
+    public function counts(): array
+    {
+        $outbox = LedgerOutbox::where('shop_id', $this->shop->id);
+
+        return [
+            'waiting' => (clone $outbox)->count(),
+            'failed' => (clone $outbox)->where('attempts', '>', 0)->count(),
+            'lines_with_no_cost' => DB::table('sale_items')->where('shop_id', $this->shop->id)->whereNull('cost_price')->count(),
+        ];
+    }
+
+    protected function ledgerBalance(string ...$codes): float
+    {
+        $paise = DB::table('ledger_lines')
+            ->join('ledger_entries', 'ledger_entries.id', '=', 'ledger_lines.ledger_entry_id')
+            ->join('ledger_accounts', 'ledger_accounts.id', '=', 'ledger_lines.ledger_account_id')
+            ->where('ledger_entries.shop_id', $this->shop->id)
+            ->where('ledger_entries.epoch', $this->shop->ledger_epoch)
+            ->whereIn('ledger_accounts.code', $codes)
+            ->sum('ledger_lines.amount_paise');
+
+        return round((float) $paise / 100, 2);
+    }
+
+    protected function check(string $label, float $ledger, float $records, float $explained, string $note, float $tolerance = 0.0): array
+    {
+        return [
+            'label' => $label,
+            'ledger' => round($ledger, 2),
+            'records' => round($records, 2),
+            'explained' => round($explained, 2),
+            'unexplained' => round($ledger - $records - $explained, 2),
+            'note' => $note,
+            'tolerance' => $tolerance,
+        ];
+    }
+
+    protected function moduleDues(): float
+    {
+        return 0.0;
+    }
+
+    protected function receivable(): array
+    {
+        $paidBySale = DB::table('sale_payments')->where('shop_id', $this->shop->id)->groupBy('sale_id')->selectRaw('sale_id, SUM(amount) as paid')->pluck('paid', 'sale_id');
+        $owed = 0.0;
+        $overpaid = 0.0;
+
+        foreach (DB::table('sales')->where('shop_id', $this->shop->id)->where('status', '!=', SaleStatus::Cancelled->value)->get(['id', 'total']) as $sale) {
+            $balance = (float) $sale->total - (float) ($paidBySale[$sale->id] ?? 0);
+            $balance > 0 ? $owed += $balance : $overpaid += $balance;
+        }
+
+        $udhaar = DB::table('udhaar_transactions')->where('shop_id', $this->shop->id)->where('status', '!=', RecordStatus::Cancelled->value)->get(['type', 'amount'])
+            ->sum(fn ($row) => in_array($row->type, [UdhaarTransactionType::Given->value, UdhaarTransactionType::RepaymentReversal->value], true) ? (float) $row->amount : -(float) $row->amount);
+
+        $manual = (float) DB::table('party_ledger_entries')->where('shop_id', $this->shop->id)->whereNotNull('customer_id')->where('status', '!=', RecordStatus::Cancelled->value)
+            ->selectRaw("SUM(CASE WHEN direction = 'debit' THEN amount ELSE -amount END) as net")->value('net');
+
+        return $this->check('Customers owe', $this->ledgerBalance(Chart::RECEIVABLE), $owed + $udhaar + $manual + $this->moduleDues(), $overpaid, 'Sales, udhaar and party ledger balances. Overpaid sales count against the customer here.');
+    }
+
+    protected function payable(): array
+    {
+        $paidByRow = DB::table('stock_in_payments')->where('shop_id', $this->shop->id)->groupBy('stock_in_id')->selectRaw('stock_in_id, SUM(amount) as paid')->pluck('paid', 'stock_in_id');
+        $owed = 0.0;
+        $explained = 0.0;
+
+        foreach (DB::table('stock_ins')->where('shop_id', $this->shop->id)->where('status', '!=', RecordStatus::Cancelled->value)->get(['id', 'total_cost', 'amount_paid', 'payment_status']) as $row) {
+            $screens = $row->payment_status === 'paid' ? 0.0 : max(0.0, (float) ($row->total_cost ?? 0) - (float) $row->amount_paid);
+            $ledger = (float) ($row->total_cost ?? 0) - (float) ($paidByRow[$row->id] ?? 0);
+            $owed += $screens;
+            $explained += $ledger - $screens;
+        }
+
+        $manual = (float) DB::table('party_ledger_entries')->where('shop_id', $this->shop->id)->whereNotNull('vendor_id')->where('status', '!=', RecordStatus::Cancelled->value)
+            ->selectRaw("SUM(CASE WHEN direction = 'credit' THEN amount ELSE -amount END) as net")->value('net');
+
+        return $this->check('Vendors are owed', -$this->ledgerBalance(Chart::PAYABLE), $owed + $manual, $explained, 'Stock In balances and party ledger entries. Overpayments and batches with no cost are floored at zero on the screens.');
+    }
+
+    protected function inventory(): array
+    {
+        $batches = DB::table('stock_ins')->where('shop_id', $this->shop->id)->where('status', '!=', RecordStatus::Cancelled->value)->where('quantity_remaining', '>', 0)->get(['product_id', 'quantity_remaining', 'cost_price']);
+        $value = $batches->sum(fn ($batch) => Quantity::money($batch->cost_price ?? 0, $batch->quantity_remaining));
+        $inBatches = $batches->groupBy('product_id')->map(fn ($group) => Quantity::sum($group->pluck('quantity_remaining')));
+
+        foreach (DB::table('products')->where('shop_id', $this->shop->id)->get(['id', 'stock_quantity', 'cost_price']) as $product) {
+            $uncovered = Quantity::subtract($product->stock_quantity, $inBatches[$product->id] ?? 0);
+            $sign = Quantity::compare($uncovered, 0) < 0 ? -1 : 1;
+            $value += $sign * Quantity::money($product->cost_price ?? 0, abs($uncovered));
+        }
+
+        return $this->check('Inventory at cost', $this->ledgerBalance(Chart::INVENTORY), $value, 0.0, 'Batches at their cost, and stock no batch covers at the product\'s cost. Rounding a billed total into a unit cost can leave a few paise.', self::INVENTORY_ROUNDING_TOLERANCE);
+    }
+
+    protected function netSales(): array
+    {
+        $total = (float) DB::table('sales')->where('shop_id', $this->shop->id)->where('status', '!=', SaleStatus::Cancelled->value)->whereDate('created_at', '>=', $this->shop->ledger_started_at)->sum('total');
+
+        return $this->check('Sales since the start, after discounts', -$this->ledgerBalance(Chart::SALES, Chart::DISCOUNTS), $total, 0.0, 'Excludes changes to older sales, which go to Prior Period.');
+    }
+}

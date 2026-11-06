@@ -91,6 +91,11 @@ class ChartOfAccounts
         return in_array($type, [LedgerAccount::INCOME, LedgerAccount::EXPENSE], true);
     }
 
+    public static function bankCode(int $shopAccountId): string
+    {
+        return self::BANK.'-'.$shopAccountId;
+    }
+
     /** A bank sub-account is "1100-7": ShopAccount 7 under Bank & Wallets. */
     public static function parentCode(string $code): string
     {

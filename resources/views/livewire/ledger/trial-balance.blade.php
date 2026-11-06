@@ -73,6 +73,8 @@ new #[Layout('layouts.app')] #[Title('Trial Balance')] class extends Component
         <h1 class="text-xl font-semibold text-slate-900">Trial Balance</h1>
     </x-slot>
 
+    <x-ledger.nav active="ledger.trial-balance" />
+
     <x-ui.error :messages="$errors->get('ledger')" class="mb-4" />
 
     @if ($shop->ledger_frozen_at)
@@ -112,7 +114,7 @@ new #[Layout('layouts.app')] #[Title('Trial Balance')] class extends Component
                 @foreach ($rows as $row)
                     <x-ui.table-row wire:key="account-{{ $row['code'] }}">
                         <x-ui.table-cell>{{ $row['code'] }}</x-ui.table-cell>
-                        <x-ui.table-cell class="font-medium text-slate-900">{{ $row['name'] }}</x-ui.table-cell>
+                        <x-ui.table-cell class="font-medium"><a href="{{ route('ledger.account', $row['code']) }}" wire:navigate class="text-brand-700 hover:text-brand-800">{{ $row['name'] }}</a></x-ui.table-cell>
                         <x-ui.table-cell>{{ $row['debit'] ? 'Rs '.number_format($row['debit'], 2) : '—' }}</x-ui.table-cell>
                         <x-ui.table-cell>{{ $row['credit'] ? 'Rs '.number_format($row['credit'], 2) : '—' }}</x-ui.table-cell>
                     </x-ui.table-row>
