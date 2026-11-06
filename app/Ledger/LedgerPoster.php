@@ -30,6 +30,8 @@ class LedgerPoster
     {
         $ids = LedgerOutbox::query()
             ->when($shopId, fn ($query) => $query->where('shop_id', $shopId))
+            // Nothing posts until the opening entry is in place.
+            ->whereIn('shop_id', Shop::whereNotNull('ledger_ready_at')->select('id'))
             ->where('attempts', '<', self::MAX_ATTEMPTS)
             ->orderBy('id')
             ->limit($limit)
@@ -123,7 +125,7 @@ class LedgerPoster
     }
 
     /** A shop's bank and wallet accounts come and go, so each gets its ledger account the first time it's used. */
-    protected function bankAccount(Shop $shop, string $code): int
+    public function bankAccount(Shop $shop, string $code): int
     {
         if (ChartOfAccounts::parentCode($code) !== ChartOfAccounts::BANK || $code === ChartOfAccounts::BANK) {
             throw new RuntimeException("No account {$code}.");

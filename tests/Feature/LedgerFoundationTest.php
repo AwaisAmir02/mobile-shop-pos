@@ -447,7 +447,9 @@ class LedgerFoundationTest extends TestCase
     {
         $shop = $this->shop(['ledger_enabled' => true]);
 
-        Livewire::test('ledger.trial-balance')->assertSee('Start the ledger')->call('start')->assertHasNoErrors()->assertSee('Nothing posted yet');
+        Livewire::test('ledger.trial-balance')->assertSee('Start the ledger');
+        Livewire::test('ledger.setup')->call('start')->assertHasNoErrors()->assertRedirect(route('ledger.trial-balance'));
+        Livewire::test('ledger.trial-balance')->assertSee('Nothing posted yet');
 
         $this->assertNotNull($shop->fresh()->ledger_started_at);
     }

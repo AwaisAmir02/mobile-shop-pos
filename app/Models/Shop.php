@@ -84,6 +84,7 @@ class Shop extends Model
             'payroll_notice_dismissed_at' => 'datetime',
             'ledger_enabled' => 'boolean',
             'ledger_started_at' => 'datetime',
+            'ledger_ready_at' => 'datetime',
             'ledger_frozen_at' => 'datetime',
             'ledger_epoch' => 'integer',
             'whatsapp_ordering_enabled' => 'boolean',

@@ -56,6 +56,7 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('stock-ins/history', 'stock-ins.history')->name('stock-ins.history')->middleware('shop.access:stock-ins');
         Volt::route('stock-ins/expiry', 'stock-ins.expiry')->name('stock-ins.expiry')->middleware('shop.access:stock-ins');
         Volt::route('stock-ins/write-offs', 'stock-ins.write-offs')->name('stock-ins.write-offs')->middleware('shop.access:stock-ins');
+        Volt::route('ledger/setup', 'ledger.setup')->name('ledger.setup');
         Volt::route('ledger/trial-balance', 'ledger.trial-balance')->name('ledger.trial-balance');
         Volt::route('ledger/health', 'ledger.health')->name('ledger.health');
         Volt::route('ledger/accounts/{code}', 'ledger.account')->name('ledger.account');

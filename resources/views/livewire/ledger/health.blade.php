@@ -18,7 +18,7 @@ new #[Layout('layouts.app')] #[Title('Ledger Health')] class extends Component
     {
         $shop = Auth::user()->shop;
 
-        if ($shop->ledger_started_at !== null && $shop->ledger_frozen_at === null) {
+        if ($shop->ledger_ready_at !== null && $shop->ledger_frozen_at === null) {
             app(LedgerPoster::class)->drain($shop->id);
         }
     }
@@ -30,7 +30,7 @@ new #[Layout('layouts.app')] #[Title('Ledger Health')] class extends Component
 
         return [
             'shop' => $shop,
-            'checks' => $shop->ledger_started_at ? $report->checks() : [],
+            'checks' => $shop->ledger_ready_at ? $report->checks() : [],
             'counts' => $report->counts(),
         ];
     }

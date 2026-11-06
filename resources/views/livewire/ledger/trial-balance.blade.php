@@ -1,6 +1,5 @@
 <?php
 
-use App\Actions\StartLedger;
 use App\Ledger\LedgerPoster;
 use App\Livewire\Concerns\Toasts;
 use App\Models\LedgerOutbox;
@@ -32,18 +31,9 @@ new #[Layout('layouts.app')] #[Title('Trial Balance')] class extends Component
     {
         $shop = Auth::user()->shop;
 
-        if ($shop->ledger_started_at !== null && $shop->ledger_frozen_at === null) {
+        if ($shop->ledger_ready_at !== null && $shop->ledger_frozen_at === null) {
             app(LedgerPoster::class)->drain($shop->id);
         }
-    }
-
-    public function start(): void
-    {
-        $this->resetErrorBag();
-        StartLedger::handle(Auth::user()->shop);
-        Auth::user()->unsetRelation('shop');
-
-        $this->toastSuccess('The ledger has started.');
     }
 
     public function refresh(): void
@@ -81,15 +71,19 @@ new #[Layout('layouts.app')] #[Title('Trial Balance')] class extends Component
         <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             This ledger was frozen on {{ $shop->ledger_frozen_at->format('d M Y') }}, so these figures no longer change. Nothing since then has been posted, and restarting needs a new setup.
             <div class="mt-2">
-                <x-ui.button type="button" size="sm" variant="secondary" wire:click="start" wire:confirm="Start a new ledger? The frozen one is kept, but this one starts fresh.">Start a New Ledger</x-ui.button>
+                <a href="{{ route('ledger.setup') }}" wire:navigate><x-ui.button type="button" size="sm" variant="secondary">Start a New Ledger</x-ui.button></a>
             </div>
         </div>
     @endif
 
-    @if ($shop->ledger_started_at === null)
+    @if (session('status'))
+        <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">{{ session('status') }}</div>
+    @endif
+
+    @if ($shop->ledger_ready_at === null && $shop->ledger_frozen_at === null)
         <x-ui.card title="Start the ledger">
             <p class="text-sm text-slate-600">From the day it starts, new records post to the ledger automatically. Your existing screens, dues and reports don't change.</p>
-            <x-ui.button type="button" class="mt-4" wire:click="start" wire:confirm="Start the ledger for this shop?">Start Ledger</x-ui.button>
+            <a href="{{ route('ledger.setup') }}" wire:navigate><x-ui.button type="button" class="mt-4">Set Up the Ledger</x-ui.button></a>
         </x-ui.card>
     @else
         <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

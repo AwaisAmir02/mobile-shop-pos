@@ -6,9 +6,10 @@ use App\Enums\RecordStatus;
 use App\Enums\SaleStatus;
 use App\Enums\UdhaarTransactionType;
 use App\Ledger\ChartOfAccounts as Chart;
+use App\Ledger\LedgerOpening;
+use App\Models\LedgerBaseline;
 use App\Models\LedgerOutbox;
 use App\Models\Shop;
-use App\Support\Quantity;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -123,23 +124,20 @@ class LedgerHealthReport
 
     protected function inventory(): array
     {
-        $batches = DB::table('stock_ins')->where('shop_id', $this->shop->id)->where('status', '!=', RecordStatus::Cancelled->value)->where('quantity_remaining', '>', 0)->get(['product_id', 'quantity_remaining', 'cost_price']);
-        $value = $batches->sum(fn ($batch) => Quantity::money($batch->cost_price ?? 0, $batch->quantity_remaining));
-        $inBatches = $batches->groupBy('product_id')->map(fn ($group) => Quantity::sum($group->pluck('quantity_remaining')));
-
-        foreach (DB::table('products')->where('shop_id', $this->shop->id)->get(['id', 'stock_quantity', 'cost_price']) as $product) {
-            $uncovered = Quantity::subtract($product->stock_quantity, $inBatches[$product->id] ?? 0);
-            $sign = Quantity::compare($uncovered, 0) < 0 ? -1 : 1;
-            $value += $sign * Quantity::money($product->cost_price ?? 0, abs($uncovered));
-        }
-
-        return $this->check('Inventory at cost', $this->ledgerBalance(Chart::INVENTORY), $value, 0.0, 'Batches at their cost, and stock no batch covers at the product\'s cost. Rounding a billed total into a unit cost can leave a few paise.', self::INVENTORY_ROUNDING_TOLERANCE);
+        return $this->check('Inventory at cost', $this->ledgerBalance(Chart::INVENTORY), LedgerOpening::inventoryValue($this->shop->id), 0.0, 'Batches at their cost, and stock no batch covers at the product\'s cost. Rounding a billed total into a unit cost can leave a few paise.', self::INVENTORY_ROUNDING_TOLERANCE);
     }
 
     protected function netSales(): array
     {
-        $total = (float) DB::table('sales')->where('shop_id', $this->shop->id)->where('status', '!=', SaleStatus::Cancelled->value)->whereDate('created_at', '>=', $this->shop->ledger_started_at)->sum('total');
+        $startDate = $this->shop->ledger_started_at->toDateString();
+        $total = (float) DB::table('sales')->where('shop_id', $this->shop->id)->where('status', '!=', SaleStatus::Cancelled->value)->whereDate('created_at', '>=', $startDate)->sum('total');
 
-        return $this->check('Sales since the start, after discounts', -$this->ledgerBalance(Chart::SALES, Chart::DISCOUNTS), $total, 0.0, 'Excludes changes to older sales, which go to Prior Period.');
+        // Sales made earlier on the start day are in the opening position, not posted.
+        $alreadyInOpening = LedgerBaseline::where('shop_id', $this->shop->id)->where('epoch', $this->shop->ledger_epoch)->where('source_type', 'sale')
+            ->whereIn('source_id', DB::table('sales')->where('shop_id', $this->shop->id)->whereDate('created_at', '>=', $startDate)->select('id'))
+            ->get()
+            ->sum(fn (LedgerBaseline $baseline) => collect($baseline->lines)->whereIn('account', [Chart::SALES, Chart::DISCOUNTS])->sum('paise'));
+
+        return $this->check('Sales since the start, after discounts', -$this->ledgerBalance(Chart::SALES, Chart::DISCOUNTS), $total + $alreadyInOpening / 100, 0.0, 'Excludes changes to older sales, which go to Prior Period.');
     }
 }
