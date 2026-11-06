@@ -33,6 +33,7 @@
             ['label' => 'Marketing', 'route' => 'marketing.posts', 'icon' => 'megaphone', 'group' => 'online', 'permission' => ['marketing', 'marketing-analytics', 'marketing-ads']],
             ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'group' => 'money', 'permission' => 'reports'],
             ['label' => 'Gross Profit', 'route' => 'profit.index', 'icon' => 'chart', 'group' => 'money', 'permission' => 'reports'],
+            ['label' => 'Trial Balance', 'route' => 'ledger.trial-balance', 'icon' => 'chart', 'group' => 'money', 'owner' => true],
             ['label' => 'Payroll', 'route' => 'payroll.employees', 'icon' => 'users', 'group' => 'money', 'permission' => ['payroll', 'payroll-run']],
             ['label' => 'Party Ledger', 'route' => 'party-ledger.index', 'icon' => 'ledger', 'group' => 'money', 'permission' => 'party-ledger'],
             ['label' => 'Team', 'route' => 'users.index', 'icon' => 'users', 'group' => 'manage', 'permission' => 'users'],
@@ -41,6 +42,7 @@
             ['label' => 'Plan & Usage', 'route' => 'billing.index', 'icon' => 'receipt', 'group' => 'manage', 'owner' => true],
         ])->filter(fn ($item) => $user && (($item['owner'] ?? false) ? $user->is_owner : collect((array) $item['permission'])->contains(fn ($p) => $user->hasAccessTo($p))))
             ->reject(fn ($item) => $item['route'] === 'services.index' && ! $user?->shop?->services_enabled)
+            ->reject(fn ($item) => $item['route'] === 'ledger.trial-balance' && ! $user?->shop?->ledger_enabled)
             ->reject(fn ($item) => $item['route'] === 'payroll.employees' && ! $user?->shop?->payroll_enabled)
             ->map(fn ($item) => $item['route'] === 'payroll.employees' && ! $user?->hasAccessTo('payroll') ? array_merge($item, ['route' => 'payroll.run']) : $item)
             ->reject(fn ($item) => $item['route'] === 'purchase-orders.index' && ! $user?->shop?->purchase_orders_enabled)

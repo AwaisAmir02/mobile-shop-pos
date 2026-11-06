@@ -8,6 +8,7 @@ use App\Enums\ShopScreen;
 use App\Enums\SubscriptionStatus;
 use App\Support\BranchContext;
 use Carbon\Carbon;
+use App\Ledger\LedgerGate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -49,6 +50,7 @@ class Shop extends Model
         'purchase_orders_enabled',
         'payroll_enabled',
         'payroll_notice_dismissed_at',
+        'ledger_enabled',
         'whatsapp_ordering_enabled',
         'whatsapp_messaging_enabled',
         'social_enabled',
@@ -80,6 +82,10 @@ class Shop extends Model
             'purchase_orders_enabled' => 'boolean',
             'payroll_enabled' => 'boolean',
             'payroll_notice_dismissed_at' => 'datetime',
+            'ledger_enabled' => 'boolean',
+            'ledger_started_at' => 'datetime',
+            'ledger_frozen_at' => 'datetime',
+            'ledger_epoch' => 'integer',
             'whatsapp_ordering_enabled' => 'boolean',
             'whatsapp_messaging_enabled' => 'boolean',
             'social_enabled' => 'boolean',
@@ -101,6 +107,15 @@ class Shop extends Model
      */
     protected static function booted(): void
     {
+        // Switching the ledger off freezes it. Switching back on doesn't resume: that needs a new setup.
+        static::saving(function (Shop $shop) {
+            if ($shop->isDirty('ledger_enabled') && ! $shop->ledger_enabled && $shop->ledger_started_at !== null && $shop->ledger_frozen_at === null) {
+                $shop->ledger_frozen_at = now();
+            }
+        });
+
+        static::saved(fn (Shop $shop) => app(LedgerGate::class)->forget($shop->id));
+
         static::created(function (Shop $shop) {
             Branch::withoutGlobalScopes()->create(['shop_id' => $shop->id, 'name' => 'Main', 'is_main' => true]);
         });

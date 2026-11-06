@@ -15,6 +15,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->scoped(\App\Ledger\LedgerGate::class);
         $this->app->scoped(BranchContext::class);
         $this->app->scoped(\App\Services\Billing\LimitNotices::class);
     }
@@ -24,6 +25,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        foreach (\App\Ledger\LedgerSources::observed() as $model) {
+            $model::observe(\App\Ledger\LedgerObserver::class);
+        }
+
         Event::listen(SocialiteWasCalled::class, [MicrosoftExtendSocialite::class, 'handle']);
     }
 }

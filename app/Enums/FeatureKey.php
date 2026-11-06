@@ -17,9 +17,10 @@ enum FeatureKey: string
     case ExpiryTracking = 'expiry_tracking';
     case PurchaseOrders = 'purchase_orders';
     case Payroll = 'payroll';
+    case Ledger = 'ledger';
 
     /** The order of the switches on the admin shop page; a case not listed goes last. */
-    protected const ADMIN_ORDER = [self::Barcode, self::Variants, self::MeasuredUnits, self::ExpiryTracking, self::PurchaseOrders, self::Payroll, self::Branding, self::Services, self::WhatsAppOrdering, self::WhatsAppMessaging, self::Social, self::Ads];
+    protected const ADMIN_ORDER = [self::Barcode, self::Variants, self::MeasuredUnits, self::ExpiryTracking, self::PurchaseOrders, self::Payroll, self::Ledger, self::Branding, self::Services, self::WhatsAppOrdering, self::WhatsAppMessaging, self::Social, self::Ads];
 
     /**
      * Whether plans and add-ons decide this feature. One that isn't is free
@@ -29,7 +30,7 @@ enum FeatureKey: string
      */
     public function planControlled(): bool
     {
-        return ! in_array($this, [self::Variants, self::MeasuredUnits, self::ExpiryTracking], true);
+        return ! in_array($this, [self::Variants, self::MeasuredUnits, self::ExpiryTracking, self::Ledger], true);
     }
 
     /** @return array<int, self> */
@@ -54,6 +55,7 @@ enum FeatureKey: string
             self::ExpiryTracking => 'Expiry date tracking',
             self::PurchaseOrders => 'Purchase orders & goods receipts',
             self::Payroll => 'Payroll',
+            self::Ledger => 'Double-entry ledger',
         };
     }
 
@@ -99,6 +101,7 @@ enum FeatureKey: string
             self::ExpiryTracking => ['Expiry Date Tracking', 'Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored.', 'Expiry date tracking'],
             self::PurchaseOrders => ['Purchase Orders', 'Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected.', 'Purchase orders'],
             self::Payroll => ['Payroll', 'Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run.', 'Payroll'],
+            self::Ledger => ['Double-Entry Ledger', 'Posts the shop\'s records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup.', 'Double-entry ledger'],
         };
 
         return ['label' => $label, 'description' => $description, 'toast' => $toast];

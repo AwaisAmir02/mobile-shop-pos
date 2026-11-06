@@ -9,6 +9,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('whatsapp:sweep')->everyMinute()->withoutOverlapping();
+Schedule::command('ledger:post')->everyMinute()->withoutOverlapping();
 Schedule::command('queue:work --stop-when-empty --max-time=50')->everyMinute()->withoutOverlapping();
 Schedule::command('whatsapp:follow-ups')->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command('whatsapp:sync-templates')->dailyAt('03:10')->withoutOverlapping();
