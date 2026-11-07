@@ -1,0 +1,8 @@
+{
+    "name": "hisabokitab-ui-shots",
+    "private": true,
+    "description": "Before/after screenshots for the design overhaul. Local only, separate from the app's own dependencies.",
+    "dependencies": {
+        "puppeteer-core": "^24.0.0"
+    }
+}

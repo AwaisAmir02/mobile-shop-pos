@@ -22,3 +22,5 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+/tools/ui-shots/node_modules
+/tools/ui-shots/out
