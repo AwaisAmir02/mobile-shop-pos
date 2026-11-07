@@ -6,7 +6,11 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Models\StoreApiToken;
 use App\Models\StoreConnection;
+use App\Models\StoreEvent;
 use App\Models\StoreProduct;
+use App\Support\StoreCallbackGuard;
+use App\Support\StoreChanges;
+use App\Support\StoreEvents;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -77,22 +81,62 @@ class StoreConnections
     public static function pause(StoreConnection $connection): void
     {
         self::assertNotRemoved($connection);
-        $connection->update(['status' => StoreConnection::PAUSED]);
+
+        DB::transaction(function () use ($connection) {
+            if ($connection->status !== StoreConnection::PAUSED) {
+                StoreEvents::record($connection, 'connection.paused');
+            }
+
+            $connection->update(['status' => StoreConnection::PAUSED]);
+        });
     }
 
     public static function resume(StoreConnection $connection): void
     {
         self::assertNotRemoved($connection);
         self::assertEnabled($connection->shop_id);
-        $connection->update(['status' => StoreConnection::ACTIVE]);
+
+        DB::transaction(function () use ($connection) {
+            if ($connection->status !== StoreConnection::ACTIVE) {
+                StoreEvents::record($connection, 'connection.resumed');
+                StoreChanges::current()->everything($connection);
+            }
+
+            $connection->update(['status' => StoreConnection::ACTIVE]);
+        });
     }
 
-    /** Ends it for good. The row stays because later orders will point at it. */
+    /** Ends it for good. The row stays because its orders point at it. Nothing more is sent. */
     public static function remove(StoreConnection $connection): void
     {
         DB::transaction(function () use ($connection) {
             $connection->tokens()->whereNull('revoked_at')->update(['revoked_at' => now()]);
             $connection->update(['status' => StoreConnection::PAUSED, 'removed_at' => now()]);
+            StoreEvent::withoutGlobalScopes()->where('store_connection_id', $connection->id)->undelivered()->delete();
+            DB::table('store_changes')->where('store_connection_id', $connection->id)->delete();
+        });
+    }
+
+    /** Where we send events. Setting it for the first time gives the store its first full picture. */
+    public static function setCallbackUrl(StoreConnection $connection, ?string $url): void
+    {
+        self::assertNotRemoved($connection);
+
+        $url = filled($url) ? trim($url) : null;
+
+        app(StoreCallbackGuard::class)->assertAcceptable($url);
+
+        DB::transaction(function () use ($connection, $url) {
+            $changed = $connection->callback_url !== $url;
+
+            $connection->update(['callback_url' => $url]);
+
+            if ($url === null) {
+                StoreEvent::withoutGlobalScopes()->where('store_connection_id', $connection->id)->undelivered()->delete();
+                DB::table('store_changes')->where('store_connection_id', $connection->id)->delete();
+            } elseif ($changed) {
+                StoreChanges::current()->everything($connection);
+            }
         });
     }
 

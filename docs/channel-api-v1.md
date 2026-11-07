@@ -224,7 +224,7 @@ A 200 means we stored the order, not that the shop accepted it. An order is stor
 
 ## Events we send you
 
-We `POST` to the HTTPS callback URL set on the connection, signed the same way with the same secret. Verify the signature and timestamp before trusting an event.
+We `POST` to the HTTPS callback URL set on the connection, signed the same way with the same secret, with the same three headers. Verify the signature and timestamp before trusting an event. The URL must be public, on port 443, and resolve only to public addresses.
 
 ```json
 {
@@ -255,7 +255,8 @@ We `POST` to the HTTPS callback URL set on the connection, signed the same way w
 - **Expect duplicates:** ignore an `id` you've already processed.
 - **Expect events out of order:** use `sequence` for stock and fetch the order's current status for orders.
 - **Don't rely on events alone:** one can be missed. Run `GET /inventory?updated_since=...` regularly. We also send a full stock push every night.
-- We retry failures with growing delays for up to 24 hours. After repeated failures we stop sending and alert the shop owner; once fixed, they resume it and you should run a full `GET /inventory`.
+- We retry failures with growing delays for up to 24 hours. If an event still hasn't got through, we stop sending and alert the shop owner in HisabOKitab. Once it's fixed they start updates again, and you get a full stock push.
+- While a connection is paused we send order events but no stock or product events. A full stock push follows `connection.resumed`.
 
 ## Overselling
 

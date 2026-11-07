@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\StoreOrderStatus;
+use App\Models\StoreConnection;
 use App\Models\StoreOrder;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -47,6 +48,7 @@ new #[Layout('layouts.app')] #[Title('Online Store Orders')] class extends Compo
                 ->paginate(20),
             'pendingCount' => StoreOrder::where('status', StoreOrderStatus::Pending->value)->count(),
             'flaggedCount' => StoreOrder::whereNotNull('cancel_flagged_at')->count(),
+            'stoppedCount' => StoreConnection::notRemoved()->whereNotNull('delivery_paused_at')->count(),
         ];
     }
 }; ?>
@@ -57,6 +59,10 @@ new #[Layout('layouts.app')] #[Title('Online Store Orders')] class extends Compo
     </x-slot>
 
     <x-billing.limit-notice limit="online_orders_per_month" />
+
+    @if ($stoppedCount > 0)
+        <x-ui.alert variant="danger" class="mb-4">Updates to your online store have stopped because it couldn't be reached, so its stock may be out of date. See Settings, Integrations, Online Store.</x-ui.alert>
+    @endif
 
     @if ($flaggedCount > 0)
         <x-ui.alert variant="warning" class="mb-4">{{ $flaggedCount }} accepted {{ Str::plural('order', $flaggedCount) }} the store has asked to cancel. See the Accepted tab.</x-ui.alert>

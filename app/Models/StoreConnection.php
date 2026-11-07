@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
+use App\Support\StoreChanges;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,6 +27,9 @@ class StoreConnection extends Model
         'previous_signing_secret',
         'previous_secret_expires_at',
         'callback_url',
+        'delivery_paused_at',
+        'last_delivered_at',
+        'last_delivery_error',
         'price_sync',
         'safety_buffer',
         'shop_account_id',
@@ -35,9 +39,16 @@ class StoreConnection extends Model
 
     protected $hidden = ['signing_secret', 'previous_signing_secret'];
 
+    protected static function booted(): void
+    {
+        static::saved(fn () => StoreChanges::current()->forget());
+    }
+
     protected function casts(): array
     {
         return [
+            'delivery_paused_at' => 'datetime',
+            'last_delivered_at' => 'datetime',
             'signing_secret' => 'encrypted',
             'previous_signing_secret' => 'encrypted',
             'previous_secret_expires_at' => 'datetime',

@@ -7,6 +7,7 @@ use App\Enums\PlanType;
 use App\Enums\ShopScreen;
 use App\Enums\SubscriptionStatus;
 use App\Support\BranchContext;
+use App\Support\StoreEvents;
 use Carbon\Carbon;
 use App\Ledger\LedgerGate;
 use Illuminate\Database\Eloquent\Model;
@@ -118,6 +119,13 @@ class Shop extends Model
         });
 
         static::saved(fn (Shop $shop) => app(LedgerGate::class)->forget($shop->id));
+
+        // Whatever switched it (a plan, an add-on lapsing, an admin), the store is told.
+        static::updated(function (Shop $shop) {
+            if ($shop->wasChanged('online_store_enabled')) {
+                StoreEvents::featureSwitched($shop);
+            }
+        });
 
         static::created(function (Shop $shop) {
             Branch::withoutGlobalScopes()->create(['shop_id' => $shop->id, 'name' => 'Main', 'is_main' => true]);

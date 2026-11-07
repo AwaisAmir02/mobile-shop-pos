@@ -10,6 +10,8 @@ Artisan::command('inspire', function () {
 
 Schedule::command('whatsapp:sweep')->everyMinute()->withoutOverlapping();
 Schedule::command('ledger:post')->everyMinute()->withoutOverlapping();
+Schedule::command('store:push')->everyMinute()->withoutOverlapping(10);
+Schedule::command('store:refresh-stock')->dailyAt('00:10')->timezone('Asia/Karachi')->withoutOverlapping();
 Schedule::command('queue:work --stop-when-empty --max-time=50')->everyMinute()->withoutOverlapping();
 Schedule::command('whatsapp:follow-ups')->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command('whatsapp:sync-templates')->dailyAt('03:10')->withoutOverlapping();

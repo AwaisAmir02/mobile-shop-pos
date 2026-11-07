@@ -6,7 +6,9 @@ use App\Models\Product;
 use App\Models\ShopAccount;
 use App\Models\StoreConnection;
 use App\Models\StoreProduct;
+use App\Models\StoreEvent;
 use App\Support\Quantity;
+use App\Support\StoreEvents;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -28,6 +30,8 @@ new class extends Component
     public bool $priceSync = false;
 
     public string $shopAccountId = '';
+
+    public string $callbackUrl = '';
 
     /** Shown once, then gone: only a hash of the token is kept. */
     public ?string $shownToken = null;
@@ -52,6 +56,7 @@ new class extends Component
         $this->safetyBuffer = $connection?->safety_buffer ?? 0;
         $this->priceSync = $connection?->price_sync ?? false;
         $this->shopAccountId = (string) ($connection?->shop_account_id ?? '');
+        $this->callbackUrl = (string) ($connection?->callback_url ?? '');
         $this->resetPage();
     }
 
@@ -128,6 +133,20 @@ new class extends Component
         $this->toastSuccess('Settings saved.');
     }
 
+    public function saveCallbackUrl(): void
+    {
+        $this->validate(['callbackUrl' => ['nullable', 'string', 'max:500']]);
+
+        StoreConnections::setCallbackUrl($this->selected(), $this->callbackUrl);
+        $this->toastSuccess($this->callbackUrl === '' ? 'Updates to the store are off.' : 'Saved. The store will get its first update within a minute or so.');
+    }
+
+    public function resumeDelivery(): void
+    {
+        StoreEvents::resumeDelivery($this->selected());
+        $this->toastSuccess('Updates to the store will start again within a minute or so.');
+    }
+
     public function togglePublished(int $productId): void
     {
         $connection = $this->selected();
@@ -177,6 +196,7 @@ new class extends Component
         return [
             'connections' => StoreConnection::notRemoved()->orderBy('id')->get(),
             'accounts' => ShopAccount::query()->orderBy('name')->get(),
+            'recentEvents' => $connection === null ? collect() : StoreEvent::where('store_connection_id', $connection->id)->latest('id')->limit(10)->get(),
             'connection' => $connection,
             'activeToken' => $connection?->tokens()->whereNull('revoked_at')->latest('id')->first(),
             'products' => $products,
@@ -278,6 +298,43 @@ new class extends Component
                     <x-ui.button type="submit" size="sm">Save settings</x-ui.button>
                 </div>
             </form>
+        </x-ui.card>
+
+        <x-ui.card title="Updates to the store" description="Without this the store has to ask for changes itself. With it, stock, product and order changes are sent as they happen.">
+            @if ($connection->delivery_paused_at)
+                <x-ui.alert variant="danger" class="mb-4">
+                    <p class="font-semibold">Updates to this store have stopped.</p>
+                    <p class="mt-1 text-sm">It couldn't be reached for a day: {{ $connection->last_delivery_error }} Stock on the store may be out of date. Once it's fixed, start updates again.</p>
+                    <div class="mt-3"><x-ui.button size="sm" wire:click="resumeDelivery">Start updates again</x-ui.button></div>
+                </x-ui.alert>
+            @endif
+
+            <form wire:submit="saveCallbackUrl" class="flex flex-col gap-3 sm:flex-row sm:items-start">
+                <div class="flex-1">
+                    <x-ui.field label="Store's web address for updates" name="callbackUrl" for="storeCallbackUrl">
+                        <x-ui.input wire:model="callbackUrl" id="storeCallbackUrl" placeholder="https://myshop.pk/hisabokitab/events" maxlength="500" />
+                    </x-ui.field>
+                </div>
+                <div class="sm:pt-6"><x-ui.button type="submit">Save</x-ui.button></div>
+            </form>
+
+            @if ($connection->last_delivery_error && ! $connection->delivery_paused_at)
+                <p class="mt-3 text-sm text-amber-800">Last problem: {{ $connection->last_delivery_error }} Trying again automatically.</p>
+            @endif
+
+            @if ($recentEvents->isNotEmpty())
+                <div class="mt-5 divide-y divide-slate-100 border-t border-slate-100">
+                    @foreach ($recentEvents as $event)
+                        <div class="flex items-center justify-between gap-3 py-2 text-sm" wire:key="store-event-{{ $event->id }}">
+                            <span class="text-slate-700">{{ $event->type }}</span>
+                            <span class="flex items-center gap-2 text-xs text-slate-500">
+                                {{ $event->created_at->diffForHumans() }}
+                                <x-ui.badge :variant="match ($event->statusLabel()) { 'Delivered' => 'success', 'Gave up' => 'danger', default => 'warning' }">{{ $event->statusLabel() }}</x-ui.badge>
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </x-ui.card>
 
         <x-ui.card title="Published products" description="Only ticked products reach the store. The store's own code for a product is optional.">

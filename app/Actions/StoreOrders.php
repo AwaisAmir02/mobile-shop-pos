@@ -16,6 +16,7 @@ use App\Models\StoreOrder;
 use App\Models\StoreOrderItem;
 use App\Models\StoreProduct;
 use App\Services\Billing\Entitlements;
+use App\Support\StoreEvents;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -99,6 +100,7 @@ class StoreOrders
                 $order->update(['status' => StoreOrderStatus::Cancelled, 'cancel_reason' => $reason, 'decided_at' => now()]);
             } elseif ($order->status === StoreOrderStatus::Accepted && $order->cancel_flagged_at === null) {
                 $order->update(['cancel_flagged_at' => now(), 'cancel_reason' => $reason]);
+                StoreEvents::forOrder($order, 'order.cancel_flagged');
             }
 
             return $order;
@@ -190,6 +192,8 @@ class StoreOrders
                 'decided_at' => now(),
             ]);
 
+            StoreEvents::forOrder($order, 'order.accepted');
+
             return $sale;
         });
     }
@@ -207,6 +211,8 @@ class StoreOrders
                 'decided_by' => $userId,
                 'decided_at' => now(),
             ]);
+
+            StoreEvents::forOrder($order, 'order.rejected', ['reason' => $reason]);
 
             return $order;
         });
@@ -230,6 +236,8 @@ class StoreOrders
             }
 
             $order->update(['fulfillment_status' => $status, 'fulfillment_updated_at' => now()]);
+
+            StoreEvents::forOrder($order, 'order.fulfillment_changed', ['fulfillment_status' => $status->value]);
 
             return $order;
         });

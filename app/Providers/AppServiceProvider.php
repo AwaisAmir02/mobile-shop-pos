@@ -21,6 +21,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(\App\Ledger\LedgerGate::class);
         $this->app->scoped(BranchContext::class);
         $this->app->scoped(\App\Support\ApiShopContext::class);
+        $this->app->scoped(\App\Support\StoreChanges::class);
         $this->app->scoped(\App\Services\Billing\LimitNotices::class);
     }
 
@@ -31,6 +32,10 @@ class AppServiceProvider extends ServiceProvider
     {
         foreach (\App\Ledger\LedgerSources::observed() as $model) {
             $model::observe(\App\Ledger\LedgerObserver::class);
+        }
+
+        foreach ([\App\Models\Product::class, \App\Models\ProductGroup::class, \App\Models\StockIn::class, \App\Models\StoreProduct::class, \App\Models\StoreOrder::class, \App\Models\StoreOrderItem::class, \App\Models\WhatsAppOrder::class] as $model) {
+            $model::observe(\App\Observers\StoreChangeObserver::class);
         }
 
         Event::listen(SocialiteWasCalled::class, [MicrosoftExtendSocialite::class, 'handle']);
