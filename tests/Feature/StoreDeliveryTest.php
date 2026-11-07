@@ -452,6 +452,14 @@ class StoreDeliveryTest extends TestCase
         $this->artisan('schedule:list')->expectsOutputToContain('store:push')->expectsOutputToContain('store:refresh-stock');
     }
 
+    public function test_the_push_runs_last_so_a_slow_store_cant_hold_up_anything_else(): void
+    {
+        $commands = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())->map(fn ($event) => (string) $event->command)->values();
+
+        $this->assertStringContainsString('store:push', (string) $commands->last());
+        $this->assertSame(1, $commands->filter(fn (string $command) => str_contains($command, 'store:push'))->count());
+    }
+
     // ── Pausing ────────────────────────────────────────────────────────
 
     public function test_pausing_says_so_and_holds_stock_updates_until_the_resume(): void

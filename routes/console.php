@@ -10,7 +10,6 @@ Artisan::command('inspire', function () {
 
 Schedule::command('whatsapp:sweep')->everyMinute()->withoutOverlapping();
 Schedule::command('ledger:post')->everyMinute()->withoutOverlapping();
-Schedule::command('store:push')->everyMinute()->withoutOverlapping(10);
 Schedule::command('store:refresh-stock')->dailyAt('00:10')->timezone('Asia/Karachi')->withoutOverlapping();
 Schedule::command('queue:work --stop-when-empty --max-time=50')->everyMinute()->withoutOverlapping();
 Schedule::command('whatsapp:follow-ups')->everyFifteenMinutes()->withoutOverlapping();
@@ -22,3 +21,7 @@ Schedule::command('marketing:sync-ads')->everyThreeHours()->withoutOverlapping()
 Schedule::command('billing:expire-addons')->hourly()->withoutOverlapping();
 Schedule::command('backup:run')->dailyAt('03:30')->timezone('Asia/Karachi')->withoutOverlapping(120);
 Schedule::command('backup:monitor')->hourly()->withoutOverlapping();
+
+// Last on purpose: schedule:run does these one at a time, and a slow store can take
+// about a minute here. Nothing after it means it can't hold up anything else.
+Schedule::command('store:push')->everyMinute()->withoutOverlapping(10);
