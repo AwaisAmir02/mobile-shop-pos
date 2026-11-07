@@ -3,10 +3,12 @@
 use App\Actions\StoreConnections;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Product;
+use App\Models\ShopAccount;
 use App\Models\StoreConnection;
 use App\Models\StoreProduct;
 use App\Support\Quantity;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
@@ -24,6 +26,8 @@ new class extends Component
     public int $safetyBuffer = 0;
 
     public bool $priceSync = false;
+
+    public string $shopAccountId = '';
 
     /** Shown once, then gone: only a hash of the token is kept. */
     public ?string $shownToken = null;
@@ -47,6 +51,7 @@ new class extends Component
         $this->selectedId = $connection?->id;
         $this->safetyBuffer = $connection?->safety_buffer ?? 0;
         $this->priceSync = $connection?->price_sync ?? false;
+        $this->shopAccountId = (string) ($connection?->shop_account_id ?? '');
         $this->resetPage();
     }
 
@@ -114,9 +119,12 @@ new class extends Component
 
     public function saveSettings(): void
     {
-        $this->validate(['safetyBuffer' => ['required', 'integer', 'min:0', 'max:100000']]);
+        $this->validate([
+            'safetyBuffer' => ['required', 'integer', 'min:0', 'max:100000'],
+            'shopAccountId' => ['nullable', 'integer', Rule::exists('shop_accounts', 'id')->where('shop_id', Auth::user()->shop_id)],
+        ]);
 
-        StoreConnections::updateSettings($this->selected(), $this->priceSync, $this->safetyBuffer);
+        StoreConnections::updateSettings($this->selected(), $this->priceSync, $this->safetyBuffer, $this->shopAccountId !== '' ? (int) $this->shopAccountId : null);
         $this->toastSuccess('Settings saved.');
     }
 
@@ -168,6 +176,7 @@ new class extends Component
 
         return [
             'connections' => StoreConnection::notRemoved()->orderBy('id')->get(),
+            'accounts' => ShopAccount::query()->orderBy('name')->get(),
             'connection' => $connection,
             'activeToken' => $connection?->tokens()->whereNull('revoked_at')->latest('id')->first(),
             'products' => $products,
@@ -254,6 +263,17 @@ new class extends Component
                         <span class="block text-xs text-slate-500">Off means the store sets its own prices. On sends the price of the next batch to sell, which can change when a batch runs out.</span>
                     </span>
                 </label>
+                {{-- Keyed by connection so switching connection re-renders the select's label. --}}
+                <div wire:key="store-account-{{ $connection->id }}">
+                    <x-ui.field label="Prepaid money goes to" name="shopAccountId" for="storeShopAccount">
+                        <x-ui.select wire:model="shopAccountId" id="storeShopAccount">
+                            <option value="">Choose when accepting each order</option>
+                            @foreach ($accounts as $account)
+                                <option value="{{ $account->id }}">{{ $account->name }} · {{ $account->provider_type }}</option>
+                            @endforeach
+                        </x-ui.select>
+                    </x-ui.field>
+                </div>
                 <div class="sm:col-span-2">
                     <x-ui.button type="submit" size="sm">Save settings</x-ui.button>
                 </div>

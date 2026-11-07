@@ -28,6 +28,7 @@ class StoreConnection extends Model
         'callback_url',
         'price_sync',
         'safety_buffer',
+        'shop_account_id',
         'created_by',
         'removed_at',
     ];

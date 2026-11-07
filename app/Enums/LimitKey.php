@@ -11,6 +11,7 @@ enum LimitKey: string
     case MarketingPostsPerMonth = 'marketing_posts_per_month';
     case Branches = 'branches';
     case WhatsAppOrdersPerMonth = 'whatsapp_orders_per_month';
+    case OnlineOrdersPerMonth = 'online_orders_per_month';
 
     public function label(): string
     {
@@ -22,6 +23,7 @@ enum LimitKey: string
             self::MarketingPostsPerMonth => 'Marketing posts this month',
             self::Branches => 'Branches',
             self::WhatsAppOrdersPerMonth => 'WhatsApp orders this month',
+            self::OnlineOrdersPerMonth => 'Online orders this month',
         };
     }
 
@@ -36,7 +38,7 @@ enum LimitKey: string
                 self::WhatsAppMessagesPerMonth => 'message',
                 self::MarketingPostsPerMonth => 'post',
                 self::Branches => 'branch',
-                self::WhatsAppOrdersPerMonth => 'order',
+                self::WhatsAppOrdersPerMonth, self::OnlineOrdersPerMonth => 'order',
             };
         }
 
@@ -47,7 +49,7 @@ enum LimitKey: string
             self::WhatsAppMessagesPerMonth => 'messages',
             self::MarketingPostsPerMonth => 'posts',
             self::Branches => 'branches',
-            self::WhatsAppOrdersPerMonth => 'orders',
+            self::WhatsAppOrdersPerMonth, self::OnlineOrdersPerMonth => 'orders',
         };
     }
 
@@ -63,7 +65,7 @@ enum LimitKey: string
 
     public function isMonthly(): bool
     {
-        return in_array($this, [self::SalesPerMonth, self::WhatsAppMessagesPerMonth, self::MarketingPostsPerMonth, self::WhatsAppOrdersPerMonth], true);
+        return in_array($this, [self::SalesPerMonth, self::WhatsAppMessagesPerMonth, self::MarketingPostsPerMonth, self::WhatsAppOrdersPerMonth, self::OnlineOrdersPerMonth], true);
     }
 
     public function blocksAtLimit(): bool

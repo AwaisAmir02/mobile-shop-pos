@@ -7,6 +7,7 @@ enum SaleSource: string
     case InStore = 'in_store';
     case WhatsApp = 'whatsapp';
     case Social = 'social';
+    case Online = 'online';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum SaleSource: string
             self::InStore => 'In-store',
             self::WhatsApp => 'WhatsApp',
             self::Social => 'Social',
+            self::Online => 'Online store',
         };
     }
 }

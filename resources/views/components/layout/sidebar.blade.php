@@ -29,6 +29,7 @@
             ['label' => 'Repairs', 'route' => 'repairs.index', 'icon' => 'wrench', 'group' => 'sell', 'permission' => 'repairs'],
             ['label' => 'Services', 'route' => 'services.index', 'icon' => 'sparkles', 'group' => 'sell', 'permission' => 'services'],
             ['label' => 'WhatsApp Orders', 'route' => 'whatsapp-orders.index', 'icon' => 'chat', 'group' => 'online', 'permission' => 'whatsapp-orders'],
+            ['label' => 'Online Store Orders', 'route' => 'online-orders.index', 'icon' => 'link', 'group' => 'online', 'permission' => 'online-orders'],
             ['label' => 'Customer Messages', 'route' => 'whatsapp-messages.index', 'icon' => 'bell', 'group' => 'online', 'permission' => 'whatsapp-messages'],
             ['label' => 'Marketing', 'route' => 'marketing.posts', 'icon' => 'megaphone', 'group' => 'online', 'permission' => ['marketing', 'marketing-analytics', 'marketing-ads']],
             ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'group' => 'money', 'permission' => 'reports'],
@@ -48,6 +49,7 @@
             ->reject(fn ($item) => $item['route'] === 'purchase-orders.index' && ! $user?->shop?->purchase_orders_enabled)
             ->reject(fn ($item) => $item['route'] === 'profit.index' && ! $user?->hasAccessTo('sales-view-cost-price'))
             ->reject(fn ($item) => $item['route'] === 'whatsapp-orders.index' && ! $user?->shop?->whatsapp_ordering_enabled)
+            ->reject(fn ($item) => $item['route'] === 'online-orders.index' && ! $user?->shop?->online_store_enabled)
             ->reject(fn ($item) => $item['route'] === 'whatsapp-messages.index' && ! $user?->shop?->whatsapp_messaging_enabled)
             ->reject(fn ($item) => $item['route'] === 'marketing.posts' && ! ($user?->shop?->usesWhatsApp() || $user?->shop?->social_enabled))
             ->map(fn ($item) => $item['route'] === 'marketing.posts' && $user?->hasAccessTo('marketing-analytics') ? array_merge($item, ['route' => 'marketing.index']) : $item)

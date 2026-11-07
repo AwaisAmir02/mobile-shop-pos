@@ -6,7 +6,9 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Models\StockIn;
 use App\Models\StoreConnection;
+use App\Models\StoreOrderItem;
 use App\Models\WhatsAppOrderItem;
+use App\Enums\StoreOrderStatus;
 use App\Enums\WhatsAppOrderStatus;
 use Illuminate\Support\Collection;
 
@@ -32,12 +34,14 @@ class StoreAvailability
         $ids = $products->pluck('id');
         $expired = self::expiredThousandths($connection->shop_id, $ids);
         $pending = self::pendingWhatsAppThousandths($ids);
+        $held = self::pendingStoreThousandths($ids);
         $buffer = $connection->safety_buffer * 1000;
 
-        return $products->mapWithKeys(function (Product $product) use ($expired, $pending, $buffer) {
+        return $products->mapWithKeys(function (Product $product) use ($expired, $pending, $held, $buffer) {
             $left = Quantity::toThousandths($product->stock_quantity)
                 - ($expired[$product->id] ?? 0)
                 - ($pending[$product->id] ?? 0)
+                - ($held[$product->id] ?? 0)
                 - $buffer;
 
             return [$product->id => $left > 0 ? intdiv($left, 1000) : 0];
@@ -69,6 +73,26 @@ class StoreAvailability
             ->toBase()
             ->get()
             ->mapWithKeys(fn ($row) => [(int) $row->product_id => Quantity::toThousandths(Quantity::normalize($row->total))])
+            ->all();
+    }
+
+    /**
+     * Across all the shop's connections: the stock is one pool, so a second store
+     * mustn't be offered what the first has sold.
+     *
+     * @return array<int, int>
+     */
+    protected static function pendingStoreThousandths(Collection $ids): array
+    {
+        return StoreOrderItem::query()
+            ->whereIn('product_id', $ids)
+            ->where('removed', false)
+            ->whereHas('order', fn ($query) => $query->where('status', StoreOrderStatus::Pending->value))
+            ->selectRaw('product_id, SUM(quantity) as total')
+            ->groupBy('product_id')
+            ->toBase()
+            ->get()
+            ->mapWithKeys(fn ($row) => [(int) $row->product_id => (int) $row->total * 1000])
             ->all();
     }
 

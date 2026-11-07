@@ -210,12 +210,14 @@ $signature = 'v1='.hash_hmac('sha256', $timestamp.'.'.$body, $signingSecret);
 
 A `pending` order is closed and its stock is released at once. An `accepted` order **isn't cancelled automatically**: `cancel_flagged` becomes `true` and shop staff decide. Don't assume the stock has come back until `available` changes.
 
+This event is accepted while a connection is paused, so a customer's cancellation isn't lost. An unknown `external_order_id` gets a 404.
+
 ### Responses
 
 | HTTP | Meaning |
 |---|---|
 | 200 | Stored, or already stored. `{ "data": { "external_order_id": "1001", "status": "pending" } }` |
-| 401, 403, 422 | See Errors. Don't retry until the cause is fixed. |
+| 401, 403, 404, 422 | See Errors. Don't retry until the cause is fixed. |
 | 429, 5xx, or no response | Retry with the same `X-HOK-Event-Id` and body, with a fresh timestamp and signature. |
 
 A 200 means we stored the order, not that the shop accepted it. An order is stored even if the shop is over a plan limit; staff just can't accept it until they have room.

@@ -8,6 +8,7 @@ use App\Enums\LimitKey;
 use App\Enums\NotificationStatus;
 use App\Enums\PostKind;
 use App\Enums\SaleStatus;
+use App\Enums\StoreOrderStatus;
 use App\Exceptions\UsageLimitReached;
 use App\Models\Branch;
 use App\Models\CustomerNotification;
@@ -17,6 +18,7 @@ use App\Models\Product;
 use App\Models\Sale;
 use App\Models\Shop;
 use App\Models\ShopAddon;
+use App\Models\StoreOrder;
 use App\Models\User;
 use App\Models\WhatsAppOrder;
 use Carbon\CarbonImmutable;
@@ -101,6 +103,8 @@ class Entitlements
             LimitKey::Branches => Branch::withoutGlobalScopes()->where('shop_id', $shop->id)->whereNull('archived_at')->count(),
             // Orders the customer placed (Confirm tapped) this month, whatever the shop did with them.
             LimitKey::WhatsAppOrdersPerMonth => WhatsAppOrder::withoutGlobalScopes()->where('shop_id', $shop->id)->whereBetween('submitted_at', [$start, $end])->count(),
+            // Accepted, not received: an order the customer already bought is always stored.
+            LimitKey::OnlineOrdersPerMonth => StoreOrder::withoutGlobalScopes()->where('shop_id', $shop->id)->where('status', StoreOrderStatus::Accepted->value)->whereBetween('decided_at', [$start, $end])->count(),
             LimitKey::MarketingPostsPerMonth => MarketingPost::withoutGlobalScopes()->where('shop_id', $shop->id)->where('kind', '!=', PostKind::QrCode->value)->whereBetween('created_at', [$start, $end])->count(),
         };
     }

@@ -96,10 +96,11 @@ class StoreConnections
         });
     }
 
-    public static function updateSettings(StoreConnection $connection, bool $priceSync, int $safetyBuffer): void
+    /** $shopAccountId is where this store's prepaid money lands, suggested when accepting an order. */
+    public static function updateSettings(StoreConnection $connection, bool $priceSync, int $safetyBuffer, ?int $shopAccountId = null): void
     {
         self::assertNotRemoved($connection);
-        $connection->update(['price_sync' => $priceSync, 'safety_buffer' => $safetyBuffer]);
+        $connection->update(['price_sync' => $priceSync, 'safety_buffer' => $safetyBuffer, 'shop_account_id' => $shopAccountId]);
     }
 
     /** @param  Collection<int, Product>  $products  */

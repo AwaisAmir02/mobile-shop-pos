@@ -6,6 +6,8 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -16,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: fn () => Route::middleware('api')->group(base_path('routes/store-webhooks.php')),
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: [
@@ -27,16 +30,18 @@ return Application::configure(basePath: dirname(__DIR__))
             'shop.user' => \App\Http\Middleware\EnsureShopUser::class,
             'shop.access' => \App\Http\Middleware\EnsureShopScreenAccess::class,
             'store.token' => \App\Http\Middleware\AuthenticateStoreToken::class,
+            'store.signature' => \App\Http\Middleware\VerifyStoreSignature::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // The API's error shape, whatever went wrong. Nothing internal reaches a store.
         $exceptions->render(function (\Throwable $e, Request $request) {
-            if (! $request->is('api/*')) {
+            if (! $request->is('api/*', 'webhooks/channels/*')) {
                 return null;
             }
 
             return match (true) {
+                $e instanceof ValidationException => StoreApiController::error('validation_failed', 'Some of the values aren\'t valid.', 422, $e->errors()),
                 $e instanceof ThrottleRequestsException => StoreApiController::error('rate_limited', 'Too many requests. Wait and try again.', 429)->withHeaders($e->getHeaders()),
                 $e instanceof MethodNotAllowedHttpException => StoreApiController::error('method_not_allowed', 'That method isn\'t allowed here.', 405),
                 $e instanceof NotFoundHttpException => StoreApiController::error('not_found', 'There\'s nothing at that address.', 404),

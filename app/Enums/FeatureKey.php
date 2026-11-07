@@ -78,6 +78,7 @@ enum FeatureKey: string
             self::WhatsAppOrdering => LimitKey::WhatsAppOrdersPerMonth,
             self::WhatsAppMessaging => LimitKey::WhatsAppMessagesPerMonth,
             self::Social => LimitKey::MarketingPostsPerMonth,
+            self::OnlineStore => LimitKey::OnlineOrdersPerMonth,
             default => null,
         };
     }

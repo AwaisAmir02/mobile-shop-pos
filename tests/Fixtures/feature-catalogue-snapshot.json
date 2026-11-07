@@ -61,6 +61,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -127,6 +137,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -326,6 +346,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -392,6 +422,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -601,6 +641,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -667,6 +717,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -866,6 +926,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -932,6 +1002,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -1131,6 +1211,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -1197,6 +1287,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -1480,7 +1580,7 @@
     },
     "admin_page": {
         "Addons": {
-            "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 3 Staff users Plan: unlimited Sales this month Plan: unlimited WhatsApp messages this month Plan: unlimited Marketing posts this month Plan: 0 Branches Plan: unlimited WhatsApp orders this month Plan: unlimited Save Subscription Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / 503 Staff users 0 / Unlimited Sales this month 0 / Unlimited WhatsApp messages this month 0 / Unlimited Marketing posts this month 0 / 0 WhatsApp orders this month 0 / Unlimited Add-ons Ads unlock · until 14 Nov 2026 Active Social unlock · until 25 Nov 2026 Active Pack Active Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login addons@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Addons addons@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features These switches follow the Partial plan. Flipping one here overrides the plan for this shop only. Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
+            "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 3 Staff users Plan: unlimited Sales this month Plan: unlimited WhatsApp messages this month Plan: unlimited Marketing posts this month Plan: 0 Branches Plan: unlimited WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / 503 Staff users 0 / Unlimited Sales this month 0 / Unlimited WhatsApp messages this month 0 / Unlimited Marketing posts this month 0 / 0 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Add-ons Ads unlock · until 14 Nov 2026 Active Social unlock · until 25 Nov 2026 Active Pack Active Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login addons@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Addons addons@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Online Store Orders Online Store Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features These switches follow the Partial plan. Flipping one here overrides the plan for this shop only. Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
             "attributes": [
                 "role=listbox",
                 "placeholder=Search…",
@@ -1494,6 +1594,7 @@
                 "role=listbox",
                 "placeholder=Search…",
                 "role=option",
+                "placeholder=Plan default",
                 "placeholder=Plan default",
                 "placeholder=Plan default",
                 "placeholder=Plan default",
@@ -1648,6 +1749,14 @@
                 "wire:confirm=Disable WhatsApp Orders: Accept / Reject for this shop?",
                 "role=switch",
                 "aria-checked=true",
+                "aria-label=Disable Online Store Orders",
+                "wire:confirm=Disable Online Store Orders for this shop?",
+                "role=switch",
+                "aria-checked=true",
+                "aria-label=Disable Online Store Orders: Accept / Reject",
+                "wire:confirm=Disable Online Store Orders: Accept / Reject for this shop?",
+                "role=switch",
+                "aria-checked=true",
                 "aria-label=Disable Customer Messages (reminders, repair ready)",
                 "wire:confirm=Disable Customer Messages (reminders, repair ready) for this shop?",
                 "role=switch",
@@ -1786,11 +1895,12 @@
                 "whatsapp_messages_per_month": "",
                 "marketing_posts_per_month": "",
                 "branches": "",
-                "whatsapp_orders_per_month": ""
+                "whatsapp_orders_per_month": "",
+                "online_orders_per_month": ""
             }
         },
         "Legacy only": {
-            "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: unlimited Staff users Plan: unlimited Sales this month Plan: unlimited WhatsApp messages this month Plan: unlimited Marketing posts this month Plan: unlimited Branches Plan: unlimited WhatsApp orders this month Plan: unlimited Save Subscription Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / Unlimited Staff users 0 / Unlimited Sales this month 0 / Unlimited WhatsApp messages this month 0 / Unlimited Marketing posts this month 0 / Unlimited WhatsApp orders this month 0 / Unlimited Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login legacy-only@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Legacy only legacy-only@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features These switches follow the Empty plan. Flipping one here overrides the plan for this shop only. Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
+            "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: unlimited Staff users Plan: unlimited Sales this month Plan: unlimited WhatsApp messages this month Plan: unlimited Marketing posts this month Plan: unlimited Branches Plan: unlimited WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / Unlimited Staff users 0 / Unlimited Sales this month 0 / Unlimited WhatsApp messages this month 0 / Unlimited Marketing posts this month 0 / Unlimited WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login legacy-only@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Legacy only legacy-only@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Online Store Orders Online Store Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features These switches follow the Empty plan. Flipping one here overrides the plan for this shop only. Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
             "attributes": [
                 "role=listbox",
                 "placeholder=Search…",
@@ -1804,6 +1914,7 @@
                 "role=listbox",
                 "placeholder=Search…",
                 "role=option",
+                "placeholder=Plan default",
                 "placeholder=Plan default",
                 "placeholder=Plan default",
                 "placeholder=Plan default",
@@ -1954,6 +2065,14 @@
                 "wire:confirm=Disable WhatsApp Orders: Accept / Reject for this shop?",
                 "role=switch",
                 "aria-checked=true",
+                "aria-label=Disable Online Store Orders",
+                "wire:confirm=Disable Online Store Orders for this shop?",
+                "role=switch",
+                "aria-checked=true",
+                "aria-label=Disable Online Store Orders: Accept / Reject",
+                "wire:confirm=Disable Online Store Orders: Accept / Reject for this shop?",
+                "role=switch",
+                "aria-checked=true",
                 "aria-label=Disable Customer Messages (reminders, repair ready)",
                 "wire:confirm=Disable Customer Messages (reminders, repair ready) for this shop?",
                 "role=switch",
@@ -2092,11 +2211,12 @@
                 "whatsapp_messages_per_month": "",
                 "marketing_posts_per_month": "",
                 "branches": "",
-                "whatsapp_orders_per_month": ""
+                "whatsapp_orders_per_month": "",
+                "online_orders_per_month": ""
             }
         },
         "On Full": {
-            "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 10 Staff users Plan: 2 Sales this month Plan: 100 WhatsApp messages this month Plan: 50 Marketing posts this month Plan: 5 Branches Plan: 2 WhatsApp orders this month Plan: unlimited Save Subscription Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 9 / 10 Staff users 1 / 2 Sales this month 0 / 100 WhatsApp messages this month 0 / 50 Marketing posts this month 0 / 5 Branches 2 / 2 WhatsApp orders this month 0 / Unlimited Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 9 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login on-full@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner On Full on-full@example.test Owner Active Deactivate Staff Full staff-full@example.test No role Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Enabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features These switches follow the Full plan. Flipping one here overrides the plan for this shop only. Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
+            "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 10 Staff users Plan: 2 Sales this month Plan: 100 WhatsApp messages this month Plan: 50 Marketing posts this month Plan: 5 Branches Plan: 2 WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 9 / 10 Staff users 1 / 2 Sales this month 0 / 100 WhatsApp messages this month 0 / 50 Marketing posts this month 0 / 5 Branches 2 / 2 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 9 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login on-full@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner On Full on-full@example.test Owner Active Deactivate Staff Full staff-full@example.test No role Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Enabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Online Store Orders Online Store Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features These switches follow the Full plan. Flipping one here overrides the plan for this shop only. Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
             "attributes": [
                 "role=listbox",
                 "placeholder=Search…",
@@ -2110,6 +2230,7 @@
                 "role=listbox",
                 "placeholder=Search…",
                 "role=option",
+                "placeholder=Plan default",
                 "placeholder=Plan default",
                 "placeholder=Plan default",
                 "placeholder=Plan default",
@@ -2273,6 +2394,14 @@
                 "wire:confirm=Disable WhatsApp Orders: Accept / Reject for this shop?",
                 "role=switch",
                 "aria-checked=true",
+                "aria-label=Disable Online Store Orders",
+                "wire:confirm=Disable Online Store Orders for this shop?",
+                "role=switch",
+                "aria-checked=true",
+                "aria-label=Disable Online Store Orders: Accept / Reject",
+                "wire:confirm=Disable Online Store Orders: Accept / Reject for this shop?",
+                "role=switch",
+                "aria-checked=true",
                 "aria-label=Disable Customer Messages (reminders, repair ready)",
                 "wire:confirm=Disable Customer Messages (reminders, repair ready) for this shop?",
                 "role=switch",
@@ -2411,11 +2540,12 @@
                 "whatsapp_messages_per_month": "",
                 "marketing_posts_per_month": "",
                 "branches": "",
-                "whatsapp_orders_per_month": ""
+                "whatsapp_orders_per_month": "",
+                "online_orders_per_month": ""
             }
         },
         "On Starter": {
-            "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 500 Staff users Plan: 2 Sales this month Plan: 1,500 WhatsApp messages this month Plan: 0 Marketing posts this month Plan: 0 Branches Plan: 1 WhatsApp orders this month Plan: unlimited Save Subscription Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / 500 Staff users 0 / 2 Sales this month 0 / 1,500 WhatsApp messages this month 0 / 0 Marketing posts this month 0 / 0 WhatsApp orders this month 0 / Unlimited Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login on-starter@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner On Starter on-starter@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Enabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features These switches follow the Starter plan. Flipping one here overrides the plan for this shop only. Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
+            "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 500 Staff users Plan: 2 Sales this month Plan: 1,500 WhatsApp messages this month Plan: 0 Marketing posts this month Plan: 0 Branches Plan: 1 WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / 500 Staff users 0 / 2 Sales this month 0 / 1,500 WhatsApp messages this month 0 / 0 Marketing posts this month 0 / 0 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login on-starter@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner On Starter on-starter@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Enabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Online Store Orders Online Store Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features These switches follow the Starter plan. Flipping one here overrides the plan for this shop only. Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
             "attributes": [
                 "role=listbox",
                 "placeholder=Search…",
@@ -2429,6 +2559,7 @@
                 "role=listbox",
                 "placeholder=Search…",
                 "role=option",
+                "placeholder=Plan default",
                 "placeholder=Plan default",
                 "placeholder=Plan default",
                 "placeholder=Plan default",
@@ -2589,6 +2720,14 @@
                 "wire:confirm=Disable WhatsApp Orders: Accept / Reject for this shop?",
                 "role=switch",
                 "aria-checked=true",
+                "aria-label=Disable Online Store Orders",
+                "wire:confirm=Disable Online Store Orders for this shop?",
+                "role=switch",
+                "aria-checked=true",
+                "aria-label=Disable Online Store Orders: Accept / Reject",
+                "wire:confirm=Disable Online Store Orders: Accept / Reject for this shop?",
+                "role=switch",
+                "aria-checked=true",
                 "aria-label=Disable Customer Messages (reminders, repair ready)",
                 "wire:confirm=Disable Customer Messages (reminders, repair ready) for this shop?",
                 "role=switch",
@@ -2727,11 +2866,12 @@
                 "whatsapp_messages_per_month": "",
                 "marketing_posts_per_month": "",
                 "branches": "",
-                "whatsapp_orders_per_month": ""
+                "whatsapp_orders_per_month": "",
+                "online_orders_per_month": ""
             }
         },
         "Overridden": {
-            "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 3 Staff users Plan: unlimited Sales this month Plan: unlimited WhatsApp messages this month Plan: unlimited Marketing posts this month Plan: 0 Branches Plan: unlimited WhatsApp orders this month Plan: unlimited Save Subscription Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / 5 Staff users 0 / 1 Sales this month 0 / 20 WhatsApp messages this month 0 / 0 Marketing posts this month 0 / 0 WhatsApp orders this month 0 / Unlimited Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login overridden@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Overridden overridden@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features These switches follow the Partial plan. Flipping one here overrides the plan for this shop only. WhatsApp ordering: off here, plan says on Use plan default WhatsApp messaging: off here, plan says on Use plan default Meta ads: on here, plan says nothing Use plan default Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
+            "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 3 Staff users Plan: unlimited Sales this month Plan: unlimited WhatsApp messages this month Plan: unlimited Marketing posts this month Plan: 0 Branches Plan: unlimited WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / 5 Staff users 0 / 1 Sales this month 0 / 20 WhatsApp messages this month 0 / 0 Marketing posts this month 0 / 0 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login overridden@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Overridden overridden@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Online Store Orders Online Store Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features These switches follow the Partial plan. Flipping one here overrides the plan for this shop only. WhatsApp ordering: off here, plan says on Use plan default WhatsApp messaging: off here, plan says on Use plan default Meta ads: on here, plan says nothing Use plan default Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
             "attributes": [
                 "role=listbox",
                 "placeholder=Search…",
@@ -2745,6 +2885,7 @@
                 "role=listbox",
                 "placeholder=Search…",
                 "role=option",
+                "placeholder=Plan default",
                 "placeholder=Plan default",
                 "placeholder=Plan default",
                 "placeholder=Plan default",
@@ -2905,6 +3046,14 @@
                 "wire:confirm=Disable WhatsApp Orders: Accept / Reject for this shop?",
                 "role=switch",
                 "aria-checked=true",
+                "aria-label=Disable Online Store Orders",
+                "wire:confirm=Disable Online Store Orders for this shop?",
+                "role=switch",
+                "aria-checked=true",
+                "aria-label=Disable Online Store Orders: Accept / Reject",
+                "wire:confirm=Disable Online Store Orders: Accept / Reject for this shop?",
+                "role=switch",
+                "aria-checked=true",
                 "aria-label=Disable Customer Messages (reminders, repair ready)",
                 "wire:confirm=Disable Customer Messages (reminders, repair ready) for this shop?",
                 "role=switch",
@@ -3043,11 +3192,12 @@
                 "whatsapp_messages_per_month": "0",
                 "marketing_posts_per_month": "",
                 "branches": "",
-                "whatsapp_orders_per_month": ""
+                "whatsapp_orders_per_month": "",
+                "online_orders_per_month": ""
             }
         },
         "Ungoverned": {
-            "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Usage limits Not enforced — limits only apply to shops on a plan. Products Staff users Sales this month WhatsApp messages this month Marketing posts this month Branches WhatsApp orders this month Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login ungoverned@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Ungoverned ungoverned@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
+            "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Usage limits Not enforced — limits only apply to shops on a plan. Products Staff users Sales this month WhatsApp messages this month Marketing posts this month Branches WhatsApp orders this month Online orders this month Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login ungoverned@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Ungoverned ungoverned@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Online Store Orders Online Store Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
             "attributes": [
                 "role=listbox",
                 "placeholder=Search…",
@@ -3061,6 +3211,7 @@
                 "role=listbox",
                 "placeholder=Search…",
                 "role=option",
+                "placeholder=Plan default",
                 "placeholder=Plan default",
                 "placeholder=Plan default",
                 "placeholder=Plan default",
@@ -3211,6 +3362,14 @@
                 "wire:confirm=Disable WhatsApp Orders: Accept / Reject for this shop?",
                 "role=switch",
                 "aria-checked=true",
+                "aria-label=Disable Online Store Orders",
+                "wire:confirm=Disable Online Store Orders for this shop?",
+                "role=switch",
+                "aria-checked=true",
+                "aria-label=Disable Online Store Orders: Accept / Reject",
+                "wire:confirm=Disable Online Store Orders: Accept / Reject for this shop?",
+                "role=switch",
+                "aria-checked=true",
                 "aria-label=Disable Customer Messages (reminders, repair ready)",
                 "wire:confirm=Disable Customer Messages (reminders, repair ready) for this shop?",
                 "role=switch",
@@ -3349,7 +3508,8 @@
                 "whatsapp_messages_per_month": "",
                 "marketing_posts_per_month": "",
                 "branches": "",
-                "whatsapp_orders_per_month": ""
+                "whatsapp_orders_per_month": "",
+                "online_orders_per_month": ""
             }
         }
     },
@@ -3581,6 +3741,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -3647,6 +3817,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -3846,6 +4026,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -3912,6 +4102,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -4124,6 +4324,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -4190,6 +4400,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -4389,6 +4609,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -4455,6 +4685,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -4654,6 +4894,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -4720,6 +4970,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -5561,6 +5821,87 @@
                     "online_store_enabled": false,
                     "limit_overrides": {
                         "whatsapp_orders_per_month": 5
+                    },
+                    "feature_overrides": null,
+                    "products_allowed": null,
+                    "sales_allowed": null,
+                    "plan": "Starter"
+                }
+            }
+        },
+        "online_orders_per_month": {
+            "-1": {
+                "errors": 1,
+                "shop": {
+                    "whatsapp_ordering_enabled": false,
+                    "whatsapp_messaging_enabled": false,
+                    "social_enabled": false,
+                    "ads_enabled": false,
+                    "import_enabled": true,
+                    "barcode_enabled": true,
+                    "branding_enabled": true,
+                    "services_enabled": true,
+                    "variants_enabled": false,
+                    "measured_units_enabled": false,
+                    "expiry_tracking_enabled": false,
+                    "purchase_orders_enabled": false,
+                    "payroll_enabled": false,
+                    "ledger_enabled": false,
+                    "online_store_enabled": false,
+                    "limit_overrides": null,
+                    "feature_overrides": null,
+                    "products_allowed": null,
+                    "sales_allowed": null,
+                    "plan": "Starter"
+                }
+            },
+            "0": {
+                "errors": 0,
+                "shop": {
+                    "whatsapp_ordering_enabled": false,
+                    "whatsapp_messaging_enabled": false,
+                    "social_enabled": false,
+                    "ads_enabled": false,
+                    "import_enabled": true,
+                    "barcode_enabled": true,
+                    "branding_enabled": true,
+                    "services_enabled": true,
+                    "variants_enabled": false,
+                    "measured_units_enabled": false,
+                    "expiry_tracking_enabled": false,
+                    "purchase_orders_enabled": false,
+                    "payroll_enabled": false,
+                    "ledger_enabled": false,
+                    "online_store_enabled": false,
+                    "limit_overrides": {
+                        "online_orders_per_month": 0
+                    },
+                    "feature_overrides": null,
+                    "products_allowed": null,
+                    "sales_allowed": null,
+                    "plan": "Starter"
+                }
+            },
+            "5": {
+                "errors": 0,
+                "shop": {
+                    "whatsapp_ordering_enabled": false,
+                    "whatsapp_messaging_enabled": false,
+                    "social_enabled": false,
+                    "ads_enabled": false,
+                    "import_enabled": true,
+                    "barcode_enabled": true,
+                    "branding_enabled": true,
+                    "services_enabled": true,
+                    "variants_enabled": false,
+                    "measured_units_enabled": false,
+                    "expiry_tracking_enabled": false,
+                    "purchase_orders_enabled": false,
+                    "payroll_enabled": false,
+                    "ledger_enabled": false,
+                    "online_store_enabled": false,
+                    "limit_overrides": {
+                        "online_orders_per_month": 5
                     },
                     "feature_overrides": null,
                     "products_allowed": null,
@@ -7727,7 +8068,7 @@
         }
     },
     "admin_overrides_shown": {
-        "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal 15 Dec 2026 Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 10 Staff users Plan: 2 Sales this month Plan: 100 WhatsApp messages this month Plan: 50 Marketing posts this month Plan: 5 Branches Plan: 2 WhatsApp orders this month Plan: unlimited Save Subscription Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 9 / 10 Staff users 1 / 2 Sales this month 0 / 100 WhatsApp messages this month 0 / 50 Marketing posts this month 0 / 5 Branches 2 / 2 WhatsApp orders this month 0 / Unlimited Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 9 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login on-full@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner On Full on-full@example.test Owner Active Deactivate Staff Full staff-full@example.test No role Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Enabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features These switches follow the Full plan. Flipping one here overrides the plan for this shop only. WhatsApp ordering: on here, plan says on Use plan default WhatsApp messaging: on here, plan says on Use plan default Facebook & Instagram posting: off here, plan says off Use plan default Meta ads: on here, plan says off Use plan default Excel product import: on here, plan says on Use plan default Barcodes: off here, plan says on Use plan default Invoice branding: off here, plan says off Use plan default Services module: on here, plan says on Use plan default Purchase orders & goods receipts: off here, plan says nothing Use plan default Payroll: off here, plan says nothing Use plan default Online store connection: off here, plan says nothing Use plan default Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
+        "text": "Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Bakery & sweets Clothing & garments Pharmacy / medical store Online seller (Daraz / social media) Other No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal 15 Dec 2026 Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 10 Staff users Plan: 2 Sales this month Plan: 100 WhatsApp messages this month Plan: 50 Marketing posts this month Plan: 5 Branches Plan: 2 WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 9 / 10 Staff users 1 / 2 Sales this month 0 / 100 WhatsApp messages this month 0 / 50 Marketing posts this month 0 / 5 Branches 2 / 2 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Subscription Status Inactive Product Count 9 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login on-full@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Shop Activity Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner On Full on-full@example.test Owner Active Deactivate Staff Full staff-full@example.test No role Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Enabled for this shop Module Access Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Stock In: Edit / Cancel Purchase Orders Receive Goods Vendor Invoices: Record Vendor Invoices: Approve, Dispute & Pay Vendors Sales Sales: Edit / Cancel Sales: View Cost Price SIM Sale SIM Sale: Edit / Cancel Financial Services Balance Loads Balance Loads: Edit / Cancel Wallet Loads Wallet Loads: Edit / Cancel Bills Bills: Edit / Cancel Repairs Repairs: Edit / Cancel NADRA Verification NADRA Verification: Edit / Cancel Udhaar Expenses Expenses: Edit / Cancel Services Services: Edit / Cancel Online Selling WhatsApp Orders WhatsApp Orders: Accept / Reject Online Store Orders Online Store Orders: Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Marketing: Overview & analytics Marketing: Meta ads (spends money) Administration Users & Roles Shop Accounts Branches Payroll: Employees, Advances & History (shows salaries) Payroll: Run Payroll (pays salaries) Ledger Reports (shows all the shop's finances) Settings Settings Settings: Categories Settings: Networks Settings: Bill Providers Settings: Percentage Settings: Brands Settings: Branding Settings: Services Settings: Integrations Shop Features These switches follow the Full plan. Flipping one here overrides the plan for this shop only. WhatsApp ordering: on here, plan says on Use plan default WhatsApp messaging: on here, plan says on Use plan default Facebook & Instagram posting: off here, plan says off Use plan default Meta ads: on here, plan says off Use plan default Excel product import: on here, plan says on Use plan default Barcodes: off here, plan says on Use plan default Invoice branding: off here, plan says off Use plan default Services module: on here, plan says on Use plan default Purchase orders & goods receipts: off here, plan says nothing Use plan default Payroll: off here, plan says nothing Use plan default Online store connection: off here, plan says nothing Use plan default Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Purchase Orders Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected. Payroll Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run. Double-Entry Ledger Posts the shop's records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup. Branding Lets the shop upload its own logo and set a display name, shown on its receipts and invoices in place of the plain shop name. Services A sellable catalog of services, installations and downloads — separate from Products and Stock In. Off by default for every shop. WhatsApp Ordering Chatbot ordering and a Pending Orders inbox on the shop's own WhatsApp Business number. Off by default. WhatsApp Messaging Payment reminders, repair-ready notices, restock alerts and review requests sent from the shop's own WhatsApp Business number. Off by default. Online Store Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default. Meta Ads Lets the shop create and launch paid Meta ads from its own ad account (the shop pays Meta directly). Off by default.",
         "attributes": [
             "role=listbox",
             "placeholder=Search…",
@@ -7741,6 +8082,7 @@
             "role=listbox",
             "placeholder=Search…",
             "role=option",
+            "placeholder=Plan default",
             "placeholder=Plan default",
             "placeholder=Plan default",
             "placeholder=Plan default",
@@ -7902,6 +8244,14 @@
             "aria-checked=true",
             "aria-label=Disable WhatsApp Orders: Accept / Reject",
             "wire:confirm=Disable WhatsApp Orders: Accept / Reject for this shop?",
+            "role=switch",
+            "aria-checked=true",
+            "aria-label=Disable Online Store Orders",
+            "wire:confirm=Disable Online Store Orders for this shop?",
+            "role=switch",
+            "aria-checked=true",
+            "aria-label=Disable Online Store Orders: Accept / Reject",
+            "wire:confirm=Disable Online Store Orders: Accept / Reject for this shop?",
             "role=switch",
             "aria-checked=true",
             "aria-label=Disable Customer Messages (reminders, repair ready)",
@@ -8087,7 +8437,8 @@
                     "whatsapp_messages_per_month": "50",
                     "marketing_posts_per_month": "5",
                     "branches": "2",
-                    "whatsapp_orders_per_month": ""
+                    "whatsapp_orders_per_month": "",
+                    "online_orders_per_month": ""
                 },
                 "featureFlags": {
                     "whatsapp_ordering": true,
@@ -8116,6 +8467,7 @@
                     "products": 10,
                     "staff_users": 2,
                     "sales_per_month": 100,
+                    "online_orders_per_month": null,
                     "marketing_posts_per_month": 5,
                     "whatsapp_orders_per_month": null,
                     "whatsapp_messages_per_month": 50
@@ -8190,7 +8542,8 @@
                     "whatsapp_messages_per_month": "",
                     "marketing_posts_per_month": "0",
                     "branches": "",
-                    "whatsapp_orders_per_month": ""
+                    "whatsapp_orders_per_month": "",
+                    "online_orders_per_month": ""
                 },
                 "featureFlags": {
                     "whatsapp_ordering": true,
@@ -8219,6 +8572,7 @@
                     "products": 3,
                     "staff_users": null,
                     "sales_per_month": null,
+                    "online_orders_per_month": null,
                     "marketing_posts_per_month": 0,
                     "whatsapp_orders_per_month": null,
                     "whatsapp_messages_per_month": null
@@ -8313,7 +8667,8 @@
                     "whatsapp_messages_per_month": "",
                     "marketing_posts_per_month": "",
                     "branches": "",
-                    "whatsapp_orders_per_month": ""
+                    "whatsapp_orders_per_month": "",
+                    "online_orders_per_month": ""
                 },
                 "featureFlags": {
                     "whatsapp_ordering": false,
@@ -8342,6 +8697,7 @@
                     "products": null,
                     "staff_users": null,
                     "sales_per_month": null,
+                    "online_orders_per_month": null,
                     "marketing_posts_per_month": null,
                     "whatsapp_orders_per_month": null,
                     "whatsapp_messages_per_month": null
@@ -8408,7 +8764,8 @@
                     "whatsapp_messages_per_month": "0",
                     "marketing_posts_per_month": "0",
                     "branches": "1",
-                    "whatsapp_orders_per_month": ""
+                    "whatsapp_orders_per_month": "",
+                    "online_orders_per_month": ""
                 },
                 "featureFlags": {
                     "whatsapp_ordering": false,
@@ -8437,6 +8794,7 @@
                     "products": 500,
                     "staff_users": 2,
                     "sales_per_month": 1500,
+                    "online_orders_per_month": null,
                     "marketing_posts_per_month": 0,
                     "whatsapp_orders_per_month": null,
                     "whatsapp_messages_per_month": 0
@@ -8520,7 +8878,8 @@
                     "whatsapp_messages_per_month": "1000",
                     "marketing_posts_per_month": "0",
                     "branches": "1",
-                    "whatsapp_orders_per_month": ""
+                    "whatsapp_orders_per_month": "",
+                    "online_orders_per_month": ""
                 },
                 "featureFlags": {
                     "whatsapp_ordering": true,
@@ -8549,6 +8908,7 @@
                     "products": 2000,
                     "staff_users": 5,
                     "sales_per_month": 5000,
+                    "online_orders_per_month": null,
                     "marketing_posts_per_month": 0,
                     "whatsapp_orders_per_month": null,
                     "whatsapp_messages_per_month": 1000
@@ -8609,7 +8969,8 @@
                     "whatsapp_messages_per_month": "3000",
                     "marketing_posts_per_month": "60",
                     "branches": "1",
-                    "whatsapp_orders_per_month": ""
+                    "whatsapp_orders_per_month": "",
+                    "online_orders_per_month": ""
                 },
                 "featureFlags": {
                     "whatsapp_ordering": true,
@@ -8638,6 +8999,7 @@
                     "products": null,
                     "staff_users": 10,
                     "sales_per_month": null,
+                    "online_orders_per_month": null,
                     "marketing_posts_per_month": 60,
                     "whatsapp_orders_per_month": null,
                     "whatsapp_messages_per_month": 3000
@@ -8698,7 +9060,8 @@
             "whatsapp_messages_per_month": "",
             "marketing_posts_per_month": "",
             "branches": "",
-            "whatsapp_orders_per_month": ""
+            "whatsapp_orders_per_month": "",
+            "online_orders_per_month": ""
         },
         "featureFlags": {
             "whatsapp_ordering": false,
@@ -8722,6 +9085,7 @@
                 "products": 25,
                 "staff_users": null,
                 "sales_per_month": null,
+                "online_orders_per_month": null,
                 "marketing_posts_per_month": null,
                 "whatsapp_orders_per_month": null,
                 "whatsapp_messages_per_month": 0
@@ -8840,6 +9204,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -8906,6 +9280,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -9105,6 +9489,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -9171,6 +9565,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -9383,6 +9787,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -9449,6 +9863,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -9659,6 +10083,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -9725,6 +10159,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,
@@ -9924,6 +10368,16 @@
                     "state": "ok",
                     "over": false,
                     "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
                 }
             ],
             "every_meter": [
@@ -9990,6 +10444,16 @@
                 {
                     "key": "whatsapp_orders_per_month",
                     "label": "WhatsApp orders this month",
+                    "used": 0,
+                    "limit": null,
+                    "percent": 0,
+                    "state": "ok",
+                    "over": false,
+                    "alarm": true
+                },
+                {
+                    "key": "online_orders_per_month",
+                    "label": "Online orders this month",
                     "used": 0,
                     "limit": null,
                     "percent": 0,

@@ -40,5 +40,10 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(300)->by('token:'.sha1((string) $request->bearerToken())),
             Limit::perMinute(600)->by('ip:'.$request->ip()),
         ]);
+
+        RateLimiter::for('store-webhook', fn (Request $request) => [
+            Limit::perMinute(300)->by('connection:'.$request->route('connection')),
+            Limit::perMinute(600)->by('ip:'.$request->ip()),
+        ]);
     }
 }

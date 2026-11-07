@@ -112,6 +112,8 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('services', 'services.create')->name('services.index')->middleware('shop.access:services');
         Volt::route('services/history', 'services.history')->name('services.history')->middleware('shop.access:services');
 
+        Volt::route('online-orders', 'online-orders.index')->name('online-orders.index')->middleware('shop.access:online-orders');
+        Volt::route('online-orders/{order}', 'online-orders.show')->name('online-orders.show')->whereNumber('order')->middleware('shop.access:online-orders');
         Volt::route('whatsapp-orders', 'whatsapp-orders.index')->name('whatsapp-orders.index')->middleware('shop.access:whatsapp-orders');
         Volt::route('whatsapp-orders/{order}', 'whatsapp-orders.show')->name('whatsapp-orders.show')->middleware('shop.access:whatsapp-orders');
         Route::get('whatsapp-orders/{order}/slip', function (\App\Models\WhatsAppOrder $order, \Illuminate\Http\Request $request) {

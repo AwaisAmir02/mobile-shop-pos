@@ -81,7 +81,7 @@ class FeatureCatalogueTest extends TestCase
             ->assertSee('Has a usage limit?');
 
         $html = $editor->html();
-        $this->assertSame(3, substr_count($html, 'Has a usage limit?'), 'WhatsApp ordering, WhatsApp messaging and Social.');
+        $this->assertSame(4, substr_count($html, 'Has a usage limit?'), 'WhatsApp ordering, WhatsApp messaging, Online store and Social.');
 
         foreach (LimitKey::core() as $key) {
             $this->assertStringContainsString('id="limit-'.$key->value.'"', $html);

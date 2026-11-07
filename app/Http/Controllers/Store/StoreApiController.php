@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Store;
 
+use App\Actions\StoreOrders;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Shop;
@@ -124,6 +125,24 @@ class StoreApiController extends Controller
         ]);
     }
 
+    public function order(Request $request, string $externalOrderId): JsonResponse
+    {
+        $order = StoreOrders::find($this->connection($request), $externalOrderId);
+
+        if ($order === null) {
+            return self::error('not_found', 'No order with that id on this connection.', 404);
+        }
+
+        return response()->json(['data' => [
+            'external_order_id' => $order->external_order_id,
+            'status' => $order->status->value,
+            'fulfillment_status' => $order->fulfillment_status?->value,
+            'reject_reason' => $order->reject_reason,
+            'cancel_flagged' => $order->cancel_flagged_at !== null,
+            'updated_at' => $this->time($order->updated_at),
+        ]]);
+    }
+
     protected function connection(Request $request): StoreConnection
     {
         return $request->attributes->get('storeConnection');
@@ -156,7 +175,11 @@ class StoreApiController extends Controller
             ->orWhereExists(fn (QueryBuilder $item) => $item->from('whatsapp_order_items')
                 ->join('whatsapp_orders', 'whatsapp_orders.id', '=', 'whatsapp_order_items.whatsapp_order_id')
                 ->whereColumn('whatsapp_order_items.product_id', 'store_products.product_id')
-                ->where('whatsapp_orders.updated_at', '>=', $since)));
+                ->where('whatsapp_orders.updated_at', '>=', $since))
+            ->orWhereExists(fn (QueryBuilder $item) => $item->from('store_order_items')
+                ->join('store_orders', 'store_orders.id', '=', 'store_order_items.store_order_id')
+                ->whereColumn('store_order_items.product_id', 'store_products.product_id')
+                ->where('store_orders.updated_at', '>=', $since)));
     }
 
     /** @param  array<int, float>  $prices */
