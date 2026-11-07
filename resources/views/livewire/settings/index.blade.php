@@ -174,7 +174,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             $tabs[] = 'services';
         }
 
-        if ((Auth::user()->shop?->usesWhatsApp() || Auth::user()->shop?->social_enabled || Auth::user()->shop?->ads_enabled) && Auth::user()->hasAccessTo('settings-integrations')) {
+        if ((Auth::user()->shop?->usesWhatsApp() || Auth::user()->shop?->social_enabled || Auth::user()->shop?->ads_enabled || Auth::user()->shop?->online_store_enabled) && Auth::user()->hasAccessTo('settings-integrations')) {
             $tabs[] = 'integrations';
         }
 

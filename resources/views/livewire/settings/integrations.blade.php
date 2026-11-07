@@ -49,7 +49,8 @@ new class extends Component
     protected function sections(): array
     {
         return ['whatsapp' => 'WhatsApp', 'facebook' => 'Facebook & Instagram']
-            + (Auth::user()->shop?->ads_enabled ? ['ads' => 'Meta Ad Account'] : []);
+            + (Auth::user()->shop?->ads_enabled ? ['ads' => 'Meta Ad Account'] : [])
+            + (Auth::user()->shop?->online_store_enabled ? ['online-store' => 'Online Store'] : []);
     }
 
     protected function defaultSection(): string
@@ -60,6 +61,7 @@ new class extends Component
             (bool) $shop?->usesWhatsApp() => 'whatsapp',
             (bool) $shop?->social_enabled => 'facebook',
             (bool) $shop?->ads_enabled => 'ads',
+            (bool) $shop?->online_store_enabled => 'online-store',
             default => 'whatsapp',
         };
     }
@@ -303,7 +305,9 @@ new class extends Component
         @endforeach
     </div>
 
-    @if ($section === 'whatsapp')
+    @if ($section === 'online-store')
+        <livewire:settings.online-store key="online-store" />
+    @elseif ($section === 'whatsapp')
         <x-ui.card title="WhatsApp" description="Connect your shop's WhatsApp Business number so customers can browse and order through a chatbot.">
             @if (! $shop->usesWhatsApp())
                 <p class="text-sm text-slate-500">WhatsApp ordering is not enabled for your shop. Contact HisabOKitab support to turn it on.</p>

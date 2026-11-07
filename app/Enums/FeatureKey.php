@@ -18,9 +18,10 @@ enum FeatureKey: string
     case PurchaseOrders = 'purchase_orders';
     case Payroll = 'payroll';
     case Ledger = 'ledger';
+    case OnlineStore = 'online_store';
 
     /** The order of the switches on the admin shop page; a case not listed goes last. */
-    protected const ADMIN_ORDER = [self::Barcode, self::Variants, self::MeasuredUnits, self::ExpiryTracking, self::PurchaseOrders, self::Payroll, self::Ledger, self::Branding, self::Services, self::WhatsAppOrdering, self::WhatsAppMessaging, self::Social, self::Ads];
+    protected const ADMIN_ORDER = [self::Barcode, self::Variants, self::MeasuredUnits, self::ExpiryTracking, self::PurchaseOrders, self::Payroll, self::Ledger, self::Branding, self::Services, self::WhatsAppOrdering, self::WhatsAppMessaging, self::OnlineStore, self::Social, self::Ads];
 
     /**
      * Whether plans and add-ons decide this feature. One that isn't is free
@@ -56,6 +57,7 @@ enum FeatureKey: string
             self::PurchaseOrders => 'Purchase orders & goods receipts',
             self::Payroll => 'Payroll',
             self::Ledger => 'Double-entry ledger',
+            self::OnlineStore => 'Online store connection',
         };
     }
 
@@ -102,6 +104,7 @@ enum FeatureKey: string
             self::PurchaseOrders => ['Purchase Orders', 'Order from vendors, then receive goods against the order, including part deliveries. Plain Stock In keeps working alongside it. When off, existing orders are read-only and vendor balances are unaffected.', 'Purchase orders'],
             self::Payroll => ['Payroll', 'Staff records, salary advances, monthly payslips and payslip PDFs. Paid salaries appear in Expenses. When off, history stays readable and no new payroll can be run.', 'Payroll'],
             self::Ledger => ['Double-Entry Ledger', 'Posts the shop\'s records to a journal for a Trial Balance. Existing screens, dues and reports are unaffected. Off by default. Turning it off freezes the ledger read-only, and restarting needs a new setup.', 'Double-entry ledger'],
+            self::OnlineStore => ['Online Store', 'Lets the shop connect its own online store through the API: publish products and live stock, and receive orders. When off, connections pause and the store is told to stop selling. Stock and sales are unaffected.', 'Online store'],
         };
 
         return ['label' => $label, 'description' => $description, 'toast' => $toast];

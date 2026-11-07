@@ -222,6 +222,29 @@ class Product extends Model
     }
 
     /**
+     * What an online store can be offered: whole-piece products in normal sale.
+     * blocksOnlinePublishing() says the same for one product, with the reason.
+     */
+    public function scopePublishableOnline(Builder $query): void
+    {
+        $query->where('products.unit', QuantityUnit::Piece->value)
+            ->whereNull('products.archived_at')
+            ->where('products.type', '!=', 'sim')
+            ->where(fn (Builder $q) => $q->whereNull('products.details->imei')->orWhere('products.details->imei', ''));
+    }
+
+    public function blocksOnlinePublishing(): ?string
+    {
+        return match (true) {
+            $this->unit !== QuantityUnit::Piece => 'it\'s sold by weight or length',
+            $this->isArchived() => 'it\'s archived',
+            $this->type === 'sim' => 'SIMs aren\'t offered online',
+            ! empty($this->details['imei']) => 'it\'s IMEI-tracked',
+            default => null,
+        };
+    }
+
+    /**
      * currentSellingPrice() for many products in one query: the next
      * batch to sell's price, else the product's own.
      *
