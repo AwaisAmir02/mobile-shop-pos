@@ -243,12 +243,7 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Order {{ $order->orderNumber() }}</h1>
-            <a href="{{ route('whatsapp-orders.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
-                ← All WhatsApp orders
-            </a>
-        </div>
+        <x-ui.page-header back="{{ route('whatsapp-orders.index') }}" back-label="WhatsApp Orders">Order {{ $order->orderNumber() }}</x-ui.page-header>
     </x-slot>
 
     <div class="grid gap-6 lg:grid-cols-3">

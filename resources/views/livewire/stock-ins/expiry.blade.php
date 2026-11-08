@@ -107,11 +107,10 @@ new #[Layout('layouts.app')] #[Title('Expiring & Expired')] class extends Compon
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Expiring &amp; Expired</h1>
-            <a href="{{ route('stock-ins.history') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Stock In History →</a>
-        </div>
+        <x-ui.page-header>Expiring &amp; Expired</x-ui.page-header>
     </x-slot>
+
+    <x-ui.module-tabs module="stock" label="Stock In sections" />
 
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <x-ui.field label="Expiring within" name="days" for="days" class="sm:max-w-[12rem]">

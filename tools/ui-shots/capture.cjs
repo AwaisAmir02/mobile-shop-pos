@@ -28,7 +28,7 @@ const PAGES = {
     invoices: '/purchase-orders/invoices', 'invoice-create': '/purchase-orders/invoices/create', receipts: '/purchase-orders/receipts',
     vendors: '/vendors', 'vendor-show': '/vendors/1', customers: '/customers', 'customer-show': '/customers/1',
     udhaar: '/udhaar', 'udhaar-show': '/udhaar/2', 'party-ledger': '/party-ledger', expenses: '/expenses',
-    reports: '/reports', profit: '/gross-profit',
+    reports: '/reports', 'reports-screens': '/reports/screens', profit: '/gross-profit',
     'ledger-tb': '/ledger/trial-balance', 'ledger-pl': '/ledger/profit-and-loss', 'ledger-bs': '/ledger/balance-sheet', 'ledger-cash': '/ledger/cash-book', 'ledger-health': '/ledger/health', 'ledger-owner': '/ledger/owner-money',
     'payroll-emp': '/payroll/employees', 'payroll-run': '/payroll/run', 'payroll-adv': '/payroll/advances', 'payroll-hist': '/payroll/history', 'payroll-ded': '/payroll/deduction-types',
     'sim-sale': '/sim-sales', 'sim-history': '/sim-sales/history', 'balance-load': '/balance-loads', 'balance-history': '/balance-loads/history',

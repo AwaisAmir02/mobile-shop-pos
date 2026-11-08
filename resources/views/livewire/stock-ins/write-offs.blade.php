@@ -199,11 +199,10 @@ new #[Layout('layouts.app')] #[Title('Stock Write-offs')] class extends Componen
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Stock Write-offs</h1>
-            <a href="{{ route('stock-ins.history') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Stock In History →</a>
-        </div>
+        <x-ui.page-header>Stock Write-offs</x-ui.page-header>
     </x-slot>
+
+    <x-ui.module-tabs module="stock" label="Stock In sections" />
 
     <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:flex-wrap">

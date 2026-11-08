@@ -50,21 +50,17 @@ new #[Layout('layouts.app')] #[Title('Purchase Orders')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Purchase Orders</h1>
-            <div class="flex items-center gap-4">
-                @if ($canSeeInvoices)
-                    <a href="{{ route('purchase-orders.invoices') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Vendor Invoices →</a>
-                @endif
-                @if ($canSeeReceipts)
-                    <a href="{{ route('purchase-orders.receipts') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Goods Receipts →</a>
-                @endif
+        <x-ui.page-header>
+            Purchase Orders
+            <x-slot:actions>
                 @if ($canCreate)
                     <x-ui.button href="{{ route('purchase-orders.create') }}" wire:navigate size="sm">New Purchase Order</x-ui.button>
                 @endif
-            </div>
-        </div>
+            </x-slot:actions>
+        </x-ui.page-header>
     </x-slot>
+
+    <x-ui.module-tabs module="purchasing" label="Purchasing sections" />
 
     @unless ($enabled)
         <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

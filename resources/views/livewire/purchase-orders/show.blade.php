@@ -74,10 +74,7 @@ new #[Layout('layouts.app')] #[Title('Purchase Order')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">{{ $order->number() }}</h1>
-            <a href="{{ route('purchase-orders.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">← All Purchase Orders</a>
-        </div>
+        <x-ui.page-header back="{{ route('purchase-orders.index') }}" back-label="Purchasing">{{ $order->number() }}</x-ui.page-header>
     </x-slot>
 
     @unless ($enabled)

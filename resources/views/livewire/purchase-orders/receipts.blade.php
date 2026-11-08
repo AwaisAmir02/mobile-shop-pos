@@ -89,11 +89,10 @@ new #[Layout('layouts.app')] #[Title('Goods Receipts')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Goods Receipts</h1>
-            <a href="{{ route('purchase-orders.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">← Purchase Orders</a>
-        </div>
+        <x-ui.page-header>Goods Receipts</x-ui.page-header>
     </x-slot>
+
+    <x-ui.module-tabs module="purchasing" label="Purchasing sections" />
 
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-end">

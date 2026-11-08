@@ -246,12 +246,7 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Repairs</h1>
-            <a href="{{ route('repairs.history') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
-                History →
-            </a>
-        </div>
+        <x-ui.page-header back="{{ route('repairs.history') }}" back-label="Repair History">Repairs</x-ui.page-header>
     </x-slot>
 
     <div>

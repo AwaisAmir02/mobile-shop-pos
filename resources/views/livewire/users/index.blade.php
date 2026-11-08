@@ -16,7 +16,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 
-new #[Layout('layouts.app')] #[Title('Users')] class extends Component
+new #[Layout('layouts.app')] #[Title('Team')] class extends Component
 {
     use Toasts;
 
@@ -195,12 +195,12 @@ new #[Layout('layouts.app')] #[Title('Users')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Users</h1>
-            <a href="{{ route('settings.index') }}?tab=roles" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
-                Manage Roles →
-            </a>
-        </div>
+        <x-ui.page-header>
+            Team
+            <x-slot:actions>
+                <x-ui.button href="{{ route('settings.index') }}?tab=roles" wire:navigate variant="secondary" size="sm">Manage roles</x-ui.button>
+            </x-slot:actions>
+        </x-ui.page-header>
     </x-slot>
 
     <x-billing.limit-notice limit="staff_users" />

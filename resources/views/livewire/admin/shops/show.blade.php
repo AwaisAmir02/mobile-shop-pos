@@ -304,12 +304,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">{{ $shop->name }}</h1>
-            <a href="{{ route('admin.dashboard') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
-                ← All Shops
-            </a>
-        </div>
+        <x-ui.page-header back="{{ route('admin.dashboard') }}" back-label="Shops">{{ $shop->name }}</x-ui.page-header>
     </x-slot>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">

@@ -134,10 +134,7 @@ new #[Layout('layouts.app')] #[Title('Receive Goods')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Receive Goods: {{ $order->number() }}</h1>
-            <a href="{{ route('purchase-orders.show', $order->id) }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">← Back to Order</a>
-        </div>
+        <x-ui.page-header back="{{ route('purchase-orders.show', $order->id) }}" back-label="{{ $order->number() }}">Receive Goods: {{ $order->number() }}</x-ui.page-header>
     </x-slot>
 
     <form wire:submit="save" class="space-y-6">

@@ -103,6 +103,7 @@ class ExportDropdownInsideComponentBoundaryTest extends TestCase
         $shop = Shop::create(['name' => 'Shop A']);
         $this->actingAs(User::factory()->create(['shop_id' => $shop->id]));
 
-        $this->assertExportDropdownIsInsideComponentBoundary('reports.index', 'reports.index');
+        // The builder component moved from /reports to /reports/screens in design overhaul D2.
+        $this->assertExportDropdownIsInsideComponentBoundary('reports.screens', 'reports.index');
     }
 }

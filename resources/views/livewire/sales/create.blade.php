@@ -384,13 +384,10 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">New Sale</h1>
-            <a href="{{ route('sales.history') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
-                Sales History →
-            </a>
-        </div>
+        <x-ui.page-header>New Sale</x-ui.page-header>
     </x-slot>
+
+    <x-ui.module-tabs module="sales" label="Sales sections" />
 
     <x-billing.limit-notice limit="sales_per_month" informational />
 

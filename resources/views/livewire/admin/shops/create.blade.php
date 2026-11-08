@@ -77,12 +77,7 @@ new #[Layout('layouts.app')] #[Title('Create Shop')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Create Shop</h1>
-            <a href="{{ route('admin.dashboard') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
-                ← All Shops
-            </a>
-        </div>
+        <x-ui.page-header back="{{ route('admin.dashboard') }}" back-label="Shops">Create Shop</x-ui.page-header>
     </x-slot>
 
     <form wire:submit="save" class="mx-auto max-w-3xl space-y-6">

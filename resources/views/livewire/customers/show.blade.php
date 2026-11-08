@@ -41,12 +41,7 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">{{ $customer->name }}</h1>
-            <a href="{{ route('customers.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
-                ← All Customers
-            </a>
-        </div>
+        <x-ui.page-header back="{{ route('customers.index') }}" back-label="Customers">{{ $customer->name }}</x-ui.page-header>
     </x-slot>
 
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

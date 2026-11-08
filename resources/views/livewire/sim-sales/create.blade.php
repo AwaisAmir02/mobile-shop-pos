@@ -169,12 +169,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">SIM Sale</h1>
-            <a href="{{ route('sim-sales.history') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
-                History →
-            </a>
-        </div>
+        <x-ui.page-header back="{{ route('sim-sales.history') }}" back-label="SIM Sale History">SIM Sale</x-ui.page-header>
     </x-slot>
 
     <div>

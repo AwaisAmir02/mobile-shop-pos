@@ -160,7 +160,10 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('expenses', 'expenses.index')->name('expenses.index')->middleware('shop.access:expenses');
 
-        Volt::route('reports', 'reports.index')->name('reports.index')->middleware('shop.access:reports');
+        // /reports is the hub of every report; the screen-by-screen builder that used
+        // to live there moved to /reports/screens with its component unchanged.
+        Volt::route('reports', 'reports.hub')->name('reports.index')->middleware('shop.access:reports');
+        Volt::route('reports/screens', 'reports.index')->name('reports.screens')->middleware('shop.access:reports');
         Volt::route('gross-profit', 'reports.profit')->name('profit.index')->middleware('shop.access:reports');
 
         Volt::route('party-ledger', 'party-ledger.index')->name('party-ledger.index')->middleware('shop.access:party-ledger');

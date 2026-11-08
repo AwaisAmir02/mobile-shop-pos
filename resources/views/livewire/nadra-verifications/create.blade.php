@@ -144,12 +144,7 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification')] class extends Compon
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">NADRA Verification</h1>
-            <a href="{{ route('nadra-verifications.history') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
-                History →
-            </a>
-        </div>
+        <x-ui.page-header back="{{ route('nadra-verifications.history') }}" back-label="NADRA Verification History">NADRA Verification</x-ui.page-header>
     </x-slot>
 
     <div>

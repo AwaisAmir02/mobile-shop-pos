@@ -219,10 +219,7 @@ new #[Layout('layouts.app')] #[Title('Online Store Order')] class extends Compon
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Order {{ $order->orderNumber() }}</h1>
-            <a href="{{ route('online-orders.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">← All online store orders</a>
-        </div>
+        <x-ui.page-header back="{{ route('online-orders.index') }}" back-label="Online Store Orders">Order {{ $order->orderNumber() }}</x-ui.page-header>
     </x-slot>
 
     @if ($order->cancel_flagged_at)

@@ -13,12 +13,27 @@ class SettingsTabsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_the_owner_defaults_to_the_profile_tab(): void
+    public function test_the_owner_lands_on_the_shops_own_settings_not_their_profile(): void
     {
+        // Design overhaul D2: Settings used to open on Profile for everyone.
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
 
         $this->actingAs($owner);
+
+        Livewire::test('settings.index')->assertSet('tab', 'shop-accounts');
+
+        $shop->forceFill(['branding_enabled' => true])->save();
+        $this->actingAs($owner->fresh());
+
+        Livewire::test('settings.index')->assertSet('tab', 'branding');
+    }
+
+    public function test_someone_who_can_only_reach_their_profile_still_lands_on_it(): void
+    {
+        $shop = Shop::create(['name' => 'Shop A']);
+        $role = Role::create(['shop_id' => $shop->id, 'name' => 'Settings only', 'permissions' => ['settings']]);
+        $this->actingAs(User::factory()->staff()->create(['shop_id' => $shop->id, 'role_id' => $role->id]));
 
         Livewire::test('settings.index')->assertSet('tab', 'profile');
     }
@@ -48,8 +63,7 @@ class SettingsTabsTest extends TestCase
 
         $this->actingAs($owner);
 
-        // Profile is the default tab, so its forms render on the first load.
-        Livewire::test('settings.index')
+        Livewire::test('settings.index', ['tab' => 'profile'])
             ->assertSet('tab', 'profile')
             ->assertSeeLivewire('profile.update-profile-information-form')
             ->assertSeeLivewire('profile.update-password-form')

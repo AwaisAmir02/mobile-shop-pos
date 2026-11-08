@@ -169,10 +169,7 @@ new #[Layout('layouts.app')] #[Title('Record Vendor Invoice')] class extends Com
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Record Vendor Invoice</h1>
-            <a href="{{ route('purchase-orders.invoices') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">← Vendor Invoices</a>
-        </div>
+        <x-ui.page-header back="{{ route('purchase-orders.invoices') }}" back-label="Vendor Invoices">Record Vendor Invoice</x-ui.page-header>
     </x-slot>
 
     @unless ($enabled)

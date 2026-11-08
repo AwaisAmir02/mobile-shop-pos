@@ -12,42 +12,47 @@
             ['label' => 'Backups', 'route' => 'admin.backups', 'icon' => 'cog', 'active' => ['admin.backups', 'admin.backups.*']],
         ]
         : collect([
+            // Order is the order shown. Counter services and Stock In land on their list;
+            // each list holds its New button (design overhaul D2).
             ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home', 'group' => null, 'permission' => 'dashboard'],
-            ['label' => 'Products', 'route' => 'products.index', 'icon' => 'cube', 'group' => 'stock', 'permission' => 'products'],
             ['label' => 'Sales', 'route' => 'sales.index', 'icon' => 'cart', 'group' => 'sell', 'permission' => 'sales'],
-            ['label' => 'Wallet Loads', 'route' => 'wallet-loads.index', 'icon' => 'wallet', 'group' => 'counter', 'permission' => 'wallet-loads'],
-            ['label' => 'NADRA Verification', 'route' => 'nadra-verifications.index', 'icon' => 'identification', 'group' => 'counter', 'permission' => 'nadra-verifications'],
-            ['label' => 'Expenses', 'route' => 'expenses.index', 'icon' => 'banknote', 'group' => 'money', 'permission' => 'expenses'],
-            ['label' => 'SIM Sale', 'route' => 'sim-sales.index', 'icon' => 'sim', 'group' => 'counter', 'permission' => 'sim-sales'],
-            ['label' => 'Udhaar', 'route' => 'udhaar.index', 'icon' => 'udhaar', 'group' => 'sell', 'permission' => 'udhaar'],
-            ['label' => 'Balance Loads', 'route' => 'balance-loads.index', 'icon' => 'signal', 'group' => 'counter', 'permission' => 'balance-loads'],
-            ['label' => 'Bills', 'route' => 'bills.index', 'icon' => 'bolt', 'group' => 'counter', 'permission' => 'bills'],
-            ['label' => 'Stock In', 'route' => 'stock-ins.index', 'icon' => 'stock-in', 'group' => 'stock', 'permission' => 'stock-ins'],
-            ['label' => 'Purchase Orders', 'route' => 'purchase-orders.index', 'icon' => 'receipt', 'group' => 'stock', 'permission' => ['purchase-orders', 'receive-goods', 'vendor-invoices', 'vendor-invoices-approve']],
-            ['label' => 'Vendors', 'route' => 'vendors.index', 'icon' => 'vendor', 'group' => 'stock', 'permission' => 'vendors'],
             ['label' => 'Customers', 'route' => 'customers.index', 'icon' => 'customers', 'group' => 'sell', 'permission' => 'customers'],
-            ['label' => 'Repairs', 'route' => 'repairs.index', 'icon' => 'wrench', 'group' => 'sell', 'permission' => 'repairs'],
-            ['label' => 'Services', 'route' => 'services.index', 'icon' => 'sparkles', 'group' => 'sell', 'permission' => 'services'],
+            ['label' => 'Udhaar', 'route' => 'udhaar.index', 'icon' => 'udhaar', 'group' => 'sell', 'permission' => 'udhaar'],
+            ['label' => 'Repairs', 'route' => 'repairs.history', 'icon' => 'wrench', 'group' => 'sell', 'permission' => 'repairs'],
+            ['label' => 'Services', 'route' => 'services.history', 'icon' => 'sparkles', 'group' => 'sell', 'permission' => 'services'],
+            ['label' => 'Products', 'route' => 'products.index', 'icon' => 'cube', 'group' => 'stock', 'permission' => 'products'],
+            ['label' => 'Stock In', 'route' => 'stock-ins.history', 'icon' => 'stock-in', 'group' => 'stock', 'permission' => 'stock-ins'],
+            ['label' => 'Purchasing', 'route' => 'purchase-orders.index', 'icon' => 'clipboard', 'group' => 'stock', 'permission' => ['purchase-orders', 'receive-goods', 'vendor-invoices', 'vendor-invoices-approve']],
+            ['label' => 'Vendors', 'route' => 'vendors.index', 'icon' => 'vendor', 'group' => 'stock', 'permission' => 'vendors'],
+            ['label' => 'Wallet Loads', 'route' => 'wallet-loads.history', 'icon' => 'wallet', 'group' => 'counter', 'permission' => 'wallet-loads'],
+            ['label' => 'NADRA Verification', 'route' => 'nadra-verifications.history', 'icon' => 'identification', 'group' => 'counter', 'permission' => 'nadra-verifications'],
+            ['label' => 'SIM Sale', 'route' => 'sim-sales.history', 'icon' => 'sim', 'group' => 'counter', 'permission' => 'sim-sales'],
+            ['label' => 'Balance Loads', 'route' => 'balance-loads.history', 'icon' => 'signal', 'group' => 'counter', 'permission' => 'balance-loads'],
+            ['label' => 'Bills', 'route' => 'bills.history', 'icon' => 'bolt', 'group' => 'counter', 'permission' => 'bills'],
             ['label' => 'WhatsApp Orders', 'route' => 'whatsapp-orders.index', 'icon' => 'chat', 'group' => 'online', 'permission' => 'whatsapp-orders'],
             ['label' => 'Online Store Orders', 'route' => 'online-orders.index', 'icon' => 'link', 'group' => 'online', 'permission' => 'online-orders'],
             ['label' => 'Customer Messages', 'route' => 'whatsapp-messages.index', 'icon' => 'bell', 'group' => 'online', 'permission' => 'whatsapp-messages'],
             ['label' => 'Marketing', 'route' => 'marketing.posts', 'icon' => 'megaphone', 'group' => 'online', 'permission' => ['marketing', 'marketing-analytics', 'marketing-ads']],
-            ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'group' => 'money', 'permission' => 'reports'],
-            ['label' => 'Gross Profit', 'route' => 'profit.index', 'icon' => 'chart', 'group' => 'money', 'permission' => 'reports'],
-            ['label' => 'Ledger', 'route' => 'ledger.trial-balance', 'icon' => 'chart', 'group' => 'money', 'permission' => ['ledger-reports']],
-            ['label' => 'Payroll', 'route' => 'payroll.employees', 'icon' => 'users', 'group' => 'money', 'permission' => ['payroll', 'payroll-run']],
+            ['label' => 'Expenses', 'route' => 'expenses.index', 'icon' => 'banknote', 'group' => 'money', 'permission' => 'expenses'],
             ['label' => 'Party Ledger', 'route' => 'party-ledger.index', 'icon' => 'ledger', 'group' => 'money', 'permission' => 'party-ledger'],
+            // Gross Profit, write-offs, expiry and payroll history are cards on the Reports hub.
+            ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'group' => 'money', 'permission' => 'reports', 'active' => ['reports.*', 'profit.*']],
+            ['label' => 'Payroll', 'route' => 'payroll.employees', 'icon' => 'briefcase', 'group' => 'money', 'permission' => ['payroll', 'payroll-run']],
+            ['label' => 'Accounts', 'route' => 'ledger.trial-balance', 'icon' => 'scale', 'group' => 'money', 'permission' => ['ledger-reports']],
             ['label' => 'Team', 'route' => 'users.index', 'icon' => 'users', 'group' => 'manage', 'permission' => 'users'],
             ['label' => 'Branches', 'route' => 'branches.index', 'icon' => 'building', 'group' => 'manage', 'permission' => 'branches'],
             ['label' => 'Settings', 'route' => 'settings.index', 'icon' => 'cog', 'group' => 'manage', 'permission' => ['settings', 'users']],
             ['label' => 'Plan & Usage', 'route' => 'billing.index', 'icon' => 'receipt', 'group' => 'manage', 'owner' => true],
         ])->filter(fn ($item) => $user && (($item['owner'] ?? false) ? $user->is_owner : collect((array) $item['permission'])->contains(fn ($p) => $user->hasAccessTo($p))))
-            ->reject(fn ($item) => $item['route'] === 'services.index' && ! $user?->shop?->services_enabled)
+            ->reject(fn ($item) => $item['route'] === 'services.history' && ! $user?->shop?->services_enabled)
             ->reject(fn ($item) => $item['route'] === 'ledger.trial-balance' && ! $user?->shop?->ledger_enabled)
             ->reject(fn ($item) => $item['route'] === 'payroll.employees' && ! $user?->shop?->payroll_enabled)
             ->map(fn ($item) => $item['route'] === 'payroll.employees' && ! $user?->hasAccessTo('payroll') ? array_merge($item, ['route' => 'payroll.run']) : $item)
-            ->reject(fn ($item) => $item['route'] === 'purchase-orders.index' && ! $user?->shop?->purchase_orders_enabled)
-            ->reject(fn ($item) => $item['route'] === 'profit.index' && ! $user?->hasAccessTo('sales-view-cost-price'))
+            // Off on the plan: hidden, except that a shop which already has purchase orders keeps
+            // a way back to them for anyone who could open them before. This replaces the old
+            // "Purchase Orders" link on Stock In History, which existed for that case.
+            ->reject(fn ($item) => $item['route'] === 'purchase-orders.index' && ! $user?->shop?->purchase_orders_enabled
+                && ! ($user?->hasAccessTo('purchase-orders') && \App\Models\PurchaseOrder::query()->exists()))
             ->reject(fn ($item) => $item['route'] === 'whatsapp-orders.index' && ! $user?->shop?->whatsapp_ordering_enabled)
             ->reject(fn ($item) => $item['route'] === 'online-orders.index' && ! $user?->shop?->online_store_enabled)
             ->reject(fn ($item) => $item['route'] === 'whatsapp-messages.index' && ! $user?->shop?->whatsapp_messaging_enabled)
@@ -56,6 +61,7 @@
             ->map(fn ($item) => $item['route'] === 'marketing.posts' && ! $user?->hasAccessTo('marketing') && $user?->hasAccessTo('marketing-ads') && $user?->shop?->ads_enabled ? array_merge($item, ['route' => 'marketing.ads']) : $item)
             ->reject(fn ($item) => $item['route'] === 'marketing.ads' && ! $user?->shop?->ads_enabled)
             ->reject(fn ($item) => $item['route'] === 'marketing.posts' && ! $user?->hasAccessTo('marketing'))
+            ->values()
             ->all();
 
     $icons = [
@@ -84,6 +90,9 @@
         'megaphone' => 'M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46',
         'ledger' => 'M9 12h6m-6 3.75h6M9 8.25h3M6.75 21h10.5a2.25 2.25 0 002.25-2.25V6.621a2.25 2.25 0 00-.659-1.591l-2.621-2.621A2.25 2.25 0 0014.379 1.5H6.75a2.25 2.25 0 00-2.25 2.25v15A2.25 2.25 0 006.75 21z',
         'receipt' => 'M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185zM9.75 9h.008v.008H9.75V9zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 4.5h.008v.008h-.008V13.5zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z',
+        'clipboard' => 'M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z',
+        'briefcase' => 'M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z',
+        'scale' => 'M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.031.352 5.988 5.988 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 01-2.031.352 5.989 5.989 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971z',
         'search' => 'M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z',
     ];
 
@@ -98,6 +107,8 @@
     // Grouping and highlighting are presentation only: every item has already
     // passed the permission and feature filters above, so a group whose items
     // were all filtered out is simply not rendered.
+    // Items may name their own highlight patterns (Reports also covers Gross Profit);
+    // the rest highlight on their route's prefix, so a list's form highlights it too.
     $navItems = collect($navItems)->map(fn ($item) => $item + [
         'group' => null,
         'active' => [$item['route'], Str::beforeLast($item['route'], '.').'.*'],

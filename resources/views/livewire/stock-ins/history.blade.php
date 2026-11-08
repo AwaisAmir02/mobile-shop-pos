@@ -103,8 +103,6 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'measuredTotals' => QuantityUnit::summarize($report->measuredTotals()),
             'showExpiry' => $report->showsExpiry(),
             'expiryEnabled' => $this->expiryEnabled(),
-            // Still reachable after a downgrade, when the sidebar link has gone.
-            'hasPurchaseOrders' => Auth::user()->hasAccessTo('purchase-orders') && (Auth::user()->shop?->purchase_orders_enabled || \App\Models\PurchaseOrder::query()->exists()),
             'totalOwed' => $report->totalOwed(),
             'products' => Product::query()->orderBy('name')->get(),
             'paymentStatuses' => PaymentStatus::cases(),
@@ -292,20 +290,15 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Stock In History</h1>
-            <div class="flex items-center gap-4">
-                @if ($expiryEnabled)
-                    <a href="{{ route('stock-ins.expiry') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Expiring &amp; Expired →</a>
-                @endif
-                @if ($hasPurchaseOrders)
-                    <a href="{{ route('purchase-orders.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Purchase Orders →</a>
-                @endif
-                <a href="{{ route('stock-ins.write-offs') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Write-offs →</a>
+        <x-ui.page-header>
+            Stock In History
+            <x-slot:actions>
                 <x-ui.button href="{{ route('stock-ins.index') }}" wire:navigate size="sm">Add Stock</x-ui.button>
-            </div>
-        </div>
+            </x-slot:actions>
+        </x-ui.page-header>
     </x-slot>
+
+    <x-ui.module-tabs module="stock" label="Stock In sections" />
 
     <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">

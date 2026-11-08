@@ -524,12 +524,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">{{ $customer->name }} — Udhaar History</h1>
-            <a href="{{ route('udhaar.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
-                ← All Customers
-            </a>
-        </div>
+        <x-ui.page-header back="{{ route('udhaar.index') }}" back-label="Udhaar">{{ $customer->name }} — Udhaar History</x-ui.page-header>
     </x-slot>
 
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">

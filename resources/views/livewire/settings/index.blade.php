@@ -37,8 +37,23 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 {
     use Toasts, UploadsImages, WithFileUploads;
 
+    // Empty means "the first section this user can open", worked out in mount().
     #[Url]
-    public string $tab = 'profile';
+    public string $tab = '';
+
+    /**
+     * Display grouping and order of the side rail. Which tabs exist still comes
+     * from accessibleTabs(); this only decides where they sit, and which one
+     * Settings opens on: the shop's own sections first, the user's Profile last.
+     */
+    protected const TAB_GROUPS = [
+        'Your shop' => ['branding', 'shop-accounts'],
+        'Catalogue' => ['accessory-categories', 'brands', 'networks'],
+        'Pricing & services' => ['percentage', 'bills', 'services', 'deduction-types'],
+        'Team & access' => ['roles', 'modules'],
+        'Connections' => ['integrations'],
+        'Your account' => ['profile'],
+    ];
 
     // Main Categories
     public ?int $mainCategoryEditingId = null;
@@ -118,7 +133,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $accessible = $this->accessibleTabs();
 
         if (! in_array($this->tab, $accessible, true)) {
-            $this->tab = $accessible[0] ?? 'profile';
+            $this->tab = $this->tabGroups($accessible)->flatten()->first() ?? 'profile';
         }
 
         $shop = Auth::user()->shop;
@@ -207,6 +222,19 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         return $tabs;
     }
 
+    /** @return \Illuminate\Support\Collection<string, list<string>> */
+    protected function tabGroups(array $accessible): \Illuminate\Support\Collection
+    {
+        $groups = collect(self::TAB_GROUPS)
+            ->map(fn ($keys) => array_values(array_intersect($keys, $accessible)))
+            ->filter();
+
+        // A tab added to accessibleTabs() but not grouped above still shows up.
+        $ungrouped = array_values(array_diff($accessible, $groups->flatten()->all()));
+
+        return $ungrouped ? $groups->put('More', $ungrouped) : $groups;
+    }
+
     public function setTab(string $tab): void
     {
         if (in_array($tab, $this->accessibleTabs(), true)) {
@@ -222,6 +250,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
         return [
             'accessibleTabs' => $accessible,
+            'tabGroups' => $this->tabGroups($accessible),
             'multipleBranches' => $multipleBranches,
             'branches' => $multipleBranches ? BranchContext::current()->branchesFor(Auth::user()->shop_id) : collect(),
             'mainCategories' => in_array('accessory-categories', $accessible, true)
@@ -1076,21 +1105,6 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         ];
     @endphp
 
-    @php
-        // Display grouping only — which tabs exist still comes from accessibleTabs().
-        $tabGroups = collect([
-            'Your shop' => ['profile', 'branding', 'shop-accounts'],
-            'Catalogue' => ['accessory-categories', 'brands', 'networks'],
-            'Pricing & services' => ['percentage', 'bills', 'services', 'deduction-types'],
-            'Team & access' => ['roles', 'modules'],
-            'Connections' => ['integrations'],
-        ])->map(fn ($keys) => array_values(array_intersect($keys, $accessibleTabs)))->filter();
-        // A tab added to accessibleTabs() but not grouped above still shows up.
-        $ungrouped = array_values(array_diff($accessibleTabs, $tabGroups->flatten()->all()));
-        if ($ungrouped) {
-            $tabGroups->put('More', $ungrouped);
-        }
-    @endphp
 
     <div class="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8">
         {{-- Phones/tablets: one scrollable row of tabs, in the same group order. --}}
@@ -1101,9 +1115,9 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                     wire:click="setTab('{{ $key }}')"
                     @if ($tab === $key) aria-current="page" @endif
                     @class([
-                        'shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',
-                        'border-brand-600 bg-brand-600 text-white' => $tab === $key,
-                        'border-slate-300 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900' => $tab !== $key,
+                        'shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors',
+                        'border-transparent bg-primary-soft text-on-primary-soft' => $tab === $key,
+                        'border-line bg-surface text-ink-muted hover:bg-surface-sunken hover:text-ink' => $tab !== $key,
                     ])
                 >
                     {{ $tabLabels[$key] ?? \Illuminate\Support\Str::headline($key) }}
@@ -1116,7 +1130,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             <div class="sticky top-20 space-y-5">
                 @foreach ($tabGroups as $group => $keys)
                     <div>
-                        <p class="px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">{{ $group }}</p>
+                        <p class="px-3 text-xs font-semibold uppercase tracking-[0.08em] text-ink-faint">{{ $group }}</p>
                         <div class="mt-1.5 space-y-0.5">
                             @foreach ($keys as $key)
                                 <button
@@ -1124,9 +1138,9 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                     wire:click="setTab('{{ $key }}')"
                                     @if ($tab === $key) aria-current="page" @endif
                                     @class([
-                                        'flex w-full items-center rounded-md border-l-2 px-3 py-1.5 text-left text-sm font-medium transition-colors',
-                                        'border-accent-500 bg-white text-brand-800 shadow-sm' => $tab === $key,
-                                        'border-transparent text-slate-600 hover:bg-white hover:text-slate-900' => $tab !== $key,
+                                        'flex w-full items-center rounded-lg px-3 py-1.5 text-left text-sm transition-colors',
+                                        'bg-primary-soft font-semibold text-on-primary-soft' => $tab === $key,
+                                        'font-medium text-ink-muted hover:bg-surface-sunken hover:text-ink' => $tab !== $key,
                                     ])
                                 >
                                     {{ $tabLabels[$key] ?? \Illuminate\Support\Str::headline($key) }}

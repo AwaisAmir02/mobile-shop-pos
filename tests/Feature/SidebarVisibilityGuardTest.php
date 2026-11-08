@@ -41,19 +41,18 @@ class SidebarVisibilityGuardTest extends TestCase
         'Dashboard' => '/dashboard',
         'Products' => '/products',
         'Sales' => '/sales',
-        'Wallet Loads' => '/wallet-loads',
-        'NADRA Verification' => '/nadra-verifications',
+        'Wallet Loads' => '/wallet-loads/history',
+        'NADRA Verification' => '/nadra-verifications/history',
         'Expenses' => '/expenses',
-        'SIM Sale' => '/sim-sales',
+        'SIM Sale' => '/sim-sales/history',
         'Udhaar' => '/udhaar',
-        'Balance Loads' => '/balance-loads',
-        'Bills' => '/bills',
-        'Stock In' => '/stock-ins',
+        'Balance Loads' => '/balance-loads/history',
+        'Bills' => '/bills/history',
+        'Stock In' => '/stock-ins/history',
         'Vendors' => '/vendors',
         'Customers' => '/customers',
-        'Repairs' => '/repairs',
+        'Repairs' => '/repairs/history',
         'Reports' => '/reports',
-        'Gross Profit' => '/gross-profit',
         'Party Ledger' => '/party-ledger',
         'Team' => '/users',
         'Branches' => '/branches',
@@ -62,13 +61,13 @@ class SidebarVisibilityGuardTest extends TestCase
     ];
 
     private const FLAG_LINKS = [
-        'Services' => '/services',
-        'Purchase Orders' => '/purchase-orders',
+        'Services' => '/services/history',
+        'Purchasing' => '/purchase-orders',
         'WhatsApp Orders' => '/whatsapp-orders',
         'Online Store Orders' => '/online-orders',
         'Customer Messages' => '/customer-messages',
         'Marketing' => '/marketing',
-        'Ledger' => '/ledger/trial-balance',
+        'Accounts' => '/ledger/trial-balance',
         'Payroll' => '/payroll/employees',
     ];
 
@@ -89,9 +88,9 @@ class SidebarVisibilityGuardTest extends TestCase
     {
         return [
             'services' => ['services_enabled', 'Services'],
-            'ledger' => ['ledger_enabled', 'Ledger'],
+            'ledger' => ['ledger_enabled', 'Accounts'],
             'payroll' => ['payroll_enabled', 'Payroll'],
-            'purchase orders' => ['purchase_orders_enabled', 'Purchase Orders'],
+            'purchase orders' => ['purchase_orders_enabled', 'Purchasing'],
             'whatsapp ordering' => ['whatsapp_ordering_enabled', 'WhatsApp Orders'],
             'online store' => ['online_store_enabled', 'Online Store Orders'],
             'whatsapp messaging' => ['whatsapp_messaging_enabled', 'Customer Messages'],
@@ -127,22 +126,22 @@ class SidebarVisibilityGuardTest extends TestCase
         return [
             'dashboard' => [['Dashboard' => '/dashboard']],
             'products' => [['Products' => '/products']],
-            'stock-ins' => [['Stock In' => '/stock-ins']],
+            'stock-ins' => [['Stock In' => '/stock-ins/history']],
             'vendors' => [['Vendors' => '/vendors']],
             'customers' => [['Customers' => '/customers']],
             'sales' => [['Sales' => '/sales']],
             'sales-edit-cancel' => [[]],
             'sales-view-cost-price' => [[]],
-            'sim-sales' => [['SIM Sale' => '/sim-sales']],
+            'sim-sales' => [['SIM Sale' => '/sim-sales/history']],
             'udhaar' => [['Udhaar' => '/udhaar']],
-            'balance-loads' => [['Balance Loads' => '/balance-loads']],
-            'wallet-loads' => [['Wallet Loads' => '/wallet-loads']],
+            'balance-loads' => [['Balance Loads' => '/balance-loads/history']],
+            'wallet-loads' => [['Wallet Loads' => '/wallet-loads/history']],
             'shop-accounts' => [[]],
-            'bills' => [['Bills' => '/bills']],
+            'bills' => [['Bills' => '/bills/history']],
             'bills-edit-cancel' => [[]],
-            'repairs' => [['Repairs' => '/repairs']],
+            'repairs' => [['Repairs' => '/repairs/history']],
             'repairs-edit-cancel' => [[]],
-            'nadra-verifications' => [['NADRA Verification' => '/nadra-verifications']],
+            'nadra-verifications' => [['NADRA Verification' => '/nadra-verifications/history']],
             'nadra-verifications-edit-cancel' => [[]],
             'expenses' => [['Expenses' => '/expenses']],
             'expenses-edit-cancel' => [[]],
@@ -160,7 +159,7 @@ class SidebarVisibilityGuardTest extends TestCase
             'settings-percentage' => [[]],
             'settings-brands' => [[]],
             'settings-branding' => [[]],
-            'services' => [['Services' => '/services']],
+            'services' => [['Services' => '/services/history']],
             'services-edit-cancel' => [[]],
             'settings-services' => [[]],
             'whatsapp-orders' => [['WhatsApp Orders' => '/whatsapp-orders']],
@@ -171,13 +170,13 @@ class SidebarVisibilityGuardTest extends TestCase
             'marketing-analytics' => [['Marketing' => '/marketing']],
             'marketing-ads' => [['Marketing' => '/marketing/ads']],
             'branches' => [['Branches' => '/branches']],
-            'purchase-orders' => [['Purchase Orders' => '/purchase-orders']],
-            'receive-goods' => [['Purchase Orders' => '/purchase-orders']],
-            'vendor-invoices' => [['Purchase Orders' => '/purchase-orders']],
-            'vendor-invoices-approve' => [['Purchase Orders' => '/purchase-orders']],
+            'purchase-orders' => [['Purchasing' => '/purchase-orders']],
+            'receive-goods' => [['Purchasing' => '/purchase-orders']],
+            'vendor-invoices' => [['Purchasing' => '/purchase-orders']],
+            'vendor-invoices-approve' => [['Purchasing' => '/purchase-orders']],
             'payroll' => [['Payroll' => '/payroll/employees']],
             'payroll-run' => [['Payroll' => '/payroll/run']],
-            'ledger-reports' => [['Ledger' => '/ledger/trial-balance']],
+            'ledger-reports' => [['Accounts' => '/ledger/trial-balance']],
             'online-orders' => [['Online Store Orders' => '/online-orders']],
             'online-orders-decide' => [[]],
         ];
@@ -221,11 +220,35 @@ class SidebarVisibilityGuardTest extends TestCase
         }
     }
 
-    public function test_gross_profit_needs_reports_and_cost_price_access(): void
+    public function test_gross_profit_lives_on_the_reports_hub_not_the_sidebar(): void
     {
+        // Design overhaul D2: it used to be its own sidebar item for this user.
         $links = $this->linksFor($this->staff(['reports', 'sales-view-cost-price'], self::FLAGS));
 
-        $this->assertSameLinks(['Reports' => '/reports', 'Gross Profit' => '/gross-profit'], $links);
+        $this->assertSameLinks(['Reports' => '/reports'], $links);
+    }
+
+    public function test_purchasing_stays_reachable_after_the_feature_is_switched_off_if_orders_exist(): void
+    {
+        $flags = array_values(array_diff(self::FLAGS, ['purchase_orders_enabled']));
+
+        // No orders yet: hidden, as before.
+        $this->assertArrayNotHasKey('Purchasing', $this->linksFor($this->staff(['purchase-orders'], $flags)));
+
+        // With orders, whoever could open them through the old Stock In History link
+        // still gets a way back. Other purchasing roles don't.
+        $staff = $this->staff(['purchase-orders'], $flags);
+        $vendor = \App\Models\Vendor::forceCreate(['shop_id' => $staff->shop_id, 'name' => 'Old supplier']);
+        \App\Models\PurchaseOrder::forceCreate(['shop_id' => $staff->shop_id, 'vendor_id' => $vendor->id, 'order_date' => now()->toDateString()]);
+
+        $this->assertSame('/purchase-orders', $this->linksFor($staff)['Purchasing'] ?? null);
+        $this->assertLessThan(400, $this->get('/purchase-orders')->getStatusCode());
+
+        $receiver = User::factory()->staff()->create([
+            'shop_id' => $staff->shop_id,
+            'role_id' => Role::create(['shop_id' => $staff->shop_id, 'name' => 'Receiver', 'permissions' => ['receive-goods']])->id,
+        ]);
+        $this->assertArrayNotHasKey('Purchasing', $this->linksFor($receiver));
     }
 
     public function test_marketing_ads_permission_with_ads_off_shows_no_marketing_link(): void
@@ -267,7 +290,6 @@ class SidebarVisibilityGuardTest extends TestCase
 
             $this->assertArrayNotHasKey('Products', $links, $column);
             $this->assertArrayNotHasKey('Reports', $links, $column);
-            $this->assertArrayNotHasKey('Gross Profit', $links, $column);
             $this->assertArrayHasKey('Sales', $links, $column);
         }
     }

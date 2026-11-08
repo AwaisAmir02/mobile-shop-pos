@@ -68,10 +68,7 @@ new #[Layout('layouts.app')] #[Title('Gross Profit')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Gross Profit</h1>
-            <a href="{{ route('reports.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">All Reports →</a>
-        </div>
+        <x-ui.page-header back="{{ route('reports.index') }}" back-label="Reports">Gross Profit</x-ui.page-header>
     </x-slot>
 
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

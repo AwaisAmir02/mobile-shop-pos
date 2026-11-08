@@ -328,12 +328,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Stock In</h1>
-            <a href="{{ route('stock-ins.history') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
-                History →
-            </a>
-        </div>
+        <x-ui.page-header back="{{ route('stock-ins.history') }}" back-label="Stock In History">Stock In</x-ui.page-header>
     </x-slot>
 
     <div class="space-y-6">

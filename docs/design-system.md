@@ -5,8 +5,10 @@ overhaul stages D0 to D10. It's for anyone changing a screen. If a screen needs
 something this doesn't cover, add it here and to the shared kit rather than styling
 one page by hand.
 
-**Status:** agreed at D0. Colour tokens, type and the restyled kit and shell are
-built (D1). Other sections describe the target until their stage ships.
+**Status:** agreed at D0. Built so far: colour tokens, type, the restyled kit and
+shell (D1); page header, module tabs, sidebar regroup, list-first sidebar links,
+the Reports hub and the Settings landing (D2). Other sections describe the target
+until their stage ships.
 
 **The one hard rule:** this is a visual and navigation pass. Actions, Models, FIFO,
 dues and ledger logic don't change. Volt components keep their public properties and
@@ -146,6 +148,17 @@ Arrow text links at the top of a page are not a navigation pattern.
 **List-first without breaking URLs:** the 8 sidebar links point at existing history
 routes. Every URL stays as it is, so `stock-ins.index` remains the form. That name is a
 known wart, and flipping it isn't worth breaking bookmarks and tests.
+
+**Where it lives (D2):** tabs come from `App\Support\ModuleNav` (one entry per
+module: sales, stock, purchasing, payroll, accounts, marketing) and render with
+`<x-ui.module-tabs module="..." />` as the first thing in the screen's body. A
+module with only one tab for this user shows none. A form or detail screen puts
+its parent in `<x-ui.page-header back="..." back-label="...">`, the small
+breadcrumb above the title. Links inside page content may keep a trailing arrow;
+links bolted to the top of a page may not. `/reports` is the hub of report cards
+(`reports.hub`), and the screen-by-screen builder lives at `/reports/screens` with
+its component unchanged. Settings opens on the first section in its rail order,
+shop sections first and the user's Profile last.
 
 **Every tab, card and link repeats the existing visibility rule exactly**: permission
 plus shop flag. `SidebarVisibilityGuardTest` pins the sidebar's set of links. Ledger

@@ -165,11 +165,15 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Sales History</h1>
-            <x-ui.button href="{{ route('sales.index') }}" wire:navigate size="sm">New Sale</x-ui.button>
-        </div>
+        <x-ui.page-header>
+            Sales History
+            <x-slot:actions>
+                <x-ui.button href="{{ route('sales.index') }}" wire:navigate variant="accent" size="sm">New Sale</x-ui.button>
+            </x-slot:actions>
+        </x-ui.page-header>
     </x-slot>
+
+    <x-ui.module-tabs module="sales" label="Sales sections" />
 
     <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
