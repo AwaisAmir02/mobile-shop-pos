@@ -55,6 +55,7 @@
             ->map(fn ($item) => $item['route'] === 'marketing.posts' && $user?->hasAccessTo('marketing-analytics') ? array_merge($item, ['route' => 'marketing.index']) : $item)
             ->map(fn ($item) => $item['route'] === 'marketing.posts' && ! $user?->hasAccessTo('marketing') && $user?->hasAccessTo('marketing-ads') && $user?->shop?->ads_enabled ? array_merge($item, ['route' => 'marketing.ads']) : $item)
             ->reject(fn ($item) => $item['route'] === 'marketing.ads' && ! $user?->shop?->ads_enabled)
+            ->reject(fn ($item) => $item['route'] === 'marketing.posts' && ! $user?->hasAccessTo('marketing'))
             ->all();
 
     $icons = [
@@ -117,7 +118,7 @@
     x-show="sidebarOpen"
     x-cloak
     x-on:click="sidebarOpen = false"
-    class="fixed inset-0 z-40 bg-slate-900/50 lg:hidden"
+    class="fixed inset-0 z-40 bg-scrim/50 lg:hidden"
 ></div>
 
 <aside
@@ -172,14 +173,14 @@
     }"
     x-on:keydown.window.ctrl.k.prevent="jump()"
     x-on:keydown.window.meta.k.prevent="jump()"
-    class="sb-aside fixed inset-y-0 left-0 z-50 flex w-72 -translate-x-full flex-col bg-brand-950 text-brand-100 transition-transform duration-200 lg:w-64 lg:translate-x-0"
+    class="sb-aside fixed inset-y-0 left-0 z-50 flex w-72 -translate-x-full flex-col border-r border-line bg-surface text-ink-muted transition-transform duration-200 lg:w-64 lg:translate-x-0"
     :class="sidebarOpen && '!translate-x-0'"
 >
-    <div class="sb-brand flex h-14 shrink-0 items-center gap-2.5 px-4">
-        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white p-1">
+    <div class="sb-brand flex h-16 shrink-0 items-center gap-2.5 px-4">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white p-1 ring-1 ring-line">
             <x-application-logo class="h-full w-full object-contain" />
         </span>
-        <span class="sb-label truncate text-base font-semibold text-white">
+        <span class="sb-label truncate text-lg font-extrabold tracking-tight text-ink">
             {{ Str::before(config('app.name'), 'O') }}<span class="text-accent-500">O</span>{{ Str::after(config('app.name'), 'O') }}
         </span>
     </div>
@@ -187,7 +188,7 @@
     <div class="sb-label shrink-0 px-3 pb-2">
         <label class="relative block">
             <span class="sr-only">Jump to a screen</span>
-            <svg class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <svg class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="{{ $icons['search'] }}" />
             </svg>
             <input
@@ -198,9 +199,9 @@
                 type="search"
                 autocomplete="off"
                 placeholder="Jump to…"
-                class="block w-full rounded-md border-0 bg-white/10 py-1.5 pl-8 pr-14 text-sm text-white placeholder:text-brand-300 focus:bg-white/15 focus:ring-1 focus:ring-accent-400 [&::-webkit-search-cancel-button]:hidden"
+                class="block w-full rounded-full border-0 bg-surface-sunken py-2 pl-8 pr-14 text-sm text-ink ring-1 ring-inset ring-line placeholder:text-ink-faint focus:bg-surface focus:ring-2 focus:ring-link [&::-webkit-search-cancel-button]:hidden"
             >
-            <kbd class="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded bg-white/10 px-1.5 py-0.5 font-sans text-[10px] font-medium text-brand-200 lg:block">Ctrl K</kbd>
+            <kbd class="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded-md bg-surface px-1.5 py-0.5 font-sans text-[10px] font-semibold text-ink-faint ring-1 ring-line lg:block">Ctrl K</kbd>
         </label>
     </div>
 
@@ -212,14 +213,14 @@
                         type="button"
                         x-on:click="toggleGroup('{{ $section['key'] }}')"
                         :aria-expanded="(! folded['{{ $section['key'] }}']).toString()"
-                        class="sb-label flex w-full items-center justify-between rounded px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-brand-400 hover:text-brand-200"
+                        class="sb-label flex w-full items-center justify-between rounded px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint hover:text-ink-muted"
                     >
                         {{ $section['label'] }}
                         <svg x-show="! query" class="h-3.5 w-3.5 transition-transform" :class="folded['{{ $section['key'] }}'] && '-rotate-90'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                         </svg>
                     </button>
-                    <div class="sb-divider mx-2 mb-2 hidden h-px bg-white/10"></div>
+                    <div class="sb-divider mx-2 mb-2 hidden h-px bg-line"></div>
                 @endif
 
                 <div class="sb-group-items space-y-0.5" x-show="query || ! folded['{{ $section['key'] }}']">
@@ -230,17 +231,17 @@
             </div>
         @endforeach
 
-        <p x-show="noMatches" x-cloak class="px-2.5 py-2 text-sm text-brand-300">No screen matches “<span x-text="query.trim()"></span>”.</p>
+        <p x-show="noMatches" x-cloak class="px-2.5 py-2 text-sm text-ink-faint">No screen matches “<span x-text="query.trim()"></span>”.</p>
     </nav>
 
-    <div class="shrink-0 space-y-0.5 border-t border-white/10 px-2.5 py-2">
+    <div class="shrink-0 space-y-0.5 border-t border-line px-2.5 py-2">
         @foreach ($pinned as $item)
             @include('components.layout.sidebar-link', ['item' => $item, 'icons' => $icons])
         @endforeach
 
         <div class="flex items-center gap-2 px-2.5 pt-1.5">
             @if ($user?->shop)
-                <p class="sb-label min-w-0 flex-1 truncate text-xs text-brand-300">{{ $user->shop->name }}</p>
+                <p class="sb-label min-w-0 flex-1 truncate text-xs font-medium text-ink-faint">{{ $user->shop->name }}</p>
             @else
                 <span class="sb-label flex-1"></span>
             @endif
@@ -249,7 +250,7 @@
                 x-on:click="toggleCollapsed()"
                 :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
                 :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-                class="sb-collapse hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-brand-300 hover:bg-white/10 hover:text-white lg:flex"
+                class="sb-collapse hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg text-ink-faint hover:bg-surface-sunken hover:text-ink lg:flex"
             >
                 <svg class="h-4 w-4 transition-transform" :class="collapsed && 'rotate-180'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />

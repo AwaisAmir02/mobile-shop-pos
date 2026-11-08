@@ -5,21 +5,23 @@
 ])
 
 @php
+    // Pills at page level; inside x-ui.table, app.css squares them off (.ui-table .ui-btn).
     $variants = [
-        'primary' => 'border-transparent bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 disabled:bg-brand-300 focus-visible:ring-brand-500',
-        'accent' => 'border-transparent bg-accent-600 text-white hover:bg-accent-700 active:bg-accent-800 disabled:bg-accent-300 focus-visible:ring-accent-500',
-        'secondary' => 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100 disabled:text-slate-400 focus-visible:ring-brand-500',
-        'danger' => 'border-transparent bg-red-600 text-white hover:bg-red-700 active:bg-red-800 disabled:bg-red-300 focus-visible:ring-red-500',
-        'ghost' => 'border-transparent bg-transparent text-slate-600 hover:bg-slate-100 active:bg-slate-200 focus-visible:ring-brand-500',
+        'primary' => 'border-transparent bg-primary text-on-primary shadow-soft hover:bg-primary-hover disabled:bg-primary/50',
+        // Orange is kept for New Sale and Complete Sale only (docs/design-system.md).
+        'accent' => 'border-transparent bg-sale font-bold text-sale-ink shadow-soft hover:bg-sale-hover disabled:bg-sale/50',
+        'secondary' => 'border-line bg-surface text-ink shadow-soft hover:border-line-strong hover:bg-surface-sunken disabled:text-ink-faint',
+        'danger' => 'border-transparent bg-danger-solid text-danger-solid-ink shadow-soft hover:bg-danger-solid/90 disabled:bg-danger-solid/50',
+        'ghost' => 'border-transparent bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink',
     ];
 
     $sizes = [
-        'sm' => 'px-3 py-[5px] text-sm gap-1.5 rounded-md',
-        'md' => 'px-3.5 py-2 text-sm gap-2 rounded-md',
-        'lg' => 'px-5 py-[9px] text-base gap-2 rounded-lg',
+        'sm' => 'px-3 py-[5px] text-sm gap-1.5',
+        'md' => 'px-4 py-2 text-sm gap-2',
+        'lg' => 'px-6 py-[9px] text-base gap-2',
     ];
 
-    $classes = 'inline-flex items-center justify-center border font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 '
+    $classes = 'ui-btn inline-flex items-center justify-center rounded-full border font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-link focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-70 '
         . ($variants[$variant] ?? $variants['primary']) . ' '
         . ($sizes[$size] ?? $sizes['md']);
 @endphp

@@ -260,9 +260,7 @@ new #[Layout('layouts.app')] #[Title('Bill Payment History')] class extends Comp
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold text-slate-900">Bill Payment History</h1>
-            <a href="{{ route('bills.index') }}" wire:navigate>
-                <x-ui.button size="sm">New Bill Payment</x-ui.button>
-            </a>
+            <x-ui.button href="{{ route('bills.index') }}" wire:navigate size="sm">New Bill Payment</x-ui.button>
         </div>
     </x-slot>
 
@@ -335,9 +333,7 @@ new #[Layout('layouts.app')] #[Title('Bill Payment History')] class extends Comp
             description="Completed bill payments will show up here."
         >
             <x-slot name="action">
-                <a href="{{ route('bills.index') }}" wire:navigate>
-                    <x-ui.button>New Bill Payment</x-ui.button>
-                </a>
+                <x-ui.button href="{{ route('bills.index') }}" wire:navigate>New Bill Payment</x-ui.button>
             </x-slot>
         </x-ui.empty-state>
     @else

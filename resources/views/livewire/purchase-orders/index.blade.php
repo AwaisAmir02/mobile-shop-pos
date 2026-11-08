@@ -60,7 +60,7 @@ new #[Layout('layouts.app')] #[Title('Purchase Orders')] class extends Component
                     <a href="{{ route('purchase-orders.receipts') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Goods Receipts →</a>
                 @endif
                 @if ($canCreate)
-                    <a href="{{ route('purchase-orders.create') }}" wire:navigate><x-ui.button size="sm">New Purchase Order</x-ui.button></a>
+                    <x-ui.button href="{{ route('purchase-orders.create') }}" wire:navigate size="sm">New Purchase Order</x-ui.button>
                 @endif
             </div>
         </div>

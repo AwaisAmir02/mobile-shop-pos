@@ -86,11 +86,11 @@
         x-on:keydown.escape="close()"
         :aria-expanded="open"
         aria-haspopup="listbox"
-        class="flex w-full items-center justify-between gap-2 rounded-md border border-slate-300 bg-white py-2 px-3 text-left text-base text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm"
+        class="flex w-full items-center justify-between gap-2 rounded-lg border border-line-strong bg-surface py-2 px-3 text-left text-base text-ink shadow-soft focus:border-link focus:outline-none focus:ring-1 focus:ring-link sm:text-sm"
     >
         <span class="truncate" x-text="selectedLabel"></span>
 
-        <svg class="h-5 w-5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <svg class="h-5 w-5 shrink-0 text-ink-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
         </svg>
     </button>
@@ -105,10 +105,10 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
-        class="absolute z-20 mt-1 w-full overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
+        class="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-line bg-surface-raised shadow-float"
         role="listbox"
     >
-        <div class="border-b border-slate-100 p-2">
+        <div class="border-b border-line p-2">
             <input
                 type="text"
                 x-ref="search"
@@ -119,11 +119,11 @@
                 x-on:keydown.enter.prevent="chooseHighlighted()"
                 x-on:keydown.escape="close()"
                 placeholder="Search…"
-                class="block w-full rounded-md border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                class="block w-full rounded-lg border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus:border-link focus:ring-link"
             >
         </div>
 
-        <div class="max-h-60 overflow-auto py-1">
+        <div class="max-h-60 overflow-auto p-1">
             <template x-for="(option, index) in filtered" :key="option.value">
                 <button
                     type="button"
@@ -131,10 +131,10 @@
                     :data-highlighted="highlighted === index"
                     x-on:click="select(option)"
                     x-on:mouseenter="highlighted = index"
-                    class="flex w-full items-center px-3 py-2 text-left text-sm"
+                    class="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-ink"
                     :class="{
-                        'bg-accent-500 text-white': highlighted === index && !option.create,
-                        'mt-1 border-t border-slate-100 pt-2.5 font-medium text-brand-700': option.create,
+                        'bg-primary-soft text-on-primary-soft': highlighted === index && !option.create,
+                        'mt-1 border-t border-line pt-2.5 font-semibold text-link': option.create,
                     }"
                 >
                     <span class="truncate" x-text="option.label"></span>
@@ -142,7 +142,7 @@
             </template>
 
             <template x-if="filtered.length === 0">
-                <p class="px-3.5 py-2 text-sm text-slate-400">No matches.</p>
+                <p class="px-3.5 py-2 text-sm text-ink-faint">No matches.</p>
             </template>
         </div>
     </div>

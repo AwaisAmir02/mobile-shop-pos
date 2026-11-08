@@ -14,13 +14,13 @@
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans text-slate-900 antialiased">
-        <div class="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-10">
+    <body data-app class="bg-page font-sans text-ink antialiased">
+        <div class="flex min-h-screen flex-col items-center justify-center bg-page px-4 py-10">
             <a href="/" class="flex items-center">
                 <img
                     src="{{ asset(config('branding.logo_horizontal')) }}"
@@ -31,7 +31,7 @@
             </a>
 
             <div class="mt-6 w-full sm:max-w-md">
-                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white px-6 py-8 shadow-card">
+                <div class="overflow-hidden rounded-2xl border border-line bg-surface px-6 py-8 shadow-float sm:px-8">
                     {{ $slot }}
                 </div>
             </div>

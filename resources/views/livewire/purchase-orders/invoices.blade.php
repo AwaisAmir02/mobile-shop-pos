@@ -74,7 +74,7 @@ new #[Layout('layouts.app')] #[Title('Vendor Invoices')] class extends Component
             <div class="flex items-center gap-4">
                 <a href="{{ route('purchase-orders.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">← Purchase Orders</a>
                 @if ($canCreate)
-                    <a href="{{ route('purchase-orders.invoices.create') }}" wire:navigate><x-ui.button size="sm">Record Invoice</x-ui.button></a>
+                    <x-ui.button href="{{ route('purchase-orders.invoices.create') }}" wire:navigate size="sm">Record Invoice</x-ui.button>
                 @endif
             </div>
         </div>

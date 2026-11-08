@@ -186,9 +186,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
                         </div>
                     </x-ui.table-cell>
                     <x-ui.table-cell align="right">
-                        <a href="{{ route('udhaar.show', $row['customer']) }}" wire:navigate>
-                            <x-ui.button size="sm" variant="ghost">View History</x-ui.button>
-                        </a>
+                        <x-ui.button href="{{ route('udhaar.show', $row['customer']) }}" wire:navigate size="sm" variant="ghost">View History</x-ui.button>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach

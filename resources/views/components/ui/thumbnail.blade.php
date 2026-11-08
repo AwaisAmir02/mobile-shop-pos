@@ -1,7 +1,7 @@
 @props(['src' => null, 'label' => '', 'color' => null])
 
 <div
-    {{ $attributes->class(['flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-xs font-semibold text-slate-500 ring-1 ring-slate-200']) }}
+    {{ $attributes->class(['flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-sunken text-xs font-semibold text-ink-faint ring-1 ring-line']) }}
     @if ($color && ! $src) style="background-color: {{ $color }}1a; color: {{ $color }};" @endif
 >
     @if ($src)

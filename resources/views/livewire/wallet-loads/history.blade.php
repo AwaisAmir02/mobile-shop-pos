@@ -270,9 +270,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold text-slate-900">Wallet Load History</h1>
-            <a href="{{ route('wallet-loads.index') }}" wire:navigate>
-                <x-ui.button size="sm">New Wallet Load</x-ui.button>
-            </a>
+            <x-ui.button href="{{ route('wallet-loads.index') }}" wire:navigate size="sm">New Wallet Load</x-ui.button>
         </div>
     </x-slot>
 
@@ -378,9 +376,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
             description="Completed wallet loads will show up here."
         >
             <x-slot name="action">
-                <a href="{{ route('wallet-loads.index') }}" wire:navigate>
-                    <x-ui.button>New Wallet Load</x-ui.button>
-                </a>
+                <x-ui.button href="{{ route('wallet-loads.index') }}" wire:navigate>New Wallet Load</x-ui.button>
             </x-slot>
         </x-ui.empty-state>
     @else

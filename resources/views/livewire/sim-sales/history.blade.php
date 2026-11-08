@@ -246,9 +246,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold text-slate-900">SIM Sale History</h1>
-            <a href="{{ route('sim-sales.index') }}" wire:navigate>
-                <x-ui.button size="sm">New SIM Sale</x-ui.button>
-            </a>
+            <x-ui.button href="{{ route('sim-sales.index') }}" wire:navigate size="sm">New SIM Sale</x-ui.button>
         </div>
     </x-slot>
 
@@ -312,9 +310,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
             description="Completed SIM sales will show up here."
         >
             <x-slot name="action">
-                <a href="{{ route('sim-sales.index') }}" wire:navigate>
-                    <x-ui.button>New SIM Sale</x-ui.button>
-                </a>
+                <x-ui.button href="{{ route('sim-sales.index') }}" wire:navigate>New SIM Sale</x-ui.button>
             </x-slot>
         </x-ui.empty-state>
     @else

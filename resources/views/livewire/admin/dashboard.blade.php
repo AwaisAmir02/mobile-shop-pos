@@ -34,14 +34,12 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold text-slate-900">Shops</h1>
-            <a href="{{ route('admin.shops.create') }}" wire:navigate>
-                <x-ui.button>
+            <x-ui.button href="{{ route('admin.shops.create') }}" wire:navigate>
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
                     Create Shop
                 </x-ui.button>
-            </a>
         </div>
     </x-slot>
 
@@ -69,9 +67,7 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
             description="Create your first shop to onboard a client."
         >
             <x-slot name="action">
-                <a href="{{ route('admin.shops.create') }}" wire:navigate>
-                    <x-ui.button>Create Shop</x-ui.button>
-                </a>
+                <x-ui.button href="{{ route('admin.shops.create') }}" wire:navigate>Create Shop</x-ui.button>
             </x-slot>
         </x-ui.empty-state>
     @else
@@ -105,9 +101,7 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
                     <x-ui.table-cell>{{ $shop->products_count }}</x-ui.table-cell>
                     <x-ui.table-cell>{{ $shop->users_count }}</x-ui.table-cell>
                     <x-ui.table-cell align="right">
-                        <a href="{{ route('admin.shops.show', $shop) }}" wire:navigate>
-                            <x-ui.button size="sm" variant="ghost">View</x-ui.button>
-                        </a>
+                        <x-ui.button href="{{ route('admin.shops.show', $shop) }}" wire:navigate size="sm" variant="ghost">View</x-ui.button>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach

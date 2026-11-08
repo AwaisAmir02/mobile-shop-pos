@@ -114,11 +114,9 @@ new #[Layout('layouts.app')] #[Title('Vendor Profile')] class extends Component
             @endif
 
             <div class="mt-4">
-                <a href="{{ route('stock-ins.history', ['vendorFilter' => $vendor->id]) }}" wire:navigate>
-                    <x-ui.button variant="secondary" class="w-full justify-center">
-                        View in Stock In History (Mark as Paid / Add Payment)
-                    </x-ui.button>
-                </a>
+                <x-ui.button href="{{ route('stock-ins.history', ['vendorFilter' => $vendor->id]) }}" wire:navigate variant="secondary" class="w-full justify-center">
+                    View in Stock In History (Mark as Paid / Add Payment)
+                </x-ui.button>
             </div>
         </x-ui.card>
     </div>

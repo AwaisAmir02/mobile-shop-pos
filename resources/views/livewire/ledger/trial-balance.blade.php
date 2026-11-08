@@ -82,7 +82,7 @@ new #[Layout('layouts.app')] #[Title('Trial Balance')] class extends Component
             This ledger was frozen on {{ $shop->ledger_frozen_at->format('d M Y') }}, so these figures no longer change. Nothing since then has been posted, and restarting needs a new setup.
             <div class="mt-2">
                 @if (auth()->user()->is_owner)
-                    <a href="{{ route('ledger.setup') }}" wire:navigate><x-ui.button type="button" size="sm" variant="secondary">Start a New Ledger</x-ui.button></a>
+                    <x-ui.button href="{{ route('ledger.setup') }}" wire:navigate type="button" size="sm" variant="secondary">Start a New Ledger</x-ui.button>
                 @endif
             </div>
         </div>
@@ -96,7 +96,7 @@ new #[Layout('layouts.app')] #[Title('Trial Balance')] class extends Component
         <x-ui.card title="Start the ledger">
             <p class="text-sm text-slate-600">From the day it starts, new records post to the ledger automatically. Your existing screens, dues and reports don't change.</p>
             @if (auth()->user()->is_owner)
-                <a href="{{ route('ledger.setup') }}" wire:navigate><x-ui.button type="button" class="mt-4">Set Up the Ledger</x-ui.button></a>
+                <x-ui.button href="{{ route('ledger.setup') }}" wire:navigate type="button" class="mt-4">Set Up the Ledger</x-ui.button>
             @endif
         </x-ui.card>
     @else

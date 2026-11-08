@@ -228,15 +228,17 @@ class SidebarVisibilityGuardTest extends TestCase
         $this->assertSameLinks(['Reports' => '/reports', 'Gross Profit' => '/gross-profit'], $links);
     }
 
-    public function test_marketing_ads_permission_with_ads_off_keeps_the_posts_target(): void
+    public function test_marketing_ads_permission_with_ads_off_shows_no_marketing_link(): void
     {
         $flags = array_values(array_diff(self::FLAGS, ['ads_enabled']));
 
-        $this->assertSameLinks(['Marketing' => '/marketing/posts'], $this->linksFor($this->staff(['marketing-ads'], $flags)));
+        // Fixed in design overhaul D1 with the owner's approval: this used to link
+        // to Posts, which the user can't open.
+        $this->assertSameLinks([], $this->linksFor($this->staff(['marketing-ads'], $flags)));
 
-        // Existing quirk, pinned rather than fixed: this link leads to a screen
-        // the user can't open. Changing it is a behaviour change for the owner.
+        // The screens themselves are still guarded as before.
         $this->get('/marketing/posts')->assertForbidden();
+        $this->get('/marketing/ads')->assertForbidden();
     }
 
     public function test_marketing_overview_wins_when_a_user_holds_several_marketing_permissions(): void

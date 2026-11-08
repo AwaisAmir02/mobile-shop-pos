@@ -109,7 +109,7 @@ new #[Layout('layouts.app')] #[Title('Ads')] class extends Component
                         <x-ui.table-cell class="tabular-nums">Rs {{ number_format($r['revenue']) }}</x-ui.table-cell>
                         <x-ui.table-cell class="tabular-nums">{{ $r['roas'] !== null ? $r['roas'].'×' : '—' }}</x-ui.table-cell>
                         <x-ui.table-cell align="right">
-                            <a href="{{ route('marketing.ads.show', $campaign) }}" wire:navigate><x-ui.button size="sm" variant="secondary">Open</x-ui.button></a>
+                            <x-ui.button href="{{ route('marketing.ads.show', $campaign) }}" wire:navigate size="sm" variant="secondary">Open</x-ui.button>
                         </x-ui.table-cell>
                     </x-ui.table-row>
                 @endforeach

@@ -103,11 +103,9 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Orders')] class extends Component
                         @endif
                     </x-ui.table-cell>
                     <x-ui.table-cell align="right">
-                        <a href="{{ route('whatsapp-orders.show', $order) }}" wire:navigate>
-                            <x-ui.button size="sm" variant="{{ $order->isDecidable() ? 'primary' : 'secondary' }}">
+                        <x-ui.button href="{{ route('whatsapp-orders.show', $order) }}" wire:navigate size="sm" variant="{{ $order->isDecidable() ? 'primary' : 'secondary' }}">
                                 {{ $order->isDecidable() ? 'Review' : 'View' }}
                             </x-ui.button>
-                        </a>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach

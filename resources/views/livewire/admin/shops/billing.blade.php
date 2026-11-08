@@ -291,9 +291,7 @@ new class extends Component
                                         @endif
                                         <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $invoice->id }})" class="text-red-600 hover:bg-red-50">Cancel</x-ui.button>
                                     @endif
-                                    <a href="{{ route('admin.shops.billing.invoices.pdf', ['shop' => $shop->id, 'invoice' => $invoice->id]) }}" target="_blank" rel="noopener">
-                                        <x-ui.button size="sm" variant="secondary">Download Invoice</x-ui.button>
-                                    </a>
+                                    <x-ui.button href="{{ route('admin.shops.billing.invoices.pdf', ['shop' => $shop->id, 'invoice' => $invoice->id]) }}" target="_blank" rel="noopener" size="sm" variant="secondary">Download Invoice</x-ui.button>
                                 </div>
                             </x-ui.table-cell>
                         </x-ui.table-row>

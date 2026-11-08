@@ -101,7 +101,7 @@ new #[Layout('layouts.app')] #[Title('Posts & Share kit')] class extends Compone
                         <x-ui.table-cell><x-ui.badge :variant="$post->status->badge()">{{ $post->status->label() }}</x-ui.badge></x-ui.table-cell>
                         <x-ui.table-cell>{{ $post->created_at->format('d M Y') }}</x-ui.table-cell>
                         <x-ui.table-cell align="right">
-                            <a href="{{ route('marketing.posts.show', $post) }}" wire:navigate><x-ui.button size="sm" variant="secondary">Open</x-ui.button></a>
+                            <x-ui.button href="{{ route('marketing.posts.show', $post) }}" wire:navigate size="sm" variant="secondary">Open</x-ui.button>
                         </x-ui.table-cell>
                     </x-ui.table-row>
                 @endforeach

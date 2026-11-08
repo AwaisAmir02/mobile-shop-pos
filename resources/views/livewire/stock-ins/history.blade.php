@@ -302,9 +302,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                     <a href="{{ route('purchase-orders.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Purchase Orders →</a>
                 @endif
                 <a href="{{ route('stock-ins.write-offs') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Write-offs →</a>
-                <a href="{{ route('stock-ins.index') }}" wire:navigate>
-                    <x-ui.button size="sm">Add Stock</x-ui.button>
-                </a>
+                <x-ui.button href="{{ route('stock-ins.index') }}" wire:navigate size="sm">Add Stock</x-ui.button>
             </div>
         </div>
     </x-slot>
@@ -391,9 +389,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             description="Entries logged from the Stock In screen will show up here."
         >
             <x-slot name="action">
-                <a href="{{ route('stock-ins.index') }}" wire:navigate>
-                    <x-ui.button>Add Stock</x-ui.button>
-                </a>
+                <x-ui.button href="{{ route('stock-ins.index') }}" wire:navigate>Add Stock</x-ui.button>
             </x-slot>
         </x-ui.empty-state>
     @else
@@ -454,9 +450,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                                 @endif
                                 @if (auth()->user()->hasAccessTo('stock-ins-edit-cancel'))
                                     @if ($entry->quantity_remaining > 0 && $entry->product_id !== null)
-                                        <a href="{{ route('stock-ins.write-offs', ['batch' => $entry->id]) }}" wire:navigate>
-                                            <x-ui.button size="sm" variant="ghost">Write off</x-ui.button>
-                                        </a>
+                                        <x-ui.button href="{{ route('stock-ins.write-offs', ['batch' => $entry->id]) }}" wire:navigate size="sm" variant="ghost">Write off</x-ui.button>
                                     @endif
                                     <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $entry->id }})">
                                         Edit

@@ -167,9 +167,7 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold text-slate-900">Sales History</h1>
-            <a href="{{ route('sales.index') }}" wire:navigate>
-                <x-ui.button size="sm">New Sale</x-ui.button>
-            </a>
+            <x-ui.button href="{{ route('sales.index') }}" wire:navigate size="sm">New Sale</x-ui.button>
         </div>
     </x-slot>
 
@@ -210,9 +208,7 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
             description="Completed sales will show up here."
         >
             <x-slot name="action">
-                <a href="{{ route('sales.index') }}" wire:navigate>
-                    <x-ui.button>New Sale</x-ui.button>
-                </a>
+                <x-ui.button href="{{ route('sales.index') }}" wire:navigate>New Sale</x-ui.button>
             </x-slot>
         </x-ui.empty-state>
     @else
@@ -249,9 +245,7 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
                                     </x-ui.button>
                                 @endif
                                 @if (auth()->user()->hasAccessTo('sales-edit-cancel'))
-                                    <a href="{{ route('sales.edit', $sale) }}" wire:navigate>
-                                        <x-ui.button size="sm" variant="ghost">Edit</x-ui.button>
-                                    </a>
+                                    <x-ui.button href="{{ route('sales.edit', $sale) }}" wire:navigate size="sm" variant="ghost">Edit</x-ui.button>
                                     <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $sale->id }})" class="text-red-600 hover:bg-red-50">
                                         Delete
                                     </x-ui.button>

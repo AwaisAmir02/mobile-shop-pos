@@ -149,9 +149,7 @@ new #[Layout('layouts.app')] #[Title('Expiring & Expired')] class extends Compon
                                     @if ($canEdit)
                                         <div class="flex justify-end gap-2">
                                             <x-ui.button size="sm" variant="ghost" wire:click="openDate({{ $batch->id }})">{{ $batch->expiry_date ? 'Change date' : 'Set date' }}</x-ui.button>
-                                            <a href="{{ route('stock-ins.write-offs', ['batch' => $batch->id]) }}" wire:navigate>
-                                                <x-ui.button size="sm" variant="ghost" @class(['text-red-600 hover:bg-red-50' => $section === 'expired'])>Write off</x-ui.button>
-                                            </a>
+                                            <x-ui.button href="{{ route('stock-ins.write-offs', ['batch' => $batch->id]) }}" wire:navigate size="sm" variant="ghost" @class(['text-red-600 hover:bg-red-50' => $section === 'expired'])>Write off</x-ui.button>
                                         </div>
                                     @endif
                                 </x-ui.table-cell>

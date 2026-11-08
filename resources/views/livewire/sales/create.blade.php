@@ -627,6 +627,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                         wire:click="completeSale"
                         wire:loading.attr="disabled"
                         wire:target="completeSale"
+                        variant="accent"
                         size="lg"
                         class="w-full justify-center sm:w-auto"
                     >

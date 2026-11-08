@@ -5,8 +5,8 @@ overhaul stages D0 to D10. It's for anyone changing a screen. If a screen needs
 something this doesn't cover, add it here and to the shared kit rather than styling
 one page by hand.
 
-**Status:** agreed at D0, built from D1 onward. Sections describe the target, and
-nothing here exists in the code until its stage ships.
+**Status:** agreed at D0. Colour tokens, type and the restyled kit and shell are
+built (D1). Other sections describe the target until their stage ships.
 
 **The one hard rule:** this is a visual and navigation pass. Actions, Models, FIFO,
 dues and ledger logic don't change. Volt components keep their public properties and
@@ -50,27 +50,33 @@ text and control edges.
 | `line` | Dividers, card borders | `#e2e8f0` | `#26334a` | decorative |
 | `line-strong` | Input and control edges | `#8a94a6` | `#64768f` | 3.06 / 3.75 |
 | `ink` | Main text and numbers | `#0f172a` | `#e8edf5` | 17.85 / 14.81 |
-| `ink-muted` | Secondary text, nav items | `#475569` | `#a7b4c7` | 7.58 / 8.29 |
-| `ink-faint` | Hints, captions, placeholders | `#64748b` | `#8c9bb1` | 4.76 / 6.17 |
+| `ink-muted` | Body text in tables and forms, nav items | `#334155` | `#b6c2d3` | 10.35 / 9.65 |
+| `ink-faint` | Hints, captions, placeholders, table headers | `#5f6f86` | `#8c9bb1` | 4.67 on `surface-sunken` / 6.36 |
 | `primary` | Everyday primary button | `#0033a9` | `#8ca3d8` | |
 | `primary-hover` | Its hover | `#012d8e` | `#b3c2e5` | |
 | `on-primary` | Text on primary | `#ffffff` | `#021b3c` | 10.26 / 6.81 |
 | `link` | Links, focus rings | `#0033a9` | `#b3c2e5` | 10.26 / 9.75 |
-| `nav-active` | Active sidebar item fill | `#f0f3fa` | `#1b2c52` | |
-| `on-nav-active` | Active sidebar item text | `#012d8e` | `#d9e0f2` | 10.70 / 10.40 |
-| `sale` | New Sale and Complete Sale only | `#d65002` | `#d65002` | 4.19 / 4.19, large text only |
+| `primary-soft` | Active sidebar item, highlighted option, avatar | `#f0f3fa` | `#1b2c52` | |
+| `on-primary-soft` | Text on it | `#012d8e` | `#d9e0f2` | 10.70 / 10.40 |
+| `emphasis`, `emphasis-ink`, `emphasis-muted` | The one navy headline stat | `#021b3c`, white, `#b3c2e5` | `#1b2c52`, white, `#b3c2e5` | 9.61 / 7.70 for muted |
+| `sale` | New Sale and Complete Sale only | `#cc4a02` | `#cc4a02` | 4.62 / 4.62 |
 | `sale-hover` | Their hover | `#ab3e02` | `#ab3e02` | 6.14 / 6.14 |
-| `on-sale` | Text on sale | `#ffffff` | `#ffffff` | |
+| `sale-ink` | Text on sale | `#ffffff` | `#ffffff` | |
 | `success`, `success-soft` | Paid, settled | `#047857` on `#ecfdf5` | `#6ee7b7` on `#10291f` | 5.21 / 10.14 |
 | `warning`, `warning-soft` | Partial, expiring | `#92400e` on `#fffbeb` | `#fcd34d` on `#2b2110` | 6.84 / 10.97 |
 | `danger`, `danger-soft` | Unpaid, destructive | `#b91c1c` on `#fef2f2` | `#fca5a5` on `#2f1616` | 5.91 / 8.87 |
 | `info`, `info-soft` | Neutral notices | `#012d8e` on `#f0f3fa` | `#b3c2e5` on `#16264a` | 10.70 / 8.34 |
-| `danger-solid` | Destructive button | `#dc2626`, white text | `#fca5a5`, `#2f1616` text | 4.83 / 8.87 |
+| `danger-solid`, `danger-solid-ink` | Destructive button | `#dc2626`, white text | `#fca5a5`, `#2f1616` text | 4.83 / 8.87 |
 
-**Why the sale button is `accent-600`, not the site's `accent-500`:** white on
-`#fe6402` is 2.98:1, just short of the 3:1 large-text minimum. `#d65002` passes at
-4.19:1 and is what `x-ui.button variant="accent"` and the sidebar's active item
-already use. The marketing site keeps `accent-500`.
+Plus `scrim` (modal backdrop) and `shadow` (tints `shadow-soft` and `shadow-float`).
+In Tailwind they're written `bg-surface`, `text-ink-muted`, `border-line-strong`,
+`bg-primary-soft`, `text-sale-ink` and so on.
+
+**Why the sale orange is `#cc4a02`, not the site's `accent-500`:** white on
+`#fe6402` is 2.98:1, short even of the 3:1 large-text minimum, and `accent-600`
+(4.19:1) only passes for large text, so a normal-size New Sale button would fail.
+`#cc4a02` passes the full 4.5:1 at any size and still reads as the brand orange. The
+marketing site keeps `accent-500`, and the wordmark's orange O is part of the logo.
 
 ### Keeping it honest
 
@@ -79,27 +85,30 @@ neutrals (`text-slate-500`, `bg-white`), 417 status colours and 363 brand or acc
 The marketing site holds about 408 and **has no tokens at all**, so there was nothing
 to inherit from it.
 
-- D1 converts the shared kit and shell to tokens and adds a ratchet test recording
-  the current raw-colour count. The count may only go down.
+- D1 converted the shared kit and shell to tokens (2,263 down to 1,999).
+  `DesignTokenRatchetTest` holds the count exactly at its budget, so it can only go
+  down, and each stage lowers the budget in its own commit. It also keeps the kit and
+  shell free of raw colours, apart from a few listed exceptions such as the logo.
 - Each later stage converts every screen it touches.
 - `resources/views/site/*` and `components/site/*` are outside the count. Whether the
   site gets a dark mode is a separate decision for when dark mode is built.
 - Must stay light whatever the theme: PDFs, printed invoices, emails. The logo sits
   on a white tile so it works on both.
 
-Things that would otherwise break dark mode later, handled in D1: the base focus
-ring's `ring-offset-white`, `@tailwindcss/forms` default field colours, inline chart
-colours, and `shadow-*` values that need a dark equivalent.
+Handled in D1: the app's focus ring (`[data-app] :focus-visible`, so the site keeps
+its own), the kit's field colours and shadows. Still to do as their screens come up:
+hand-written fields that set their own `border-slate-300`, the dashboard chart's
+inline colours, and the Breeze auth pages' own inputs.
 
 ## Type, shape and elevation
 
-Taken from the marketing site. Font is Figtree. The app layouts must load weight 800,
-which they don't today (they stop at 700).
+Taken from the marketing site. Font is Figtree, with weight 800 loaded by the app and
+guest layouts since D1.
 
 | Element | Style |
 |---|---|
-| Page title | 24px, `font-extrabold tracking-tight`, replacing the 18px rule in `.app-header h1` |
-| Section label | `text-xs uppercase tracking-[0.18em]`, in `ink-faint`, not orange |
+| Page title | 22px extrabold, tight, set once by `.app-header h1` in app.css, in a 64px top bar |
+| Section label | `text-xs uppercase`, light tracking, in `ink-faint`, not orange |
 | Money and counts | `tabular-nums`, never wrapping. Records stay `Rs 1,234.00` |
 | Cards | `rounded-2xl`, `line` border, flat |
 | Floating (menus, modals) | `surface-raised`, soft large shadow, hairline ring |

@@ -5,12 +5,12 @@
         <x-ui.label :for="$for ?? $name" :value="$label" :required="$required" />
     @endif
 
-    <div @if ($label) class="mt-1" @endif>
+    <div @if ($label) class="mt-1.5" @endif>
         {{ $slot }}
     </div>
 
     @if ($help && ! ($name && $errors->has($name)))
-        <p class="mt-1 text-sm text-slate-500">{{ $help }}</p>
+        <p class="mt-1 text-sm text-ink-faint">{{ $help }}</p>
     @endif
 
     @if ($name)

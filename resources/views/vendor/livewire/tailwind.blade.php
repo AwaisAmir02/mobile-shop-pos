@@ -11,9 +11,9 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
     JS
     : '';
 
-$pagerBase = 'relative inline-flex h-9 items-center justify-center rounded-md border px-3 text-sm font-medium';
-$pagerIdle = 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100 focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors';
-$pagerOff = 'cursor-default border-slate-200 bg-white text-slate-300';
+$pagerBase = 'relative inline-flex h-9 items-center justify-center rounded-lg border px-3 text-sm font-medium';
+$pagerIdle = 'border-line bg-surface text-ink-muted hover:bg-surface-sunken hover:text-ink focus:z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-link transition-colors';
+$pagerOff = 'cursor-default border-line bg-surface text-ink-faint/50';
 @endphp
 
 <div>
@@ -32,8 +32,8 @@ $pagerOff = 'cursor-default border-slate-200 bg-white text-slate-300';
                     @endif
                 </span>
 
-                <p class="text-sm tabular-nums text-slate-600">
-                    Page <span class="font-semibold text-slate-900">{{ $paginator->currentPage() }}</span> of <span class="font-semibold text-slate-900">{{ $paginator->lastPage() }}</span>
+                <p class="text-sm tabular-nums text-ink-faint">
+                    Page <span class="font-semibold text-ink">{{ $paginator->currentPage() }}</span> of <span class="font-semibold text-ink">{{ $paginator->lastPage() }}</span>
                 </p>
 
                 <span>
@@ -51,13 +51,13 @@ $pagerOff = 'cursor-default border-slate-200 bg-white text-slate-300';
 
             <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between sm:gap-4">
                 <div>
-                    <p class="text-sm tabular-nums text-slate-600">
+                    <p class="text-sm tabular-nums text-ink-faint">
                         <span>{!! __('Showing') !!}</span>
-                        <span class="font-semibold text-slate-900">{{ $paginator->firstItem() }}</span>
+                        <span class="font-semibold text-ink">{{ $paginator->firstItem() }}</span>
                         <span>{!! __('to') !!}</span>
-                        <span class="font-semibold text-slate-900">{{ $paginator->lastItem() }}</span>
+                        <span class="font-semibold text-ink">{{ $paginator->lastItem() }}</span>
                         <span>{!! __('of') !!}</span>
-                        <span class="font-semibold text-slate-900">{{ $paginator->total() }}</span>
+                        <span class="font-semibold text-ink">{{ $paginator->total() }}</span>
                         <span>{!! __('results') !!}</span>
                     </p>
                 </div>
@@ -88,7 +88,7 @@ $pagerOff = 'cursor-default border-slate-200 bg-white text-slate-300';
                             {{-- "Three Dots" Separator --}}
                             @if (is_string($element))
                                 <span aria-disabled="true">
-                                    <span class="relative inline-flex h-9 min-w-9 cursor-default items-center justify-center px-1 text-sm text-slate-400">{{ $element }}</span>
+                                    <span class="relative inline-flex h-9 min-w-9 cursor-default items-center justify-center px-1 text-sm text-ink-faint">{{ $element }}</span>
                                 </span>
                             @endif
 
@@ -98,7 +98,7 @@ $pagerOff = 'cursor-default border-slate-200 bg-white text-slate-300';
                                     <span wire:key="paginator-{{ $paginator->getPageName() }}-page{{ $page }}">
                                         @if ($page == $paginator->currentPage())
                                             <span aria-current="page">
-                                                <span class="{{ $pagerBase }} min-w-9 cursor-default border-brand-600 bg-brand-600 tabular-nums text-white">{{ $page }}</span>
+                                                <span class="{{ $pagerBase }} min-w-9 cursor-default border-primary bg-primary tabular-nums text-on-primary">{{ $page }}</span>
                                             </span>
                                         @else
                                             <button type="button" wire:click="gotoPage({{ $page }}, '{{ $paginator->getPageName() }}')" x-on:click="{{ $scrollIntoViewJsSnippet }}" class="{{ $pagerBase }} {{ $pagerIdle }} min-w-9 tabular-nums" aria-label="{{ __('Go to page :page', ['page' => $page]) }}">

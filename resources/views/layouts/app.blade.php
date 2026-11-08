@@ -14,7 +14,7 @@
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -24,7 +24,7 @@
             try { if (localStorage.getItem('hok.sidebar') === 'collapsed') document.documentElement.dataset.sidebar = 'collapsed'; } catch (e) {}
         </script>
     </head>
-    <body class="font-sans text-slate-900 antialiased">
+    <body data-app class="bg-page font-sans text-ink antialiased">
         {{-- wire:navigate copies the new page's <html> attributes over the old ones, dropping
              data-sidebar. Livewire re-runs body scripts during the swap (before Alpine and before
              paint), so re-apply it here too. --}}
@@ -41,18 +41,18 @@
                     try { localStorage.setItem('hok.sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
                 },
             }"
-            class="flex min-h-screen bg-slate-50"
+            class="flex min-h-screen bg-page"
         >
             <x-layout.sidebar />
 
             <div class="sb-main flex min-w-0 flex-1 flex-col lg:pl-64">
-                <header class="app-header sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-                    <div class="flex min-h-14 items-center gap-3 px-4 sm:px-6 lg:px-8">
+                <header class="app-header sticky top-0 z-30 border-b border-line bg-surface/90 backdrop-blur">
+                    <div class="flex min-h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
                         <button
                             x-on:click="sidebarOpen = true"
                             type="button"
                             aria-label="Open menu"
-                            class="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
+                            class="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-faint hover:bg-surface-sunken hover:text-ink lg:hidden"
                         >
                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />

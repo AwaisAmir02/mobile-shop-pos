@@ -317,7 +317,7 @@ new #[Layout('layouts.app')] #[Title('Repairs')] class extends Component
                         </x-ui.field>
                     </div>
 
-                    <x-ui.field label="Description" name="description" for="description" help="What is it, and what's the issue? e.g. &quot;iPhone 13, screen cracked&quot;">
+                    <x-ui.field label="Description" name="description" for="description" help="What is it, and what's the issue? e.g. “iPhone 13, screen cracked”">
                         <textarea
                             wire:model="description"
                             id="description"

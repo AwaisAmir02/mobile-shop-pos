@@ -109,7 +109,7 @@ new #[Layout('layouts.app')] #[Title('Marketing')] class extends Component
         @if ($topPosts->isEmpty())
             <x-ui.empty-state title="No posts yet" description="Create a post from a product in Posts & Share kit — every post gets a REF code so you can see which ones bring real orders.">
                 <x-slot name="action">
-                    <a href="{{ route('marketing.posts') }}" wire:navigate><x-ui.button>Create a post</x-ui.button></a>
+                    <x-ui.button href="{{ route('marketing.posts') }}" wire:navigate>Create a post</x-ui.button>
                 </x-slot>
             </x-ui.empty-state>
         @else

@@ -57,13 +57,13 @@
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
     >
-        <div class="absolute inset-0 bg-brand-950/60"></div>
+        <div class="absolute inset-0 bg-scrim/60 backdrop-blur-[2px]"></div>
     </div>
 
     <div class="flex min-h-full items-center justify-center p-4 py-6">
         <div
             x-show="show"
-            class="relative transform rounded-lg bg-white shadow-xl transition-all sm:w-full {{ $maxWidth }}"
+            class="relative transform rounded-2xl bg-surface-raised shadow-float transition-all sm:w-full {{ $maxWidth }}"
             x-transition:enter="ease-out duration-150"
             x-transition:enter-start="translate-y-4 opacity-0 sm:translate-y-0 sm:scale-95"
             x-transition:enter-end="translate-y-0 opacity-100 sm:scale-100"

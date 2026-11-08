@@ -111,9 +111,7 @@ new #[Layout('layouts.app')] #[Title('Online Store Orders')] class extends Compo
                         @endif
                     </x-ui.table-cell>
                     <x-ui.table-cell align="right">
-                        <a href="{{ route('online-orders.show', $order) }}" wire:navigate>
-                            <x-ui.button size="sm" variant="{{ $order->isDecidable() ? 'primary' : 'secondary' }}">{{ $order->isDecidable() ? 'Review' : 'View' }}</x-ui.button>
-                        </a>
+                        <x-ui.button href="{{ route('online-orders.show', $order) }}" wire:navigate size="sm" variant="{{ $order->isDecidable() ? 'primary' : 'secondary' }}">{{ $order->isDecidable() ? 'Review' : 'View' }}</x-ui.button>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach

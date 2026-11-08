@@ -85,9 +85,7 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
             <x-slot name="actions">
                 <div class="flex gap-2">
                     @if (! $sale->isCancelled() && auth()->user()->hasAccessTo('sales-edit-cancel'))
-                        <a href="{{ route('sales.edit', $sale) }}" wire:navigate>
-                            <x-ui.button variant="secondary" size="sm">Edit</x-ui.button>
-                        </a>
+                        <x-ui.button href="{{ route('sales.edit', $sale) }}" wire:navigate variant="secondary" size="sm">Edit</x-ui.button>
                         <x-ui.button wire:click="openCancel" variant="secondary" size="sm" class="text-red-600 hover:bg-red-50">
                             Delete
                         </x-ui.button>

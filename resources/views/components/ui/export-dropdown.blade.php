@@ -12,13 +12,13 @@
         x-show="open"
         x-cloak
         x-transition
-        class="absolute right-0 z-40 mt-2 w-40 rounded-xl border border-slate-200 bg-white py-1.5 shadow-card"
+        class="absolute right-0 z-40 mt-2 w-44 rounded-xl border border-line bg-surface-raised p-1.5 shadow-float"
     >
         <button
             type="button"
             wire:click="{{ $pdfAction }}"
             x-on:click="open = false"
-            class="block w-full px-4 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            class="block w-full rounded-lg px-3 py-2 text-left text-sm text-ink-muted hover:bg-surface-sunken hover:text-ink"
         >
             Export as PDF
         </button>
@@ -26,7 +26,7 @@
             type="button"
             wire:click="{{ $excelAction }}"
             x-on:click="open = false"
-            class="block w-full px-4 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            class="block w-full rounded-lg px-3 py-2 text-left text-sm text-ink-muted hover:bg-surface-sunken hover:text-ink"
         >
             Export as Excel
         </button>

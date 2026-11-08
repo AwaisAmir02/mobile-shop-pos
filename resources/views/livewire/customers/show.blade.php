@@ -94,11 +94,9 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
             </div>
 
             <div class="mt-4">
-                <a href="{{ route('udhaar.show', $customer) }}" wire:navigate>
-                    <x-ui.button variant="secondary" class="w-full justify-center">
+                <x-ui.button href="{{ route('udhaar.show', $customer) }}" wire:navigate variant="secondary" class="w-full justify-center">
                         View Full Udhaar History
                     </x-ui.button>
-                </a>
             </div>
         </x-ui.card>
     </div>

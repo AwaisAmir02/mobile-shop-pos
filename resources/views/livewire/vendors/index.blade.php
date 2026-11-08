@@ -175,9 +175,7 @@ new #[Layout('layouts.app')] #[Title('Vendors')] class extends Component
                     <x-ui.table-cell>{{ $vendor->company_name ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell align="right">
                         <div class="flex justify-end gap-2">
-                            <a href="{{ route('vendors.show', $vendor) }}" wire:navigate>
-                                <x-ui.button size="sm" variant="ghost">View</x-ui.button>
-                            </a>
+                            <x-ui.button href="{{ route('vendors.show', $vendor) }}" wire:navigate size="sm" variant="ghost">View</x-ui.button>
                             <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $vendor->id }})">
                                 Edit
                             </x-ui.button>

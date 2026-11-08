@@ -232,9 +232,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold text-slate-900">Balance Load History</h1>
-            <a href="{{ route('balance-loads.index') }}" wire:navigate>
-                <x-ui.button size="sm">New Balance Load</x-ui.button>
-            </a>
+            <x-ui.button href="{{ route('balance-loads.index') }}" wire:navigate size="sm">New Balance Load</x-ui.button>
         </div>
     </x-slot>
 
@@ -296,9 +294,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
             description="Completed balance loads will show up here."
         >
             <x-slot name="action">
-                <a href="{{ route('balance-loads.index') }}" wire:navigate>
-                    <x-ui.button>New Balance Load</x-ui.button>
-                </a>
+                <x-ui.button href="{{ route('balance-loads.index') }}" wire:navigate>New Balance Load</x-ui.button>
             </x-slot>
         </x-ui.empty-state>
     @else

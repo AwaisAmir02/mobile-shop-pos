@@ -222,9 +222,7 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h1 class="text-xl font-semibold text-slate-900">NADRA Verification History</h1>
-            <a href="{{ route('nadra-verifications.index') }}" wire:navigate>
-                <x-ui.button size="sm">New Verification</x-ui.button>
-            </a>
+            <x-ui.button href="{{ route('nadra-verifications.index') }}" wire:navigate size="sm">New Verification</x-ui.button>
         </div>
     </x-slot>
 
@@ -279,9 +277,7 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
             description="Completed verifications will show up here."
         >
             <x-slot name="action">
-                <a href="{{ route('nadra-verifications.index') }}" wire:navigate>
-                    <x-ui.button>New Verification</x-ui.button>
-                </a>
+                <x-ui.button href="{{ route('nadra-verifications.index') }}" wire:navigate>New Verification</x-ui.button>
             </x-slot>
         </x-ui.empty-state>
     @else

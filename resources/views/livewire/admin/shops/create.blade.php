@@ -160,9 +160,7 @@ new #[Layout('layouts.app')] #[Title('Create Shop')] class extends Component
         </x-ui.card>
 
         <div class="flex justify-end gap-3">
-            <a href="{{ route('admin.dashboard') }}" wire:navigate>
-                <x-ui.button type="button" variant="secondary">Cancel</x-ui.button>
-            </a>
+            <x-ui.button href="{{ route('admin.dashboard') }}" wire:navigate type="button" variant="secondary">Cancel</x-ui.button>
 
             <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="save">
                 Create Shop

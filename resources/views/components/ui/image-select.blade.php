@@ -77,16 +77,16 @@
         :aria-expanded="open"
         aria-haspopup="listbox"
         :style="withColor && selected?.color ? `background-color: ${selected.color}0d` : ''"
-        class="flex w-full items-center gap-2.5 rounded-md border border-slate-300 bg-white py-2 px-3 text-left text-base text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 sm:text-sm"
+        class="flex w-full items-center gap-2.5 rounded-lg border border-line-strong bg-surface py-2 px-3 text-left text-base text-ink shadow-soft focus:border-link focus:outline-none focus:ring-1 focus:ring-link sm:text-sm"
     >
         <template x-if="selected">
             <span class="flex min-w-0 flex-1 items-center gap-2.5">
-                <span class="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200">
+                <span class="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-sunken ring-1 ring-line">
                     <template x-if="selected.image">
                         <img :src="selected.image" class="h-full w-full object-cover" alt="">
                     </template>
                     <template x-if="!selected.image">
-                        <span class="text-xs font-semibold text-slate-500" x-text="selected.label ? selected.label.charAt(0).toUpperCase() : '?'"></span>
+                        <span class="text-xs font-semibold text-ink-faint" x-text="selected.label ? selected.label.charAt(0).toUpperCase() : '?'"></span>
                     </template>
                 </span>
                 <span class="truncate" x-text="selected.label"></span>
@@ -96,10 +96,10 @@
             </span>
         </template>
         <template x-if="!selected">
-            <span class="flex-1 truncate text-slate-400">{{ $placeholder }}</span>
+            <span class="flex-1 truncate text-ink-faint">{{ $placeholder }}</span>
         </template>
 
-        <svg class="h-5 w-5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <svg class="h-5 w-5 shrink-0 text-ink-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
         </svg>
     </button>
@@ -114,10 +114,10 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
-        class="absolute z-20 mt-1 w-full overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg focus:outline-none"
+        class="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-line bg-surface-raised shadow-float focus:outline-none"
         role="listbox"
     >
-        <div class="border-b border-slate-100 p-2">
+        <div class="border-b border-line p-2">
             <input
                 type="text"
                 x-ref="search"
@@ -128,11 +128,11 @@
                 x-on:keydown.enter.prevent="chooseHighlighted()"
                 x-on:keydown.escape="close()"
                 placeholder="Search…"
-                class="block w-full rounded-md border-slate-200 px-2.5 py-1.5 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                class="block w-full rounded-lg border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus:border-link focus:ring-link"
             >
         </div>
 
-        <div class="max-h-60 overflow-auto py-1">
+        <div class="max-h-60 overflow-auto p-1">
         <template x-for="(option, index) in filtered" :key="option.value">
             <button
                 type="button"
@@ -140,27 +140,27 @@
                 :data-highlighted="highlighted === index"
                 x-on:click="select(option)"
                 x-on:mouseenter="highlighted = index"
-                class="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm"
+                class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-ink"
                 :class="{
-                    'bg-accent-500 text-white': highlighted === index && !(withColor && option.color),
-                    'mt-1 border-t border-slate-100 pt-2.5 font-medium text-brand-700': option.special,
+                    'bg-primary-soft text-on-primary-soft': highlighted === index && !(withColor && option.color),
+                    'mt-1 border-t border-line pt-2.5 font-semibold text-link': option.special,
                 }"
                 :style="withColor && option.color ? `background-color: ${option.color}${highlighted === index ? '2a' : '14'}` : ''"
             >
                 <template x-if="option.special">
-                    <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600">
+                    <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
                     </span>
                 </template>
                 <template x-if="!option.special">
-                    <span class="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200">
+                    <span class="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-sunken ring-1 ring-line">
                         <template x-if="option.image">
                             <img :src="option.image" class="h-full w-full object-cover" alt="">
                         </template>
                         <template x-if="!option.image">
-                            <span class="text-xs font-semibold text-slate-500" x-text="option.label ? option.label.charAt(0).toUpperCase() : '?'"></span>
+                            <span class="text-xs font-semibold text-ink-faint" x-text="option.label ? option.label.charAt(0).toUpperCase() : '?'"></span>
                         </template>
                     </span>
                 </template>
@@ -172,10 +172,10 @@
         </template>
 
         <template x-if="options.length === 0">
-            <p class="px-3.5 py-2 text-sm text-slate-400">No options available.</p>
+            <p class="px-3.5 py-2 text-sm text-ink-faint">No options available.</p>
         </template>
         <template x-if="options.length > 0 && filtered.length === 0">
-            <p class="px-3.5 py-2 text-sm text-slate-400">No matches.</p>
+            <p class="px-3.5 py-2 text-sm text-ink-faint">No matches.</p>
         </template>
         </div>
     </div>

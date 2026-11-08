@@ -11,18 +11,110 @@
         @apply ring-2 ring-brand-500 ring-offset-2 ring-offset-white;
     }
 
+    /* App design tokens: RGB triplets read by tailwind.config.js. Light is the only
+       theme in use; the dark set is ready for when dark mode is built and does
+       nothing until something sets data-theme="dark" on <html>. Contrast for every
+       text pair is recorded in docs/design-system.md. */
+    :root {
+        color-scheme: light;
+        --page: 248 250 252;
+        --surface: 255 255 255;
+        --surface-raised: 255 255 255;
+        --surface-sunken: 241 245 249;
+        --line: 226 232 240;
+        --line-strong: 138 148 166;
+        --ink: 15 23 42;
+        --ink-muted: 51 65 85;
+        --ink-faint: 95 111 134;
+        --primary: 0 51 169;
+        --primary-hover: 1 45 142;
+        --primary-soft: 240 243 250;
+        --on-primary: 255 255 255;
+        --on-primary-soft: 1 45 142;
+        --link: 0 51 169;
+        --emphasis: 2 27 60;
+        --on-emphasis: 255 255 255;
+        --on-emphasis-muted: 179 194 229;
+        --sale: 204 74 2;
+        --sale-hover: 171 62 2;
+        --on-sale: 255 255 255;
+        --success: 4 120 87;
+        --success-soft: 236 253 245;
+        --warning: 146 64 14;
+        --warning-soft: 255 251 235;
+        --danger: 185 28 28;
+        --danger-soft: 254 242 242;
+        --danger-solid: 220 38 38;
+        --on-danger-solid: 255 255 255;
+        --info: 1 45 142;
+        --info-soft: 240 243 250;
+        --scrim: 2 27 60;
+        --shadow: 2 27 60;
+    }
+
+    [data-theme='dark'] {
+        color-scheme: dark;
+        --page: 11 18 32;
+        --surface: 17 26 43;
+        --surface-raised: 23 34 54;
+        --surface-sunken: 14 23 38;
+        --line: 38 51 74;
+        --line-strong: 100 118 143;
+        --ink: 232 237 245;
+        --ink-muted: 182 194 211;
+        --ink-faint: 140 155 177;
+        --primary: 140 163 216;
+        --primary-hover: 179 194 229;
+        --primary-soft: 27 44 82;
+        --on-primary: 2 27 60;
+        --on-primary-soft: 217 224 242;
+        --link: 179 194 229;
+        --emphasis: 27 44 82;
+        --on-emphasis: 255 255 255;
+        --on-emphasis-muted: 179 194 229;
+        --sale: 204 74 2;
+        --sale-hover: 171 62 2;
+        --on-sale: 255 255 255;
+        --success: 110 231 183;
+        --success-soft: 16 41 31;
+        --warning: 252 211 77;
+        --warning-soft: 43 33 16;
+        --danger: 252 165 165;
+        --danger-soft: 47 22 22;
+        --danger-solid: 252 165 165;
+        --on-danger-solid: 47 22 22;
+        --info: 179 194 229;
+        --info-soft: 22 38 74;
+        --scrim: 0 0 0;
+        --shadow: 0 0 0;
+    }
+
+    /* The app's own focus ring; the marketing site keeps the rule above. */
+    [data-app] :focus-visible {
+        @apply ring-link ring-offset-surface;
+    }
+
     [x-cloak] {
         display: none !important;
     }
 }
 
-/* App shell: page titles sit in the sticky top bar, so keep them compact. */
+/* App shell: every screen's title sits in the sticky top bar. Set here once so the
+   screens' own h1 classes don't need touching. */
 .app-header h1 {
-    font-size: 1.125rem;
-    line-height: 1.75rem;
+    font-size: 1.375rem;
+    line-height: 1.875rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: rgb(var(--ink));
 }
 
-/* Sidebar menu scrollbar: thin, white-tinted on the navy background.
+/* Buttons are pills at page level and compact inside tables. */
+.ui-table .ui-btn {
+    border-radius: 0.5rem;
+}
+
+/* Sidebar menu scrollbar: thin and ink-tinted, so it follows the theme.
    Chromium/Safari use the ::-webkit pseudo-elements (setting the standard properties as
    well would make Chromium ignore them and draw its wider default), Firefox the standard
    properties. */
@@ -36,21 +128,21 @@
 
 .sb-scroll::-webkit-scrollbar-thumb {
     border-radius: 9999px;
-    background-color: rgb(255 255 255 / 0.16);
+    background-color: rgb(var(--ink) / 0.14);
 }
 
 .sb-scroll:hover::-webkit-scrollbar-thumb {
-    background-color: rgb(255 255 255 / 0.28);
+    background-color: rgb(var(--ink) / 0.24);
 }
 
 .sb-scroll::-webkit-scrollbar-thumb:active {
-    background-color: rgb(255 255 255 / 0.4);
+    background-color: rgb(var(--ink) / 0.34);
 }
 
 @supports (-moz-appearance: none) {
     .sb-scroll {
         scrollbar-width: thin;
-        scrollbar-color: rgb(255 255 255 / 0.22) transparent;
+        scrollbar-color: rgb(var(--ink) / 0.2) transparent;
     }
 }
 

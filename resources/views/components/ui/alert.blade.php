@@ -7,10 +7,10 @@
 
 @php
     $variants = [
-        'info' => ['box' => 'border-sky-200 bg-sky-50 text-sky-900', 'icon' => 'text-sky-600'],
-        'success' => ['box' => 'border-emerald-200 bg-emerald-50 text-emerald-900', 'icon' => 'text-emerald-600'],
-        'warning' => ['box' => 'border-amber-200 bg-amber-50 text-amber-900', 'icon' => 'text-amber-600'],
-        'danger' => ['box' => 'border-red-200 bg-red-50 text-red-800', 'icon' => 'text-red-600'],
+        'info' => ['box' => 'border-info/15 bg-info-soft text-ink', 'icon' => 'text-info'],
+        'success' => ['box' => 'border-success/20 bg-success-soft text-ink', 'icon' => 'text-success'],
+        'warning' => ['box' => 'border-warning/20 bg-warning-soft text-ink', 'icon' => 'text-warning'],
+        'danger' => ['box' => 'border-danger/20 bg-danger-soft text-ink', 'icon' => 'text-danger'],
     ];
     $tone = $variants[$variant] ?? $variants['info'];
 
@@ -26,7 +26,7 @@
     'flex gap-3 text-sm',
     $tone['box'],
     'border-b px-4 py-2.5 sm:px-6 lg:px-8' => $flush,
-    'rounded-lg border p-3.5' => ! $flush,
+    'rounded-xl border p-3.5' => ! $flush,
 ]) }}>
     <svg class="mt-px h-5 w-5 shrink-0 {{ $tone['icon'] }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" d="{{ $icons[$variant] ?? $icons['info'] }}" />
