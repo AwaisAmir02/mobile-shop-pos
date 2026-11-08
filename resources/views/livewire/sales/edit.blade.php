@@ -313,187 +313,134 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
     </x-slot>
 
     @if ($this->alreadyPaid() > 0)
-        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <x-ui.alert variant="warning" class="mb-4">
             Rs {{ number_format($this->alreadyPaid(), 2) }} has already been paid against this sale. The new total cannot be less than that.
-        </div>
+        </x-ui.alert>
     @endif
 
     @foreach (['total', 'lines', 'customerId'] as $field)
         @error($field)
-            <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ $message }}</div>
+            <x-ui.alert variant="danger" class="mb-4">{{ $message }}</x-ui.alert>
         @enderror
     @endforeach
 
+    @php($lineCount = count($cart) + count($legacyItems))
+
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div class="lg:col-span-2">
+        <div class="min-w-0 lg:col-span-2">
             <x-ui.card :padding="false">
-                <div class="p-5">
-                    <x-ui.input
-                        wire:model.live.debounce.250ms="search"
-                        type="search"
-                        placeholder="Search by product name to add a line…"
-                        class="text-base"
-                    />
+                <div class="p-4 sm:p-5">
+                    <div class="relative">
+                        <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                        </svg>
+                        <x-ui.input
+                            wire:model.live.debounce.250ms="search"
+                            type="search"
+                            placeholder="Search by product name to add a line…"
+                            aria-label="Search products"
+                            class="h-12 rounded-xl pl-12 text-base"
+                        />
+                    </div>
 
                     @if ($search !== '')
-                        <div class="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200">
+                        <div class="mt-3 divide-y divide-line overflow-hidden rounded-xl border border-line">
                             @forelse ($results as $product)
                                 <button
                                     type="button"
                                     wire:click="addToCart({{ $product->id }})"
                                     wire:key="result-{{ $product->id }}"
-                                    class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50"
+                                    class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-surface-sunken"
                                 >
                                     <div class="flex items-center gap-3">
                                         <x-ui.thumbnail :src="$product->imageUrl()" :label="$product->name" />
                                         <div>
-                                            <p class="text-sm font-medium text-slate-900">{{ $product->name }}</p>
-                                            <p class="text-xs text-slate-400">{{ $product->typeLabel() }} · {{ $product->stockLabel() }} in stock</p>
+                                            <p class="text-sm font-semibold text-ink">{{ $product->name }}</p>
+                                            <p class="text-xs text-ink-faint">{{ $product->typeLabel() }} · {{ $product->stockLabel() }} in stock</p>
                                         </div>
                                     </div>
-                                    <span class="text-sm font-semibold text-slate-700">Rs {{ number_format($product->currentSellingPrice(), 2) }}{{ $product->unit->perSuffix() }}</span>
+                                    <span class="text-sm font-bold tabular-nums text-ink">Rs {{ number_format($product->currentSellingPrice(), 2) }}{{ $product->unit->perSuffix() }}</span>
                                 </button>
                             @empty
-                                <p class="px-4 py-3 text-sm text-slate-400">No in-stock products match "{{ $search }}".</p>
+                                <p class="px-4 py-3 text-sm text-ink-faint">No in-stock products match "{{ $search }}".</p>
                             @endforelse
                         </div>
                     @endif
                 </div>
 
                 @if (empty($cart) && empty($legacyItems))
-                    <div class="border-t border-slate-100">
-                        <x-ui.empty-state title="No items" description="Search for a product above to add a line." />
+                    <div class="border-t border-line px-6 py-8 text-center">
+                        <p class="text-sm font-semibold text-ink">No items</p>
+                        <p class="mt-1 text-sm text-ink-faint">Search for a product above to add a line.</p>
                     </div>
                 @else
-                    <div class="border-t border-slate-100 overflow-x-auto">
-                        <table class="min-w-full divide-y divide-slate-100">
-                            <thead class="bg-slate-50">
-                                <tr>
-                                    <th class="whitespace-nowrap px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Product</th>
-                                    <th class="whitespace-nowrap px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Price</th>
-                                    <th class="whitespace-nowrap px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Qty</th>
-                                    <th class="whitespace-nowrap px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Discount</th>
-                                    <th class="whitespace-nowrap px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Total</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                @foreach ($legacyItems as $index => $item)
-                                    <tr wire:key="legacy-{{ $index }}">
-                                        <td class="whitespace-nowrap px-4 py-3">
-                                            <div class="flex items-center gap-1.5">
-                                                <p class="text-sm font-medium text-slate-900">{{ $item['product_name'] }}</p>
-                                                @if ($item['cost_price'] !== null)
-                                                    <x-ui.info-tooltip :text="'Cost: Rs '.number_format($item['cost_price'], 2)" />
-                                                @endif
-                                            </div>
-                                            <p class="text-xs text-slate-400">Product no longer exists — read-only</p>
-                                        </td>
-                                        <td class="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-600">Rs {{ number_format($item['unit_price'], 2) }}</td>
-                                        <td class="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-600">{{ \App\Enums\QuantityUnit::fromValue($item['unit'] ?? 'piece')->amount($item['quantity']) }}</td>
-                                        <td class="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-600">—</td>
-                                        <td class="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-slate-900">Rs {{ number_format($item['line_total'], 2) }}</td>
-                                        <td class="whitespace-nowrap px-4 py-3 text-right">
-                                            <button type="button" wire:click="removeLegacyItem({{ $index }})" class="text-slate-400 hover:text-red-600">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                                @foreach ($cart as $productId => $item)
-                                    <tr wire:key="cart-{{ $productId }}">
-                                        <td class="whitespace-nowrap px-4 py-3">
-                                            <div class="flex items-center gap-1.5">
-                                                <p class="text-sm font-medium text-slate-900">{{ $item['name'] }}</p>
-                                                @if ($item['cost_price'] !== null)
-                                                    <x-ui.info-tooltip :text="'Cost: Rs '.number_format($item['cost_price'], 2)" />
-                                                @endif
-                                            </div>
-                                            <p class="text-xs text-slate-400">{{ $item['category'] }}</p>
-                                            <x-sales.expiry-note :note="$this->expiryNote($item)" :unit="QuantityUnit::fromValue($item['unit'] ?? 'piece')" />
-                                        </td>
-                                        <td class="whitespace-nowrap px-4 py-3 text-right">
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                placeholder="{{ number_format($item['list_price'], 2) }}"
-                                                wire:model.live="cart.{{ $productId }}.custom_price"
-                                                class="w-24 rounded-lg border-slate-300 py-1.5 text-right text-sm focus:border-brand-500 focus:ring-brand-500"
-                                            />
-                                            @if ($item['custom_price'] !== '' && (float) $item['custom_price'] !== (float) $item['list_price'])
-                                                <p class="mt-1 text-xs font-medium text-accent-600">Price overridden</p>
-                                                @if ($item['cost_price'] !== null && (float) $item['custom_price'] < (float) $item['cost_price'])
-                                                    <p class="mt-0.5 text-xs text-amber-600">Below cost price</p>
-                                                @endif
-                                            @endif
-                                            @error("cart.$productId.custom_price")
-                                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                                            @enderror
-                                        </td>
-                                        <td class="whitespace-nowrap px-4 py-3">
-                                            @php($lineUnit = \App\Enums\QuantityUnit::fromValue($item['unit'] ?? 'piece'))
-                                            <div class="flex items-center justify-end gap-1.5">
-                                                <input
-                                                    type="number"
-                                                    min="{{ $lineUnit->inputMin() }}"
-                                                    step="{{ $lineUnit->inputStep() }}"
-                                                    max="{{ $item['max_stock'] }}"
-                                                    wire:model.live="cart.{{ $productId }}.quantity"
-                                                    @class(['rounded-lg border-slate-300 py-1.5 text-right text-sm focus:border-brand-500 focus:ring-brand-500', 'w-16' => ! $lineUnit->allowsDecimals(), 'w-24' => $lineUnit->allowsDecimals()])
-                                                />
-                                                @if ($lineUnit->allowsDecimals())
-                                                    <span class="text-xs text-slate-500">{{ $lineUnit->symbol() }}</span>
-                                                @endif
-                                            </div>
-                                            @error("cart.$productId.quantity")
-                                                <p class="mt-1 max-w-48 whitespace-normal text-right text-xs text-red-600">{{ $message }}</p>
-                                            @enderror
-                                        </td>
-                                        <td class="whitespace-nowrap px-4 py-3">
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                wire:model.live="cart.{{ $productId }}.discount"
-                                                class="w-20 rounded-lg border-slate-300 py-1.5 text-right text-sm focus:border-brand-500 focus:ring-brand-500"
-                                            />
-                                        </td>
-                                        <td class="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-slate-900">
-                                            Rs {{ number_format($this->lineTotal($item), 2) }}
-                                        </td>
-                                        <td class="whitespace-nowrap px-4 py-3 text-right">
-                                            <button type="button" wire:click="removeFromCart({{ $productId }})" class="text-slate-400 hover:text-red-600">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                    <div class="flex items-center justify-between border-t border-line bg-surface-sunken/60 px-4 py-2 sm:px-5">
+                        <p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-faint">Lines · {{ $lineCount }}</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-faint">Total</p>
                     </div>
+                    <ul class="divide-y divide-line">
+                        @foreach ($legacyItems as $index => $item)
+                            <li wire:key="legacy-{{ $index }}" class="px-4 py-3.5 sm:px-5">
+                                <div class="flex items-start gap-3">
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center gap-1.5">
+                                            <p class="truncate text-sm font-semibold text-ink">{{ $item['product_name'] }}</p>
+                                            @if ($item['cost_price'] !== null)
+                                                <x-ui.info-tooltip :text="'Cost: Rs '.number_format($item['cost_price'], 2)" />
+                                            @endif
+                                        </div>
+                                        <p class="text-xs text-ink-faint">
+                                            {{ \App\Enums\QuantityUnit::fromValue($item['unit'] ?? 'piece')->amount($item['quantity']) }} × Rs {{ number_format($item['unit_price'], 2) }}
+                                        </p>
+                                        <p class="mt-0.5 text-xs font-semibold text-warning">Product no longer exists — read-only</p>
+                                    </div>
+                                    <p class="w-28 shrink-0 text-right text-sm font-bold tabular-nums text-ink">Rs {{ number_format($item['line_total'], 2) }}</p>
+                                    <button type="button" wire:click="removeLegacyItem({{ $index }})" aria-label="Remove {{ $item['product_name'] }}" class="rounded-lg p-1 text-ink-faint hover:bg-danger-soft hover:text-danger">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </li>
+                        @endforeach
+                        @foreach ($cart as $productId => $item)
+                            <x-sales.cart-line :product-id="$productId" :item="$item" :line-total="$this->lineTotal($item)" :expiry-note="$this->expiryNote($item)" />
+                        @endforeach
+                    </ul>
                 @endif
             </x-ui.card>
         </div>
 
-        <div>
-            <x-ui.card title="Summary">
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="text-slate-500">Subtotal</span>
-                        <span class="font-medium text-slate-900">Rs {{ number_format($this->subtotal(), 2) }}</span>
+        <div class="lg:sticky lg:top-24 lg:self-start">
+            <x-ui.card :padding="false">
+                <div class="p-5">
+                    <p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-faint">New Total</p>
+                    <p class="mt-1 whitespace-nowrap text-4xl font-extrabold tracking-tight tabular-nums text-ink">Rs {{ number_format($this->total(), 2) }}</p>
+                    <div class="mt-3 space-y-1 text-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-ink-faint">Subtotal</span>
+                            <span class="font-medium tabular-nums text-ink">Rs {{ number_format($this->subtotal(), 2) }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-ink-faint">Already Paid</span>
+                            <span class="font-medium tabular-nums text-ink">Rs {{ number_format($this->alreadyPaid(), 2) }}</span>
+                        </div>
                     </div>
+                    @if ($this->total() > $this->alreadyPaid())
+                        <div class="mt-3 flex items-center justify-between rounded-xl bg-warning-soft px-3 py-2 text-sm">
+                            <span class="font-medium text-warning">Due After Save</span>
+                            <span class="font-bold tabular-nums text-warning">Rs {{ number_format($this->total() - $this->alreadyPaid(), 2) }}</span>
+                        </div>
+                    @endif
+                </div>
 
+                <div class="space-y-4 border-t border-line p-5">
                     <x-ui.field label="Sale Date" name="saleDate" for="saleDate">
                         <x-ui.input wire:model="saleDate" id="saleDate" type="date" max="{{ now()->toDateString() }}" />
                     </x-ui.field>
 
                     <x-ui.field label="Invoice Discount" name="invoiceDiscount" for="invoiceDiscount">
-                        <x-ui.input wire:model.live="invoiceDiscount" id="invoiceDiscount" type="number" min="0" step="0.01" />
+                        <x-ui.input wire:model.live.debounce.300ms="invoiceDiscount" id="invoiceDiscount" type="number" min="0" step="0.01" />
                     </x-ui.field>
 
                     <x-ui.field label="Customer" name="customerId" for="customerId" :help="$this->alreadyPaid() < $this->total() ? 'Required — this sale still has a due balance' : 'Optional — leave blank for a walk-in sale'">
@@ -505,33 +452,19 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
                             @endforeach
                         </x-ui.select>
                     </x-ui.field>
+                </div>
 
-                    <div class="border-t border-slate-100 pt-3">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-slate-500">New Total</span>
-                            <span class="text-display-sm text-slate-900">Rs {{ number_format($this->total(), 2) }}</span>
-                        </div>
-                        <div class="mt-1 flex items-center justify-between text-sm">
-                            <span class="text-slate-500">Already Paid</span>
-                            <span class="font-medium text-slate-900">Rs {{ number_format($this->alreadyPaid(), 2) }}</span>
-                        </div>
-                        @if ($this->total() > $this->alreadyPaid())
-                            <div class="mt-1 flex items-center justify-between text-sm">
-                                <span class="text-slate-500">Due After Save</span>
-                                <span class="font-medium text-amber-600">Rs {{ number_format($this->total() - $this->alreadyPaid(), 2) }}</span>
-                            </div>
-                        @endif
-                    </div>
-
+                <div class="border-t border-line p-5">
                     <x-ui.button
                         type="button"
                         wire:click="saveChanges"
                         wire:loading.attr="disabled"
                         wire:target="saveChanges"
                         size="lg"
-                        class="w-full justify-center sm:w-auto"
+                        class="w-full justify-center py-3"
                     >
-                        Save Changes
+                        <span wire:loading.remove wire:target="saveChanges">Save Changes</span>
+                        <span wire:loading wire:target="saveChanges">Saving…</span>
                     </x-ui.button>
                 </div>
             </x-ui.card>

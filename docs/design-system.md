@@ -9,7 +9,8 @@ one page by hand.
 shell (D1); page header, module tabs, sidebar regroup, list-first sidebar links,
 the Reports hub and the Settings landing (D2); filter bar, date ranges, stat row,
 row menus, styled confirmations and phone cards on Products, Sales History, Stock
-In History and the seven counter histories (D3). Other sections describe the target
+In History and the seven counter histories (D3); the Sales register, sale edit
+screen and sale confirmation (D4). Other sections describe the target
 until their stage ships.
 
 **The one hard rule:** this is a visual and navigation pass. Actions, Models, FIFO,
@@ -266,8 +267,25 @@ tabs, `x-ui.filter-bar`, `x-ui.stat-row`, then the table.
   unchanged. Add `danger` for destructive actions. Use it instead of
   `wire:confirm`, which is a browser pop-up and leaves a row menu open on cancel.
 
-## Sales register
+## Sales register (built in D4)
 
+- **Left:** a large search (F2) that keeps the scanner wiring; when the cart is
+  empty, tiles of this shop's best sellers from the last 30 days that are in
+  stock (read-only query, tapping a tile calls `addToCart`). Cart lines are
+  `x-sales.cart-line`, shared with the sale edit screen: quantity stepper for
+  piece items, typed quantity for measured ones, price and discount folded
+  behind "Price & discount" with the override and below-cost warnings always
+  visible.
+- **Right, sticky:** total first, then a Cash / Partial / Udhaar switch that sets
+  the existing `amountPaidNow` (blank, typed, `0`), the payment method, the
+  customer (required whenever something is left unpaid, as before), date folded
+  to "Today" and invoice discount behind "+ Add discount", then a full-width
+  orange Complete Sale with the amount. F9 completes, Esc clears the search.
+- **Phone:** a bar at the bottom keeps the total and Checkout in reach.
+- **After the sale:** the receipt opens once as a confirmation (a session flash
+  set on completing): amount, paid or due, a large focused New Sale so Enter
+  starts the next one, and Download invoice. Later visits show the plain
+  receipt, with New Sale in its header.
 - Stays register-first with a Register | History tab.
 - Keeps existing properties and methods. `CreateSale` and FIFO don't change.
 - **No live profit figure:** a line can span batches, so it could disagree with the

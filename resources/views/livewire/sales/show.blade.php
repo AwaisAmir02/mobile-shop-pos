@@ -18,9 +18,14 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
 
     public string $cancelReason = '';
 
+    // True only when arriving straight from completing this sale on the register
+    // (a one-time session flash), so the page opens as a confirmation.
+    public bool $justCompleted = false;
+
     public function mount(Sale $sale): void
     {
         $this->sale = $sale->load(['items', 'customer', 'payments.shopAccount']);
+        $this->justCompleted = session('sale-completed') === $sale->id;
     }
 
     public function downloadInvoice(InvoicePdfService $pdf): StreamedResponse
@@ -62,18 +67,47 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
 
 <div>
     <x-slot name="header">
-        <x-ui.page-header back="{{ route('sales.history') }}" back-label="Sales History">{{ $sale->invoiceNumber() }}</x-ui.page-header>
+        <x-ui.page-header back="{{ route('sales.history') }}" back-label="Sales History">
+            {{ $sale->invoiceNumber() }}
+            <x-slot:actions>
+                <x-ui.button href="{{ route('sales.index') }}" wire:navigate variant="accent" size="sm" @class(['hidden' => $justCompleted && ! $sale->isCancelled()])>New Sale</x-ui.button>
+            </x-slot:actions>
+        </x-ui.page-header>
     </x-slot>
 
     <div class="mx-auto max-w-2xl">
+        @if ($justCompleted && ! $sale->isCancelled())
+            @php($due = $sale->amountDue())
+            <div class="mb-5 rounded-2xl border border-success/20 bg-success-soft px-6 py-7 text-center" data-sale-complete>
+                <span class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success text-surface">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                </span>
+                <h2 class="mt-3 text-lg font-extrabold tracking-tight text-ink">Sale complete</h2>
+                <p class="mt-1 text-4xl font-extrabold tracking-tight tabular-nums text-ink">Rs {{ number_format($sale->total, 2) }}</p>
+                <p class="mt-1 text-sm text-ink-muted">
+                    @if ($due > 0)
+                        Rs {{ number_format($due, 2) }} due{{ $sale->customer ? ' from '.$sale->customer->name : '' }}
+                    @else
+                        Paid in full
+                    @endif
+                    · {{ $sale->items->count() }} {{ \Illuminate\Support\Str::plural('line', $sale->items->count()) }}
+                </p>
+                <div class="mt-5 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
+                    <x-ui.button href="{{ route('sales.index') }}" wire:navigate variant="accent" size="lg" x-init="$el.focus()" data-next-sale class="justify-center px-8 py-3 text-lg">New Sale</x-ui.button>
+                    <x-ui.button wire:click="downloadInvoice" variant="secondary" size="lg" class="justify-center">Download invoice</x-ui.button>
+                </div>
+                <p class="mt-3 hidden text-xs text-ink-faint sm:block">Press Enter to start the next sale.</p>
+            </div>
+        @endif
+
         @if ($sale->isCancelled())
-            <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <x-ui.alert variant="danger" class="mb-4">
                 <p class="font-semibold">This sale was cancelled{{ $sale->cancelled_at ? ' on '.$sale->cancelled_at->format('d M Y, h:i A') : '' }}.</p>
                 @if ($sale->cancel_reason)
                     <p class="mt-1">Reason: {{ $sale->cancel_reason }}</p>
                 @endif
                 <p class="mt-1">Stock was restored and this sale no longer counts toward any total.</p>
-            </div>
+            </x-ui.alert>
         @endif
 
         <x-ui.card>
@@ -81,7 +115,7 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                 <div class="flex gap-2">
                     @if (! $sale->isCancelled() && auth()->user()->hasAccessTo('sales-edit-cancel'))
                         <x-ui.button href="{{ route('sales.edit', $sale) }}" wire:navigate variant="secondary" size="sm">Edit</x-ui.button>
-                        <x-ui.button wire:click="openCancel" variant="secondary" size="sm" class="text-red-600 hover:bg-red-50">
+                        <x-ui.button wire:click="openCancel" variant="secondary" size="sm" class="text-danger hover:bg-danger-soft">
                             Delete
                         </x-ui.button>
                     @endif
@@ -91,71 +125,71 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                 </div>
             </x-slot>
 
-            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div class="flex items-center justify-between border-b border-line pb-4">
                 <div>
-                    <p class="text-sm text-slate-500">Date</p>
-                    <p class="font-medium text-slate-900">{{ $sale->created_at->format('d M Y, h:i A') }}</p>
+                    <p class="text-sm text-ink-faint">Date</p>
+                    <p class="font-semibold text-ink">{{ $sale->created_at->format('d M Y, h:i A') }}</p>
                 </div>
                 @if ($sale->user)
                     <div class="text-right">
-                        <p class="text-sm text-slate-500">Served by</p>
-                        <p class="font-medium text-slate-900">{{ $sale->user->name }}</p>
+                        <p class="text-sm text-ink-faint">Served by</p>
+                        <p class="font-semibold text-ink">{{ $sale->user->name }}</p>
                     </div>
                 @endif
             </div>
 
             @if ($sale->customer)
-                <div class="flex items-center justify-between border-b border-slate-100 py-4">
-                    <p class="text-sm text-slate-500">Customer</p>
-                    <a href="{{ route('customers.show', $sale->customer) }}" wire:navigate class="font-medium text-brand-700 hover:text-brand-800">
+                <div class="flex items-center justify-between border-b border-line py-4">
+                    <p class="text-sm text-ink-faint">Customer</p>
+                    <a href="{{ route('customers.show', $sale->customer) }}" wire:navigate class="font-semibold text-link hover:underline">
                         {{ $sale->customer->name }}
                     </a>
                 </div>
             @endif
 
-            <div class="mt-4 divide-y divide-slate-100">
+            <div class="mt-4 divide-y divide-line">
                 @foreach ($sale->items as $item)
-                    <div class="flex items-center justify-between py-3">
-                        <div>
-                            <p class="text-sm font-medium text-slate-900">{{ $item->product_name }}</p>
-                            <p class="text-xs text-slate-400">
+                    <div class="flex items-center justify-between gap-4 py-3">
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-ink">{{ $item->product_name }}</p>
+                            <p class="text-xs text-ink-faint">
                                 {{ $item->unit->amount($item->quantity) }} × Rs {{ number_format($item->unit_price, 2) }}
                                 @if ($item->discount_amount > 0)
                                     · Rs {{ number_format($item->discount_amount, 2) }} off
                                 @endif
                             </p>
                         </div>
-                        <span class="text-sm font-semibold text-slate-900">Rs {{ number_format($item->line_total, 2) }}</span>
+                        <span class="whitespace-nowrap text-sm font-bold tabular-nums text-ink">Rs {{ number_format($item->line_total, 2) }}</span>
                     </div>
                 @endforeach
             </div>
 
-            <div class="mt-4 space-y-2 border-t border-slate-100 pt-4">
+            <div class="mt-4 space-y-2 border-t border-line pt-4">
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-slate-500">Subtotal</span>
-                    <span class="font-medium text-slate-900">Rs {{ number_format($sale->subtotal, 2) }}</span>
+                    <span class="text-ink-faint">Subtotal</span>
+                    <span class="font-medium tabular-nums text-ink">Rs {{ number_format($sale->subtotal, 2) }}</span>
                 </div>
                 @if ((float) $sale->discount_amount > 0)
                     <div class="flex items-center justify-between text-sm">
-                        <span class="text-slate-500">Discount</span>
-                        <span class="font-medium text-slate-900">Rs {{ number_format($sale->discount_amount, 2) }}</span>
+                        <span class="text-ink-faint">Discount</span>
+                        <span class="font-medium tabular-nums text-ink">Rs {{ number_format($sale->discount_amount, 2) }}</span>
                     </div>
                 @endif
-                <div class="flex items-center justify-between border-t border-slate-100 pt-2">
-                    <span class="font-medium text-slate-500">Total</span>
-                    <span class="text-display-sm text-slate-900">Rs {{ number_format($sale->total, 2) }}</span>
+                <div class="flex items-center justify-between border-t border-line pt-2">
+                    <span class="font-semibold text-ink-faint">Total</span>
+                    <span class="text-display-sm font-extrabold tabular-nums text-ink">Rs {{ number_format($sale->total, 2) }}</span>
                 </div>
             </div>
 
-            <div class="mt-4 flex items-center justify-between rounded-xl border border-slate-200 px-4 py-4">
+            <div class="mt-4 flex items-center justify-between rounded-xl border border-line bg-surface-sunken/50 px-4 py-4">
                 <div class="flex gap-6">
                     <div>
-                        <p class="text-sm text-slate-500">Paid</p>
-                        <p class="font-semibold text-slate-900">Rs {{ number_format($sale->amountPaid(), 2) }}</p>
+                        <p class="text-sm text-ink-faint">Paid</p>
+                        <p class="font-bold tabular-nums text-ink">Rs {{ number_format($sale->amountPaid(), 2) }}</p>
                     </div>
                     <div>
-                        <p class="text-sm text-slate-500">Due</p>
-                        <p class="font-semibold text-slate-900">Rs {{ number_format($sale->amountDue(), 2) }}</p>
+                        <p class="text-sm text-ink-faint">Due</p>
+                        <p class="font-bold tabular-nums text-ink">Rs {{ number_format($sale->amountDue(), 2) }}</p>
                     </div>
                 </div>
                 @if ($sale->isCancelled())
@@ -174,8 +208,8 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                 <ul class="mt-3 space-y-1 text-sm">
                     @foreach ($recordedPayments as $payment)
                         <li class="flex flex-wrap items-center justify-between gap-2">
-                            <span class="text-slate-500">{{ $payment->payment_date->format('d M Y') }} · Rs {{ number_format($payment->amount, 2) }}</span>
-                            <span class="text-slate-700">Paid by: <span class="font-medium text-slate-900">{{ $payment->methodLabel() }}</span></span>
+                            <span class="text-ink-faint">{{ $payment->payment_date->format('d M Y') }} · Rs {{ number_format($payment->amount, 2) }}</span>
+                            <span class="text-ink-muted">Paid by: <span class="font-semibold text-ink">{{ $payment->methodLabel() }}</span></span>
                         </li>
                     @endforeach
                 </ul>
@@ -184,8 +218,8 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
 
         <x-ui.modal name="cancel-sale-form" max-width="sm">
             <form wire:submit="cancelSale" class="p-6">
-                <h2 class="text-lg font-semibold text-slate-900">Cancel This Sale?</h2>
-                <p class="mt-2 text-sm text-slate-600">
+                <h2 class="text-lg font-bold text-ink">Cancel This Sale?</h2>
+                <p class="mt-2 text-sm text-ink-muted">
                     This sale will be marked <strong>Cancelled</strong> and its stock will be restored. It will no longer count toward any total, report, or outstanding balance. This cannot be undone.
                 </p>
 
@@ -200,17 +234,11 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                         Keep Sale
                     </x-ui.button>
 
-                    <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelSale" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                    <x-ui.button type="submit" variant="danger" wire:loading.attr="disabled" wire:target="cancelSale">
                         Cancel Sale
                     </x-ui.button>
                 </div>
             </form>
         </x-ui.modal>
-
-        <div class="mt-4 text-center">
-            <a href="{{ route('sales.index') }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">
-                Start a new sale →
-            </a>
-        </div>
     </div>
 </div>
