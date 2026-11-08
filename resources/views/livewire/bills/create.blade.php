@@ -254,55 +254,23 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
 
     <div>
         @if ($lastPayment)
-            <x-ui.card class="mx-auto max-w-lg">
-                <div class="flex flex-col items-center text-center">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        </svg>
-                    </div>
-
-                    <p class="mt-3 text-sm text-slate-500">{{ $lastPayment->receiptNumber() }}</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format($lastPayment->total, 2) }}</p>
-                    <p class="mt-1 text-sm text-slate-500">
-                        {{ $lastPayment->billProvider->name }} · {{ $lastPayment->consumer_number }}
-                    </p>
-
-                    <div class="mt-4 w-full space-y-1.5 rounded-lg border border-slate-200 p-4 text-left text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Bill Amount</span>
-                            <span class="font-medium text-slate-900">Rs {{ number_format($lastPayment->amount, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Service Charge</span>
-                            <span class="font-medium text-slate-900">Rs {{ number_format($lastPayment->fee, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Discount</span>
-                            <span class="font-medium text-slate-900">− Rs {{ number_format($lastPayment->discount, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between border-t border-slate-200 pt-1.5 font-semibold text-slate-900">
-                            <span>Total Collected</span>
-                            <span>Rs {{ number_format($lastPayment->total, 2) }}</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-6 flex w-full gap-3">
-                        <x-ui.button type="button" variant="secondary" wire:click="downloadReceipt" class="flex-1 justify-center">
-                            Download Receipt
-                        </x-ui.button>
-
-                        <x-ui.button type="button" wire:click="logAnother" class="flex-1 justify-center">
-                            Log Another
-                        </x-ui.button>
-                    </div>
-                </div>
-            </x-ui.card>
+            <x-counter.receipt
+                :number="$lastPayment->receiptNumber()"
+                :total="$lastPayment->total"
+                :lines="[
+                    ['label' => 'Bill Amount', 'value' => 'Rs '.number_format($lastPayment->amount, 2)],
+                    ['label' => 'Service Charge', 'value' => 'Rs '.number_format($lastPayment->fee, 2)],
+                    ['label' => 'Discount', 'value' => '− Rs '.number_format($lastPayment->discount, 2)],
+                    ['label' => 'Total Collected', 'value' => 'Rs '.number_format($lastPayment->total, 2), 'total' => true],
+                ]"
+            >
+                {{ $lastPayment->billProvider->name }} · {{ $lastPayment->consumer_number }}
+            </x-counter.receipt>
         @else
-            <x-ui.card title="New Bill Payment">
-                <form wire:submit="save" class="space-y-5">
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        <x-ui.field label="Category" name="billCategoryId" for="billCategoryId">
+            <x-counter.form wire:submit="save">
+                <x-counter.section title="Bill">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <x-ui.field label="Category" name="billCategoryId" for="billCategoryId" required>
                             <x-ui.select wire:model.live="billCategoryId" id="billCategoryId">
                                 <option value="__create__">+ New Category</option>
                                 @foreach ($billCategories as $category)
@@ -311,7 +279,7 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
                             </x-ui.select>
                         </x-ui.field>
 
-                        <x-ui.field label="Region / Province" name="region" for="region" help="Optional — narrows the provider list">
+                        <x-ui.field label="Region / Province" name="region" for="region" help="Narrows the provider list">
                             <x-ui.select wire:model.live="region" id="region">
                                 <option value="">All Regions</option>
                                 <option value="__create__">+ New Provider (with a region)</option>
@@ -321,7 +289,7 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
                             </x-ui.select>
                         </x-ui.field>
 
-                        <x-ui.field label="Provider / Company" name="billProviderId" for="billProviderId">
+                        <x-ui.field label="Provider / Company" name="billProviderId" for="billProviderId" required>
                             <x-ui.select wire:model.live="billProviderId" id="billProviderId">
                                 <option value="">Select a provider</option>
                                 <option value="__create__">+ New Provider</option>
@@ -332,16 +300,16 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
                         </x-ui.field>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        <x-ui.field label="Consumer Number" name="consumerNumber" for="consumerNumber">
+                    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <x-ui.field label="Consumer Number" name="consumerNumber" for="consumerNumber" required>
                             <x-ui.input wire:model="consumerNumber" id="consumerNumber" autofocus />
                         </x-ui.field>
 
-                        <x-ui.field label="Consumer Name" name="consumerName" for="consumerName">
+                        <x-ui.field label="Consumer Name" name="consumerName" for="consumerName" required>
                             <x-ui.input wire:model="consumerName" id="consumerName" />
                         </x-ui.field>
 
-                        <x-ui.field label="Customer" name="customerId" for="customerId" help="Optional — leave blank for a walk-in payment">
+                        <x-ui.field label="Customer" name="customerId" for="customerId" help="Leave blank for a walk-in payment">
                             <x-ui.select wire:model.live="customerId" id="customerId">
                                 <option value="">Walk-in (no customer)</option>
                                 <option value="__create__">+ New Customer</option>
@@ -351,10 +319,17 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
                             </x-ui.select>
                         </x-ui.field>
                     </div>
+                </x-counter.section>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <x-ui.field label="Send From" name="shopAccountId" for="shopAccountId" help="Which of the shop's own accounts is paying this">
+                <x-counter.section title="Amount">
+                    <div class="grid grid-cols-2 gap-4">
+                        <x-ui.field label="Bill Amount" name="amount" for="amount" required class="col-span-2 sm:col-span-1">
+                            <x-ui.input wire:model.live="amount" id="amount" type="number" min="0" step="0.01" class="text-lg" />
+                        </x-ui.field>
+
+                        <x-ui.field label="Send From" name="shopAccountId" for="shopAccountId" help="Which of the shop's own accounts is paying this" required class="col-span-2 sm:col-span-1">
                             <x-ui.select wire:model.live="shopAccountId" id="shopAccountId">
+                                <option value="">Select a shop account</option>
                                 <option value="__create__">+ New Shop Account</option>
                                 @foreach ($shopAccounts as $account)
                                     <option value="{{ $account->id }}">{{ $account->name }}</option>
@@ -362,46 +337,32 @@ new #[Layout('layouts.app')] #[Title('Bills')] class extends Component
                             </x-ui.select>
                         </x-ui.field>
 
-                        <x-ui.field label="Bill Amount" name="amount" for="amount">
-                            <x-ui.input wire:model.live="amount" id="amount" type="number" min="0" step="0.01" class="text-lg" />
-                        </x-ui.field>
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <x-ui.field label="Service Charge" name="fee" for="fee" help="Auto-suggested from your commission % — edit freely">
+                        <x-ui.field label="Service Charge" name="fee" for="fee" help="Suggested from your commission %">
                             <x-ui.input wire:model.live="fee" id="fee" type="number" min="0" step="0.01" />
                         </x-ui.field>
 
-                        <x-ui.field label="Discount" name="discount" for="discount" help="Optional">
+                        <x-ui.field label="Discount" name="discount" for="discount">
                             <x-ui.input wire:model.live="discount" id="discount" type="number" min="0" step="0.01" />
                         </x-ui.field>
-
-                        <x-ui.field label="Payment Status" name="paymentStatus" for="paymentStatus" help="Has the customer paid you?">
-                            <x-ui.select wire:model.live="paymentStatus" id="paymentStatus">
-                                @foreach ($paymentStatuses as $status)
-                                    <option value="{{ $status->value }}">{{ $status->label() }}</option>
-                                @endforeach
-                            </x-ui.select>
-                        </x-ui.field>
-
-                        @if ($paymentStatus === 'partial')
-                            <x-ui.field label="Amount Paid" name="amountPaid" for="amountPaid">
-                                <x-ui.input wire:model="amountPaid" id="amountPaid" type="number" min="0" step="0.01" />
-                            </x-ui.field>
-                        @endif
-                            <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
                     </div>
+                </x-counter.section>
 
-                    <div class="flex items-center justify-between rounded-lg bg-brand-50 px-4 py-3">
-                        <span class="text-sm font-medium text-brand-700">Total Collected</span>
-                        <span class="text-lg font-semibold text-brand-900">Rs {{ number_format($totalCollected, 2) }}</span>
-                    </div>
+                <x-counter.section title="Payment">
+                    <x-counter.payment-status :statuses="$paymentStatuses" :status="$paymentStatus" :paid-from="$paidFrom" />
+                </x-counter.section>
 
-                    <x-ui.button type="submit" size="lg" class="w-full justify-center sm:w-auto" wire:loading.attr="disabled" wire:target="save">
-                        Save
-                    </x-ui.button>
-                </form>
-            </x-ui.card>
+                <x-slot:summary>
+                    <x-counter.summary
+                        total-label="Total Collected"
+                        :total="$totalCollected"
+                        :lines="[
+                            ['label' => 'Bill Amount', 'value' => 'Rs '.number_format((float) $amount, 2)],
+                            ['label' => 'Service Charge', 'value' => 'Rs '.number_format((float) $fee, 2)],
+                            ['label' => 'Discount', 'value' => '− Rs '.number_format((float) $discount, 2)],
+                        ]"
+                    />
+                </x-slot:summary>
+            </x-counter.form>
         @endif
     </div>
 

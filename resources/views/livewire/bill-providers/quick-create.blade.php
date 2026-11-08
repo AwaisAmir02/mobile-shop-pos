@@ -82,7 +82,7 @@ new class extends Component
                         <x-ui.input wire:model="name" id="quickBillProviderName" autofocus />
                     </x-ui.field>
 
-                    <x-ui.field label="Region / Province" name="region" for="quickBillProviderRegion" help="Optional">
+                    <x-ui.field label="Region / Province" name="region" for="quickBillProviderRegion">
                         <x-ui.input wire:model="region" id="quickBillProviderRegion" placeholder="e.g. Punjab" />
                     </x-ui.field>
                 </div>

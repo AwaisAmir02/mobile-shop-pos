@@ -357,7 +357,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
 
     <x-ui.modal name="add-payment-form" max-width="sm">
         <form wire:submit="submitPayment" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Add Payment</h2>
+            <h2 class="text-lg font-semibold text-ink">Add Payment</h2>
 
             <div class="mt-5 space-y-5">
                 <x-ui.field label="Amount Paid Now" name="paymentAmount" for="paymentAmount">
@@ -380,7 +380,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
 
     <x-ui.modal name="edit-sim-sale-form" max-width="lg">
         <form wire:submit="saveEdit" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Edit SIM Sale</h2>
+            <h2 class="text-lg font-semibold text-ink">Edit SIM Sale</h2>
 
             <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <x-ui.field label="Network" name="editNetwork" for="editNetwork">
@@ -411,7 +411,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
                     <x-ui.input wire:model="editSimNumber" id="editSimNumber" />
                 </x-ui.field>
 
-                <x-ui.field label="Customer" name="editCustomerId" for="editCustomerId" help="Optional — leave blank for a walk-in">
+                <x-ui.field label="Customer" name="editCustomerId" for="editCustomerId" help="Leave blank for a walk-in">
                     <x-ui.select wire:model="editCustomerId" id="editCustomerId">
                         <option value="">Walk-in (no customer)</option>
                         @foreach ($customers as $customer)
@@ -428,7 +428,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
                     <x-ui.input wire:model="editFee" id="editFee" type="number" min="0" step="0.01" />
                 </x-ui.field>
 
-                <x-ui.field label="Discount" name="editDiscount" for="editDiscount" help="Optional">
+                <x-ui.field label="Discount" name="editDiscount" for="editDiscount">
                     <x-ui.input wire:model="editDiscount" id="editDiscount" type="number" min="0" step="0.01" />
                 </x-ui.field>
             </div>
@@ -451,13 +451,13 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
 
     <x-ui.modal name="cancel-sim-sale-form" max-width="sm">
         <form wire:submit="cancelSale" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Cancel This SIM Sale?</h2>
-            <p class="mt-2 text-sm text-slate-600">
+            <h2 class="text-lg font-semibold text-ink">Cancel This SIM Sale?</h2>
+            <p class="mt-2 text-sm text-ink-muted">
                 This SIM sale will be marked <strong>Cancelled</strong>. It will no longer count toward any total, report, or outstanding balance. This cannot be undone.
             </p>
 
             <div class="mt-5">
-                <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
+                <x-ui.field label="Reason" name="cancelReason" for="cancelReason">
                     <x-ui.input wire:model="cancelReason" id="cancelReason" />
                 </x-ui.field>
             </div>

@@ -259,85 +259,56 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
 
     <div>
         @if ($lastLoad)
-            <x-ui.card class="mx-auto max-w-lg">
-                <div class="flex flex-col items-center text-center">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        </svg>
-                    </div>
-
-                    <p class="mt-3 text-sm text-slate-500">{{ $lastLoad->receiptNumber() }} · {{ $lastLoad->direction->label() }}</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format($lastLoad->total, 2) }}</p>
-                    <p class="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
-                        <x-ui.thumbnail :label="$lastLoad->provider" />
-                        {{ $lastLoad->provider }}
-                        @if ($lastLoad->account_name)
-                            · {{ $lastLoad->account_name }} · {{ $lastLoad->account_number }}
-                        @endif
-                    </p>
-
-                    <div class="mt-4 w-full space-y-1.5 rounded-lg border border-slate-200 p-4 text-left text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">{{ $lastLoad->direction->value === 'cash_in' ? 'Amount Loaded' : 'Amount Given' }}</span>
-                            <span class="font-medium text-slate-900">Rs {{ number_format($lastLoad->net_amount, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Service Charge</span>
-                            <span class="font-medium text-slate-900">Rs {{ number_format($lastLoad->fee, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Discount</span>
-                            <span class="font-medium text-slate-900">− Rs {{ number_format($lastLoad->discount, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between border-t border-slate-200 pt-1.5 font-semibold text-slate-900">
-                            <span>{{ $lastLoad->direction->value === 'cash_in' ? 'Total Collected' : 'Total Received' }}</span>
-                            <span>Rs {{ number_format($lastLoad->total, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between pt-1.5">
-                            <span class="text-slate-500">Payment Status</span>
-                            <span class="font-medium text-slate-900">{{ $lastLoad->payment_status->label() }}</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-6 flex w-full gap-3">
-                        <x-ui.button type="button" variant="secondary" wire:click="downloadReceipt" class="flex-1 justify-center">
-                            Download Receipt
-                        </x-ui.button>
-
-                        <x-ui.button type="button" wire:click="logAnother" class="flex-1 justify-center">
-                            Log Another
-                        </x-ui.button>
-                    </div>
-                </div>
-            </x-ui.card>
+            <x-counter.receipt
+                :number="$lastLoad->receiptNumber().' · '.$lastLoad->direction->label()"
+                :total="$lastLoad->total"
+                :lines="[
+                    ['label' => $lastLoad->direction->value === 'cash_in' ? 'Amount Loaded' : 'Amount Given', 'value' => 'Rs '.number_format($lastLoad->net_amount, 2)],
+                    ['label' => 'Service Charge', 'value' => 'Rs '.number_format($lastLoad->fee, 2)],
+                    ['label' => 'Discount', 'value' => '− Rs '.number_format($lastLoad->discount, 2)],
+                    ['label' => $lastLoad->direction->value === 'cash_in' ? 'Total Collected' : 'Total Received', 'value' => 'Rs '.number_format($lastLoad->total, 2), 'total' => true],
+                    ['label' => 'Payment Status', 'value' => $lastLoad->payment_status->label()],
+                ]"
+            >
+                <x-ui.thumbnail :label="$lastLoad->provider" />
+                {{ $lastLoad->provider }}
+                @if ($lastLoad->account_name)
+                    · {{ $lastLoad->account_name }} · {{ $lastLoad->account_number }}
+                @endif
+            </x-counter.receipt>
         @else
-            <div class="mb-4 border-b border-slate-200">
-                <nav class="-mb-px flex gap-6">
-                    @foreach ($directions as $option)
-                        <button
-                            type="button"
-                            wire:click="switchDirection('{{ $option->value }}')"
-                            @class([
-                                'whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition',
-                                'border-brand-600 text-brand-700' => $direction === $option->value,
-                                'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700' => $direction !== $option->value,
-                            ])
-                        >
-                            {{ $option->label() }}
-                        </button>
-                    @endforeach
-                </nav>
+            @php
+                $cashIn = $direction === 'cash_in';
+                $exampleAmount = (float) ($amount !== '' ? $amount : 0);
+                $exampleFee = (float) $fee;
+                $movesVerb = $cashIn ? 'goes to the wallet' : 'is handed to the customer';
+                $paysVerb = $cashIn ? 'pays' : 'sends';
+            @endphp
+
+            <div class="mb-6 flex max-w-sm gap-1 rounded-full border border-line bg-surface-sunken/60 p-1" role="group" aria-label="Direction">
+                @foreach ($directions as $option)
+                    <button
+                        type="button"
+                        wire:click="switchDirection('{{ $option->value }}')"
+                        aria-pressed="{{ $direction === $option->value ? 'true' : 'false' }}"
+                        @class([
+                            'min-w-0 flex-1 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-link',
+                            'bg-surface text-ink shadow-soft ring-1 ring-line' => $direction === $option->value,
+                            'text-ink-faint hover:text-ink' => $direction !== $option->value,
+                        ])
+                    >{{ $option->label() }}</button>
+                @endforeach
             </div>
 
-            <x-ui.card :title="$direction === 'cash_in' ? 'New Cash In' : 'New Cash Out'">
-                <form wire:submit="save" class="space-y-5">
+            <x-counter.form wire:submit="save">
+                <x-counter.section title="Account">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-ui.field
-                            :label="$direction === 'cash_in' ? 'Send From' : 'Received Into'"
+                            :label="$cashIn ? 'Send From' : 'Received Into'"
                             name="shopAccountId"
                             for="shopAccountId"
-                            :help="$direction === 'cash_in' ? 'Which of the shop\'s own accounts is sending this' : 'Which of the shop\'s own accounts received this'"
+                            :help="$cashIn ? 'Which of the shop\'s own accounts is sending this' : 'Which of the shop\'s own accounts received this'"
+                            required
                         >
                             <x-ui.image-select
                                 wire-model="shopAccountId"
@@ -347,7 +318,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
                             />
                         </x-ui.field>
 
-                        <x-ui.field label="Customer" name="customerId" for="customerId" help="Optional — leave blank for a walk-in">
+                        <x-ui.field label="Customer" name="customerId" for="customerId" help="Leave blank for a walk-in">
                             <x-ui.select wire:model.live="customerId" id="customerId">
                                 <option value="">Walk-in (no customer)</option>
                                 <option value="__create__">+ New Customer</option>
@@ -356,44 +327,38 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
                                 @endforeach
                             </x-ui.select>
                         </x-ui.field>
-                    </div>
 
-                    @if ($direction === 'cash_in')
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <x-ui.field label="Account Name" name="accountName" for="accountName" help="Name on the recipient's wallet account">
+                        @if ($cashIn)
+                            <x-ui.field label="Account Name" name="accountName" for="accountName" help="Name on the recipient's wallet account" required>
                                 <x-ui.input wire:model.live="accountName" id="accountName" />
                             </x-ui.field>
 
-                            <x-ui.field label="Account / Mobile Number" name="accountNumber" for="accountNumber">
+                            <x-ui.field label="Account / Mobile Number" name="accountNumber" for="accountNumber" required>
                                 <x-ui.input wire:model="accountNumber" id="accountNumber" type="tel" placeholder="03xx-xxxxxxx" />
                             </x-ui.field>
-                        </div>
-                    @endif
+                        @endif
+                    </div>
+                </x-counter.section>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        <x-ui.field label="Amount" name="amount" for="amount" :help="$direction === 'cash_in' ? 'Amount being loaded into the recipient\'s account' : 'Amount being handed to the customer as cash'">
+                <x-counter.section title="Amount">
+                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                        <x-ui.field label="Amount" name="amount" class="col-span-2 sm:col-span-1" for="amount" :help="$cashIn ? 'Amount being loaded into the recipient\'s account' : 'Amount being handed to the customer as cash'" required>
                             <x-ui.input wire:model.live="amount" id="amount" type="number" min="1" step="0.01" class="text-lg" autofocus />
                         </x-ui.field>
 
-                        <x-ui.field label="Service Charge" name="fee" for="fee" help="Auto-suggested from your commission % — edit freely">
+                        <x-ui.field label="Service Charge" name="fee" for="fee" help="Suggested from your commission %">
                             <x-ui.input wire:model.live="fee" id="fee" type="number" min="0" step="0.01" />
                         </x-ui.field>
 
-                        <x-ui.field label="Discount" name="discount" for="discount" help="Optional">
+                        <x-ui.field label="Discount" name="discount" for="discount">
                             <x-ui.input wire:model.live="discount" id="discount" type="number" min="0" step="0.01" />
                         </x-ui.field>
                     </div>
 
-                    <div>
+                    <div class="mt-4 rounded-xl bg-surface-sunken/60 px-4 py-3">
                         <x-ui.checkbox wire:model.live="feeIncludedInAmount" label="Fee is already included in the amount above" />
 
-                        <p class="mt-2 text-xs text-slate-500">
-                            @php
-                                $exampleAmount = (float) ($amount !== '' ? $amount : 0);
-                                $exampleFee = (float) $fee;
-                                $movesVerb = $direction === 'cash_in' ? 'goes to the wallet' : 'is handed to the customer';
-                                $paysVerb = $direction === 'cash_in' ? 'pays' : 'sends';
-                            @endphp
+                        <p class="mt-2 text-xs text-ink-faint">
                             @if ($feeIncludedInAmount)
                                 e.g. Rs {{ number_format(max(0, $exampleAmount - $exampleFee), 2) }} {{ $movesVerb }}, you keep Rs {{ number_format($exampleFee, 2) }}, customer {{ $paysVerb }} Rs {{ number_format($totalCollected, 2) }} total
                             @else
@@ -401,43 +366,38 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
                             @endif
                         </p>
                     </div>
+                </x-counter.section>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <x-counter.section title="Payment">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-ui.field
-                            :label="$direction === 'cash_in' ? 'Cash Received' : 'Amount Received in Account'"
+                            :label="$cashIn ? 'Cash Received' : 'Amount Received in Account'"
                             name="amountReceivedNow"
                             for="amountReceivedNow"
-                            :help="$direction === 'cash_in' ? 'How much cash did the customer hand you just now?' : 'How much did the customer just send into this account?'"
+                            :help="$cashIn ? 'How much cash did the customer hand you just now?' : 'How much did the customer just send into this account?'"
                         >
                             <x-ui.input wire:model.live="amountReceivedNow" id="amountReceivedNow" type="number" min="0" step="0.01" placeholder="0" />
                         </x-ui.field>
-                            <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
-                    </div>
 
-                    <div class="rounded-lg bg-brand-50 px-4 py-3">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-brand-700">{{ $direction === 'cash_in' ? 'Total to Collect from Customer' : 'Total to Receive from Customer' }}</span>
-                            <span class="text-lg font-semibold text-brand-900">Rs {{ number_format($totalCollected, 2) }}</span>
-                        </div>
-                        <div class="mt-1 flex items-center justify-between">
-                            <span class="text-sm text-brand-700">Will be recorded as</span>
-                            <x-ui.badge :variant="match($previewPaymentStatus->value) { 'paid' => 'success', 'partial' => 'warning', default => 'danger' }">
-                                {{ $previewPaymentStatus->label() }}
-                            </x-ui.badge>
-                        </div>
-                        @if ($amountReceivedNow !== '' && (float) $amountReceivedNow < $totalCollected)
-                            <div class="mt-1 flex items-center justify-between text-sm">
-                                <span class="text-slate-500">{{ $direction === 'cash_in' ? 'Still Owed by Customer' : 'Still Owed to Customer' }}</span>
-                                <span class="font-medium text-amber-600">Rs {{ number_format($totalCollected - (float) $amountReceivedNow, 2) }}</span>
-                            </div>
-                        @endif
+                        <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
                     </div>
+                </x-counter.section>
 
-                    <x-ui.button type="submit" size="lg" class="w-full justify-center sm:w-auto" wire:loading.attr="disabled" wire:target="save">
-                        Save
-                    </x-ui.button>
-                </form>
-            </x-ui.card>
+                <x-slot:summary>
+                    <x-counter.summary
+                        :total-label="$cashIn ? 'Total to Collect from Customer' : 'Total to Receive from Customer'"
+                        :total="$totalCollected"
+                        :lines="[
+                            ['label' => $cashIn ? 'Goes to the wallet' : 'Handed to the customer', 'value' => 'Rs '.number_format($netAmount, 2)],
+                            ['label' => 'Service Charge', 'value' => 'Rs '.number_format((float) $fee, 2)],
+                            ['label' => 'Discount', 'value' => '− Rs '.number_format((float) $discount, 2)],
+                        ]"
+                        :status="$previewPaymentStatus"
+                        :owed="$amountReceivedNow !== '' && (float) $amountReceivedNow < $totalCollected ? $totalCollected - (float) $amountReceivedNow : null"
+                        :owed-label="$cashIn ? 'Still Owed by Customer' : 'Still Owed to Customer'"
+                    />
+                </x-slot:summary>
+            </x-counter.form>
         @endif
     </div>
 

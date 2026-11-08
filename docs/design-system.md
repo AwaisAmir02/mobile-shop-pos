@@ -184,7 +184,7 @@ modal, alert, empty-state, tooltip, toast, pagination.
 |---|---|
 | `x-ui.page-header` | Title, subtitle, back or breadcrumb, one primary action, overflow menu |
 | `x-ui.module-tabs` | Section tabs from one config |
-| `x-ui.segmented` | In-page view switch |
+| `x-ui.segmented` | In-page view switch, or a short choice over radios (D7) |
 | `x-ui.filter-bar` | Search, key filters, More filters, active chips, export |
 | `x-ui.date-range` | Presets over the same existing from and to properties |
 | `x-ui.stat-row` | Fixed row of `x-ui.stat` |
@@ -330,6 +330,44 @@ segmented switch; cost only with cost-price access. Edit goes back to the form v
 **Livewire views never use `@continue`.** Jumping past an `@endif` leaves
 Livewire's block markers unbalanced and the page stops updating; use `@if`/`@else`
 (a test enforces it).
+
+## Counter-service forms (built in D7)
+
+SIM Sale, Balance Load, Wallet Load, Bills, NADRA, Repairs and Services share one
+layout, so a cashier who knows one knows all seven:
+
+```blade
+<x-counter.form wire:submit="save">
+    <x-counter.section title="Load"> ...what is being sold... </x-counter.section>
+    <x-counter.section title="Amount"> ...amount, service charge, discount... </x-counter.section>
+    <x-counter.section title="Payment"> ...status or cash received, Received Into... </x-counter.section>
+
+    <x-slot:summary>
+        <x-counter.summary :total="$totalCollected" :lines="[...]" :status="..." :owed="..." />
+    </x-slot:summary>
+</x-counter.form>
+```
+
+- **`x-counter.form`** is the one `<form>`: sections in one card on the left, divided
+  by rules rather than a card each so a whole entry fits a 768px-tall laptop screen, and the summary
+  sticky on the right at `lg` (it follows the form on phones). Enter in any field and
+  the summary's Save both submit.
+- **`x-counter.summary`** shows figures the component already worked out: the total,
+  its breakdown, the "Will be recorded as" badge and the amount still owed. It never
+  calculates anything itself. `total-expression` keeps it live in the browser when the
+  amount is deferred (Services).
+- **`x-counter.payment-status`** is the "Has the customer paid you?" block:
+  `x-ui.segmented` over the same `paymentStatus` values, Amount Paid on Partial (or
+  always, for Repairs) and the ledger's Received Into.
+- **`x-counter.receipt`** is the Saved card: receipt number, amount, breakdown,
+  Download Receipt and Log Another, which takes focus so Enter starts the next one.
+- **`x-ui.segmented`** is radios bound to the same `wire:model`, so a select can
+  become a segmented control without the property or its values changing. Wallet
+  Load's Cash In / Cash Out uses the same look on buttons, since it calls
+  `switchDirection()`.
+
+Required fields carry `required` on `x-ui.field` (matching the component's
+validation), and nothing says "Optional".
 
 ## Checks for every stage
 

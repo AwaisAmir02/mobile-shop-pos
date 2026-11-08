@@ -172,63 +172,28 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
 
     <div>
         @if ($lastLoad)
-            <x-ui.card class="mx-auto max-w-lg">
-                <div class="flex flex-col items-center text-center">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        </svg>
-                    </div>
-
-                    <p class="mt-3 text-sm text-slate-500">{{ $lastLoad->receiptNumber() }}</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format($lastLoad->total, 2) }}</p>
-                    <p class="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
-                        <x-ui.color-dot :color="$selectedNetwork?->color" />
-                        {{ $lastLoad->network }} · {{ $lastLoad->load_type->label() }}
-                        @if ($lastLoad->phone_number)
-                            · {{ $lastLoad->phone_number }}
-                        @endif
-                    </p>
-
-                    <div class="mt-4 w-full space-y-1.5 rounded-lg border border-slate-200 p-4 text-left text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Amount Loaded</span>
-                            <span class="font-medium text-slate-900">Rs {{ number_format($lastLoad->amount, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Service Charge</span>
-                            <span class="font-medium text-slate-900">Rs {{ number_format($lastLoad->fee, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Discount</span>
-                            <span class="font-medium text-slate-900">− Rs {{ number_format($lastLoad->discount, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between border-t border-slate-200 pt-1.5 font-semibold text-slate-900">
-                            <span>Total Collected</span>
-                            <span>Rs {{ number_format($lastLoad->total, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between pt-1.5">
-                            <span class="text-slate-500">Payment Status</span>
-                            <span class="font-medium text-slate-900">{{ $lastLoad->payment_status->label() }}</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-6 flex w-full gap-3">
-                        <x-ui.button type="button" variant="secondary" wire:click="downloadReceipt" class="flex-1 justify-center">
-                            Download Receipt
-                        </x-ui.button>
-
-                        <x-ui.button type="button" wire:click="logAnother" class="flex-1 justify-center">
-                            Log Another
-                        </x-ui.button>
-                    </div>
-                </div>
-            </x-ui.card>
+            <x-counter.receipt
+                :number="$lastLoad->receiptNumber()"
+                :total="$lastLoad->total"
+                :lines="[
+                    ['label' => 'Amount Loaded', 'value' => 'Rs '.number_format($lastLoad->amount, 2)],
+                    ['label' => 'Service Charge', 'value' => 'Rs '.number_format($lastLoad->fee, 2)],
+                    ['label' => 'Discount', 'value' => '− Rs '.number_format($lastLoad->discount, 2)],
+                    ['label' => 'Total Collected', 'value' => 'Rs '.number_format($lastLoad->total, 2), 'total' => true],
+                    ['label' => 'Payment Status', 'value' => $lastLoad->payment_status->label()],
+                ]"
+            >
+                <x-ui.color-dot :color="$selectedNetwork?->color" />
+                {{ $lastLoad->network }} · {{ $lastLoad->load_type->label() }}
+                @if ($lastLoad->phone_number)
+                    · {{ $lastLoad->phone_number }}
+                @endif
+            </x-counter.receipt>
         @else
-            <x-ui.card title="New Balance Load">
-                <form wire:submit="save" class="space-y-5">
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <x-ui.field label="Network" name="networkChoice" for="networkChoice">
+            <x-counter.form wire:submit="save">
+                <x-counter.section title="Load">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <x-ui.field label="Network" name="networkChoice" for="networkChoice" required>
                             <x-ui.image-select
                                 wire-model="networkChoice"
                                 :options="$networkOptions"
@@ -238,7 +203,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                             />
                         </x-ui.field>
 
-                        <x-ui.field label="Type" name="loadType" for="loadType">
+                        <x-ui.field label="Type" name="loadType" for="loadType" required>
                             <x-ui.select wire:model="loadType" id="loadType">
                                 @foreach ($loadTypes as $type)
                                     <option value="{{ $type->value }}">{{ $type->label() }}</option>
@@ -246,11 +211,11 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                             </x-ui.select>
                         </x-ui.field>
 
-                        <x-ui.field label="Phone Number" name="phoneNumber" for="phoneNumber" help="Optional">
+                        <x-ui.field label="Phone Number" name="phoneNumber" for="phoneNumber">
                             <x-ui.input wire:model="phoneNumber" id="phoneNumber" type="tel" placeholder="03xx-xxxxxxx" />
                         </x-ui.field>
 
-                        <x-ui.field label="Customer" name="customerId" for="customerId" help="Optional — leave blank for a walk-in">
+                        <x-ui.field label="Customer" name="customerId" for="customerId" help="Leave blank for a walk-in">
                             <x-ui.select wire:model.live="customerId" id="customerId">
                                 <option value="">Walk-in (no customer)</option>
                                 <option value="__create__">+ New Customer</option>
@@ -260,52 +225,48 @@ new #[Layout('layouts.app')] #[Title('Balance Load')] class extends Component
                             </x-ui.select>
                         </x-ui.field>
                     </div>
+                </x-counter.section>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <x-ui.field label="Amount" name="amount" for="amount">
+                <x-counter.section title="Amount">
+                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                        <x-ui.field label="Amount" name="amount" class="col-span-2 sm:col-span-1" for="amount" required>
                             <x-ui.input wire:model.live="amount" id="amount" type="number" min="1" step="0.01" class="text-lg" autofocus />
                         </x-ui.field>
 
-                        <x-ui.field label="Service Charge" name="fee" for="fee" help="Auto-suggested from your commission % — edit freely">
+                        <x-ui.field label="Service Charge" name="fee" for="fee" help="Suggested from your commission %">
                             <x-ui.input wire:model.live="fee" id="fee" type="number" min="0" step="0.01" />
                         </x-ui.field>
 
-                        <x-ui.field label="Discount" name="discount" for="discount" help="Optional">
+                        <x-ui.field label="Discount" name="discount" for="discount">
                             <x-ui.input wire:model.live="discount" id="discount" type="number" min="0" step="0.01" />
                         </x-ui.field>
                     </div>
+                </x-counter.section>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <x-counter.section title="Payment">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-ui.field label="Cash Received" name="amountReceivedNow" for="amountReceivedNow" help="How much cash did the customer hand you just now?">
                             <x-ui.input wire:model.live="amountReceivedNow" id="amountReceivedNow" type="number" min="0" step="0.01" placeholder="0" />
                         </x-ui.field>
-                            <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
-                    </div>
 
-                    <div class="rounded-lg bg-brand-50 px-4 py-3">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-brand-700">Total Collected</span>
-                            <span class="text-lg font-semibold text-brand-900">Rs {{ number_format($totalCollected, 2) }}</span>
-                        </div>
-                        <div class="mt-1 flex items-center justify-between">
-                            <span class="text-sm text-brand-700">Will be recorded as</span>
-                            <x-ui.badge :variant="match($previewPaymentStatus->value) { 'paid' => 'success', 'partial' => 'warning', default => 'danger' }">
-                                {{ $previewPaymentStatus->label() }}
-                            </x-ui.badge>
-                        </div>
-                        @if ($amountReceivedNow !== '' && (float) $amountReceivedNow < $totalCollected)
-                            <div class="mt-1 flex items-center justify-between text-sm">
-                                <span class="text-slate-500">Still Owed by Customer</span>
-                                <span class="font-medium text-amber-600">Rs {{ number_format($totalCollected - (float) $amountReceivedNow, 2) }}</span>
-                            </div>
-                        @endif
+                        <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
                     </div>
+                </x-counter.section>
 
-                    <x-ui.button type="submit" size="lg" class="w-full justify-center sm:w-auto" wire:loading.attr="disabled" wire:target="save">
-                        Save
-                    </x-ui.button>
-                </form>
-            </x-ui.card>
+                <x-slot:summary>
+                    <x-counter.summary
+                        total-label="Total Collected"
+                        :total="$totalCollected"
+                        :lines="[
+                            ['label' => 'Amount', 'value' => 'Rs '.number_format((float) $amount, 2)],
+                            ['label' => 'Service Charge', 'value' => 'Rs '.number_format((float) $fee, 2)],
+                            ['label' => 'Discount', 'value' => '− Rs '.number_format((float) $discount, 2)],
+                        ]"
+                        :status="$previewPaymentStatus"
+                        :owed="$amountReceivedNow !== '' && (float) $amountReceivedNow < $totalCollected ? $totalCollected - (float) $amountReceivedNow : null"
+                    />
+                </x-slot:summary>
+            </x-counter.form>
         @endif
     </div>
 

@@ -335,7 +335,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
 
     <x-ui.modal name="add-payment-form" max-width="sm">
         <form wire:submit="submitPayment" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Add Payment</h2>
+            <h2 class="text-lg font-semibold text-ink">Add Payment</h2>
 
             <div class="mt-5 space-y-5">
                 <x-ui.field label="Amount Paid Now" name="paymentAmount" for="paymentAmount">
@@ -358,7 +358,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
 
     <x-ui.modal name="edit-balance-load-form" max-width="lg">
         <form wire:submit="saveEdit" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Edit Balance Load</h2>
+            <h2 class="text-lg font-semibold text-ink">Edit Balance Load</h2>
 
             <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <x-ui.field label="Network" name="editNetwork" for="editNetwork">
@@ -377,11 +377,11 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
                     </x-ui.select>
                 </x-ui.field>
 
-                <x-ui.field label="Phone Number" name="editPhoneNumber" for="editPhoneNumber" help="Optional">
+                <x-ui.field label="Phone Number" name="editPhoneNumber" for="editPhoneNumber">
                     <x-ui.input wire:model="editPhoneNumber" id="editPhoneNumber" />
                 </x-ui.field>
 
-                <x-ui.field label="Customer" name="editCustomerId" for="editCustomerId" help="Optional — leave blank for a walk-in">
+                <x-ui.field label="Customer" name="editCustomerId" for="editCustomerId" help="Leave blank for a walk-in">
                     <x-ui.select wire:model="editCustomerId" id="editCustomerId">
                         <option value="">Walk-in (no customer)</option>
                         @foreach ($customers as $customer)
@@ -398,7 +398,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
                     <x-ui.input wire:model="editFee" id="editFee" type="number" min="0" step="0.01" />
                 </x-ui.field>
 
-                <x-ui.field label="Discount" name="editDiscount" for="editDiscount" help="Optional">
+                <x-ui.field label="Discount" name="editDiscount" for="editDiscount">
                     <x-ui.input wire:model="editDiscount" id="editDiscount" type="number" min="0" step="0.01" />
                 </x-ui.field>
             </div>
@@ -417,13 +417,13 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
 
     <x-ui.modal name="cancel-balance-load-form" max-width="sm">
         <form wire:submit="cancelLoad" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Cancel This Balance Load?</h2>
-            <p class="mt-2 text-sm text-slate-600">
+            <h2 class="text-lg font-semibold text-ink">Cancel This Balance Load?</h2>
+            <p class="mt-2 text-sm text-ink-muted">
                 This balance load will be marked <strong>Cancelled</strong>. It will no longer count toward any total, report, or outstanding balance. This cannot be undone.
             </p>
 
             <div class="mt-5">
-                <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
+                <x-ui.field label="Reason" name="cancelReason" for="cancelReason">
                     <x-ui.input wire:model="cancelReason" id="cancelReason" />
                 </x-ui.field>
             </div>

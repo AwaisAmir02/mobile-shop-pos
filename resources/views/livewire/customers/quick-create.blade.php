@@ -44,7 +44,7 @@ new class extends Component
                     <x-ui.input wire:model="name" id="quickCustomerName" autofocus />
                 </x-ui.field>
 
-                <x-ui.field label="Phone" name="phone" for="quickCustomerPhone" help="Optional">
+                <x-ui.field label="Phone" name="phone" for="quickCustomerPhone">
                     <x-ui.input wire:model="phone" id="quickCustomerPhone" type="tel" placeholder="03xx-xxxxxxx" />
                 </x-ui.field>
             </div>

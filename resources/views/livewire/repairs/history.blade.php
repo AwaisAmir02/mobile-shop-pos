@@ -346,7 +346,7 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
 
     <x-ui.modal name="add-payment-form" max-width="sm">
         <form wire:submit="submitPayment" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Add Payment</h2>
+            <h2 class="text-lg font-semibold text-ink">Add Payment</h2>
 
             <div class="mt-5 space-y-5">
                 <x-ui.field label="Amount Paid Now" name="paymentAmount" for="paymentAmount">
@@ -369,7 +369,7 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
 
     <x-ui.modal name="edit-repair-form" max-width="lg">
         <form wire:submit="saveEdit" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Edit Repair</h2>
+            <h2 class="text-lg font-semibold text-ink">Edit Repair</h2>
 
             <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <x-ui.field label="Date" name="editRepairDate" for="editRepairDate">
@@ -384,11 +384,11 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
                     </x-ui.select>
                 </x-ui.field>
 
-                <x-ui.field label="Sub-Category" name="editSubCategory" for="editSubCategory" help="Optional">
+                <x-ui.field label="Sub-Category" name="editSubCategory" for="editSubCategory">
                     <x-ui.input wire:model="editSubCategory" id="editSubCategory" />
                 </x-ui.field>
 
-                <x-ui.field label="Customer" name="editCustomerId" for="editCustomerId" help="Optional — leave blank for a walk-in customer">
+                <x-ui.field label="Customer" name="editCustomerId" for="editCustomerId" help="Leave blank for a walk-in customer">
                     <x-ui.select wire:model="editCustomerId" id="editCustomerId">
                         <option value="">Walk-in (no customer)</option>
                         @foreach ($customers as $customer)
@@ -401,11 +401,11 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
                     <x-ui.input wire:model="editServiceCharges" id="editServiceCharges" type="number" min="0" step="0.01" />
                 </x-ui.field>
 
-                <x-ui.field label="Products Charges" name="editProductsCharges" for="editProductsCharges" help="Optional">
+                <x-ui.field label="Products Charges" name="editProductsCharges" for="editProductsCharges">
                     <x-ui.input wire:model="editProductsCharges" id="editProductsCharges" type="number" min="0" step="0.01" />
                 </x-ui.field>
 
-                <x-ui.field label="Discount" name="editDiscount" for="editDiscount" help="Optional">
+                <x-ui.field label="Discount" name="editDiscount" for="editDiscount">
                     <x-ui.input wire:model="editDiscount" id="editDiscount" type="number" min="0" step="0.01" />
                 </x-ui.field>
             </div>
@@ -416,7 +416,7 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
                         wire:model="editDescription"
                         id="editDescription"
                         rows="3"
-                        class="block w-full rounded-lg border-slate-300 py-2.5 px-3.5 text-base text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:ring-brand-500"
+                        class="block w-full rounded-lg border-line-strong py-2.5 px-3.5 text-base text-ink shadow-sm placeholder:text-ink-faint focus:border-link focus:ring-link"
                     ></textarea>
                 </x-ui.field>
             </div>
@@ -435,13 +435,13 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
 
     <x-ui.modal name="cancel-repair-form" max-width="sm">
         <form wire:submit="cancelRepair" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Cancel This Repair?</h2>
-            <p class="mt-2 text-sm text-slate-600">
+            <h2 class="text-lg font-semibold text-ink">Cancel This Repair?</h2>
+            <p class="mt-2 text-sm text-ink-muted">
                 This repair will be marked <strong>Cancelled</strong>. It will no longer count toward any total, report, or outstanding balance. This cannot be undone.
             </p>
 
             <div class="mt-5">
-                <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
+                <x-ui.field label="Reason" name="cancelReason" for="cancelReason">
                     <x-ui.input wire:model="cancelReason" id="cancelReason" />
                 </x-ui.field>
             </div>
