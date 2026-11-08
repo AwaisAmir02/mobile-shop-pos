@@ -503,8 +503,8 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                                         </div>
                                         <span class="text-sm font-bold tabular-nums text-ink">From Rs {{ number_format($entry['fromPrice'], 2) }}{{ $entry['unit']->perSuffix() }}</span>
                                     </button>
-                                    @continue
-                                @endif
+                                @else
+                                {{-- @else rather than a loop continue: skipping past @endif leaves Livewire's block markers unbalanced and the list stops updating. --}}
                                 <button
                                     type="button"
                                     wire:click="addToCart({{ $product->id }})"
@@ -520,6 +520,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                                     </div>
                                     <span class="text-sm font-bold tabular-nums text-ink">Rs {{ number_format($product->currentSellingPrice(), 2) }}{{ $product->unit->perSuffix() }}</span>
                                 </button>
+                                @endif
                             @empty
                                 <p class="px-4 py-3 text-sm text-ink-faint">No in-stock products match "{{ $search }}".</p>
                             @endforelse

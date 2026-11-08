@@ -32,6 +32,8 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     public string $from = '';
     public string $to = '';
+    // From the URL too, so a product's page can link straight to its batches.
+    #[Url]
     public string $productFilter = '';
     public string $paymentStatusFilter = '';
 

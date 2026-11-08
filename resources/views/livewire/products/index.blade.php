@@ -95,6 +95,14 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public string $groupPrice = '';
     public string $groupCost = '';
     public string $attachSearch = '';
+
+    // Add Product wizard (design overhaul D5): step 1 Details, step 2 how it's sold,
+    // either as one product or in sizes/colours. Both are saved in one go at the end.
+    public int $formStep = 1;
+    public bool $withVariants = false;
+
+    /** Step 1 fields: what any product has, whichever way it's sold. */
+    protected const DETAIL_FIELDS = ['type', 'name', 'image', 'brand', 'model', 'imei', 'category', 'unit', 'price', 'cost_price'];
     /** @var array<int, string> product id => the label it will have in the group */
     public array $attachLabels = [];
 
@@ -102,6 +110,11 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     {
         MainCategory::ensureDefaultsExist();
         AccessoryCategoryOption::ensureDefaultsExist();
+
+        // The product detail page links here to edit (products?edit=ID).
+        if ($editId = request()->integer('edit')) {
+            $this->openEdit($editId);
+        }
     }
 
     public function updatingSearch(): void
@@ -230,6 +243,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     ])
             )->all(),
             'canImportProducts' => Auth::user()->canImportProducts(),
+            'wizard' => $this->usesWizard(),
+            'wizardLabels' => $this->usesWizard() && $this->withVariants ? $this->generatedLabels() : [],
             'barcodeEnabled' => Auth::user()->canUseBarcodes(),
             'whatsappEnabled' => (bool) Auth::user()->shop?->whatsapp_ordering_enabled,
             'barcodePreview' => $this->barcodePreview(),
@@ -432,7 +447,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->closeGroupForm();
     }
 
-    protected function saveGroupVariants(ProductGroupService $groups): void
+    /** @return bool whether the group and its variants were saved */
+    protected function saveGroupVariants(ProductGroupService $groups): bool
     {
         $group = $this->groupFormMode === 'add' ? ProductGroup::findOrFail($this->groupFormId) : null;
         $labels = $this->generatedLabels();
@@ -474,7 +490,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         } catch (UsageLimitReached $e) {
             $this->toastError($e->getMessage());
 
-            return;
+            return false;
         }
 
         $imagePath = ! $group && $this->groupImage ? $this->storeImage($this->groupImage, 'products') : null;
@@ -497,6 +513,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
         $this->toastSuccess($this->groupFormMode === 'add' ? 'Variants added.' : 'Variant group created.');
         $this->closeGroupForm();
+
+        return true;
     }
 
     protected function groupDetailRules(?int $ignoreGroupId): array
@@ -584,6 +602,74 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     {
         $this->resetForm();
         $this->dispatch('open-modal', name: 'product-form');
+    }
+
+    /** New products of a type that can have variants go through the two-step wizard. */
+    protected function usesWizard(): bool
+    {
+        return $this->editingId === null && $this->variantsEnabled() && ! in_array($this->type, ProductGroup::EXCLUDED_TYPES, true);
+    }
+
+    /** Details step done: check just those fields, then ask how the product is sold. */
+    public function nextStep(): void
+    {
+        abort_unless($this->usesWizard(), 403);
+
+        $this->validate(array_intersect_key($this->rules(), array_flip(self::DETAIL_FIELDS)));
+        $this->formStep = 2;
+    }
+
+    public function previousStep(): void
+    {
+        $this->formStep = 1;
+    }
+
+    /**
+     * The wizard's "sizes or colours" ending. The product's details become the
+     * group's (its name exactly as typed, category, unit, image, price and
+     * cost) and the existing group path creates the group and its variants in
+     * one transaction, as the Add Variant Group form always has. No existing
+     * product is touched or renamed.
+     */
+    public function saveWithVariants(ProductGroupService $groups): void
+    {
+        abort_unless($this->usesWizard(), 403);
+
+        $this->validate(array_intersect_key($this->rules(), array_flip(self::DETAIL_FIELDS)));
+
+        $this->groupFormMode = 'create';
+        $this->groupFormId = null;
+        $this->groupName = $this->name;
+        $this->groupType = $this->type;
+        $this->groupCategory = $this->category;
+        $this->groupUnit = $this->unit;
+        $this->groupImage = $this->image;
+        $this->groupPrice = $this->price;
+        $this->groupCost = $this->cost_price;
+        $this->attachLabels = [];
+
+        try {
+            $saved = $this->saveGroupVariants($groups);
+        } catch (ValidationException $e) {
+            // Point any problem at the field the user actually filled in.
+            $fields = ['groupName' => 'name', 'groupType' => 'type', 'groupCategory' => 'category', 'groupImage' => 'image', 'groupPrice' => 'price', 'groupCost' => 'cost_price'];
+            $errors = [];
+
+            foreach ($e->errors() as $key => $messages) {
+                $errors[$fields[$key] ?? $key] = $messages;
+            }
+
+            if (array_intersect(array_keys($errors), self::DETAIL_FIELDS) !== []) {
+                $this->formStep = 1;
+            }
+
+            throw ValidationException::withMessages($errors);
+        }
+
+        if ($saved) {
+            $this->dispatch('close-modal', name: 'product-form');
+            $this->resetForm();
+        }
     }
 
     /**
@@ -1030,6 +1116,10 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
         $this->type = 'mobile';
         $this->stock_quantity = '0';
+        $this->formStep = 1;
+        $this->withVariants = false;
+        $this->groupSizes = '';
+        $this->groupColours = '';
         $this->resetErrorBag();
     }
 }; ?>
@@ -1059,9 +1149,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
         <x-slot:actions>
             <x-ui.export-dropdown />
-            @if ($variantsEnabled)
-                <x-ui.button type="button" variant="secondary" size="sm" wire:click="openCreateGroup" class="hidden sm:inline-flex">Add Variant Group</x-ui.button>
-            @endif
             <x-ui.button wire:click="openCreate" size="sm">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -1071,7 +1158,9 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             @if ($variantsEnabled || $canImportProducts || ($barcodeEnabled && $missingBarcodeCount > 0))
                 <x-ui.row-actions label="More product actions">
                     @if ($variantsEnabled)
-                        <x-ui.menu-item wire:click="openCreateGroup" class="sm:hidden">Add Variant Group</x-ui.menu-item>
+                        {{-- New products choose sizes and colours in Add Product. This older form
+                             stays for grouping products that already exist. --}}
+                        <x-ui.menu-item wire:click="openCreateGroup">Add Variant Group</x-ui.menu-item>
                     @endif
                     @if ($canImportProducts)
                         <x-ui.menu-item wire:click="openImportModal">Import from Excel</x-ui.menu-item>
@@ -1171,7 +1260,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                                         @if ($barcodeEnabled)
                                             <input type="checkbox" wire:model.live="labelSelection" value="{{ $variant->id }}" class="h-4 w-4 rounded border-line-strong text-primary focus:ring-link" aria-label="Select {{ $variant->name }} for label printing">
                                         @endif
-                                        {{ $variant->variant_label }}
+                                        <a href="{{ route('products.show', $variant) }}" wire:navigate class="hover:text-link">{{ $variant->variant_label }}</a>
                                     </div>
                                 </x-ui.table-cell>
                                 <x-ui.table-cell label="Category"></x-ui.table-cell>
@@ -1186,8 +1275,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                             </x-ui.table-row>
                         @endforeach
                     @endif
-                    @continue
-                @endif
+                @else
+                {{-- @else rather than a loop continue: skipping past @endif leaves Livewire's block markers unbalanced and the list stops updating. --}}
                 <x-ui.table-row wire:key="product-{{ $product->id }}">
                     <x-ui.table-cell primary class="font-semibold text-ink">
                         <div class="flex items-center gap-3">
@@ -1195,7 +1284,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                                 <input type="checkbox" wire:model.live="labelSelection" value="{{ $product->id }}" class="h-4 w-4 rounded border-line-strong text-primary focus:ring-link" aria-label="Select {{ $product->name }} for label printing">
                             @endif
                             <x-ui.thumbnail :src="$product->imageUrl()" :label="$product->name" />
-                            {{ $product->name }}
+                            <a href="{{ route('products.show', $product) }}" wire:navigate class="hover:text-link">{{ $product->name }}</a>
                         </div>
                     </x-ui.table-cell>
                     <x-ui.table-cell label="Category">
@@ -1218,6 +1307,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                         <x-products.row-actions :product="$product" :barcode-enabled="$barcodeEnabled" :whatsapp-enabled="$whatsappEnabled" />
                     </x-ui.table-cell>
                 </x-ui.table-row>
+                @endif
             @endforeach
         </x-ui.table>
 
@@ -1227,155 +1317,246 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     @endif
 
     <x-ui.modal name="product-form" max-width="xl">
-        <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
-                {{ $editingId ? 'Edit Product' : 'Add Product' }}
-            </h2>
-
-            <div class="mt-5 space-y-5">
-                @if ($editingVariantGroupName !== '')
-                    <div class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                        Variant of <span class="font-semibold text-slate-900">{{ $editingVariantGroupName }}</span>. Its name and category come from the group.
-                    </div>
-
-                    <x-ui.field label="Variant Label" name="variantLabel" for="variantLabel" help="e.g. M / Red">
-                        <x-ui.input wire:model="variantLabel" id="variantLabel" />
-                    </x-ui.field>
-                @else
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <x-ui.field label="Main Category" name="type" for="type">
-                        <x-ui.select wire:model.live="type" id="type">
-                            <option value="__create__">+ New Main Category</option>
-                            @foreach ($mainCategories as $option)
-                                <option value="{{ $option->slug }}">{{ $option->name }}</option>
-                            @endforeach
-                        </x-ui.select>
-                    </x-ui.field>
-
-                    <x-ui.field label="Product Name" name="name" for="name">
-                        <x-ui.input wire:model="name" id="name" autofocus />
-                    </x-ui.field>
-                </div>
+        {{-- Step 1 of the wizard, or the whole form when editing or when this kind of
+             product can't have variants (mobiles, SIMs) or variants are off. Inline @php
+             only: a block form here would pair with the inline ones above. --}}
+        @php($showDetails = ! $wizard || $formStep === 1)
+        @php($showSelling = ! $wizard || ($formStep === 2 && ! $withVariants))
+        <form wire:submit="{{ $wizard ? ($formStep === 1 ? 'nextStep' : ($withVariants ? 'saveWithVariants' : 'save')) : 'save' }}" class="p-6">
+            <div class="flex items-start justify-between gap-4">
+                <h2 class="text-lg font-bold tracking-tight text-ink">
+                    {{ $editingId ? 'Edit Product' : 'Add Product' }}
+                </h2>
+                @if ($wizard)
+                    <ol class="flex items-center gap-2 text-xs font-semibold" aria-label="Steps" data-wizard-steps>
+                        <li @class(['flex items-center gap-1.5', 'text-on-primary-soft' => $formStep === 1, 'text-ink-faint' => $formStep !== 1])>
+                            <span @class(['flex h-5 w-5 items-center justify-center rounded-full text-[11px]', 'bg-primary text-on-primary' => $formStep === 1, 'bg-success text-surface' => $formStep !== 1])>{{ $formStep === 1 ? '1' : '✓' }}</span>
+                            Details
+                        </li>
+                        <li aria-hidden="true" class="h-px w-4 bg-line"></li>
+                        <li @class(['flex items-center gap-1.5', 'text-on-primary-soft' => $formStep === 2, 'text-ink-faint' => $formStep !== 2])>
+                            <span @class(['flex h-5 w-5 items-center justify-center rounded-full text-[11px]', 'bg-primary text-on-primary' => $formStep === 2, 'bg-surface-sunken text-ink-faint ring-1 ring-line' => $formStep !== 2])>2</span>
+                            Stock &amp; variants
+                        </li>
+                    </ol>
                 @endif
+            </div>
 
-                <x-ui.field label="Image" name="image" for="image" help="Optional">
-                    <x-ui.file-input wire:model="image" id="image" :preview="$this->previewUrl($image, $existingImageUrl)" />
-                </x-ui.field>
+            {{-- Every section is always rendered and only hidden, so moving between
+                 steps doesn't change the form's structure (Livewire's morph broke on
+                 whole sections appearing and disappearing). --}}
+            <div class="mt-5 space-y-5">
+                <div @class(['space-y-5', 'hidden' => ! $showDetails]) data-wizard-section="details">
+                    @if ($editingVariantGroupName !== '')
+                        <div class="rounded-xl bg-surface-sunken px-3 py-2 text-sm text-ink-muted">
+                            Variant of <span class="font-semibold text-ink">{{ $editingVariantGroupName }}</span>. Its name and category come from the group.
+                        </div>
 
-                @if ($type === 'mobile')
+                        <x-ui.field label="Variant Label" name="variantLabel" for="variantLabel" help="e.g. M / Red">
+                            <x-ui.input wire:model="variantLabel" id="variantLabel" />
+                        </x-ui.field>
+                    @else
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <x-ui.field label="Brand" name="brand" for="brand">
-                            <x-ui.select wire:model.live="brand" id="brand">
-                                <option value="">Select a brand</option>
-                                <option value="__create__">+ New Brand</option>
-                                @foreach ($brands as $option)
-                                    <option value="{{ $option->name }}">{{ $option->name }}</option>
+                        <x-ui.field label="Main Category" name="type" for="type">
+                            <x-ui.select wire:model.live="type" id="type">
+                                <option value="__create__">+ New Main Category</option>
+                                @foreach ($mainCategories as $option)
+                                    <option value="{{ $option->slug }}">{{ $option->name }}</option>
                                 @endforeach
                             </x-ui.select>
                         </x-ui.field>
 
-                        <x-ui.field label="Model" name="model" for="model" help="Optional">
-                            <x-ui.input wire:model="model" id="model" placeholder="e.g. Galaxy A15" />
+                        <x-ui.field label="Product Name" name="name" for="name">
+                            <x-ui.input wire:model="name" id="name" autofocus />
                         </x-ui.field>
                     </div>
-                @endif
-
-                @if ($editingVariantGroupName === '')
-                <div @class(['grid grid-cols-1 gap-4', 'sm:grid-cols-2' => $type === 'mobile'])>
-                    @if ($type === 'mobile')
-                        <x-ui.field label="IMEI / Serial" name="imei" for="imei" help="Optional">
-                            <x-ui.input wire:model="imei" id="imei" />
-                        </x-ui.field>
                     @endif
 
-                    <x-ui.field label="Sub-Category" name="category" for="category" :help="$type === 'accessory' ? null : 'Optional'">
-                        <x-ui.image-select
-                            wire:key="category-select-{{ $type }}"
-                            wire-model="category"
-                            :options="$accessoryCategoryOptions"
-                            id="category"
-                            placeholder="Select a sub-category"
-                        />
+                    <x-ui.field label="Image" name="image" for="image" help="Optional">
+                        <x-ui.file-input wire:model="image" id="image" :preview="$this->previewUrl($image, $existingImageUrl)" />
                     </x-ui.field>
-                </div>
-                @endif
 
-                @if ($showUnitField)
-                    @if ($unitLocked)
-                        <p class="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                            Sold by <span class="font-medium text-slate-700">{{ $formUnit->label() }}</span>. Locked because this product already has stock-in or sales records.
-                        </p>
-                    @else
-                        <x-ui.field label="Sold By" name="unit" for="unit" help="Piece for whole items. The others take quantities like 1.5.">
-                            <div wire:key="unit-{{ $editingId ?? 'new' }}">
-                                <x-ui.select wire:model.live="unit" id="unit">
-                                    @foreach (\App\Enums\QuantityUnit::cases() as $unitOption)
-                                        <option value="{{ $unitOption->value }}">{{ $unitOption->label() }}</option>
+                    @if ($type === 'mobile')
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <x-ui.field label="Brand" name="brand" for="brand">
+                                <x-ui.select wire:model.live="brand" id="brand">
+                                    <option value="">Select a brand</option>
+                                    <option value="__create__">+ New Brand</option>
+                                    @foreach ($brands as $option)
+                                        <option value="{{ $option->name }}">{{ $option->name }}</option>
                                     @endforeach
                                 </x-ui.select>
-                            </div>
-                        </x-ui.field>
+                            </x-ui.field>
+
+                            <x-ui.field label="Model" name="model" for="model" help="Optional">
+                                <x-ui.input wire:model="model" id="model" placeholder="e.g. Galaxy A15" />
+                            </x-ui.field>
+                        </div>
                     @endif
-                @endif
 
-                @if ($expiryEnabled)
-                    <x-ui.field label="Shelf Life (days)" name="shelf_life_days" for="shelf_life_days" help="Optional. Pre-fills the expiry date on Stock In">
-                        <x-ui.input wire:model="shelf_life_days" id="shelf_life_days" type="number" min="1" max="3650" step="1" />
-                    </x-ui.field>
-                @endif
+                    @if ($editingVariantGroupName === '')
+                    <div @class(['grid grid-cols-1 gap-4', 'sm:grid-cols-2' => $type === 'mobile'])>
+                        @if ($type === 'mobile')
+                            <x-ui.field label="IMEI / Serial" name="imei" for="imei" help="Optional">
+                                <x-ui.input wire:model="imei" id="imei" />
+                            </x-ui.field>
+                        @endif
 
-                @if ($editingHasBatches)
-                    <p class="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                        Price now comes from this product's Stock In batches. To correct a price, edit the specific Stock In entry instead. To remove stock that was damaged, lost or expired, use a <a href="{{ route('stock-ins.write-offs') }}" wire:navigate class="font-medium text-brand-700 hover:text-brand-800">write-off</a>, which keeps batches and stock in step.
-                    </p>
-                @endif
+                        <x-ui.field label="Sub-Category" name="category" for="category" :help="$type === 'accessory' ? null : 'Optional'">
+                            <x-ui.image-select
+                                wire:key="category-select-{{ $type }}"
+                                wire-model="category"
+                                :options="$accessoryCategoryOptions"
+                                id="category"
+                                placeholder="Select a sub-category"
+                            />
+                        </x-ui.field>
+                    </div>
+                    @endif
 
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <x-ui.field label="Selling Price" name="price" for="price">
-                        <x-ui.input wire:model="price" id="price" type="number" step="0.01" min="0" :disabled="$editingHasBatches" />
-                    </x-ui.field>
+                    @if ($showUnitField)
+                        @if ($unitLocked)
+                            <p class="rounded-xl bg-surface-sunken px-3 py-2 text-xs text-ink-faint">
+                                Sold by <span class="font-semibold text-ink-muted">{{ $formUnit->label() }}</span>. Locked because this product already has stock-in or sales records.
+                            </p>
+                        @else
+                            <x-ui.field label="Sold By" name="unit" for="unit" help="Piece for whole items. The others take quantities like 1.5.">
+                                <div wire:key="unit-{{ $editingId ?? 'new' }}">
+                                    <x-ui.select wire:model.live="unit" id="unit">
+                                        @foreach (\App\Enums\QuantityUnit::cases() as $unitOption)
+                                            <option value="{{ $unitOption->value }}">{{ $unitOption->label() }}</option>
+                                        @endforeach
+                                    </x-ui.select>
+                                </div>
+                            </x-ui.field>
+                        @endif
+                    @endif
 
-                    <x-ui.field label="Cost Price" name="cost_price" for="cost_price" help="Optional">
-                        <x-ui.input wire:model="cost_price" id="cost_price" type="number" step="0.01" min="0" :disabled="$editingHasBatches" />
-                    </x-ui.field>
+                    @if ($editingHasBatches)
+                        <p class="rounded-xl bg-surface-sunken px-3 py-2 text-xs text-ink-faint">
+                            Price now comes from this product's Stock In batches. To correct a price, edit the specific Stock In entry instead. To remove stock that was damaged, lost or expired, use a <a href="{{ route('stock-ins.write-offs') }}" wire:navigate class="font-semibold text-link hover:underline">write-off</a>, which keeps batches and stock in step.
+                        </p>
+                    @endif
 
-                    <x-ui.field :label="$formUnit->allowsDecimals() ? 'Stock Qty ('.$formUnit->symbol().')' : 'Stock Qty'" name="stock_quantity" for="stock_quantity">
-                        <x-ui.input wire:model="stock_quantity" id="stock_quantity" type="number" :step="$formUnit->inputStep()" min="0" />
-                    </x-ui.field>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <x-ui.field label="Selling Price" name="price" for="price" :help="$wizard ? 'For every variant, if it comes in sizes or colours' : null">
+                            <x-ui.input wire:model="price" id="price" type="number" step="0.01" min="0" :disabled="$editingHasBatches" />
+                        </x-ui.field>
+
+                        <x-ui.field label="Cost Price" name="cost_price" for="cost_price" help="Optional">
+                            <x-ui.input wire:model="cost_price" id="cost_price" type="number" step="0.01" min="0" :disabled="$editingHasBatches" />
+                        </x-ui.field>
+                    </div>
                 </div>
 
-                @if ($barcodeEnabled)
-                    <x-ui.field label="Barcode" name="barcode" for="barcode" help="Optional — type or scan one, or generate a unique one">
-                        <div class="flex gap-2">
-                            <x-ui.input
-                                wire:model="barcode"
-                                id="barcode"
-                                autocomplete="off"
-                                class="font-mono"
-                                x-on:keydown.enter.prevent
-                            />
-                            <x-ui.button type="button" variant="secondary" wire:click="generateBarcode" wire:loading.attr="disabled" wire:target="generateBarcode" class="shrink-0">
-                                Generate
-                            </x-ui.button>
+                <div @class(['space-y-5', 'hidden' => ! ($wizard && $formStep === 2)]) data-wizard-section="sold-as">
+                    <div>
+                        <p class="text-sm font-semibold text-ink">How is {{ $name !== '' ? $name : 'this product' }} sold?</p>
+                        <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="How it is sold">
+                            @foreach ([false => ['One product', 'A single item with its own stock and barcode.'], true => ['Sizes or colours', 'Several variants, each with its own stock and barcode.']] as $value => [$title, $text])
+                                <button
+                                    type="button"
+                                    role="radio"
+                                    aria-checked="{{ $withVariants === (bool) $value ? 'true' : 'false' }}"
+                                    wire:click="$set('withVariants', {{ $value ? 'true' : 'false' }})"
+                                    data-sold-as="{{ $value ? 'variants' : 'single' }}"
+                                    @class([
+                                        'rounded-xl border p-4 text-left transition-colors',
+                                        'border-primary bg-primary-soft ring-1 ring-primary' => $withVariants === (bool) $value,
+                                        'border-line bg-surface hover:border-line-strong' => $withVariants !== (bool) $value,
+                                    ])
+                                >
+                                    <span class="block text-sm font-bold text-ink">{{ $title }}</span>
+                                    <span class="mt-0.5 block text-xs text-ink-faint">{{ $text }}</span>
+                                </button>
+                            @endforeach
                         </div>
+                    </div>
+
+                    <div @class(['space-y-5', 'hidden' => ! $withVariants])>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <x-ui.field label="Sizes" name="groupSizes" for="wizardSizes" help="Separate with commas, e.g. S, M, L">
+                                <x-ui.input wire:model.live.debounce.300ms="groupSizes" id="wizardSizes" placeholder="S, M, L" />
+                            </x-ui.field>
+                            <x-ui.field label="Colours" name="groupColours" for="wizardColours" help="Optional, e.g. White, Navy">
+                                <x-ui.input wire:model.live.debounce.300ms="groupColours" id="wizardColours" placeholder="White, Navy" />
+                            </x-ui.field>
+                        </div>
+
+                        <div class="rounded-xl border border-line bg-surface-sunken/60 p-4" data-variant-preview>
+                            @if ($wizardLabels === [])
+                                <p class="text-sm text-ink-faint">Type sizes, colours or both to see the variants.</p>
+                            @else
+                                <p class="text-sm text-ink-muted">
+                                    <span class="font-semibold text-ink">{{ $name }}</span> in {{ count($wizardLabels) }} {{ \Illuminate\Support\Str::plural('variant', count($wizardLabels)) }}, each
+                                    Rs {{ $price !== '' ? number_format((float) $price, 2) : '—' }}:
+                                </p>
+                                <ul class="mt-2 flex flex-wrap gap-1.5">
+                                    @foreach ($wizardLabels as $label)
+                                        <li class="rounded-full bg-surface px-2.5 py-1 text-xs font-semibold text-ink ring-1 ring-line">{{ $label }}</li>
+                                    @endforeach
+                                </ul>
+                                <p class="mt-3 text-xs text-ink-faint">Each starts with no stock; add it through Stock In. Barcodes, prices and shelf life can be set per variant afterwards.</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <div @class(['space-y-5', 'hidden' => ! $showSelling]) data-wizard-section="selling">
+                    @if ($expiryEnabled)
+                        <x-ui.field label="Shelf Life (days)" name="shelf_life_days" for="shelf_life_days" help="Optional. Pre-fills the expiry date on Stock In">
+                            <x-ui.input wire:model="shelf_life_days" id="shelf_life_days" type="number" min="1" max="3650" step="1" />
+                        </x-ui.field>
+                    @endif
+
+                    <x-ui.field :label="$formUnit->allowsDecimals() ? 'Stock Qty ('.$formUnit->symbol().')' : 'Stock Qty'" name="stock_quantity" for="stock_quantity" class="sm:max-w-xs">
+                        <x-ui.input wire:model="stock_quantity" id="stock_quantity" type="number" :step="$formUnit->inputStep()" min="0" />
                     </x-ui.field>
 
-                    @if ($barcodePreview)
-                        <div class="rounded-lg border border-slate-200 bg-white p-3">
-                            <img src="{{ $barcodePreview }}" alt="Barcode {{ $barcode }}" class="h-16 max-w-full" />
-                        </div>
+                    @if ($barcodeEnabled)
+                        <x-ui.field label="Barcode" name="barcode" for="barcode" help="Optional — type or scan one, or generate a unique one">
+                            <div class="flex gap-2">
+                                <x-ui.input
+                                    wire:model="barcode"
+                                    id="barcode"
+                                    autocomplete="off"
+                                    class="font-mono"
+                                    x-on:keydown.enter.prevent
+                                />
+                                <x-ui.button type="button" variant="secondary" wire:click="generateBarcode" wire:loading.attr="disabled" wire:target="generateBarcode" class="shrink-0">
+                                    Generate
+                                </x-ui.button>
+                            </div>
+                        </x-ui.field>
+
+                        @if ($barcodePreview)
+                            <div class="rounded-xl border border-line bg-white p-3">
+                                <img src="{{ $barcodePreview }}" alt="Barcode {{ $barcode }}" class="h-16 max-w-full" />
+                            </div>
+                        @endif
                     @endif
-                @endif
+                </div>
             </div>
 
-            <div class="mt-6 flex justify-end gap-3">
-                <x-ui.button type="button" variant="secondary" wire:click="closeForm">
-                    Cancel
-                </x-ui.button>
+            <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <x-ui.button type="button" variant="ghost" wire:click="previousStep" @class(['hidden' => ! ($wizard && $formStep === 2)])>Back</x-ui.button>
+                </div>
+                <div class="flex flex-col-reverse gap-2 sm:flex-row">
+                    <x-ui.button type="button" variant="secondary" wire:click="closeForm">
+                        Cancel
+                    </x-ui.button>
 
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="save">
-                    {{ $editingId ? 'Save Changes' : 'Add Product' }}
-                </x-ui.button>
+                    <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="nextStep,saveWithVariants,save" :data-wizard-next="$wizard && $formStep === 1" :data-wizard-save="! ($wizard && $formStep === 1)" :disabled="$wizard && $formStep === 2 && $withVariants && $wizardLabels === []">
+                        @if ($wizard && $formStep === 1)
+                            Next
+                        @elseif ($wizard && $withVariants)
+                            {{ $wizardLabels === [] ? 'Add Product' : 'Add Product with '.count($wizardLabels).' '.\Illuminate\Support\Str::plural('variant', count($wizardLabels)) }}
+                        @else
+                            {{ $editingId ? 'Save Changes' : 'Add Product' }}
+                        @endif
+                    </x-ui.button>
+                </div>
             </div>
         </form>
     </x-ui.modal>

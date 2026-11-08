@@ -22,7 +22,7 @@ const PAGES = {
     signup: '/signup', login: '/login', 'forgot-password': '/forgot-password',
   },
   owner: {
-    dashboard: '/dashboard', products: '/products', sales: '/sales', 'sales-history': '/sales/history', 'sale-show': '/sales/1', 'sale-edit': '/sales/1/edit',
+    dashboard: '/dashboard', products: '/products', 'product-show': '/products/1', 'product-variants': '/products/8?tab=variants', sales: '/sales', 'sales-history': '/sales/history', 'sale-show': '/sales/1', 'sale-edit': '/sales/1/edit',
     'stock-in': '/stock-ins', 'stock-history': '/stock-ins/history', 'stock-expiry': '/stock-ins/expiry', 'stock-writeoffs': '/stock-ins/write-offs',
     po: '/purchase-orders', 'po-create': '/purchase-orders/create', 'po-show': '/purchase-orders/1', 'po-receive': '/purchase-orders/1/receive',
     invoices: '/purchase-orders/invoices', 'invoice-create': '/purchase-orders/invoices/create', receipts: '/purchase-orders/receipts',

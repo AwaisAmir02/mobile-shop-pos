@@ -107,7 +107,10 @@ class ModuleNavigationTest extends TestCase
         $this->assertNotContains('payroll.history', $this->cards($this->staff(['reports', 'payroll'], [])));
         $this->assertContains('payroll.history', $this->cards($this->staff(['reports', 'payroll'])));
 
-        $this->assertNotContains('ledger.trial-balance', $this->cards($this->staff(['reports', 'ledger-reports'], [])));
+        // LEDGER_FORCE_ON starts the ledger on every shop (tests/TestCase.php), so "off" can't be tested then.
+        if (! env('LEDGER_FORCE_ON')) {
+            $this->assertNotContains('ledger.trial-balance', $this->cards($this->staff(['reports', 'ledger-reports'], [])));
+        }
         $this->assertContains('ledger.trial-balance', $this->cards($this->staff(['reports', 'ledger-reports'])));
     }
 
@@ -211,6 +214,26 @@ class ModuleNavigationTest extends TestCase
         }
 
         $this->assertSame([], $offenders, 'Move these actions into the component body; the header renders outside it.');
+    }
+
+    /**
+     * Livewire wraps each @if and @foreach in marker comments and patches the
+     * page by them. @continue jumps past an @endif without writing its marker,
+     * the page stops updating after the next change, and the browser logs
+     * "Cannot read properties of null (reading 'before')". This hit Products
+     * and the Sales register search (fixed in design overhaul D5).
+     */
+    public function test_no_livewire_view_uses_continue(): void
+    {
+        $offenders = [];
+
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(resource_path('views/livewire'))) as $file) {
+            if (str_ends_with($file->getFilename(), '.blade.php') && preg_match('/@continue\b/', file_get_contents($file->getPathname()))) {
+                $offenders[] = $file->getFilename();
+            }
+        }
+
+        $this->assertSame([], $offenders, 'Use @if/@else instead of @continue in Livewire views.');
     }
 
     public function test_the_users_screen_is_titled_team(): void

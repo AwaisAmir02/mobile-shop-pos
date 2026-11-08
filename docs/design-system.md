@@ -10,7 +10,8 @@ shell (D1); page header, module tabs, sidebar regroup, list-first sidebar links,
 the Reports hub and the Settings landing (D2); filter bar, date ranges, stat row,
 row menus, styled confirmations and phone cards on Products, Sales History, Stock
 In History and the seven counter histories (D3); the Sales register, sale edit
-screen and sale confirmation (D4). Other sections describe the target
+screen and sale confirmation (D4); the Add Product wizard and product detail page
+(D5). Other sections describe the target
 until their stage ships.
 
 **The one hard rule:** this is a visual and navigation pass. Actions, Models, FIFO,
@@ -296,13 +297,34 @@ tabs, `x-ui.filter-bar`, `x-ui.stat-row`, then the table.
 - **No single-letter shortcuts.** USB scanners type into the page as a keyboard and
   would trigger them.
 
-## Product creation with variants
+## Product creation with variants (built in D5)
 
-One flow, **not** create-then-attach-later: Add Product opens a wizard with a Details
-step, then a Variants step, saved together at the end. The product is never renamed as
-part of this. It replaces the overloaded modal and the need to choose between two
-buttons up front. Only the Products Volt component's calls change, with nothing in
-Actions or Models. Built in D5.
+One flow, **not** create-then-attach-later. For a new product of a kind that can
+have variants (not mobiles or SIMs) with variants on, Add Product is two steps:
+
+1. **Details:** category, name, image, sub-category, unit, price and cost.
+   `nextStep()` checks only these fields.
+2. **How is it sold?** *One product* shows stock, shelf life and barcode and saves
+   through the unchanged `save()`. *Sizes or colours* shows sizes and colours with a
+   live preview of every variant, and `saveWithVariants()` hands the Details to the
+   existing `saveGroupVariants()`: the group takes the name exactly as typed and its
+   variants are created in the same transaction. No product is created and then
+   renamed. A problem with a Details field sends the user back to step 1 with the
+   message on that field.
+
+Editing, and products that can't have variants, keep the single form. The older
+Add Variant Group form stays in the Products ⋯ menu for grouping products that
+already exist. Every step section stays in the page and is only hidden, so moving
+between steps doesn't change the form's structure.
+
+**Product detail** (`/products/{id}`, Products permission): Overview, Variants
+(when grouped), Batches (needs Stock In access) and Sales (needs Sales access) as a
+segmented switch; cost only with cost-price access. Edit goes back to the form via
+`/products?edit={id}`.
+
+**Livewire views never use `@continue`.** Jumping past an `@endif` leaves
+Livewire's block markers unbalanced and the page stops updating; use `@if`/`@else`
+(a test enforces it).
 
 ## Checks for every stage
 

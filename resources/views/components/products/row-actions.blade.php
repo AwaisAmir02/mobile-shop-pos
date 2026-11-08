@@ -3,6 +3,7 @@
 {{-- A product row's ⋯ menu (x-ui.row-actions). Same actions and conditions as
      before; Delete and "Remove from group" keep their confirmation. --}}
 <x-ui.row-actions label="Actions for {{ $product->name }}">
+    <x-ui.menu-item href="{{ route('products.show', $product) }}" wire:navigate>View details</x-ui.menu-item>
     @if ($product->type !== 'sim')
         <x-ui.menu-item wire:click="openEdit({{ $product->id }})">Edit</x-ui.menu-item>
     @endif
