@@ -94,41 +94,42 @@ new #[Layout('layouts.app')] #[Title('Goods Receipts')] class extends Component
 
     <x-ui.module-tabs module="purchasing" label="Purchasing sections" />
 
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <x-ui.field label="From" name="from" for="from" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="from" id="from" type="date" />
-            </x-ui.field>
-            <x-ui.field label="To" name="to" for="to" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="to" id="to" type="date" />
-            </x-ui.field>
-        </div>
-        <x-ui.export-dropdown />
-    </div>
+    <x-ui.filter-bar :active="(int) filled($from) + (int) filled($to)">
+        <x-ui.date-range />
 
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <x-slot:actions>
+            <x-ui.export-dropdown />
+        </x-slot:actions>
+    </x-ui.filter-bar>
+
+    <x-ui.stat-row class="lg:grid-cols-3">
         @foreach ($cards as $card)
             <x-ui.stat :label="$card['label']" :value="$card['value']" :sub="$card['sub'] ?? null" />
         @endforeach
-    </div>
+    </x-ui.stat-row>
 
     @if ($grns->isEmpty())
         <x-ui.empty-state title="No goods receipts" description="Deliveries recorded against purchase orders show up here." />
     @else
-        <x-ui.table :headers="['Receipt', 'PO', 'Vendor', 'Received', 'Products', 'By', '']">
+        <x-ui.table stack :headers="['Receipt', 'PO', 'Vendor', 'Products', '']">
             @foreach ($grns as $grn)
                 <x-ui.table-row wire:key="grn-{{ $grn->id }}" @class(['opacity-50' => $grn->isCancelled()])>
-                    <x-ui.table-cell class="font-medium text-slate-900">{{ $grn->number() }}</x-ui.table-cell>
-                    <x-ui.table-cell><a href="{{ route('purchase-orders.show', $grn->purchase_order_id) }}" wire:navigate class="text-brand-700 hover:text-brand-800">{{ $grn->order?->number() ?? '—' }}</a></x-ui.table-cell>
-                    <x-ui.table-cell>{{ $grn->order?->vendor?->name ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $grn->received_on->format('d M Y') }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $grn->lines->map(fn ($line) => $line->product_name.' × '.$line->unit->amount($line->quantity))->implode(', ') }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $grn->user?->name ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell align="right">
+                    <x-ui.table-cell primary class="font-semibold text-ink">
+                        {{ $grn->number() }}
+                        <span class="ui-sub">{{ $grn->received_on->format('d M Y') }} · {{ $grn->user?->name ?? '—' }}</span>
+                    </x-ui.table-cell>
+                    <x-ui.table-cell label="PO"><a href="{{ route('purchase-orders.show', $grn->purchase_order_id) }}" wire:navigate class="font-semibold text-link hover:underline">{{ $grn->order?->number() ?? '—' }}</a></x-ui.table-cell>
+                    <x-ui.table-cell label="Vendor">{{ $grn->order?->vendor?->name ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Products" class="!whitespace-normal">
+                        <span class="block max-w-md">{{ $grn->lines->map(fn ($line) => $line->product_name.' × '.$line->unit->amount($line->quantity))->implode(', ') }}</span>
+                    </x-ui.table-cell>
+                    <x-ui.table-cell actions align="right">
                         @if ($grn->isCancelled())
                             <x-ui.badge variant="danger">Cancelled</x-ui.badge>
                         @else
-                            <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $grn->id }})" class="text-red-600 hover:bg-red-50">Cancel</x-ui.button>
+                            <x-ui.row-actions label="Actions for {{ $grn->number() }}">
+                                <x-ui.menu-item danger wire:click="openCancel({{ $grn->id }})">Cancel</x-ui.menu-item>
+                            </x-ui.row-actions>
                         @endif
                     </x-ui.table-cell>
                 </x-ui.table-row>
@@ -140,8 +141,8 @@ new #[Layout('layouts.app')] #[Title('Goods Receipts')] class extends Component
 
     <x-ui.modal name="cancel-grn-form" max-width="sm">
         <form wire:submit="cancelGrn" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Cancel This Receipt?</h2>
-            <p class="mt-2 text-sm text-slate-600">For a delivery recorded by mistake. It takes the stock back out and removes what you owe for it. It's refused once any of this stock has been sold or written off, or anything paid. It isn't a return to the vendor.</p>
+            <h2 class="text-lg font-semibold text-ink">Cancel This Receipt?</h2>
+            <p class="mt-2 text-sm text-ink-muted">For a delivery recorded by mistake. It takes the stock back out and removes what you owe for it. It's refused once any of this stock has been sold or written off, or anything paid. It isn't a return to the vendor.</p>
 
             <x-ui.error :messages="$errors->get('grn')" class="mt-3" />
             <x-ui.error :messages="$errors->get('quantity')" class="mt-3" />
@@ -154,7 +155,7 @@ new #[Layout('layouts.app')] #[Title('Goods Receipts')] class extends Component
 
             <div class="mt-6 flex justify-end gap-3">
                 <x-ui.button type="button" variant="secondary" wire:click="closeCancel">Keep Receipt</x-ui.button>
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelGrn" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">Cancel Receipt</x-ui.button>
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelGrn" variant="danger">Cancel Receipt</x-ui.button>
             </div>
         </form>
     </x-ui.modal>

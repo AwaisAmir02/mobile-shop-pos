@@ -380,7 +380,7 @@ new #[Layout('layouts.app')] #[Title('Run Payroll')] class extends Component
                                 <x-ui.button size="sm" variant="ghost" wire:click="openPay({{ $payslip->id }})">Mark Paid</x-ui.button>
                             @endif
                             <x-ui.button size="sm" variant="ghost" wire:click="downloadPdf({{ $payslip->id }})">PDF</x-ui.button>
-                            <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $payslip->id }})" class="text-red-600 hover:bg-red-50">Cancel</x-ui.button>
+                            <x-ui.button size="sm" variant="danger-ghost" wire:click="openCancel({{ $payslip->id }})">Cancel</x-ui.button>
                         </div>
                     </x-ui.table-cell>
                 </x-ui.table-row>

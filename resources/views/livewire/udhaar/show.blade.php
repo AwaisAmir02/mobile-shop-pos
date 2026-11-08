@@ -592,7 +592,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
                                 >
                                     Reverse
                                 </x-ui.button>
-                                <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $transaction->id }})" class="text-red-600 hover:bg-red-50">
+                                <x-ui.button size="sm" variant="danger-ghost" wire:click="openCancel({{ $transaction->id }})">
                                     Cancel
                                 </x-ui.button>
                             </div>

@@ -181,10 +181,10 @@ new #[Layout('layouts.app')] #[Title('Vendors')] class extends Component
                             </x-ui.button>
                             <x-ui.button
                                 size="sm"
-                                variant="ghost"
+                                variant="danger-ghost"
                                 wire:click="delete({{ $vendor->id }})"
                                 wire:confirm="Delete {{ $vendor->name }}? This cannot be undone."
-                                class="text-red-600 hover:bg-red-50"
+                               
                             >
                                 Delete
                             </x-ui.button>

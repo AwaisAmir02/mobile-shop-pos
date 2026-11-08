@@ -1028,7 +1028,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                                 </x-ui.table-cell>
                                 @if ($key === 'manual')
                                     <x-ui.table-cell align="right">
-                                        <x-ui.button size="sm" variant="ghost" wire:click="openCancelEntry({{ $row['entry']->id }})" class="text-red-600 hover:bg-red-50">
+                                        <x-ui.button size="sm" variant="danger-ghost" wire:click="openCancelEntry({{ $row['entry']->id }})">
                                             Cancel
                                         </x-ui.button>
                                     </x-ui.table-cell>

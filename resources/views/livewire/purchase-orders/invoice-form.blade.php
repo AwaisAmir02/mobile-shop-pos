@@ -173,7 +173,7 @@ new #[Layout('layouts.app')] #[Title('Record Vendor Invoice')] class extends Com
     </x-slot>
 
     @unless ($enabled)
-        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div class="mb-4 rounded-xl border border-warning/20 bg-warning-soft px-4 py-3 text-sm text-warning">
             Purchase orders aren't on your plan right now, so new invoices can't be recorded.
         </div>
     @endunless
@@ -215,7 +215,7 @@ new #[Layout('layouts.app')] #[Title('Record Vendor Invoice')] class extends Com
         @else
             <div>
                 <div class="mb-2 flex items-center justify-between gap-3">
-                    <h2 class="text-sm font-semibold text-slate-900">Received goods</h2>
+                    <h2 class="text-sm font-semibold text-ink">Received goods</h2>
                     <x-ui.button type="button" size="sm" variant="ghost" wire:click="selectAll">Select All</x-ui.button>
                 </div>
                 <x-ui.table :headers="['', 'Product', 'Receipt', 'Ordered', 'Received', 'Billed Qty', 'Billed Amount', 'Difference']">
@@ -227,19 +227,19 @@ new #[Layout('layouts.app')] #[Title('Record Vendor Invoice')] class extends Com
                         @endphp
                         <x-ui.table-row wire:key="invoice-row-{{ $row->grn_line_id }}">
                             <x-ui.table-cell>
-                                <input type="checkbox" wire:click="toggleLine({{ $row->grn_line_id }})" @checked($ticked) aria-label="Include {{ $row->product_name }}" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                                <input type="checkbox" wire:click="toggleLine({{ $row->grn_line_id }})" @checked($ticked) aria-label="Include {{ $row->product_name }}" class="h-4 w-4 rounded border-line-strong text-link focus:ring-link">
                             </x-ui.table-cell>
-                            <x-ui.table-cell class="font-medium text-slate-900">{{ $row->product_name }}</x-ui.table-cell>
-                            <x-ui.table-cell>{{ $row->grnLine?->grn?->number() ?? '—' }}<p class="text-xs text-slate-400">{{ $row->stock_date->format('d M Y') }}</p></x-ui.table-cell>
+                            <x-ui.table-cell class="font-medium text-ink">{{ $row->product_name }}</x-ui.table-cell>
+                            <x-ui.table-cell>{{ $row->grnLine?->grn?->number() ?? '—' }}<p class="text-xs text-ink-faint">{{ $row->stock_date->format('d M Y') }}</p></x-ui.table-cell>
                             <x-ui.table-cell>
                                 {{ $poLine ? $poLine->unit->amount($poLine->quantity) : '—' }}
                                 @if ($poLine?->expected_cost !== null)
-                                    <p class="text-xs text-slate-400">at Rs {{ number_format($poLine->expected_cost, 2) }}</p>
+                                    <p class="text-xs text-ink-faint">at Rs {{ number_format($poLine->expected_cost, 2) }}</p>
                                 @endif
                             </x-ui.table-cell>
                             <x-ui.table-cell>
                                 {{ $row->unit->amount($row->quantity) }}
-                                <p class="text-xs text-slate-400">{{ $row->total_cost !== null ? 'Rs '.number_format($row->total_cost, 2) : 'No cost' }}</p>
+                                <p class="text-xs text-ink-faint">{{ $row->total_cost !== null ? 'Rs '.number_format($row->total_cost, 2) : 'No cost' }}</p>
                             </x-ui.table-cell>
                             @if ($ticked)
                                 <x-ui.table-cell>
@@ -250,9 +250,9 @@ new #[Layout('layouts.app')] #[Title('Record Vendor Invoice')] class extends Com
                                 </x-ui.table-cell>
                                 <x-ui.table-cell>
                                     @if ($entry && ($entry['quantity_differs'] || $entry['difference'] > 0))
-                                        <span class="font-semibold text-amber-700">{{ $entry['quantity_differs'] ? 'Quantity' : 'Rs '.number_format($entry['difference'], 2) }}</span>
+                                        <span class="font-semibold text-warning">{{ $entry['quantity_differs'] ? 'Quantity' : 'Rs '.number_format($entry['difference'], 2) }}</span>
                                     @else
-                                        <span class="text-emerald-700">Matches</span>
+                                        <span class="text-success">Matches</span>
                                     @endif
                                 </x-ui.table-cell>
                             @else
@@ -287,8 +287,8 @@ new #[Layout('layouts.app')] #[Title('Record Vendor Invoice')] class extends Com
             @if ($preview)
                 <div @class([
                     'rounded-xl border px-4 py-3 text-sm',
-                    'border-emerald-200 bg-emerald-50 text-emerald-800' => $preview['passes'],
-                    'border-amber-200 bg-amber-50 text-amber-800' => ! $preview['passes'],
+                    'border-success/20 bg-success-soft text-success' => $preview['passes'],
+                    'border-warning/20 bg-warning-soft text-warning' => ! $preview['passes'],
                 ])>
                     <p class="font-semibold">Billed total: Rs {{ number_format($preview['billed_total'], 2) }}</p>
                     @if ($preview['passes'])

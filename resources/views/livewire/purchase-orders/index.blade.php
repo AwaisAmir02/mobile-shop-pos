@@ -63,13 +63,13 @@ new #[Layout('layouts.app')] #[Title('Purchase Orders')] class extends Component
     <x-ui.module-tabs module="purchasing" label="Purchasing sections" />
 
     @unless ($enabled)
-        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div class="mb-4 rounded-xl border border-warning/20 bg-warning-soft px-4 py-3 text-sm text-warning">
             Purchase orders aren't on your plan right now, so these are read-only. Use <a href="{{ route('stock-ins.index') }}" wire:navigate class="font-medium underline">Stock In</a> to receive goods. What you owe vendors isn't affected.
         </div>
     @endunless
 
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-        <x-ui.field label="Status" name="statusFilter" for="statusFilter" class="sm:max-w-[12rem]">
+    <x-ui.filter-bar :active="(int) filled($statusFilter) + (int) filled($vendorFilter)">
+        <x-ui.field label="Status" name="statusFilter" for="statusFilter" class="w-full sm:w-48">
             <x-ui.select wire:model.live="statusFilter" id="statusFilter">
                 <option value="">All statuses</option>
                 @foreach (PurchaseOrderStatus::cases() as $option)
@@ -77,7 +77,7 @@ new #[Layout('layouts.app')] #[Title('Purchase Orders')] class extends Component
                 @endforeach
             </x-ui.select>
         </x-ui.field>
-        <x-ui.field label="Vendor" name="vendorFilter" for="vendorFilter" class="sm:max-w-[14rem]">
+        <x-ui.field label="Vendor" name="vendorFilter" for="vendorFilter" class="w-full sm:w-56">
             <x-ui.select wire:model.live="vendorFilter" id="vendorFilter">
                 <option value="">All vendors</option>
                 @foreach ($vendors as $vendor)
@@ -85,25 +85,25 @@ new #[Layout('layouts.app')] #[Title('Purchase Orders')] class extends Component
                 @endforeach
             </x-ui.select>
         </x-ui.field>
-    </div>
+    </x-ui.filter-bar>
 
     @if ($orders->isEmpty())
         <x-ui.empty-state title="No purchase orders" description="Orders you place with vendors show up here, with what's still to come." />
     @else
-        <x-ui.table :headers="['PO', 'Vendor', 'Ordered', 'Expected', ...($showBranch ? ['Branch'] : []), 'Still to come', 'Value to come', 'Status']">
+        <x-ui.table stack :headers="['PO', 'Vendor', 'Ordered', 'Expected', ...($showBranch ? ['Branch'] : []), 'Still to come', 'Value to come', 'Status']">
             @foreach ($orders as $order)
                 <x-ui.table-row wire:key="po-{{ $order->id }}" @class(['opacity-50' => $order->isCancelled()])>
-                    <x-ui.table-cell class="font-medium"><a href="{{ route('purchase-orders.show', $order->id) }}" wire:navigate class="text-brand-700 hover:text-brand-800">{{ $order->number() }}</a></x-ui.table-cell>
-                    <x-ui.table-cell>{{ $order->vendor?->name ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $order->order_date->format('d M Y') }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $order->expected_date?->format('d M Y') ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell primary class="font-semibold"><a href="{{ route('purchase-orders.show', $order->id) }}" wire:navigate class="text-link hover:underline">{{ $order->number() }}</a></x-ui.table-cell>
+                    <x-ui.table-cell label="Vendor">{{ $order->vendor?->name ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Ordered">{{ $order->order_date->format('d M Y') }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Expected">{{ $order->expected_date?->format('d M Y') ?? '—' }}</x-ui.table-cell>
                     @if ($showBranch)
-                        <x-ui.table-cell>{{ $order->branch?->name ?? '—' }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Branch">{{ $order->branch?->name ?? '—' }}</x-ui.table-cell>
                     @endif
                     @php($expecting = $order->canReceive())
-                    <x-ui.table-cell>{{ $expecting ? $order->outstandingSummary() : '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $expecting ? 'Rs '.number_format($order->outstandingAmount(), 2) : '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell><x-ui.badge :variant="$order->status->badge()">{{ $order->status->label() }}</x-ui.badge></x-ui.table-cell>
+                    <x-ui.table-cell label="Still to come">{{ $expecting ? $order->outstandingSummary() : '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Value to come">{{ $expecting ? 'Rs '.number_format($order->outstandingAmount(), 2) : '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Status"><x-ui.badge :variant="$order->status->badge()">{{ $order->status->label() }}</x-ui.badge></x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
         </x-ui.table>

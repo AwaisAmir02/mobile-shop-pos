@@ -245,7 +245,7 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
                                 <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $expense->id }})">
                                     Edit
                                 </x-ui.button>
-                                <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $expense->id }})" class="text-red-600 hover:bg-red-50">
+                                <x-ui.button size="sm" variant="danger-ghost" wire:click="openCancel({{ $expense->id }})">
                                     Delete
                                 </x-ui.button>
                             </div>

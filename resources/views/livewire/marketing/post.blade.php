@@ -112,7 +112,7 @@ new #[Layout('layouts.app')] #[Title('Post')] class extends Component
         <x-ui.badge :variant="$post->status->badge()">{{ $post->status->label() }}</x-ui.badge>
         <x-ui.badge variant="brand">{{ $post->refTag() }}</x-ui.badge>
         @if ($shop->ads_enabled && auth()->user()->hasAccessTo('marketing-ads'))
-            <a href="{{ route('marketing.ads.create', ['post' => $post->id]) }}" wire:navigate><x-ui.button size="sm" variant="secondary">Boost with an ad</x-ui.button></a>
+            <x-ui.button href="{{ route('marketing.ads.create', ['post' => $post->id]) }}" wire:navigate size="sm" variant="secondary">Boost with an ad</x-ui.button>
         @endif
         <span class="text-sm text-slate-500">{{ $ordersPlaced }} WhatsApp {{ \Illuminate\Support\Str::plural('order', $ordersPlaced) }} placed · {{ $ordersAccepted }} accepted</span>
     </div>
@@ -157,8 +157,8 @@ new #[Layout('layouts.app')] #[Title('Post')] class extends Component
                     class="space-y-3"
                 >
                     <div class="grid grid-cols-2 gap-2">
-                        <a href="{{ $post->storyImageUrl() }}" download="{{ \Illuminate\Support\Str::slug($post->title) }}-story.jpg"><x-ui.button variant="secondary" size="sm" class="w-full">Download story</x-ui.button></a>
-                        <a href="{{ $post->imageUrl() }}" download="{{ \Illuminate\Support\Str::slug($post->title) }}-post.jpg"><x-ui.button variant="secondary" size="sm" class="w-full">Download post</x-ui.button></a>
+                        <x-ui.button href="{{ $post->storyImageUrl() }}" download="{{ \Illuminate\Support\Str::slug($post->title) }}-story.jpg" variant="secondary" size="sm" class="w-full">Download story</x-ui.button>
+                        <x-ui.button href="{{ $post->imageUrl() }}" download="{{ \Illuminate\Support\Str::slug($post->title) }}-post.jpg" variant="secondary" size="sm" class="w-full">Download post</x-ui.button>
                     </div>
                     <x-ui.button variant="secondary" size="sm" class="w-full" x-on:click="copyCaption">
                         <span x-show="! copied">Copy caption</span><span x-show="copied" x-cloak>Copied ✓</span>

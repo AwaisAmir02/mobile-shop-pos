@@ -164,10 +164,10 @@ new #[Layout('layouts.app')] #[Title('Receive Goods')] class extends Component
             <x-ui.error :messages="$errors->get('lines')" class="mb-3" />
 
             @error('overReceipt')
-                <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <div class="mb-4 rounded-xl border border-warning/20 bg-warning-soft px-4 py-3 text-sm text-warning">
                     <p>{{ $message }}</p>
                     <label class="mt-2 flex items-center gap-2 font-medium">
-                        <input type="checkbox" wire:model="confirmOverReceipt" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                        <input type="checkbox" wire:model="confirmOverReceipt" class="h-4 w-4 rounded border-line-strong text-link focus:ring-link">
                         Yes, this is what arrived
                     </label>
                 </div>
@@ -177,15 +177,15 @@ new #[Layout('layouts.app')] #[Title('Receive Goods')] class extends Component
                 {{-- An extra batch sits under its own product. --}}
                 @foreach (collect($rows)->sortBy('po_line_id') as $key => $row)
                     @php($line = $poLines->get($row['po_line_id']))
-                    <div class="border-b border-slate-100 pb-4" wire:key="grn-row-{{ $key }}">
+                    <div class="border-b border-line pb-4" wire:key="grn-row-{{ $key }}">
                         <div class="mb-2 flex items-center justify-between gap-3">
-                            <p class="text-sm font-medium text-slate-900">
+                            <p class="text-sm font-medium text-ink">
                                 {{ $line->product_name }}
-                                <span class="font-normal text-slate-400">· ordered {{ $line->unit->amount($line->quantity) }}, received {{ $line->unit->amount($line->receivedQuantity()) }}</span>
+                                <span class="font-normal text-ink-faint">· ordered {{ $line->unit->amount($line->quantity) }}, received {{ $line->unit->amount($line->receivedQuantity()) }}</span>
                             </p>
                             <div class="flex gap-2">
                                 <x-ui.button type="button" variant="ghost" size="sm" wire:click="addBatch({{ $key }})">Add Another Batch</x-ui.button>
-                                <x-ui.button type="button" variant="ghost" size="sm" wire:click="removeRow({{ $key }})" class="text-red-600 hover:bg-red-50">Remove</x-ui.button>
+                                <x-ui.button type="button" variant="danger-ghost" size="sm" wire:click="removeRow({{ $key }})">Remove</x-ui.button>
                             </div>
                         </div>
                         <div @class(['grid grid-cols-1 gap-3', 'sm:grid-cols-3' => ! $expiryEnabled, 'sm:grid-cols-2 lg:grid-cols-4' => $expiryEnabled])>

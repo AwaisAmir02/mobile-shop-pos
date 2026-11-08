@@ -17,6 +17,10 @@
         'secondary' => 'border-line bg-surface text-ink shadow-soft hover:border-line-strong hover:bg-surface-sunken disabled:text-ink-faint',
         'danger' => 'border-transparent bg-danger-solid text-danger-solid-ink shadow-soft hover:bg-danger-solid/90 disabled:bg-danger-solid/50',
         'ghost' => 'border-transparent bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink',
+        // Destructive actions that shouldn't shout: a red class on another variant
+        // loses to that variant's own text colour, so use these instead.
+        'danger-outline' => 'border-line bg-surface text-danger shadow-soft hover:border-danger/30 hover:bg-danger-soft',
+        'danger-ghost' => 'border-transparent bg-transparent text-danger hover:bg-danger-soft',
     ];
 
     $sizes = [
@@ -39,7 +43,7 @@
     <button
         type="button"
         {{ $attributes->whereDoesntStartWith('wire:')->except(['variant', 'size', 'type'])->class([$classes]) }}
-        x-on:click="{{ \App\Support\ConfirmAction::handler($confirm, $confirmTitle, $confirmLabel, $variant === 'danger') }}"
+        x-on:click="{{ \App\Support\ConfirmAction::handler($confirm, $confirmTitle, $confirmLabel, str_starts_with($variant, 'danger')) }}"
     >
         {{ $slot }}
     </button>

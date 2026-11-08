@@ -109,8 +109,8 @@ new #[Layout('layouts.app')] #[Title('QR Codes')] class extends Component
                 </div>
                 @if ($row['link'])
                     <div class="mt-4 flex gap-2">
-                        <a href="{{ route('marketing.qr.download', ['post' => $row['qr'], 'format' => 'pdf']) }}"><x-ui.button size="sm">Print poster (PDF)</x-ui.button></a>
-                        <a href="{{ route('marketing.qr.download', ['post' => $row['qr'], 'format' => 'png']) }}"><x-ui.button size="sm" variant="secondary">PNG</x-ui.button></a>
+                        <x-ui.button href="{{ route('marketing.qr.download', ['post' => $row['qr'], 'format' => 'pdf']) }}" size="sm">Print poster (PDF)</x-ui.button>
+                        <x-ui.button href="{{ route('marketing.qr.download', ['post' => $row['qr'], 'format' => 'png']) }}" size="sm" variant="secondary">PNG</x-ui.button>
                     </div>
                 @endif
             </x-ui.card>

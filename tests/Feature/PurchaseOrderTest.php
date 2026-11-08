@@ -570,7 +570,9 @@ class PurchaseOrderTest extends TestCase
         $this->assertSame(1.5, $product->fresh()->stock_quantity);
         $this->assertSame(375.0, $this->vendor->fresh()->totalOwed());
 
-        Livewire::test('purchase-orders.show', ['order' => $order->id])->assertSee('Partly received')->assertSee('1 kg')->assertDontSee('>Edit<', false);
+        // No Edit once goods arrived. Checked by its link since design overhaul D6
+        // (the button is no longer a link wrapping a button, so '>Edit<' never appears).
+        Livewire::test('purchase-orders.show', ['order' => $order->id])->assertSee('Partly received')->assertSee('1 kg')->assertDontSee(route('purchase-orders.edit', $order->id), false);
         Livewire::test('purchase-orders.receipts')->assertSee('GRN-')->assertSee('Basmati Rice × 1.5 kg');
     }
 

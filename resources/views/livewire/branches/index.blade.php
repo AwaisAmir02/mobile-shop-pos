@@ -220,7 +220,7 @@ new #[Layout('layouts.app')] #[Title('Branches')] class extends Component
                         @if ($branch->isArchived())
                             <x-ui.button size="sm" variant="ghost" wire:click="reactivate({{ $branch->id }})">Reactivate</x-ui.button>
                         @elseif (! $branch->is_main)
-                            <x-ui.button size="sm" variant="ghost" wire:click="archive({{ $branch->id }})" wire:confirm="Archive {{ $branch->name }}? Its history stays; nothing new can be recorded there." class="text-red-600 hover:bg-red-50">Archive</x-ui.button>
+                            <x-ui.button size="sm" variant="danger-ghost" wire:click="archive({{ $branch->id }})" wire:confirm="Archive {{ $branch->name }}? Its history stays; nothing new can be recorded there.">Archive</x-ui.button>
                         @endif
                     </div>
                 </x-ui.table-cell>

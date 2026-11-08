@@ -289,7 +289,7 @@ new class extends Component
                                         @else
                                             <x-ui.button size="sm" variant="ghost" wire:click="markPaid({{ $invoice->id }})" wire:confirm="Mark this record as paid today?">Mark Paid</x-ui.button>
                                         @endif
-                                        <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $invoice->id }})" class="text-red-600 hover:bg-red-50">Cancel</x-ui.button>
+                                        <x-ui.button size="sm" variant="danger-ghost" wire:click="openCancel({{ $invoice->id }})">Cancel</x-ui.button>
                                     @endif
                                     <x-ui.button href="{{ route('admin.shops.billing.invoices.pdf', ['shop' => $shop->id, 'invoice' => $invoice->id]) }}" target="_blank" rel="noopener" size="sm" variant="secondary">Download Invoice</x-ui.button>
                                 </div>

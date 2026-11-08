@@ -180,7 +180,7 @@ new #[Layout('layouts.app')] #[Title('Purchase Order')] class extends Component
                 @foreach ($lines as $row => $line)
                     @php($rowProduct = is_numeric($line['product_id']) ? $productsById->get((int) $line['product_id']) : null)
                     @php($rowUnit = $rowProduct?->unit ?? QuantityUnit::Piece)
-                    <div class="grid grid-cols-1 gap-3 border-b border-slate-100 pb-4 sm:grid-cols-[minmax(0,1fr)_9rem_9rem_auto] sm:items-start" wire:key="po-row-{{ $row }}">
+                    <div class="grid grid-cols-1 gap-3 border-b border-line pb-4 sm:grid-cols-[minmax(0,1fr)_9rem_9rem_auto] sm:items-start" wire:key="po-row-{{ $row }}">
                         <x-ui.field label="Product" name="lines.{{ $row }}.product_id" for="line-product-{{ $row }}">
                             <x-ui.select wire:model.live="lines.{{ $row }}.product_id" id="line-product-{{ $row }}">
                                 <option value="">Select a product</option>
@@ -199,7 +199,7 @@ new #[Layout('layouts.app')] #[Title('Purchase Order')] class extends Component
                         </x-ui.field>
 
                         <div class="sm:pt-7">
-                            <x-ui.button type="button" variant="ghost" size="sm" wire:click="removeRow({{ $row }})" class="text-red-600 hover:bg-red-50">Remove</x-ui.button>
+                            <x-ui.button type="button" variant="danger-ghost" size="sm" wire:click="removeRow({{ $row }})">Remove</x-ui.button>
                         </div>
                     </div>
                 @endforeach

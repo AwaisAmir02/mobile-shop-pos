@@ -557,10 +557,9 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                     <x-ui.table-cell align="right">
                         <x-ui.button
                             size="sm"
-                            variant="ghost"
+                            :variant="$user->is_active ? 'danger-ghost' : 'ghost'"
                             wire:click="toggleUserActive({{ $user->id }})"
                             wire:confirm="{{ $user->is_active ? 'Deactivate' : 'Activate' }} {{ $user->name }}?{{ $user->is_active ? ' They will be immediately blocked from logging in.' : '' }}"
-                            class="{{ $user->is_active ? 'text-red-600 hover:bg-red-50' : '' }}"
                         >
                             {{ $user->is_active ? 'Deactivate' : 'Activate' }}
                         </x-ui.button>

@@ -112,8 +112,8 @@ new #[Layout('layouts.app')] #[Title('Expiring & Expired')] class extends Compon
 
     <x-ui.module-tabs module="stock" label="Stock In sections" />
 
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <x-ui.field label="Expiring within" name="days" for="days" class="sm:max-w-[12rem]">
+    <x-ui.filter-bar>
+        <x-ui.field label="Expiring within" name="days" for="days" class="w-full sm:w-48">
             <x-ui.select wire:model.live="days" id="days">
                 @foreach ($this::WINDOWS as $window)
                     <option value="{{ $window }}">{{ $window }} days</option>
@@ -121,35 +121,38 @@ new #[Layout('layouts.app')] #[Title('Expiring & Expired')] class extends Compon
             </x-ui.select>
         </x-ui.field>
 
-        <x-ui.export-dropdown />
-    </div>
+        <x-slot:actions>
+            <x-ui.export-dropdown />
+        </x-slot:actions>
+    </x-ui.filter-bar>
 
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <x-ui.stat-row class="lg:grid-cols-3">
         @foreach ($cards as $card)
             <x-ui.stat :label="$card['label']" :value="$card['value']" :sub="$card['sub'] ?? null" />
         @endforeach
-    </div>
+    </x-ui.stat-row>
 
     <div class="space-y-6">
         @foreach ([['Expired', 'Can no longer be sold. Write them off to clear them from your stock and its value.', $expired, 'expired'], ['Expiring soon', 'Sold first, soonest date first.', $soon, 'soon'], ['No expiry date', 'Sold after dated stock. Fill in a date to bring old batches into the order.', $undated, 'undated']] as [$title, $description, $batches, $section])
             <x-ui.card :title="$title" :description="$description" :padding="false" wire:key="expiry-section-{{ $section }}">
                 @if ($batches->isEmpty())
-                    <p class="px-5 py-4 text-sm text-slate-400">Nothing here.</p>
+                    <p class="px-5 py-4 text-sm text-ink-faint">Nothing here.</p>
                 @else
-                    <x-ui.table :headers="['Product', 'Received', 'Expires', 'Remaining', 'Value at Cost', '']">
+                    <x-ui.table stack :headers="['Product', 'Received', 'Expires', 'Remaining', 'Value at Cost', '']">
                         @foreach ($batches as $batch)
                             <x-ui.table-row wire:key="expiry-batch-{{ $batch->id }}">
-                                <x-ui.table-cell class="font-medium text-slate-900">{{ $batch->product_name }}</x-ui.table-cell>
-                                <x-ui.table-cell>{{ $batch->stock_date->format('d M Y') }}</x-ui.table-cell>
-                                <x-ui.table-cell><span @class(['font-semibold text-red-600' => $section === 'expired', 'text-amber-700' => $section === 'soon'])>{{ $batch->expiry_date?->format('d M Y') ?? '—' }}</span></x-ui.table-cell>
-                                <x-ui.table-cell>{{ $batch->unit->groupedAmount($batch->quantity_remaining) }}</x-ui.table-cell>
-                                <x-ui.table-cell>Rs {{ number_format(\App\ReportQueries\ExpiryReport::valueAtCost($batch), 2) }}</x-ui.table-cell>
-                                <x-ui.table-cell align="right">
+                                <x-ui.table-cell primary class="font-semibold text-ink">{{ $batch->product_name }}</x-ui.table-cell>
+                                <x-ui.table-cell label="Received">{{ $batch->stock_date->format('d M Y') }}</x-ui.table-cell>
+                                <x-ui.table-cell label="Expires"><span @class(['font-semibold text-danger' => $section === 'expired', 'text-warning' => $section === 'soon'])>{{ $batch->expiry_date?->format('d M Y') ?? '—' }}</span></x-ui.table-cell>
+                                <x-ui.table-cell label="Remaining">{{ $batch->unit->groupedAmount($batch->quantity_remaining) }}</x-ui.table-cell>
+                                <x-ui.table-cell label="Value at Cost">Rs {{ number_format(\App\ReportQueries\ExpiryReport::valueAtCost($batch), 2) }}</x-ui.table-cell>
+                                <x-ui.table-cell actions align="right">
                                     @if ($canEdit)
-                                        <div class="flex justify-end gap-2">
-                                            <x-ui.button size="sm" variant="ghost" wire:click="openDate({{ $batch->id }})">{{ $batch->expiry_date ? 'Change date' : 'Set date' }}</x-ui.button>
-                                            <x-ui.button href="{{ route('stock-ins.write-offs', ['batch' => $batch->id]) }}" wire:navigate size="sm" variant="ghost" @class(['text-red-600 hover:bg-red-50' => $section === 'expired'])>Write off</x-ui.button>
-                                        </div>
+                                        <x-ui.row-actions label="Actions for {{ $batch->product_name }}">
+                                            <x-ui.menu-item wire:click="openDate({{ $batch->id }})">{{ $batch->expiry_date ? 'Change date' : 'Set date' }}</x-ui.menu-item>
+                                            <x-ui.menu-divider />
+                                            <x-ui.menu-item href="{{ route('stock-ins.write-offs', ['batch' => $batch->id]) }}" wire:navigate :danger="$section === 'expired'">Write off</x-ui.menu-item>
+                                        </x-ui.row-actions>
                                     @endif
                                 </x-ui.table-cell>
                             </x-ui.table-row>
@@ -162,8 +165,8 @@ new #[Layout('layouts.app')] #[Title('Expiring & Expired')] class extends Compon
 
     <x-ui.modal name="batch-expiry-form" max-width="sm">
         <form wire:submit="saveDate" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Expiry date</h2>
-            <p class="mt-1 text-sm text-slate-500">{{ $datingName }}</p>
+            <h2 class="text-lg font-semibold text-ink">Expiry date</h2>
+            <p class="mt-1 text-sm text-ink-faint">{{ $datingName }}</p>
 
             <div class="mt-5">
                 <x-ui.field label="Expires on" name="datingDate" for="datingDate" help="The last day it can be sold">

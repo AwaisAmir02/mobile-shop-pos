@@ -153,7 +153,7 @@ new #[Layout('layouts.app')] #[Title('Salary Advances')] class extends Component
                             @if ($row->isCancelled())
                                 <x-ui.badge variant="danger">Cancelled</x-ui.badge>
                             @elseif ($row->payslip_id === null)
-                                <x-ui.button size="sm" variant="ghost" wire:click="cancelRow({{ $row->id }})" wire:confirm="Cancel this entry?" class="text-red-600 hover:bg-red-50">Cancel</x-ui.button>
+                                <x-ui.button size="sm" variant="danger-ghost" wire:click="cancelRow({{ $row->id }})" wire:confirm="Cancel this entry?">Cancel</x-ui.button>
                             @endif
                         </x-ui.table-cell>
                     </x-ui.table-row>

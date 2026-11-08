@@ -1189,10 +1189,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                     @unless ($category->is_builtin)
                                         <x-ui.button
                                             size="sm"
-                                            variant="ghost"
+                                            variant="danger-ghost"
                                             wire:click="deleteMainCategory({{ $category->id }})"
                                             wire:confirm="Delete {{ $category->name }}?"
-                                            class="text-red-600 hover:bg-red-50"
+                                           
                                         >
                                             Delete
                                         </x-ui.button>
@@ -1241,10 +1241,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                         </x-ui.button>
                                         <x-ui.button
                                             size="sm"
-                                            variant="ghost"
+                                            variant="danger-ghost"
                                             wire:click="deleteAccessoryCategory({{ $option->id }})"
                                             wire:confirm="Delete {{ $option->name }}?"
-                                            class="text-red-600 hover:bg-red-50"
+                                           
                                         >
                                             Delete
                                         </x-ui.button>
@@ -1288,10 +1288,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                     </x-ui.button>
                                     <x-ui.button
                                         size="sm"
-                                        variant="ghost"
+                                        variant="danger-ghost"
                                         wire:click="deleteBrand({{ $brand->id }})"
                                         wire:confirm="Delete {{ $brand->name }}?"
-                                        class="text-red-600 hover:bg-red-50"
+                                       
                                     >
                                         Delete
                                     </x-ui.button>
@@ -1340,10 +1340,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                     </x-ui.button>
                                     <x-ui.button
                                         size="sm"
-                                        variant="ghost"
+                                        variant="danger-ghost"
                                         wire:click="deleteNetwork({{ $network->id }})"
                                         wire:confirm="Delete {{ $network->name }}?"
-                                        class="text-red-600 hover:bg-red-50"
+                                       
                                     >
                                         Delete
                                     </x-ui.button>
@@ -1397,10 +1397,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                     </x-ui.button>
                                     <x-ui.button
                                         size="sm"
-                                        variant="ghost"
+                                        variant="danger-ghost"
                                         wire:click="deleteShopAccount({{ $account->id }})"
                                         wire:confirm="Delete {{ $account->name }}?"
-                                        class="text-red-600 hover:bg-red-50"
+                                       
                                     >
                                         Delete
                                     </x-ui.button>
@@ -1445,10 +1445,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                         </x-ui.button>
                                         <x-ui.button
                                             size="sm"
-                                            variant="ghost"
+                                            variant="danger-ghost"
                                             wire:click="deleteBillCategory({{ $category->id }})"
                                             wire:confirm="Delete {{ $category->name }}?"
-                                            class="text-red-600 hover:bg-red-50"
+                                           
                                         >
                                             Delete
                                         </x-ui.button>
@@ -1493,10 +1493,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                         </x-ui.button>
                                         <x-ui.button
                                             size="sm"
-                                            variant="ghost"
+                                            variant="danger-ghost"
                                             wire:click="deleteBillProvider({{ $provider->id }})"
                                             wire:confirm="Delete {{ $provider->name }}?"
-                                            class="text-red-600 hover:bg-red-50"
+                                           
                                         >
                                             Delete
                                         </x-ui.button>
@@ -1542,10 +1542,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                         </x-ui.button>
                                         <x-ui.button
                                             size="sm"
-                                            variant="ghost"
+                                            variant="danger-ghost"
                                             wire:click="deleteServiceCategory({{ $category->id }})"
                                             wire:confirm="Delete {{ $category->name }}?"
-                                            class="text-red-600 hover:bg-red-50"
+                                           
                                         >
                                             Delete
                                         </x-ui.button>
@@ -1589,10 +1589,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                         </x-ui.button>
                                         <x-ui.button
                                             size="sm"
-                                            variant="ghost"
+                                            variant="danger-ghost"
                                             wire:click="deleteServiceItem({{ $item->id }})"
                                             wire:confirm="Delete {{ $item->name }}?"
-                                            class="text-red-600 hover:bg-red-50"
+                                           
                                         >
                                             Delete
                                         </x-ui.button>
@@ -1739,10 +1739,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                     </x-ui.button>
                                     <x-ui.button
                                         size="sm"
-                                        variant="ghost"
+                                        variant="danger-ghost"
                                         wire:click="deleteRole({{ $role->id }})"
                                         wire:confirm="Delete the {{ $role->name }} role? This cannot be undone."
-                                        class="text-red-600 hover:bg-red-50"
+                                       
                                     >
                                         Delete
                                     </x-ui.button>

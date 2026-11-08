@@ -11,7 +11,8 @@ the Reports hub and the Settings landing (D2); filter bar, date ranges, stat row
 row menus, styled confirmations and phone cards on Products, Sales History, Stock
 In History and the seven counter histories (D3); the Sales register, sale edit
 screen and sale confirmation (D4); the Add Product wizard and product detail page
-(D5). Other sections describe the target
+(D5); the Stock In form (goods first, vendor and payment beside), purchase orders,
+goods receipts, vendor invoices, write-offs and expiry (D6). Other sections describe the target
 until their stage ships.
 
 **The one hard rule:** this is a visual and navigation pass. Actions, Models, FIFO,
@@ -132,7 +133,11 @@ reveals, hover-lift on dense rows. They'd grate at 200 uses a day. App motion is
 - **Primary:** navy. One per screen.
 - **Orange:** New Sale and Complete Sale only, large and bold. Never small text,
   never anything else.
-- **Destructive:** separated from the rest, and confirmed.
+- **Destructive:** separated from the rest, and confirmed. Use `variant="danger"`
+  (solid, for the final button in a cancel form), `danger-outline` or `danger-ghost`
+  (for Delete or Cancel beside other buttons). A red class added to another variant
+  does nothing: Tailwind emits `.text-danger` before `.text-ink`, so the variant's
+  own colour wins. Measured in D6, where it had left 28 Delete and Cancel buttons dark.
 - Link-styled buttons use `x-ui.button href`, never a button wrapped in `<a>`.
 
 ## Screen types

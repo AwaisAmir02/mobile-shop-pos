@@ -199,7 +199,7 @@ new #[Layout('layouts.app')] #[Title('Employees')] class extends Component
                             <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $employee->id }})">Edit</x-ui.button>
                             <x-ui.button size="sm" variant="ghost" wire:click="toggleActive({{ $employee->id }})">{{ $employee->is_active ? 'Deactivate' : 'Reactivate' }}</x-ui.button>
                             @unless ($employee->hasPayrollHistory())
-                                <x-ui.button size="sm" variant="ghost" wire:click="delete({{ $employee->id }})" wire:confirm="Remove {{ $employee->name }}?" class="text-red-600 hover:bg-red-50">Remove</x-ui.button>
+                                <x-ui.button size="sm" variant="danger-ghost" wire:click="delete({{ $employee->id }})" wire:confirm="Remove {{ $employee->name }}?">Remove</x-ui.button>
                             @endunless
                         </div>
                     </x-ui.table-cell>

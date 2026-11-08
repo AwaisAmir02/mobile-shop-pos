@@ -176,13 +176,13 @@ new #[Layout('layouts.app')] #[Title('Vendor Invoice')] class extends Component
     </x-slot>
 
     @if (session('status'))
-        <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">{{ session('status') }}</div>
+        <div class="mb-4 rounded-xl border border-line bg-surface-sunken px-4 py-3 text-sm text-ink-muted">{{ session('status') }}</div>
     @endif
 
     <x-ui.error :messages="$errors->get('invoice')" class="mb-4" />
 
     @if ($invoice->isFlagged() && $match['reasons'] !== [])
-        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div class="mb-4 rounded-xl border border-warning/20 bg-warning-soft px-4 py-3 text-sm text-warning">
             <p class="font-semibold">This invoice needs review</p>
             <ul class="mt-1 list-inside list-disc">
                 @foreach ($match['reasons'] as $reason)
@@ -193,7 +193,7 @@ new #[Layout('layouts.app')] #[Title('Vendor Invoice')] class extends Component
     @endif
 
     @if (! $withinBranch && ! $invoice->isCancelled())
-        <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+        <div class="mb-4 rounded-xl border border-line bg-surface-sunken px-4 py-3 text-sm text-ink-muted">
             This invoice covers goods received at another branch, so it needs someone with access to the whole shop.
         </div>
     @endif
@@ -207,40 +207,40 @@ new #[Layout('layouts.app')] #[Title('Vendor Invoice')] class extends Component
             <x-ui.button size="sm" wire:click="openPay">Pay</x-ui.button>
         @endif
         @if ($canCancel)
-            <x-ui.button size="sm" variant="ghost" wire:click="openCancel" class="text-red-600 hover:bg-red-50">Cancel Invoice</x-ui.button>
+            <x-ui.button size="sm" variant="danger-ghost" wire:click="openCancel">Cancel Invoice</x-ui.button>
         @endif
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <x-ui.card title="Invoice">
             <dl class="space-y-3 text-sm">
-                <div class="flex items-center justify-between"><dt class="text-slate-500">Status</dt><dd><x-ui.badge :variant="$invoice->status->badge()">{{ $invoice->status->label() }}</x-ui.badge></dd></div>
-                <div><dt class="text-slate-500">Vendor</dt><dd class="font-medium text-slate-900">{{ $invoice->vendor?->name ?? '—' }}</dd></div>
-                <div><dt class="text-slate-500">Vendor's Invoice No.</dt><dd class="font-medium text-slate-900">{{ $invoice->invoice_number }}</dd></div>
-                <div><dt class="text-slate-500">Invoice Date</dt><dd class="font-medium text-slate-900">{{ $invoice->invoice_date->format('d M Y') }}</dd></div>
-                <div><dt class="text-slate-500">Billed Total</dt><dd class="font-medium text-slate-900">Rs {{ number_format($invoice->billedTotal(), 2) }}</dd></div>
+                <div class="flex items-center justify-between"><dt class="text-ink-faint">Status</dt><dd><x-ui.badge :variant="$invoice->status->badge()">{{ $invoice->status->label() }}</x-ui.badge></dd></div>
+                <div><dt class="text-ink-faint">Vendor</dt><dd class="font-medium text-ink">{{ $invoice->vendor?->name ?? '—' }}</dd></div>
+                <div><dt class="text-ink-faint">Vendor's Invoice No.</dt><dd class="font-medium text-ink">{{ $invoice->invoice_number }}</dd></div>
+                <div><dt class="text-ink-faint">Invoice Date</dt><dd class="font-medium text-ink">{{ $invoice->invoice_date->format('d M Y') }}</dd></div>
+                <div><dt class="text-ink-faint">Billed Total</dt><dd class="font-medium text-ink">Rs {{ number_format($invoice->billedTotal(), 2) }}</dd></div>
                 @if ($invoice->isApproved())
-                    <div><dt class="text-slate-500">Paid</dt><dd class="font-medium text-slate-900">Rs {{ number_format($invoice->amountPaid(), 2) }}</dd></div>
-                    <div><dt class="text-slate-500">Owed</dt><dd class="font-semibold text-slate-900">Rs {{ number_format($invoice->amountOwed(), 2) }}</dd></div>
+                    <div><dt class="text-ink-faint">Paid</dt><dd class="font-medium text-ink">Rs {{ number_format($invoice->amountPaid(), 2) }}</dd></div>
+                    <div><dt class="text-ink-faint">Owed</dt><dd class="font-semibold text-ink">Rs {{ number_format($invoice->amountOwed(), 2) }}</dd></div>
                 @endif
                 @if ($invoice->auto_passed)
-                    <div><dt class="text-slate-500">Approval</dt><dd class="font-medium text-slate-900">Matched within Rs 1</dd></div>
+                    <div><dt class="text-ink-faint">Approval</dt><dd class="font-medium text-ink">Matched within Rs 1</dd></div>
                 @endif
                 @if ($invoice->review_note)
-                    <div><dt class="text-slate-500">{{ $invoice->status->value === 'disputed' ? 'Disputed because' : 'Review note' }}</dt><dd class="font-medium text-slate-900">{{ $invoice->review_note }}</dd><dd class="text-xs text-slate-400">{{ $invoice->reviewer?->name }}</dd></div>
+                    <div><dt class="text-ink-faint">{{ $invoice->status->value === 'disputed' ? 'Disputed because' : 'Review note' }}</dt><dd class="font-medium text-ink">{{ $invoice->review_note }}</dd><dd class="text-xs text-ink-faint">{{ $invoice->reviewer?->name }}</dd></div>
                 @endif
                 @if ($invoice->note)
-                    <div><dt class="text-slate-500">Note</dt><dd class="font-medium text-slate-900">{{ $invoice->note }}</dd></div>
+                    <div><dt class="text-ink-faint">Note</dt><dd class="font-medium text-ink">{{ $invoice->note }}</dd></div>
                 @endif
                 @if ($invoice->cancel_reason)
-                    <div><dt class="text-slate-500">Cancelled because</dt><dd class="font-medium text-slate-900">{{ $invoice->cancel_reason }}</dd></div>
+                    <div><dt class="text-ink-faint">Cancelled because</dt><dd class="font-medium text-ink">{{ $invoice->cancel_reason }}</dd></div>
                 @endif
             </dl>
         </x-ui.card>
 
         <div class="space-y-6 lg:col-span-2">
             <x-ui.card title="Ordered, received, billed" :padding="false">
-                <x-ui.table :headers="['Product', 'Ordered', 'Received', 'Billed', 'Difference']">
+                <x-ui.table stack :headers="['Product', 'Ordered', 'Received', 'Billed', 'Difference']">
                     @foreach ($match['lines'] as $entry)
                         @php
                             $line = $entry['line'];
@@ -248,33 +248,33 @@ new #[Layout('layouts.app')] #[Title('Vendor Invoice')] class extends Component
                             $poLine = $line->grnLine?->poLine;
                         @endphp
                         <x-ui.table-row wire:key="invoice-line-{{ $line->id }}">
-                            <x-ui.table-cell class="font-medium text-slate-900">
+                            <x-ui.table-cell primary class="font-medium text-ink">
                                 {{ $row->product_name }}
                                 @if ($line->amended)
-                                    <p class="text-xs font-normal text-slate-500">Cost corrected from Rs {{ number_format((float) $line->previous_total_cost, 2) }} to Rs {{ number_format((float) $row->total_cost, 2) }}</p>
+                                    <p class="text-xs font-normal text-ink-faint">Cost corrected from Rs {{ number_format((float) $line->previous_total_cost, 2) }} to Rs {{ number_format((float) $row->total_cost, 2) }}</p>
                                 @endif
                             </x-ui.table-cell>
-                            <x-ui.table-cell>
+                            <x-ui.table-cell label="Ordered">
                                 {{ $poLine ? $poLine->unit->amount($poLine->quantity) : '—' }}
                                 @if ($poLine?->expected_cost !== null)
-                                    <p @class(['text-xs', 'font-semibold text-amber-700' => $entry['above_order'] > 0, 'text-slate-400' => $entry['above_order'] == 0])>at Rs {{ number_format($poLine->expected_cost, 2) }}</p>
+                                    <p @class(['text-xs', 'font-semibold text-warning' => $entry['above_order'] > 0, 'text-ink-faint' => $entry['above_order'] == 0])>at Rs {{ number_format($poLine->expected_cost, 2) }}</p>
                                 @endif
                             </x-ui.table-cell>
-                            <x-ui.table-cell>
-                                <span @class(['font-semibold text-amber-700' => $entry['quantity_differs']])>{{ $row->unit->amount($row->quantity) }}</span>
-                                <p class="text-xs text-slate-400">{{ $entry['received'] !== null ? 'Rs '.number_format($entry['received'], 2) : 'No cost' }}</p>
+                            <x-ui.table-cell label="Received">
+                                <span @class(['font-semibold text-warning' => $entry['quantity_differs']])>{{ $row->unit->amount($row->quantity) }}</span>
+                                <p class="text-xs text-ink-faint">{{ $entry['received'] !== null ? 'Rs '.number_format($entry['received'], 2) : 'No cost' }}</p>
                             </x-ui.table-cell>
-                            <x-ui.table-cell>
-                                <span @class(['font-semibold text-amber-700' => $entry['quantity_differs']])>{{ $row->unit->amount($line->billed_quantity) }}</span>
-                                <p class="text-xs text-slate-400">Rs {{ number_format((float) $line->billed_amount, 2) }}</p>
+                            <x-ui.table-cell label="Billed">
+                                <span @class(['font-semibold text-warning' => $entry['quantity_differs']])>{{ $row->unit->amount($line->billed_quantity) }}</span>
+                                <p class="text-xs text-ink-faint">Rs {{ number_format((float) $line->billed_amount, 2) }}</p>
                             </x-ui.table-cell>
-                            <x-ui.table-cell>
+                            <x-ui.table-cell label="Difference">
                                 @if ($entry['difference'] > 0)
-                                    <span class="font-semibold text-amber-700">Rs {{ number_format($entry['difference'], 2) }}</span>
+                                    <span class="font-semibold text-warning">Rs {{ number_format($entry['difference'], 2) }}</span>
                                 @elseif ($entry['quantity_differs'])
-                                    <span class="font-semibold text-amber-700">Quantity</span>
+                                    <span class="font-semibold text-warning">Quantity</span>
                                 @else
-                                    <span class="text-emerald-700">Matches</span>
+                                    <span class="text-success">Matches</span>
                                 @endif
                             </x-ui.table-cell>
                         </x-ui.table-row>
@@ -284,11 +284,11 @@ new #[Layout('layouts.app')] #[Title('Vendor Invoice')] class extends Component
 
             @if ($invoice->charges->isNotEmpty())
                 <x-ui.card title="Delivery, round-off and discounts" :padding="false">
-                    <x-ui.table :headers="['Charge', 'Amount']">
+                    <x-ui.table stack :headers="['Charge', 'Amount']">
                         @foreach ($invoice->charges as $charge)
                             <x-ui.table-row wire:key="invoice-charge-{{ $charge->id }}">
-                                <x-ui.table-cell>{{ $charge->label }}</x-ui.table-cell>
-                                <x-ui.table-cell>Rs {{ number_format((float) $charge->amount, 2) }}</x-ui.table-cell>
+                                <x-ui.table-cell primary>{{ $charge->label }}</x-ui.table-cell>
+                                <x-ui.table-cell label="Amount">Rs {{ number_format((float) $charge->amount, 2) }}</x-ui.table-cell>
                             </x-ui.table-row>
                         @endforeach
                     </x-ui.table>
@@ -299,17 +299,17 @@ new #[Layout('layouts.app')] #[Title('Vendor Invoice')] class extends Component
 
     <x-ui.modal name="invoice-approve" max-width="lg">
         <form wire:submit="approve" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Approve This Invoice?</h2>
+            <h2 class="text-lg font-semibold text-ink">Approve This Invoice?</h2>
 
             @if ($changing->isEmpty())
-                <p class="mt-2 text-sm text-slate-600">The billed figures match what was received, so what you owe won't change.</p>
+                <p class="mt-2 text-sm text-ink-muted">The billed figures match what was received, so what you owe won't change.</p>
             @else
-                <p class="mt-2 text-sm text-slate-600">This corrects these batches to what was billed:</p>
+                <p class="mt-2 text-sm text-ink-muted">This corrects these batches to what was billed:</p>
                 <ul class="mt-3 space-y-3 text-sm">
                     @foreach ($changing as $entry)
-                        <li class="rounded-lg bg-slate-50 px-3 py-2" wire:key="approve-line-{{ $entry['line']->id }}">
-                            <p class="font-medium text-slate-900">{{ $entry['line']->stockIn->product_name }}: Rs {{ number_format((float) ($entry['line']->stockIn->total_cost ?? 0), 2) }} → Rs {{ number_format($entry['new_total'], 2) }}</p>
-                            <p class="mt-0.5 text-slate-600">{{ $entry['line']->soldNote() }}</p>
+                        <li class="rounded-lg bg-surface-sunken px-3 py-2" wire:key="approve-line-{{ $entry['line']->id }}">
+                            <p class="font-medium text-ink">{{ $entry['line']->stockIn->product_name }}: Rs {{ number_format((float) ($entry['line']->stockIn->total_cost ?? 0), 2) }} → Rs {{ number_format($entry['new_total'], 2) }}</p>
+                            <p class="mt-0.5 text-ink-muted">{{ $entry['line']->soldNote() }}</p>
                         </li>
                     @endforeach
                 </ul>
@@ -332,8 +332,8 @@ new #[Layout('layouts.app')] #[Title('Vendor Invoice')] class extends Component
 
     <x-ui.modal name="invoice-dispute" max-width="sm">
         <form wire:submit="dispute" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Dispute This Invoice?</h2>
-            <p class="mt-2 text-sm text-slate-600">Nothing changes: what you owe stays at the received figures. Its items and number stay on this invoice until you cancel it, which frees them for a corrected one.</p>
+            <h2 class="text-lg font-semibold text-ink">Dispute This Invoice?</h2>
+            <p class="mt-2 text-sm text-ink-muted">Nothing changes: what you owe stays at the received figures. Its items and number stay on this invoice until you cancel it, which frees them for a corrected one.</p>
             <x-ui.error :messages="$errors->get('invoice')" class="mt-3" />
             <div class="mt-5">
                 <x-ui.field label="What's wrong?" name="reviewNote" for="disputeNote">
@@ -349,8 +349,8 @@ new #[Layout('layouts.app')] #[Title('Vendor Invoice')] class extends Component
 
     <x-ui.modal name="invoice-cancel" max-width="sm">
         <form wire:submit="cancel" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Cancel This Invoice?</h2>
-            <p class="mt-2 text-sm text-slate-600">Its items and number become free for a corrected invoice.@if ($invoice->isApproved()) Any cost it corrected goes back to the received figure. Sales made since keep the cost they had. It's refused if more has been paid than that figure.@endif</p>
+            <h2 class="text-lg font-semibold text-ink">Cancel This Invoice?</h2>
+            <p class="mt-2 text-sm text-ink-muted">Its items and number become free for a corrected invoice.@if ($invoice->isApproved()) Any cost it corrected goes back to the received figure. Sales made since keep the cost they had. It's refused if more has been paid than that figure.@endif</p>
             <x-ui.error :messages="$errors->get('invoice')" class="mt-3" />
             <div class="mt-5">
                 <x-ui.field label="Reason" name="cancelReason" for="invoiceCancelReason" help="Optional">
@@ -359,15 +359,15 @@ new #[Layout('layouts.app')] #[Title('Vendor Invoice')] class extends Component
             </div>
             <div class="mt-6 flex justify-end gap-3">
                 <x-ui.button type="button" variant="secondary" wire:click="closeCancel">Keep It</x-ui.button>
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancel" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">Cancel Invoice</x-ui.button>
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancel" variant="danger">Cancel Invoice</x-ui.button>
             </div>
         </form>
     </x-ui.modal>
 
     <x-ui.modal name="invoice-pay" max-width="sm">
         <form wire:submit="pay" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Pay This Invoice</h2>
-            <p class="mt-2 text-sm text-slate-600">Rs {{ number_format($invoice->amountOwed(), 2) }} is owed. The payment is shared across its batches and shows on Stock In History too.</p>
+            <h2 class="text-lg font-semibold text-ink">Pay This Invoice</h2>
+            <p class="mt-2 text-sm text-ink-muted">Rs {{ number_format($invoice->amountOwed(), 2) }} is owed. The payment is shared across its batches and shows on Stock In History too.</p>
             <div class="mt-5">
                 <x-ui.field label="Amount Paid Now" name="payAmount" for="payAmount">
                     <x-ui.input wire:model="payAmount" id="payAmount" type="number" min="0.01" step="0.01" />

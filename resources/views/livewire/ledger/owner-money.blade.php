@@ -131,7 +131,7 @@ new #[Layout('layouts.app')] #[Title('Owner & Held Money')] class extends Compon
                                             @if ($row->isCancelled())
                                                 <x-ui.badge variant="danger">Cancelled</x-ui.badge>
                                             @else
-                                                <x-ui.button size="sm" variant="ghost" wire:click="cancel('{{ $type }}', {{ $row->id }})" wire:confirm="Cancel this?" class="text-red-600 hover:bg-red-50">Cancel</x-ui.button>
+                                                <x-ui.button size="sm" variant="danger-ghost" wire:click="cancel('{{ $type }}', {{ $row->id }})" wire:confirm="Cancel this?">Cancel</x-ui.button>
                                             @endif
                                         </x-ui.table-cell>
                                     </x-ui.table-row>

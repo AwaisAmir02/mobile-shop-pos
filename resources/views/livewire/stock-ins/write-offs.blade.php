@@ -204,60 +204,61 @@ new #[Layout('layouts.app')] #[Title('Stock Write-offs')] class extends Componen
 
     <x-ui.module-tabs module="stock" label="Stock In sections" />
 
-    <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:flex-wrap">
-            <x-ui.field label="From" name="from" for="from" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="from" id="from" type="date" />
-            </x-ui.field>
-            <x-ui.field label="To" name="to" for="to" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="to" id="to" type="date" />
-            </x-ui.field>
-            <x-ui.field label="Reason" name="reasonFilter" for="reasonFilter" class="sm:max-w-[12rem]">
-                <x-ui.select wire:model.live="reasonFilter" id="reasonFilter">
-                    <option value="">All reasons</option>
-                    @foreach (WriteOffReason::cases() as $option)
-                        <option value="{{ $option->value }}">{{ $option->label() }}</option>
-                    @endforeach
-                </x-ui.select>
-            </x-ui.field>
-        </div>
+    <x-ui.filter-bar :active="(int) filled($from) + (int) filled($to) + (int) filled($reasonFilter)">
+        <x-ui.date-range />
+        <x-ui.field label="Reason" name="reasonFilter" for="reasonFilter" class="w-full sm:w-48">
+            <x-ui.select wire:model.live="reasonFilter" id="reasonFilter">
+                <option value="">All reasons</option>
+                @foreach (WriteOffReason::cases() as $option)
+                    <option value="{{ $option->value }}">{{ $option->label() }}</option>
+                @endforeach
+            </x-ui.select>
+        </x-ui.field>
 
-        <div class="flex items-center gap-3">
+        <x-slot:actions>
             <x-ui.export-dropdown />
             @if ($canManage)
-                <x-ui.button type="button" wire:click="openForm">Write Off Stock</x-ui.button>
+                <x-ui.button type="button" size="sm" wire:click="openForm">Write Off Stock</x-ui.button>
             @endif
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-ui.filter-bar>
 
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <x-ui.stat-row class="lg:grid-cols-3">
         @foreach ($cards as $card)
             <x-ui.stat :label="$card['label']" :value="$card['value']" :sub="$card['sub'] ?? null" />
         @endforeach
-    </div>
+    </x-ui.stat-row>
 
     @if ($writeOffs->isEmpty())
         <x-ui.empty-state title="No write-offs" description="Stock removed for expiry, damage, theft or a count correction shows up here." />
     @else
-        <x-ui.table :headers="['Date', 'Product', 'Quantity', 'Reason', 'Note', 'Cost', 'Entered By', '']">
+        <x-ui.table stack :headers="['Product', 'Date', 'Quantity', 'Reason', 'Cost', '']">
             @foreach ($writeOffs as $writeOff)
                 <x-ui.table-row wire:key="write-off-{{ $writeOff->id }}" @class(['opacity-50' => $writeOff->isCancelled()])>
-                    <x-ui.table-cell>{{ $writeOff->written_off_on->format('d M Y') }}</x-ui.table-cell>
-                    <x-ui.table-cell class="font-medium text-slate-900">{{ $writeOff->product_name }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $writeOff->unit->groupedAmount($writeOff->quantity) }}</x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell primary class="font-semibold text-ink">
+                        {{ $writeOff->product_name }}
+                        @if ($writeOff->note)
+                            <span class="ui-sub max-w-[16rem] truncate italic" title="{{ $writeOff->note }}">{{ $writeOff->note }}</span>
+                        @endif
+                    </x-ui.table-cell>
+                    <x-ui.table-cell label="Date">
+                        {{ $writeOff->written_off_on->format('d M Y') }}
+                        <span class="ui-sub">{{ $writeOff->user?->name ?? '—' }}</span>
+                    </x-ui.table-cell>
+                    <x-ui.table-cell label="Quantity">{{ $writeOff->unit->groupedAmount($writeOff->quantity) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Reason">
                         @if ($writeOff->isCancelled())
                             <x-ui.badge variant="danger">Cancelled</x-ui.badge>
                         @else
                             {{ $writeOff->reason->label() }}
                         @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell>{{ $writeOff->note ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $writeOff->total_cost !== null ? 'Rs '.number_format($writeOff->total_cost, 2) : '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $writeOff->user?->name ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell align="right">
+                    <x-ui.table-cell label="Cost">{{ $writeOff->total_cost !== null ? 'Rs '.number_format($writeOff->total_cost, 2) : '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell actions align="right">
                         @if ($canManage && ! $writeOff->isCancelled())
-                            <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $writeOff->id }})" class="text-red-600 hover:bg-red-50">Cancel</x-ui.button>
+                            <x-ui.row-actions label="Actions for {{ $writeOff->product_name }}">
+                                <x-ui.menu-item danger wire:click="openCancel({{ $writeOff->id }})">Cancel</x-ui.menu-item>
+                            </x-ui.row-actions>
                         @endif
                     </x-ui.table-cell>
                 </x-ui.table-row>
@@ -270,8 +271,8 @@ new #[Layout('layouts.app')] #[Title('Stock Write-offs')] class extends Componen
     @if ($canManage)
         <x-ui.modal name="write-off-form" max-width="lg" :show="$openOnLoad">
             <form wire:submit="save" class="p-6">
-                <h2 class="text-lg font-semibold text-slate-900">Write Off Stock</h2>
-                <p class="mt-1 text-sm text-slate-500">Removes stock with no sale. Your purchase records and what you owe vendors stay as they are. You can cancel it later to restore the stock.</p>
+                <h2 class="text-lg font-semibold text-ink">Write Off Stock</h2>
+                <p class="mt-1 text-sm text-ink-faint">Removes stock with no sale. Your purchase records and what you owe vendors stay as they are. You can cancel it later to restore the stock.</p>
 
                 <div class="mt-5 space-y-5" wire:key="write-off-fields-{{ $formNonce }}">
                     <x-ui.field label="Product" name="productId" for="writeOffProduct">
@@ -328,8 +329,8 @@ new #[Layout('layouts.app')] #[Title('Stock Write-offs')] class extends Componen
 
         <x-ui.modal name="cancel-write-off-form" max-width="sm">
             <form wire:submit="cancelWriteOff" class="p-6">
-                <h2 class="text-lg font-semibold text-slate-900">Cancel This Write-off?</h2>
-                <p class="mt-2 text-sm text-slate-600">The stock goes back into the batches it came from. This cannot be undone.</p>
+                <h2 class="text-lg font-semibold text-ink">Cancel This Write-off?</h2>
+                <p class="mt-2 text-sm text-ink-muted">The stock goes back into the batches it came from. This cannot be undone.</p>
 
                 <div class="mt-5">
                     <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
@@ -339,7 +340,7 @@ new #[Layout('layouts.app')] #[Title('Stock Write-offs')] class extends Componen
 
                 <div class="mt-6 flex justify-end gap-3">
                     <x-ui.button type="button" variant="secondary" wire:click="closeCancel">Keep It</x-ui.button>
-                    <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelWriteOff" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">Cancel Write-off</x-ui.button>
+                    <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelWriteOff" variant="danger">Cancel Write-off</x-ui.button>
                 </div>
             </form>
         </x-ui.modal>
