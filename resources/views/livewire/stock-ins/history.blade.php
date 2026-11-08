@@ -300,81 +300,56 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     <x-ui.module-tabs module="stock" label="Stock In sections" />
 
-    <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-            <x-ui.field label="From" name="from" for="from" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="from" id="from" type="date" />
-            </x-ui.field>
+    <x-ui.filter-bar :active="(int) filled($from) + (int) filled($to) + (int) filled($productFilter) + (int) filled($paymentStatusFilter) + (int) filled($vendorFilter)">
+        <x-ui.date-range />
 
-            <x-ui.field label="To" name="to" for="to" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="to" id="to" type="date" />
-            </x-ui.field>
+        <x-ui.field label="Product" name="productFilter" for="productFilter" class="w-full sm:w-52">
+            <x-ui.select wire:model.live="productFilter" id="productFilter">
+                <option value="">All Products</option>
+                @foreach ($products as $product)
+                    <option value="{{ $product->id }}">{{ $product->name }}</option>
+                @endforeach
+            </x-ui.select>
+        </x-ui.field>
 
-            <x-ui.field label="Product" name="productFilter" for="productFilter" class="sm:max-w-[14rem]">
-                <x-ui.select wire:model.live="productFilter" id="productFilter">
-                    <option value="">All Products</option>
-                    @foreach ($products as $product)
-                        <option value="{{ $product->id }}">{{ $product->name }}</option>
+        <x-ui.field label="Payment Status" name="paymentStatusFilter" for="paymentStatusFilter" class="w-full sm:w-40">
+            <x-ui.select wire:model.live="paymentStatusFilter" id="paymentStatusFilter">
+                <option value="">All Statuses</option>
+                @foreach ($paymentStatuses as $status)
+                    <option value="{{ $status->value }}">{{ $status->label() }}</option>
+                @endforeach
+            </x-ui.select>
+        </x-ui.field>
+
+        @if (auth()->user()->hasAccessTo('vendors'))
+            <x-ui.field label="Vendor" name="vendorFilter" for="vendorFilter" class="w-full sm:w-44">
+                <x-ui.select wire:model.live="vendorFilter" id="vendorFilter">
+                    <option value="">All Vendors</option>
+                    @foreach ($vendors as $vendor)
+                        <option value="{{ $vendor->id }}">{{ $vendor->name }}</option>
                     @endforeach
                 </x-ui.select>
             </x-ui.field>
+        @endif
 
-            <x-ui.field label="Payment Status" name="paymentStatusFilter" for="paymentStatusFilter" class="sm:max-w-[10rem]">
-                <x-ui.select wire:model.live="paymentStatusFilter" id="paymentStatusFilter">
-                    <option value="">All Statuses</option>
-                    @foreach ($paymentStatuses as $status)
-                        <option value="{{ $status->value }}">{{ $status->label() }}</option>
-                    @endforeach
-                </x-ui.select>
-            </x-ui.field>
+        @if ($from || $to || $productFilter || $paymentStatusFilter || $vendorFilter)
+            <x-ui.button type="button" variant="ghost" wire:click="clearFilters">
+                Clear
+            </x-ui.button>
+        @endif
 
-            @if (auth()->user()->hasAccessTo('vendors'))
-                <x-ui.field label="Vendor" name="vendorFilter" for="vendorFilter" class="sm:max-w-[12rem]">
-                    <x-ui.select wire:model.live="vendorFilter" id="vendorFilter">
-                        <option value="">All Vendors</option>
-                        @foreach ($vendors as $vendor)
-                            <option value="{{ $vendor->id }}">{{ $vendor->name }}</option>
-                        @endforeach
-                    </x-ui.select>
-                </x-ui.field>
-            @endif
-
-            @if ($from || $to || $productFilter || $paymentStatusFilter || $vendorFilter)
-                <div class="sm:pb-1">
-                    <x-ui.button type="button" variant="ghost" wire:click="clearFilters">
-                        Clear
-                    </x-ui.button>
-                </div>
-            @endif
-        </div>
-
-        <div class="flex items-center gap-4">
+        <x-slot:actions>
             <x-ui.export-dropdown />
+        </x-slot:actions>
+    </x-ui.filter-bar>
 
-            <x-ui.card :padding="false">
-                <div class="px-5 py-3 text-right">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Units</p>
-                    <p class="text-display-sm text-slate-900">{{ number_format($totalUnits) }}</p>
-                </div>
-            </x-ui.card>
-
-            @if ($measuredTotals !== '')
-                <x-ui.card :padding="false">
-                    <div class="px-5 py-3 text-right">
-                        <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Weight, Volume &amp; Length</p>
-                        <p class="whitespace-nowrap text-xl font-bold text-slate-900">{{ $measuredTotals }}</p>
-                    </div>
-                </x-ui.card>
-            @endif
-
-            <x-ui.card :padding="false">
-                <div class="px-5 py-3 text-right">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Owed to Suppliers</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format($totalOwed, 2) }}</p>
-                </div>
-            </x-ui.card>
-        </div>
-    </div>
+    <x-ui.stat-row>
+        <x-ui.stat label="Total Units" :value="number_format($totalUnits)" />
+        @if ($measuredTotals !== '')
+            <x-ui.stat label="Weight, Volume &amp; Length" :value="$measuredTotals" />
+        @endif
+        <x-ui.stat label="Total Owed to Suppliers" :value="'Rs '.number_format($totalOwed, 2)" />
+    </x-ui.stat-row>
 
     @if ($entries->isEmpty())
         <x-ui.empty-state
@@ -386,26 +361,40 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             </x-slot>
         </x-ui.empty-state>
     @else
+        {{-- Twelve facts in seven columns: the quieter ones sit under the main
+             value of their cell (vendor and note under product, who entered it
+             under date, what's left under quantity, what's owed under payment). --}}
         @php $showVendorColumn = auth()->user()->hasAccessTo('vendors'); @endphp
-        <x-ui.table :headers="['Date', 'Product', ...($showVendorColumn ? ['Vendor'] : []), 'Quantity', 'Remaining', ...($showExpiry ? ['Expires'] : []), 'Cost / Sell', 'Payment', 'Owed', 'Note', 'Entered By', '']">
+        <x-ui.table stack :headers="['Product', 'Date', 'Quantity', ...($showExpiry ? ['Expires'] : []), 'Cost / Sell', 'Payment', '']">
             @foreach ($entries as $entry)
                 <x-ui.table-row wire:key="stock-in-{{ $entry->id }}" @class(['opacity-50' => $entry->isCancelled()])>
-                    <x-ui.table-cell>{{ $entry->stock_date->format('d M Y') }}</x-ui.table-cell>
-                    <x-ui.table-cell class="font-medium text-slate-900">{{ $entry->product_name }}</x-ui.table-cell>
-                    @if ($showVendorColumn)
-                        <x-ui.table-cell>{{ $entry->vendor?->name ?? '—' }}</x-ui.table-cell>
-                    @endif
-                    <x-ui.table-cell class="font-semibold text-emerald-600">+{{ $entry->unit->groupedAmount($entry->quantity) }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $entry->isCancelled() ? '—' : $entry->unit->groupedAmount($entry->quantity_remaining) }}</x-ui.table-cell>
-                    @if ($showExpiry)
-                        <x-ui.table-cell><span @class(['font-semibold text-red-600' => $entry->isExpired() && $entry->quantity_remaining > 0])>{{ $entry->expiry_date?->format('d M Y') ?? '—' }}</span></x-ui.table-cell>
-                    @endif
-                    <x-ui.table-cell>
-                        {{ $entry->cost_price !== null ? 'Rs '.number_format($entry->cost_price, 2) : '—' }}
-                        /
-                        {{ $entry->selling_price !== null ? 'Rs '.number_format($entry->selling_price, 2) : '—' }}
+                    <x-ui.table-cell primary class="font-semibold text-ink">
+                        {{ $entry->product_name }}
+                        @if ($showVendorColumn)
+                            <span class="ui-sub">{{ $entry->vendor?->name ?? '—' }}</span>
+                        @endif
+                        @if ($entry->note)
+                            <span class="ui-sub max-w-[16rem] truncate italic" title="{{ $entry->note }}">{{ $entry->note }}</span>
+                        @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell label="Date">
+                        {{ $entry->stock_date->format('d M Y') }}
+                        <span class="ui-sub">{{ $entry->user?->name ?? '—' }}</span>
+                    </x-ui.table-cell>
+                    <x-ui.table-cell label="Quantity">
+                        <span class="font-semibold text-success">+{{ $entry->unit->groupedAmount($entry->quantity) }}</span>
+                        @unless ($entry->isCancelled())
+                            <span class="ui-sub">{{ $entry->unit->groupedAmount($entry->quantity_remaining) }} left</span>
+                        @endunless
+                    </x-ui.table-cell>
+                    @if ($showExpiry)
+                        <x-ui.table-cell label="Expires"><span @class(['font-semibold text-danger' => $entry->isExpired() && $entry->quantity_remaining > 0])>{{ $entry->expiry_date?->format('d M Y') ?? '—' }}</span></x-ui.table-cell>
+                    @endif
+                    <x-ui.table-cell label="Cost / Sell">
+                        {{ $entry->cost_price !== null ? 'Rs '.number_format($entry->cost_price, 2) : '—' }}
+                        <span class="ui-sub">sells {{ $entry->selling_price !== null ? 'Rs '.number_format($entry->selling_price, 2) : '—' }}</span>
+                    </x-ui.table-cell>
+                    <x-ui.table-cell label="Payment">
                         @if ($entry->isCancelled())
                             <x-ui.badge variant="danger">Cancelled</x-ui.badge>
                         @elseif ($entry->payment_status->value === 'paid')
@@ -415,47 +404,29 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                         @else
                             <x-ui.badge variant="danger">Unpaid</x-ui.badge>
                         @endif
-                    </x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold text-slate-900">
                         @if (! $entry->isCancelled() && $entry->amountOwed() > 0)
-                            Rs {{ number_format($entry->amountOwed(), 2) }}
-                        @else
-                            —
+                            <span class="ui-sub font-semibold text-ink">Rs {{ number_format($entry->amountOwed(), 2) }} owed</span>
                         @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell>{{ $entry->note ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $entry->user?->name ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell align="right">
-                        <div class="flex justify-end gap-2">
+                    <x-ui.table-cell actions align="right">
+                        <x-ui.row-actions label="Actions for {{ $entry->product_name }}">
                             @if (! $entry->isCancelled())
                                 @if ($entry->payment_status->value !== 'paid')
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openAddPayment({{ $entry->id }})">
-                                        Add Payment
-                                    </x-ui.button>
-                                    <x-ui.button
-                                        size="sm"
-                                        variant="ghost"
-                                        wire:click="markAsPaid({{ $entry->id }})"
-                                        wire:confirm="Mark this stock-in as fully paid?"
-                                    >
-                                        Mark as Paid
-                                    </x-ui.button>
+                                    <x-ui.menu-item wire:click="openAddPayment({{ $entry->id }})">Add Payment</x-ui.menu-item>
+                                    <x-ui.menu-item wire:click="markAsPaid({{ $entry->id }})" confirm="Mark this stock-in as fully paid?" confirm-title="Mark as paid?" confirm-label="Mark as Paid">Mark as Paid</x-ui.menu-item>
                                 @endif
                                 @if (auth()->user()->hasAccessTo('stock-ins-edit-cancel'))
                                     @if ($entry->quantity_remaining > 0 && $entry->product_id !== null)
-                                        <x-ui.button href="{{ route('stock-ins.write-offs', ['batch' => $entry->id]) }}" wire:navigate size="sm" variant="ghost">Write off</x-ui.button>
+                                        <x-ui.menu-item href="{{ route('stock-ins.write-offs', ['batch' => $entry->id]) }}" wire:navigate>Write off</x-ui.menu-item>
                                     @endif
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $entry->id }})">
-                                        Edit
-                                    </x-ui.button>
+                                    <x-ui.menu-item wire:click="openEdit({{ $entry->id }})">Edit</x-ui.menu-item>
                                     @if ($entry->grn_line_id === null)
-                                        <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $entry->id }})" class="text-red-600 hover:bg-red-50">
-                                            Delete
-                                        </x-ui.button>
+                                        <x-ui.menu-divider />
+                                        <x-ui.menu-item danger wire:click="openCancel({{ $entry->id }})">Delete</x-ui.menu-item>
                                     @endif
                                 @endif
                             @endif
-                        </div>
+                        </x-ui.row-actions>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
@@ -575,7 +546,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                     Keep Entry
                 </x-ui.button>
 
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelEntry" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelEntry" variant="danger">
                     Cancel Entry
                 </x-ui.button>
             </div>

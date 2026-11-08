@@ -79,5 +79,6 @@
         </div>
 
         <x-ui.toast-container />
+        <x-ui.confirm-dialog />
     </body>
 </html>

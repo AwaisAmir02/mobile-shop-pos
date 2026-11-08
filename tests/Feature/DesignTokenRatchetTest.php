@@ -21,7 +21,7 @@ use Tests\TestCase;
  */
 class DesignTokenRatchetTest extends TestCase
 {
-    private const BUDGET = 1848;
+    private const BUDGET = 1683;
 
     /** The shared kit and shell must already be fully on tokens, apart from these. */
     private const KIT = [

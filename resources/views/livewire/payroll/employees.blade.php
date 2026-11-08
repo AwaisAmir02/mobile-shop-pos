@@ -152,14 +152,17 @@ new #[Layout('layouts.app')] #[Title('Employees')] class extends Component
 }; ?>
 
 <div>
+    {{-- Add Employee used to sit in this header slot, which renders outside the
+         component, so its wire:click never reached openCreate. It now lives below. --}}
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Employees</h1>
-            <x-ui.button size="sm" wire:click="openCreate">Add Employee</x-ui.button>
-        </div>
+        <x-ui.page-header>Employees</x-ui.page-header>
     </x-slot>
 
     <x-payroll.nav active="payroll.employees" />
+
+    <div class="mb-4 flex justify-end">
+        <x-ui.button size="sm" wire:click="openCreate">Add Employee</x-ui.button>
+    </div>
 
     @if ($showNotice)
         <x-payroll.first-use-notice />

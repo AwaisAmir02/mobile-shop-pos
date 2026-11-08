@@ -187,6 +187,32 @@ class ModuleNavigationTest extends TestCase
         $this->assertStringNotContainsString('History →', $html);
     }
 
+    /**
+     * A screen's header slot renders in the layout, outside the Livewire
+     * component, so a wire: action there silently does nothing. Payroll's
+     * Add Employee button had this bug until design overhaul D3.
+     */
+    public function test_no_header_slot_holds_a_livewire_action(): void
+    {
+        $offenders = [];
+
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(resource_path('views/livewire'))) as $file) {
+            if (! str_ends_with($file->getFilename(), '.blade.php')) {
+                continue;
+            }
+
+            preg_match_all('/<x-slot name="header">(.*?)<\/x-slot>/s', file_get_contents($file->getPathname()), $slots);
+
+            foreach ($slots[1] as $slot) {
+                if (preg_match('/wire:(click|model|submit|change|keydown)/', $slot)) {
+                    $offenders[] = str_replace(resource_path('views/livewire').DIRECTORY_SEPARATOR, '', $file->getPathname());
+                }
+            }
+        }
+
+        $this->assertSame([], $offenders, 'Move these actions into the component body; the header renders outside it.');
+    }
+
     public function test_the_users_screen_is_titled_team(): void
     {
         $this->actingAs($this->owner())->get(route('users.index'))

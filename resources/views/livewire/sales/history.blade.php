@@ -175,36 +175,23 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
 
     <x-ui.module-tabs module="sales" label="Sales sections" />
 
-    <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <x-ui.field label="From" name="from" for="from" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="from" id="from" type="date" />
-            </x-ui.field>
+    <x-ui.filter-bar :active="(int) filled($from) + (int) filled($to)">
+        <x-ui.date-range />
 
-            <x-ui.field label="To" name="to" for="to" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="to" id="to" type="date" />
-            </x-ui.field>
+        @if ($from || $to)
+            <x-ui.button type="button" variant="ghost" wire:click="clearDateFilters">
+                Clear
+            </x-ui.button>
+        @endif
 
-            @if ($from || $to)
-                <div class="sm:pb-1">
-                    <x-ui.button type="button" variant="ghost" wire:click="clearDateFilters">
-                        Clear
-                    </x-ui.button>
-                </div>
-            @endif
-        </div>
-
-        <div class="flex items-center gap-3">
+        <x-slot:actions>
             <x-ui.export-dropdown />
+        </x-slot:actions>
+    </x-ui.filter-bar>
 
-            <x-ui.card :padding="false" class="w-full sm:w-auto">
-                <div class="px-5 py-3 text-right">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Outstanding</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format($totalOutstanding, 2) }}</p>
-                </div>
-            </x-ui.card>
-        </div>
-    </div>
+    <x-ui.stat-row>
+        <x-ui.stat label="Total Outstanding" :value="'Rs '.number_format($totalOutstanding, 2)" />
+    </x-ui.stat-row>
 
     @if ($sales->isEmpty())
         <x-ui.empty-state
@@ -216,20 +203,20 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
             </x-slot>
         </x-ui.empty-state>
     @else
-        <x-ui.table :headers="['Invoice', 'Date', 'Customer', 'Items', 'Total', 'Paid', 'Status', '']">
+        <x-ui.table stack :headers="['Invoice', 'Date', 'Customer', 'Items', 'Total', 'Paid', 'Status', '']">
             @foreach ($sales as $sale)
                 <x-ui.table-row wire:key="sale-{{ $sale->id }}" @class(['opacity-50' => $sale->isCancelled()])>
-                    <x-ui.table-cell class="font-medium text-slate-900">
-                        <a href="{{ route('sales.show', $sale) }}" wire:navigate class="hover:text-brand-700">
+                    <x-ui.table-cell primary class="font-semibold text-ink">
+                        <a href="{{ route('sales.show', $sale) }}" wire:navigate class="hover:text-link">
                             {{ $sale->invoiceNumber() }}
                         </a>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>{{ $sale->created_at->format('d M Y, h:i A') }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $sale->customer?->name ?? 'Walk-in' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $sale->items_count }}</x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($sale->total, 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell>Rs {{ number_format($sale->amountPaid(), 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell label="Date">{{ $sale->created_at->format('d M Y, h:i A') }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Customer">{{ $sale->customer?->name ?? 'Walk-in' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Items">{{ $sale->items_count }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Total" class="font-semibold text-ink">Rs {{ number_format($sale->total, 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Paid">Rs {{ number_format($sale->amountPaid(), 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Status">
                         @if ($sale->isCancelled())
                             <x-ui.badge variant="danger">Cancelled</x-ui.badge>
                         @elseif ($sale->paymentStatus() === 'paid')
@@ -240,25 +227,18 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
                             <x-ui.badge variant="danger">Unpaid</x-ui.badge>
                         @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell align="right">
-                        <div class="flex justify-end gap-2">
-                            @if (! $sale->isCancelled())
-                                @if ($sale->amountDue() > 0)
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openRecordPayment({{ $sale->id }})">
-                                        Record Payment
-                                    </x-ui.button>
-                                @endif
-                                @if (auth()->user()->hasAccessTo('sales-edit-cancel'))
-                                    <x-ui.button href="{{ route('sales.edit', $sale) }}" wire:navigate size="sm" variant="ghost">Edit</x-ui.button>
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $sale->id }})" class="text-red-600 hover:bg-red-50">
-                                        Delete
-                                    </x-ui.button>
-                                @endif
+                    <x-ui.table-cell actions align="right">
+                        <x-ui.row-actions label="Actions for {{ $sale->invoiceNumber() }}">
+                            @if (! $sale->isCancelled() && $sale->amountDue() > 0)
+                                <x-ui.menu-item wire:click="openRecordPayment({{ $sale->id }})">Record Payment</x-ui.menu-item>
                             @endif
-                            <x-ui.button size="sm" variant="ghost" wire:click="downloadInvoice({{ $sale->id }})">
-                                Download
-                            </x-ui.button>
-                        </div>
+                            <x-ui.menu-item wire:click="downloadInvoice({{ $sale->id }})">Download</x-ui.menu-item>
+                            @if (! $sale->isCancelled() && auth()->user()->hasAccessTo('sales-edit-cancel'))
+                                <x-ui.menu-item href="{{ route('sales.edit', $sale) }}" wire:navigate>Edit</x-ui.menu-item>
+                                <x-ui.menu-divider />
+                                <x-ui.menu-item danger wire:click="openCancel({{ $sale->id }})">Delete</x-ui.menu-item>
+                            @endif
+                        </x-ui.row-actions>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
@@ -311,7 +291,7 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
                     Keep Sale
                 </x-ui.button>
 
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelSale" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                <x-ui.button type="submit" variant="danger" wire:loading.attr="disabled" wire:target="cancelSale">
                     Cancel Sale
                 </x-ui.button>
             </div>

@@ -114,6 +114,103 @@
     border-radius: 0.5rem;
 }
 
+/* Two-line table cells: a main value with a quieter detail under it. */
+.ui-sub {
+    display: block;
+    margin-top: 0.125rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 400;
+    color: rgb(var(--ink-faint));
+}
+
+/* x-ui.table stack: below md each row becomes a card. Cells label themselves
+   (data-label); the primary cell is the card's title, the actions cell its foot. */
+@media (max-width: 767px) {
+    .ui-table.ui-stack {
+        overflow: visible;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .ui-stack table,
+    .ui-stack tbody {
+        display: block;
+    }
+
+    .ui-stack thead {
+        display: none;
+    }
+
+    .ui-stack table > :not([hidden]) ~ :not([hidden]) {
+        border-top-width: 0;
+    }
+
+    .ui-stack tbody {
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    /* Title and ⋯ share the top line; the other cells sit two across, label over value. */
+    .ui-stack tbody > tr {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 1rem;
+        row-gap: 0.625rem;
+        align-items: start;
+        border: 1px solid rgb(var(--line));
+        border-radius: 1rem;
+        background: rgb(var(--surface));
+        padding: 0.75rem 1rem 0.875rem;
+        box-shadow: 0 1px 2px 0 rgb(var(--shadow) / 0.05);
+    }
+
+    .ui-stack tbody > tr > td {
+        display: block;
+        min-width: 0;
+        padding: 0;
+        white-space: normal;
+        text-align: left;
+        overflow-wrap: anywhere;
+    }
+
+    .ui-stack tbody > tr > td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 0.125rem;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: rgb(var(--ink-faint));
+    }
+
+    .ui-stack tbody > tr > td.ui-cell-primary {
+        grid-column: 1 / 2;
+        grid-row: 1;
+        align-self: center;
+        font-size: 1rem;
+    }
+
+    .ui-stack tbody > tr > td.ui-cell-actions {
+        grid-column: 2 / 3;
+        grid-row: 1;
+        align-self: center;
+        justify-self: end;
+        margin: -0.25rem -0.5rem -0.25rem 0;
+    }
+
+    .ui-stack tbody > tr > td.ui-cell-actions:not(:has(*)) {
+        display: none;
+    }
+
+    .ui-stack .ui-sub {
+        margin-top: 0.0625rem;
+    }
+}
+
 /* Sidebar menu scrollbar: thin and ink-tinted, so it follows the theme.
    Chromium/Safari use the ::-webkit pseudo-elements (setting the standard properties as
    well would make Chromium ignore them and draw its wider default), Firefox the standard

@@ -244,65 +244,46 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">SIM Sale History</h1>
-            <x-ui.button href="{{ route('sim-sales.index') }}" wire:navigate size="sm">New SIM Sale</x-ui.button>
-        </div>
+        <x-ui.page-header>
+            SIM Sale History
+            <x-slot:actions>
+                <x-ui.button href="{{ route('sim-sales.index') }}" wire:navigate size="sm">New SIM Sale</x-ui.button>
+            </x-slot:actions>
+        </x-ui.page-header>
     </x-slot>
 
-    <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-            <x-ui.field label="From" name="from" for="from" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="from" id="from" type="date" />
-            </x-ui.field>
+    <x-ui.filter-bar :active="(int) filled($from) + (int) filled($to) + (int) filled($network) + (int) filled($paymentStatusFilter)">
+        <x-ui.date-range />
 
-            <x-ui.field label="To" name="to" for="to" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="to" id="to" type="date" />
-            </x-ui.field>
+        <x-ui.field label="Network" name="network" for="network" class="w-full sm:w-44">
+            <x-ui.select wire:model.live="network" id="network">
+                <option value="">All Networks</option>
+                @foreach ($allNetworks as $name)
+                    <option value="{{ $name }}">{{ $name }}</option>
+                @endforeach
+            </x-ui.select>
+        </x-ui.field>
 
-            <x-ui.field label="Network" name="network" for="network" class="sm:max-w-[10rem]">
-                <x-ui.select wire:model.live="network" id="network">
-                    <option value="">All Networks</option>
-                    @foreach ($allNetworks as $name)
-                        <option value="{{ $name }}">{{ $name }}</option>
-                    @endforeach
-                </x-ui.select>
-            </x-ui.field>
+        <x-ui.field label="Payment Status" name="paymentStatusFilter" for="paymentStatusFilter" class="w-full sm:w-44">
+            <x-ui.select wire:model.live="paymentStatusFilter" id="paymentStatusFilter">
+                <option value="">All Statuses</option>
+                @foreach ($paymentStatuses as $status)
+                    <option value="{{ $status->value }}">{{ $status->label() }}</option>
+                @endforeach
+            </x-ui.select>
+        </x-ui.field>
 
-            <x-ui.field label="Payment Status" name="paymentStatusFilter" for="paymentStatusFilter" class="sm:max-w-[10rem]">
-                <x-ui.select wire:model.live="paymentStatusFilter" id="paymentStatusFilter">
-                    <option value="">All Statuses</option>
-                    @foreach ($paymentStatuses as $status)
-                        <option value="{{ $status->value }}">{{ $status->label() }}</option>
-                    @endforeach
-                </x-ui.select>
-            </x-ui.field>
+        @if ($from || $to || $network || $paymentStatusFilter)
+            <x-ui.button type="button" variant="ghost" wire:click="clearFilters">
+                    Clear
+                </x-ui.button>
+        @endif
+    </x-ui.filter-bar>
 
-            @if ($from || $to || $network || $paymentStatusFilter)
-                <div class="sm:pb-1">
-                    <x-ui.button type="button" variant="ghost" wire:click="clearFilters">
-                        Clear
-                    </x-ui.button>
-                </div>
-            @endif
-        </div>
-
-        <div class="flex gap-4">
-            <x-ui.card :padding="false" class="w-full sm:w-auto">
-                <div class="px-5 py-3 text-right">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Revenue</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format($totalRevenue, 2) }}</p>
-                </div>
-            </x-ui.card>
-
-            <x-ui.card :padding="false" class="w-full sm:w-auto">
-                <div class="px-5 py-3 text-right">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Owed by Customers</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format($totalOwed, 2) }}</p>
-                </div>
-            </x-ui.card>
-        </div>
-    </div>
+    <x-ui.stat-row>
+        <x-ui.stat label="Total Revenue" value="Rs {{ number_format($totalRevenue, 2) }}" />
+        <x-ui.stat label="Total Owed by Customers" value="Rs {{ number_format($totalOwed, 2) }}" />
+    </x-ui.stat-row>
 
     @if ($sales->isEmpty())
         <x-ui.empty-state
@@ -314,12 +295,11 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
             </x-slot>
         </x-ui.empty-state>
     @else
-        <x-ui.table :headers="['Receipt', 'Date', 'Network', 'Plan', 'SIM Number', 'Customer', 'Total', 'Payment', 'Owed', '']">
+        <x-ui.table stack :headers="['Receipt', 'Network', 'Plan', 'SIM Number', 'Customer', 'Total', 'Payment', '']">
             @foreach ($sales as $sale)
                 <x-ui.table-row wire:key="sim-sale-{{ $sale->id }}" @class(['opacity-50' => $sale->isCancelled()])>
-                    <x-ui.table-cell class="font-medium text-slate-900">{{ $sale->receiptNumber() }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $sale->created_at->format('d M Y, h:i A') }}</x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell primary class="font-semibold text-ink">{{ $sale->receiptNumber() }}<span class="ui-sub">{{ $sale->created_at->format('d M Y, h:i A') }}</span></x-ui.table-cell>
+                    <x-ui.table-cell label="Network">
                         @php $network = $networksByName->get($sale->network); @endphp
                         <div class="flex items-center gap-2">
                             <x-ui.thumbnail :src="$network?->imageUrl()" :label="$sale->network" :color="$network?->color" />
@@ -327,18 +307,18 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
                             <x-ui.color-dot :color="$network?->color" />
                         </div>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell label="Plan">
                         <div class="flex flex-col">
-                            <span class="text-slate-700">{{ $sale->sim_type->label() }} · {{ $sale->sim_form->label() }}</span>
+                            <span class="text-ink-muted">{{ $sale->sim_type->label() }} · {{ $sale->sim_form->label() }}</span>
                             @if ($sale->is_duplicate)
                                 <span><x-ui.badge variant="warning">Duplicate</x-ui.badge></span>
                             @endif
                         </div>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>{{ $sale->sim_number }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $sale->customer?->name ?? 'Walk-in' }}</x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($sale->total, 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell label="SIM Number">{{ $sale->sim_number }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Customer">{{ $sale->customer?->name ?? 'Walk-in' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Total" class="font-semibold text-ink">Rs {{ number_format($sale->total, 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Payment">
                         @if ($sale->isCancelled())
                             <x-ui.badge variant="danger">Cancelled</x-ui.badge>
                         @elseif ($sale->payment_status->value === 'paid')
@@ -348,43 +328,23 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
                         @else
                             <x-ui.badge variant="danger">Unpaid</x-ui.badge>
                         @endif
-                    </x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold text-slate-900">
                         @if (! $sale->isCancelled() && $sale->amountOwed() > 0)
-                            Rs {{ number_format($sale->amountOwed(), 2) }}
-                        @else
-                            —
+                            <span class="ui-sub font-semibold text-ink">Rs {{ number_format($sale->amountOwed(), 2) }} owed</span>
                         @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell align="right">
-                        <div class="flex justify-end gap-2">
-                            @if (! $sale->isCancelled())
-                                @if ($sale->payment_status->value !== 'paid')
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openAddPayment({{ $sale->id }})">
-                                        Add Payment
-                                    </x-ui.button>
-                                    <x-ui.button
-                                        size="sm"
-                                        variant="ghost"
-                                        wire:click="markAsPaid({{ $sale->id }})"
-                                        wire:confirm="Mark this SIM sale as fully paid?"
-                                    >
-                                        Mark as Paid
-                                    </x-ui.button>
-                                @endif
-                                @if (auth()->user()->hasAccessTo('sim-sales-edit-cancel'))
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $sale->id }})">
-                                        Edit
-                                    </x-ui.button>
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $sale->id }})" class="text-red-600 hover:bg-red-50">
-                                        Delete
-                                    </x-ui.button>
-                                @endif
+                    <x-ui.table-cell actions align="right">
+                        <x-ui.row-actions label="Actions for {{ $sale->receiptNumber() }}">
+                            @if (! $sale->isCancelled() && $sale->payment_status->value !== 'paid')
+                                <x-ui.menu-item wire:click="openAddPayment({{ $sale->id }})">Add Payment</x-ui.menu-item>
+                                <x-ui.menu-item wire:click="markAsPaid({{ $sale->id }})" confirm="Mark this SIM sale as fully paid?" confirm-title="Mark as paid?" confirm-label="Mark as Paid">Mark as Paid</x-ui.menu-item>
                             @endif
-                            <x-ui.button size="sm" variant="ghost" wire:click="downloadReceipt({{ $sale->id }})">
-                                Download
-                            </x-ui.button>
-                        </div>
+                            <x-ui.menu-item wire:click="downloadReceipt({{ $sale->id }})">Download</x-ui.menu-item>
+                            @if (! $sale->isCancelled() && auth()->user()->hasAccessTo('sim-sales-edit-cancel'))
+                                <x-ui.menu-item wire:click="openEdit({{ $sale->id }})">Edit</x-ui.menu-item>
+                                <x-ui.menu-divider />
+                                <x-ui.menu-item danger wire:click="openCancel({{ $sale->id }})">Delete</x-ui.menu-item>
+                            @endif
+                        </x-ui.row-actions>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
@@ -507,7 +467,7 @@ new #[Layout('layouts.app')] #[Title('SIM Sale History')] class extends Componen
                     Keep SIM Sale
                 </x-ui.button>
 
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelSale" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelSale" variant="danger">
                     Cancel SIM Sale
                 </x-ui.button>
             </div>

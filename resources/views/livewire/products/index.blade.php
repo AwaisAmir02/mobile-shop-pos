@@ -1035,56 +1035,59 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 }; ?>
 
 <div>
+    {{-- Title only: the header renders outside this component, so anything with
+         wire:click lives below, inside it (see ProductImportModalBoundaryTest). --}}
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Products</h1>
+        <x-ui.page-header>Products</x-ui.page-header>
     </x-slot>
 
     <x-billing.limit-notice limit="products" />
 
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex flex-1 flex-col gap-3 sm:flex-row">
-            <x-ui.input wire:model.live.debounce.400ms="search" type="search" placeholder="Search products…" class="sm:max-w-xs" />
+    <x-ui.filter-bar :active="(int) filled($search) + (int) filled($typeFilter)">
+        <x-ui.field label="Search" for="productSearch" class="w-full sm:w-72">
+            <x-ui.input wire:model.live.debounce.400ms="search" id="productSearch" type="search" placeholder="Name, model or barcode…" />
+        </x-ui.field>
 
-            <x-ui.select wire:model.live="typeFilter" class="sm:max-w-xs">
+        <x-ui.field label="Category" for="typeFilter" class="w-full sm:w-52">
+            <x-ui.select wire:model.live="typeFilter" id="typeFilter">
                 <option value="">All categories</option>
                 @foreach ($typeFilterOptions as $option)
                     <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
                 @endforeach
             </x-ui.select>
-        </div>
+        </x-ui.field>
 
-        <div class="flex items-center gap-2">
+        <x-slot:actions>
             <x-ui.export-dropdown />
-            @if ($barcodeEnabled && $missingBarcodeCount > 0)
-                <x-ui.button
-                    type="button"
-                    variant="secondary"
-                    wire:click="runBulkBarcodeGeneration"
-                    wire:confirm="Generate barcodes for up to {{ \App\Services\BarcodeService::BULK_RUN_LIMIT }} products that don't have one yet?"
-                    class="shrink-0"
-                >
-                    Generate missing barcodes ({{ $missingBarcodeCount }})
-                </x-ui.button>
-            @endif
-            @if ($canImportProducts)
-                <x-ui.button type="button" variant="secondary" wire:click="openImportModal" class="shrink-0">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 7.5L12 3m0 0l4.5 4.5M12 3v13.5" />
-                    </svg>
-                    Import
-                </x-ui.button>
-            @endif
             @if ($variantsEnabled)
-                <x-ui.button type="button" variant="secondary" wire:click="openCreateGroup" class="shrink-0">Add Variant Group</x-ui.button>
+                <x-ui.button type="button" variant="secondary" size="sm" wire:click="openCreateGroup" class="hidden sm:inline-flex">Add Variant Group</x-ui.button>
             @endif
-            <x-ui.button wire:click="openCreate" class="shrink-0">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <x-ui.button wire:click="openCreate" size="sm">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>
                 Add Product
             </x-ui.button>
-        </div>
-    </div>
+            @if ($variantsEnabled || $canImportProducts || ($barcodeEnabled && $missingBarcodeCount > 0))
+                <x-ui.row-actions label="More product actions">
+                    @if ($variantsEnabled)
+                        <x-ui.menu-item wire:click="openCreateGroup" class="sm:hidden">Add Variant Group</x-ui.menu-item>
+                    @endif
+                    @if ($canImportProducts)
+                        <x-ui.menu-item wire:click="openImportModal">Import from Excel</x-ui.menu-item>
+                    @endif
+                    @if ($barcodeEnabled && $missingBarcodeCount > 0)
+                        <x-ui.menu-item
+                            wire:click="runBulkBarcodeGeneration"
+                            confirm="Generate barcodes for up to {{ \App\Services\BarcodeService::BULK_RUN_LIMIT }} products that don't have one yet?"
+                            confirm-title="Generate barcodes?"
+                            confirm-label="Generate"
+                        >Generate missing barcodes ({{ $missingBarcodeCount }})</x-ui.menu-item>
+                    @endif
+                </x-ui.row-actions>
+            @endif
+        </x-slot:actions>
+    </x-ui.filter-bar>
 
     @if ($products->isEmpty())
         <x-ui.empty-state
@@ -1102,8 +1105,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 : ['Product', 'Category', 'Price', 'Stock', ''];
         @endphp
         @if ($barcodeEnabled && $labelSelection !== [])
-            <div class="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm">
-                <span class="font-medium text-brand-900">{{ count($labelSelection) }} {{ \Illuminate\Support\Str::plural('product', count($labelSelection)) }} selected for labels</span>
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/15 bg-primary-soft px-4 py-3 text-sm">
+                <span class="font-semibold text-on-primary-soft">{{ count($labelSelection) }} {{ \Illuminate\Support\Str::plural('product', count($labelSelection)) }} selected for labels</span>
                 <div class="flex items-center gap-2">
                     <x-ui.button size="sm" variant="ghost" wire:click="clearLabelSelection">Clear</x-ui.button>
                     <x-ui.button size="sm" wire:click="openLabelSheet">Print label sheet</x-ui.button>
@@ -1111,71 +1114,73 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             </div>
         @endif
 
-        <x-ui.table :headers="$productHeaders">
+        <x-ui.table stack :headers="$productHeaders">
             @foreach ($products as $product)
                 @php($groupRow = $product->product_group_id !== null ? ($groupRows[$product->product_group_id] ?? null) : null)
                 @if ($groupRow)
-                    <x-ui.table-row wire:key="group-{{ $product->product_group_id }}" class="bg-slate-50/60">
-                        <x-ui.table-cell class="font-medium text-slate-900">
+                    <x-ui.table-row wire:key="group-{{ $product->product_group_id }}" class="bg-surface-sunken/40">
+                        <x-ui.table-cell primary class="font-semibold text-ink">
                             <div class="flex items-center gap-3">
-                                <button type="button" wire:click="toggleGroup({{ $product->product_group_id }})" class="rounded p-1 text-slate-500 hover:bg-slate-100" aria-expanded="{{ $groupRow['expanded'] ? 'true' : 'false' }}" aria-label="{{ $groupRow['expanded'] ? 'Hide' : 'Show' }} variants of {{ $groupRow['group']->name }}">
+                                <button type="button" wire:click="toggleGroup({{ $product->product_group_id }})" class="rounded-lg p-1 text-ink-faint hover:bg-surface-sunken hover:text-ink" aria-expanded="{{ $groupRow['expanded'] ? 'true' : 'false' }}" aria-label="{{ $groupRow['expanded'] ? 'Hide' : 'Show' }} variants of {{ $groupRow['group']->name }}">
                                     <svg @class(['h-4 w-4 transition-transform', 'rotate-90' => $groupRow['expanded']]) fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7" /></svg>
                                 </button>
                                 <x-ui.thumbnail :src="$groupRow['group']->imageUrl()" :label="$groupRow['group']->name" />
                                 <span>
                                     {{ $groupRow['group']->name }}
-                                    <span class="block text-xs font-normal text-slate-500">{{ $groupRow['variants']->count() }} {{ \Illuminate\Support\Str::plural('variant', $groupRow['variants']->count()) }}</span>
+                                    <span class="ui-sub">{{ $groupRow['variants']->count() }} {{ \Illuminate\Support\Str::plural('variant', $groupRow['variants']->count()) }}</span>
                                 </span>
                             </div>
                         </x-ui.table-cell>
-                        <x-ui.table-cell>
-                            <div class="flex flex-col">
-                                <span class="text-slate-700">{{ $product->typeLabel() }}</span>
-                                @if ($line = $product->summaryLine())
-                                    <span class="text-xs text-slate-400">{{ $line }}</span>
-                                @endif
-                            </div>
+                        <x-ui.table-cell label="Category">
+                            {{ $product->typeLabel() }}
+                            @if ($line = $product->summaryLine())
+                                <span class="ui-sub">{{ $line }}</span>
+                            @endif
                         </x-ui.table-cell>
                         @if ($barcodeEnabled)
-                            <x-ui.table-cell class="text-xs text-slate-400">—</x-ui.table-cell>
+                            <x-ui.table-cell label="Barcode" class="text-xs text-ink-faint">—</x-ui.table-cell>
                         @endif
-                        <x-ui.table-cell>{{ $groupRow['maxPrice'] > $groupRow['minPrice'] ? 'From ' : '' }}Rs {{ number_format($groupRow['minPrice'], 2) }}{{ $groupRow['group']->unit->perSuffix() }}</x-ui.table-cell>
-                        <x-ui.table-cell>
+                        <x-ui.table-cell label="Price">{{ $groupRow['maxPrice'] > $groupRow['minPrice'] ? 'From ' : '' }}Rs {{ number_format($groupRow['minPrice'], 2) }}{{ $groupRow['group']->unit->perSuffix() }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Stock">
                             <x-ui.badge :variant="$groupRow['stock'] > 0 ? 'success' : 'danger'">{{ $groupRow['stock'] > 0 ? $groupRow['group']->unit->amount($groupRow['stock']).' in stock' : 'Out of stock' }}</x-ui.badge>
                         </x-ui.table-cell>
-                        <x-ui.table-cell align="right">
-                            <div class="flex w-72 flex-wrap justify-start gap-2">
+                        <x-ui.table-cell actions align="right">
+                            <x-ui.row-actions label="Actions for {{ $groupRow['group']->name }}">
                                 @if ($whatsappEnabled && ! $groupRow['group']->unit->allowsDecimals())
-                                    <x-ui.button size="sm" variant="ghost" wire:click="toggleGroupWhatsApp({{ $product->product_group_id }})" @class(['text-emerald-700' => $groupRow['listed']])>
-                                        {{ $groupRow['listed'] ? 'On WhatsApp' : 'Add to WhatsApp' }}
-                                    </x-ui.button>
+                                    <x-ui.menu-item wire:click="toggleGroupWhatsApp({{ $product->product_group_id }})">{{ $groupRow['listed'] ? 'On WhatsApp' : 'Add to WhatsApp' }}</x-ui.menu-item>
                                 @endif
                                 @if ($variantsEnabled)
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openAddVariants({{ $product->product_group_id }})">Add variants</x-ui.button>
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openEditGroup({{ $product->product_group_id }})">Edit group</x-ui.button>
+                                    <x-ui.menu-item wire:click="openAddVariants({{ $product->product_group_id }})">Add variants</x-ui.menu-item>
+                                    <x-ui.menu-item wire:click="openEditGroup({{ $product->product_group_id }})">Edit group</x-ui.menu-item>
                                 @endif
-                                <x-ui.button size="sm" variant="ghost" wire:click="ungroup({{ $product->product_group_id }})" wire:confirm="Ungroup {{ $groupRow['group']->name }}? Each variant stays as a separate product with its stock and barcode.">Ungroup</x-ui.button>
-                            </div>
+                                <x-ui.menu-divider />
+                                <x-ui.menu-item
+                                    wire:click="ungroup({{ $product->product_group_id }})"
+                                    confirm="Ungroup {{ $groupRow['group']->name }}? Each variant stays as a separate product with its stock and barcode."
+                                    confirm-title="Ungroup these variants?"
+                                    confirm-label="Ungroup"
+                                >Ungroup</x-ui.menu-item>
+                            </x-ui.row-actions>
                         </x-ui.table-cell>
                     </x-ui.table-row>
                     @if ($groupRow['expanded'])
                         @foreach ($groupRow['variants'] as $variant)
                             <x-ui.table-row wire:key="product-{{ $variant->id }}">
-                                <x-ui.table-cell class="font-medium text-slate-900">
-                                    <div class="flex items-center gap-3 pl-9">
+                                <x-ui.table-cell primary class="font-medium text-ink">
+                                    <div class="flex items-center gap-3 sm:pl-9">
                                         @if ($barcodeEnabled)
-                                            <input type="checkbox" wire:model.live="labelSelection" value="{{ $variant->id }}" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" aria-label="Select {{ $variant->name }} for label printing">
+                                            <input type="checkbox" wire:model.live="labelSelection" value="{{ $variant->id }}" class="h-4 w-4 rounded border-line-strong text-primary focus:ring-link" aria-label="Select {{ $variant->name }} for label printing">
                                         @endif
                                         {{ $variant->variant_label }}
                                     </div>
                                 </x-ui.table-cell>
-                                <x-ui.table-cell></x-ui.table-cell>
+                                <x-ui.table-cell label="Category"></x-ui.table-cell>
                                 @if ($barcodeEnabled)
-                                    <x-ui.table-cell class="font-mono text-xs text-slate-600">{{ $variant->barcode ?? '—' }}</x-ui.table-cell>
+                                    <x-ui.table-cell label="Barcode" class="font-mono text-xs text-ink-muted">{{ $variant->barcode ?? '—' }}</x-ui.table-cell>
                                 @endif
-                                <x-ui.table-cell>Rs {{ number_format($groupRow['prices'][$variant->id], 2) }}{{ $variant->unit->perSuffix() }}</x-ui.table-cell>
-                                <x-ui.table-cell><x-products.stock-badge :product="$variant" /></x-ui.table-cell>
-                                <x-ui.table-cell align="right">
+                                <x-ui.table-cell label="Price">Rs {{ number_format($groupRow['prices'][$variant->id], 2) }}{{ $variant->unit->perSuffix() }}</x-ui.table-cell>
+                                <x-ui.table-cell label="Stock"><x-products.stock-badge :product="$variant" /></x-ui.table-cell>
+                                <x-ui.table-cell actions align="right">
                                     <x-products.row-actions :product="$variant" :barcode-enabled="$barcodeEnabled" :whatsapp-enabled="$whatsappEnabled" />
                                 </x-ui.table-cell>
                             </x-ui.table-row>
@@ -1184,34 +1189,32 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     @continue
                 @endif
                 <x-ui.table-row wire:key="product-{{ $product->id }}">
-                    <x-ui.table-cell class="font-medium text-slate-900">
+                    <x-ui.table-cell primary class="font-semibold text-ink">
                         <div class="flex items-center gap-3">
                             @if ($barcodeEnabled && $product->type !== 'sim')
-                                <input type="checkbox" wire:model.live="labelSelection" value="{{ $product->id }}" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" aria-label="Select {{ $product->name }} for label printing">
+                                <input type="checkbox" wire:model.live="labelSelection" value="{{ $product->id }}" class="h-4 w-4 rounded border-line-strong text-primary focus:ring-link" aria-label="Select {{ $product->name }} for label printing">
                             @endif
                             <x-ui.thumbnail :src="$product->imageUrl()" :label="$product->name" />
                             {{ $product->name }}
                         </div>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>
-                        <div class="flex flex-col">
-                            <span class="flex items-center gap-1.5 text-slate-700">
-                                {{ $product->typeLabel() }}
-                                @if ($product->type === 'sim')
-                                    <x-ui.badge variant="warning">Legacy</x-ui.badge>
-                                @endif
-                            </span>
-                            @if ($line = $product->summaryLine())
-                                <span class="text-xs text-slate-400">{{ $line }}</span>
+                    <x-ui.table-cell label="Category">
+                        <span class="inline-flex items-center gap-1.5">
+                            {{ $product->typeLabel() }}
+                            @if ($product->type === 'sim')
+                                <x-ui.badge variant="warning">Legacy</x-ui.badge>
                             @endif
-                        </div>
+                        </span>
+                        @if ($line = $product->summaryLine())
+                            <span class="ui-sub">{{ $line }}</span>
+                        @endif
                     </x-ui.table-cell>
                     @if ($barcodeEnabled)
-                        <x-ui.table-cell class="font-mono text-xs text-slate-600">{{ $product->barcode ?? '—' }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Barcode" class="font-mono text-xs text-ink-muted">{{ $product->barcode ?? '—' }}</x-ui.table-cell>
                     @endif
-                    <x-ui.table-cell>Rs {{ number_format($product->price, 2) }}{{ $product->unit->perSuffix() }}</x-ui.table-cell>
-                    <x-ui.table-cell><x-products.stock-badge :product="$product" /></x-ui.table-cell>
-                    <x-ui.table-cell align="right">
+                    <x-ui.table-cell label="Price">Rs {{ number_format($product->price, 2) }}{{ $product->unit->perSuffix() }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Stock"><x-products.stock-badge :product="$product" /></x-ui.table-cell>
+                    <x-ui.table-cell actions align="right">
                         <x-products.row-actions :product="$product" :barcode-enabled="$barcodeEnabled" :whatsapp-enabled="$whatsappEnabled" />
                     </x-ui.table-cell>
                 </x-ui.table-row>

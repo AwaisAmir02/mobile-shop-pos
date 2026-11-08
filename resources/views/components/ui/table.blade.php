@@ -1,6 +1,10 @@
-@props(['headers' => []])
+@props([
+    'headers' => [],
+    // Below md, show each row as a card: cells need a label (x-ui.table-cell label="...").
+    'stack' => false,
+])
 
-<div {{ $attributes->class(['ui-table overflow-x-auto rounded-2xl border border-line bg-surface shadow-soft']) }}>
+<div {{ $attributes->class(['ui-table overflow-x-auto rounded-2xl border border-line bg-surface shadow-soft', 'ui-stack' => $stack]) }}>
     <table class="min-w-full divide-y divide-line">
         @if (count($headers))
             <thead class="bg-surface-sunken/70">

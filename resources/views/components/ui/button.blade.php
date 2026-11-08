@@ -2,6 +2,10 @@
     'variant' => 'primary',
     'size' => 'md',
     'type' => 'button',
+    // A styled confirmation before the action (replaces wire:confirm).
+    'confirm' => null,
+    'confirmTitle' => null,
+    'confirmLabel' => null,
 ])
 
 @php
@@ -30,6 +34,16 @@
     <a {{ $attributes->except(['variant', 'size'])->class([$classes]) }}>
         {{ $slot }}
     </a>
+@elseif ($confirm)
+    {{-- The visible button asks; the hidden twin carries the original wire:click. --}}
+    <button
+        type="button"
+        {{ $attributes->whereDoesntStartWith('wire:')->except(['variant', 'size', 'type'])->class([$classes]) }}
+        x-on:click="{{ \App\Support\ConfirmAction::handler($confirm, $confirmTitle, $confirmLabel, $variant === 'danger') }}"
+    >
+        {{ $slot }}
+    </button>
+    <button type="button" hidden tabindex="-1" aria-hidden="true" data-confirm-twin {{ $attributes->whereStartsWith('wire:') }}></button>
 @else
     <button type="{{ $type }}" {{ $attributes->except(['variant', 'size', 'type'])->class([$classes]) }}>
         {{ $slot }}

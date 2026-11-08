@@ -233,74 +233,55 @@ new #[Layout('layouts.app')] #[Title('Service History')] class extends Component
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Service History</h1>
-            <x-ui.button href="{{ route('services.index') }}" wire:navigate size="sm">New Service</x-ui.button>
-        </div>
+        <x-ui.page-header>
+            Service History
+            <x-slot:actions>
+                <x-ui.button href="{{ route('services.index') }}" wire:navigate size="sm">New Service</x-ui.button>
+            </x-slot:actions>
+        </x-ui.page-header>
     </x-slot>
 
-    <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-            <x-ui.field label="From" name="from" for="from" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="from" id="from" type="date" />
-            </x-ui.field>
+    <x-ui.filter-bar :active="(int) filled($from) + (int) filled($to) + (int) filled($serviceCategoryId) + (int) filled($serviceItemId) + (int) filled($paymentStatusFilter)">
+        <x-ui.date-range />
 
-            <x-ui.field label="To" name="to" for="to" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="to" id="to" type="date" />
-            </x-ui.field>
+        <x-ui.field label="Category" name="serviceCategoryId" for="serviceCategoryId" class="w-full sm:w-44">
+            <x-ui.select wire:model.live="serviceCategoryId" id="serviceCategoryId">
+                <option value="">All Categories</option>
+                @foreach ($allCategories as $category)
+                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                @endforeach
+            </x-ui.select>
+        </x-ui.field>
 
-            <x-ui.field label="Category" name="serviceCategoryId" for="serviceCategoryId" class="sm:max-w-[10rem]">
-                <x-ui.select wire:model.live="serviceCategoryId" id="serviceCategoryId">
-                    <option value="">All Categories</option>
-                    @foreach ($allCategories as $category)
-                        <option value="{{ $category->id }}">{{ $category->name }}</option>
-                    @endforeach
-                </x-ui.select>
-            </x-ui.field>
+        <x-ui.field label="Item" name="serviceItemId" for="serviceItemId" class="w-full sm:w-44">
+            <x-ui.select wire:model.live="serviceItemId" id="serviceItemId">
+                <option value="">All Items</option>
+                @foreach ($allItems as $item)
+                    <option value="{{ $item->id }}">{{ $item->name }}</option>
+                @endforeach
+            </x-ui.select>
+        </x-ui.field>
 
-            <x-ui.field label="Item" name="serviceItemId" for="serviceItemId" class="sm:max-w-[10rem]">
-                <x-ui.select wire:model.live="serviceItemId" id="serviceItemId">
-                    <option value="">All Items</option>
-                    @foreach ($allItems as $item)
-                        <option value="{{ $item->id }}">{{ $item->name }}</option>
-                    @endforeach
-                </x-ui.select>
-            </x-ui.field>
+        <x-ui.field label="Payment Status" name="paymentStatusFilter" for="paymentStatusFilter" class="w-full sm:w-44">
+            <x-ui.select wire:model.live="paymentStatusFilter" id="paymentStatusFilter">
+                <option value="">All Statuses</option>
+                @foreach ($paymentStatuses as $status)
+                    <option value="{{ $status->value }}">{{ $status->label() }}</option>
+                @endforeach
+            </x-ui.select>
+        </x-ui.field>
 
-            <x-ui.field label="Payment Status" name="paymentStatusFilter" for="paymentStatusFilter" class="sm:max-w-[10rem]">
-                <x-ui.select wire:model.live="paymentStatusFilter" id="paymentStatusFilter">
-                    <option value="">All Statuses</option>
-                    @foreach ($paymentStatuses as $status)
-                        <option value="{{ $status->value }}">{{ $status->label() }}</option>
-                    @endforeach
-                </x-ui.select>
-            </x-ui.field>
+        @if ($from || $to || $serviceCategoryId || $serviceItemId || $paymentStatusFilter)
+            <x-ui.button type="button" variant="ghost" wire:click="clearFilters">
+                    Clear
+                </x-ui.button>
+        @endif
+    </x-ui.filter-bar>
 
-            @if ($from || $to || $serviceCategoryId || $serviceItemId || $paymentStatusFilter)
-                <div class="sm:pb-1">
-                    <x-ui.button type="button" variant="ghost" wire:click="clearFilters">
-                        Clear
-                    </x-ui.button>
-                </div>
-            @endif
-        </div>
-
-        <div class="flex gap-4">
-            <x-ui.card :padding="false" class="w-full sm:w-auto">
-                <div class="px-5 py-3 text-right">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Collected</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format($totalCollected, 2) }}</p>
-                </div>
-            </x-ui.card>
-
-            <x-ui.card :padding="false" class="w-full sm:w-auto">
-                <div class="px-5 py-3 text-right">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Owed by Customers</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format($totalOwed, 2) }}</p>
-                </div>
-            </x-ui.card>
-        </div>
-    </div>
+    <x-ui.stat-row>
+        <x-ui.stat label="Total Collected" value="Rs {{ number_format($totalCollected, 2) }}" />
+        <x-ui.stat label="Total Owed by Customers" value="Rs {{ number_format($totalOwed, 2) }}" />
+    </x-ui.stat-row>
 
     @if ($payments->isEmpty())
         <x-ui.empty-state
@@ -312,16 +293,15 @@ new #[Layout('layouts.app')] #[Title('Service History')] class extends Component
             </x-slot>
         </x-ui.empty-state>
     @else
-        <x-ui.table :headers="['Receipt', 'Date', 'Category', 'Item', 'Customer', 'Amount', 'Payment', 'Owed', '']">
+        <x-ui.table stack :headers="['Receipt', 'Category', 'Item', 'Customer', 'Amount', 'Payment', '']">
             @foreach ($payments as $payment)
                 <x-ui.table-row wire:key="service-payment-{{ $payment->id }}" @class(['opacity-50' => $payment->isCancelled()])>
-                    <x-ui.table-cell class="font-medium text-slate-900">{{ $payment->receiptNumber() }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $payment->created_at->format('d M Y, h:i A') }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $payment->serviceCategory?->name ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $payment->serviceItem?->name ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $payment->customer?->name ?? 'Walk-in' }}</x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($payment->amount, 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell primary class="font-semibold text-ink">{{ $payment->receiptNumber() }}<span class="ui-sub">{{ $payment->created_at->format('d M Y, h:i A') }}</span></x-ui.table-cell>
+                    <x-ui.table-cell label="Category">{{ $payment->serviceCategory?->name ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Item">{{ $payment->serviceItem?->name ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Customer">{{ $payment->customer?->name ?? 'Walk-in' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Amount" class="font-semibold text-ink">Rs {{ number_format($payment->amount, 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Payment">
                         @if ($payment->isCancelled())
                             <x-ui.badge variant="danger">Cancelled</x-ui.badge>
                         @elseif ($payment->payment_status->value === 'paid')
@@ -331,40 +311,22 @@ new #[Layout('layouts.app')] #[Title('Service History')] class extends Component
                         @else
                             <x-ui.badge variant="danger">Unpaid</x-ui.badge>
                         @endif
-                    </x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold text-slate-900">
                         @if (! $payment->isCancelled() && $payment->amountOwed() > 0)
-                            Rs {{ number_format($payment->amountOwed(), 2) }}
-                        @else
-                            —
+                            <span class="ui-sub font-semibold text-ink">Rs {{ number_format($payment->amountOwed(), 2) }} owed</span>
                         @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell align="right">
-                        <div class="flex justify-end gap-2">
-                            @if (! $payment->isCancelled())
-                                @if ($payment->payment_status->value !== 'paid')
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openAddPayment({{ $payment->id }})">
-                                        Add Payment
-                                    </x-ui.button>
-                                    <x-ui.button
-                                        size="sm"
-                                        variant="ghost"
-                                        wire:click="markAsPaid({{ $payment->id }})"
-                                        wire:confirm="Mark this service as fully paid?"
-                                    >
-                                        Mark as Paid
-                                    </x-ui.button>
-                                @endif
-                                @if (auth()->user()->hasAccessTo('services-edit-cancel'))
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $payment->id }})">
-                                        Edit
-                                    </x-ui.button>
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $payment->id }})" class="text-red-600 hover:bg-red-50">
-                                        Delete
-                                    </x-ui.button>
-                                @endif
+                    <x-ui.table-cell actions align="right">
+                        <x-ui.row-actions label="Actions for {{ $payment->receiptNumber() }}">
+                            @if (! $payment->isCancelled() && $payment->payment_status->value !== 'paid')
+                                <x-ui.menu-item wire:click="openAddPayment({{ $payment->id }})">Add Payment</x-ui.menu-item>
+                                <x-ui.menu-item wire:click="markAsPaid({{ $payment->id }})" confirm="Mark this service as fully paid?" confirm-title="Mark as paid?" confirm-label="Mark as Paid">Mark as Paid</x-ui.menu-item>
                             @endif
-                        </div>
+                            @if (! $payment->isCancelled() && auth()->user()->hasAccessTo('services-edit-cancel'))
+                                <x-ui.menu-item wire:click="openEdit({{ $payment->id }})">Edit</x-ui.menu-item>
+                                <x-ui.menu-divider />
+                                <x-ui.menu-item danger wire:click="openCancel({{ $payment->id }})">Delete</x-ui.menu-item>
+                            @endif
+                        </x-ui.row-actions>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
@@ -463,7 +425,7 @@ new #[Layout('layouts.app')] #[Title('Service History')] class extends Component
                     Keep Service
                 </x-ui.button>
 
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelPayment" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelPayment" variant="danger">
                     Cancel Service
                 </x-ui.button>
             </div>

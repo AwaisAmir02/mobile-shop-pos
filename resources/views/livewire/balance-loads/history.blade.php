@@ -230,63 +230,38 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
 
 <div>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Balance Load History</h1>
-            <x-ui.button href="{{ route('balance-loads.index') }}" wire:navigate size="sm">New Balance Load</x-ui.button>
-        </div>
+        <x-ui.page-header>
+            Balance Load History
+            <x-slot:actions>
+                <x-ui.button href="{{ route('balance-loads.index') }}" wire:navigate size="sm">New Balance Load</x-ui.button>
+            </x-slot:actions>
+        </x-ui.page-header>
     </x-slot>
 
-    <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <x-ui.field label="From" name="from" for="from" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="from" id="from" type="date" />
-            </x-ui.field>
+    <x-ui.filter-bar :active="(int) filled($from) + (int) filled($to) + (int) filled($paymentStatusFilter)">
+        <x-ui.date-range />
 
-            <x-ui.field label="To" name="to" for="to" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="to" id="to" type="date" />
-            </x-ui.field>
+        <x-ui.field label="Payment Status" name="paymentStatusFilter" for="paymentStatusFilter" class="w-full sm:w-44">
+            <x-ui.select wire:model.live="paymentStatusFilter" id="paymentStatusFilter">
+                <option value="">All Statuses</option>
+                @foreach ($paymentStatuses as $status)
+                    <option value="{{ $status->value }}">{{ $status->label() }}</option>
+                @endforeach
+            </x-ui.select>
+        </x-ui.field>
 
-            <x-ui.field label="Payment Status" name="paymentStatusFilter" for="paymentStatusFilter" class="sm:max-w-[10rem]">
-                <x-ui.select wire:model.live="paymentStatusFilter" id="paymentStatusFilter">
-                    <option value="">All Statuses</option>
-                    @foreach ($paymentStatuses as $status)
-                        <option value="{{ $status->value }}">{{ $status->label() }}</option>
-                    @endforeach
-                </x-ui.select>
-            </x-ui.field>
+        @if ($from || $to || $paymentStatusFilter)
+            <x-ui.button type="button" variant="ghost" wire:click="clearDateFilters">
+                    Clear
+                </x-ui.button>
+        @endif
+    </x-ui.filter-bar>
 
-            @if ($from || $to || $paymentStatusFilter)
-                <div class="sm:pb-1">
-                    <x-ui.button type="button" variant="ghost" wire:click="clearDateFilters">
-                        Clear
-                    </x-ui.button>
-                </div>
-            @endif
-        </div>
-
-        <div class="flex flex-col gap-4 sm:flex-row">
-            <x-ui.card :padding="false" class="w-full sm:w-auto">
-                <div class="px-5 py-3 text-right">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Loaded</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format($totalLoaded, 2) }}</p>
-                </div>
-            </x-ui.card>
-
-            <x-ui.card :padding="false" class="w-full sm:w-auto">
-                <div class="px-5 py-3 text-right">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Fees</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format($totalFees, 2) }}</p>
-                </div>
-            </x-ui.card>
-
-            <x-ui.card :padding="false" class="w-full sm:w-auto">
-                <div class="px-5 py-3 text-right">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Owed by Customers</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format($totalOwed, 2) }}</p>
-                </div>
-            </x-ui.card>
-        </div>
-    </div>
+    <x-ui.stat-row>
+        <x-ui.stat label="Total Loaded" value="Rs {{ number_format($totalLoaded, 2) }}" />
+        <x-ui.stat label="Total Fees" value="Rs {{ number_format($totalFees, 2) }}" />
+        <x-ui.stat label="Total Owed by Customers" value="Rs {{ number_format($totalOwed, 2) }}" />
+    </x-ui.stat-row>
 
     @if ($loads->isEmpty())
         <x-ui.empty-state
@@ -298,27 +273,30 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
             </x-slot>
         </x-ui.empty-state>
     @else
-        <x-ui.table :headers="['Receipt', 'Date', 'Network', 'Type', 'Phone', 'Customer', 'Amount', 'Fee', 'Discount', 'Total', 'Payment', 'Owed', '']">
+        <x-ui.table stack :headers="['Receipt', 'Network', 'Customer', 'Amount', 'Total', 'Payment', '']">
             @foreach ($loads as $load)
                 <x-ui.table-row wire:key="load-{{ $load->id }}" @class(['opacity-50' => $load->isCancelled()])>
-                    <x-ui.table-cell class="font-medium text-slate-900">{{ $load->receiptNumber() }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $load->created_at->format('d M Y, h:i A') }}</x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell primary class="font-semibold text-ink">{{ $load->receiptNumber() }}<span class="ui-sub">{{ $load->created_at->format('d M Y, h:i A') }}</span></x-ui.table-cell>
+                    <x-ui.table-cell label="Network">
                         @php $network = $networksByName->get($load->network); @endphp
                         <div class="flex items-center gap-2">
                             <x-ui.thumbnail :src="$network?->imageUrl()" :label="$load->network" :color="$network?->color" />
-                            {{ $load->network }}
-                            <x-ui.color-dot :color="$network?->color" />
+                            <div>
+                                <span class="inline-flex items-center gap-1.5">{{ $load->network }} <x-ui.color-dot :color="$network?->color" /></span>
+                                <span class="ui-sub">{{ $load->load_type->label() }}</span>
+                            </div>
                         </div>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>{{ $load->load_type->label() }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $load->phone_number ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $load->customer?->name ?? 'Walk-in' }}</x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($load->amount, 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell>Rs {{ number_format($load->fee, 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell>Rs {{ number_format($load->discount, 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($load->total, 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell label="Customer">
+                        {{ $load->customer?->name ?? 'Walk-in' }}
+                        <span class="ui-sub">{{ $load->phone_number ?? '—' }}</span>
+                    </x-ui.table-cell>
+                    <x-ui.table-cell label="Amount" class="font-semibold text-ink">Rs {{ number_format($load->amount, 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Total" class="font-semibold text-ink">
+                        Rs {{ number_format($load->total, 2) }}
+                        <span class="ui-sub">Fee Rs {{ number_format($load->fee, 2) }} · Discount Rs {{ number_format($load->discount, 2) }}</span>
+                    </x-ui.table-cell>
+                    <x-ui.table-cell label="Payment">
                         @if ($load->isCancelled())
                             <x-ui.badge variant="danger">Cancelled</x-ui.badge>
                         @elseif ($load->payment_status->value === 'paid')
@@ -328,43 +306,23 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
                         @else
                             <x-ui.badge variant="danger">Unpaid</x-ui.badge>
                         @endif
-                    </x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold text-slate-900">
                         @if (! $load->isCancelled() && $load->amountOwed() > 0)
-                            Rs {{ number_format($load->amountOwed(), 2) }}
-                        @else
-                            —
+                            <span class="ui-sub font-semibold text-ink">Rs {{ number_format($load->amountOwed(), 2) }} owed</span>
                         @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell align="right">
-                        <div class="flex justify-end gap-2">
-                            @if (! $load->isCancelled())
-                                @if ($load->payment_status->value !== 'paid')
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openAddPayment({{ $load->id }})">
-                                        Add Payment
-                                    </x-ui.button>
-                                    <x-ui.button
-                                        size="sm"
-                                        variant="ghost"
-                                        wire:click="markAsPaid({{ $load->id }})"
-                                        wire:confirm="Mark this balance load as fully paid?"
-                                    >
-                                        Mark as Paid
-                                    </x-ui.button>
-                                @endif
-                                @if (auth()->user()->hasAccessTo('balance-loads-edit-cancel'))
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $load->id }})">
-                                        Edit
-                                    </x-ui.button>
-                                    <x-ui.button size="sm" variant="ghost" wire:click="openCancel({{ $load->id }})" class="text-red-600 hover:bg-red-50">
-                                        Delete
-                                    </x-ui.button>
-                                @endif
+                    <x-ui.table-cell actions align="right">
+                        <x-ui.row-actions label="Actions for {{ $load->receiptNumber() }}">
+                            @if (! $load->isCancelled() && $load->payment_status->value !== 'paid')
+                                <x-ui.menu-item wire:click="openAddPayment({{ $load->id }})">Add Payment</x-ui.menu-item>
+                                <x-ui.menu-item wire:click="markAsPaid({{ $load->id }})" confirm="Mark this balance load as fully paid?" confirm-title="Mark as paid?" confirm-label="Mark as Paid">Mark as Paid</x-ui.menu-item>
                             @endif
-                            <x-ui.button size="sm" variant="ghost" wire:click="downloadReceipt({{ $load->id }})">
-                                Download
-                            </x-ui.button>
-                        </div>
+                            <x-ui.menu-item wire:click="downloadReceipt({{ $load->id }})">Download</x-ui.menu-item>
+                            @if (! $load->isCancelled() && auth()->user()->hasAccessTo('balance-loads-edit-cancel'))
+                                <x-ui.menu-item wire:click="openEdit({{ $load->id }})">Edit</x-ui.menu-item>
+                                <x-ui.menu-divider />
+                                <x-ui.menu-item danger wire:click="openCancel({{ $load->id }})">Delete</x-ui.menu-item>
+                            @endif
+                        </x-ui.row-actions>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
@@ -475,7 +433,7 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
                     Keep Balance Load
                 </x-ui.button>
 
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelLoad" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelLoad" variant="danger">
                     Cancel Balance Load
                 </x-ui.button>
             </div>

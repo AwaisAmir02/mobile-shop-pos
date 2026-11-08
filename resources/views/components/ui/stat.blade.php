@@ -4,16 +4,16 @@
     // Long amounts step down in size instead of wrapping "Rs" onto its own line.
     $length = mb_strlen(trim(strip_tags((string) $value)));
     $valueSize = match (true) {
-        $length <= 12 => 'text-display-sm font-extrabold',
-        $length <= 15 => 'text-2xl font-extrabold',
-        $length <= 19 => 'text-xl font-extrabold',
-        default => 'text-lg font-extrabold',
+        $length <= 12 => 'text-xl sm:text-display-sm font-extrabold',
+        $length <= 15 => 'text-lg sm:text-2xl font-extrabold',
+        $length <= 19 => 'text-base sm:text-xl font-extrabold',
+        default => 'text-base sm:text-lg font-extrabold',
     };
     $navy = $tone === 'brand';
 @endphp
 
 <div {{ $attributes->class([
-    'rounded-2xl border px-4 py-4 sm:px-5',
+    'min-w-0 rounded-2xl border px-4 py-4 sm:px-5',
     'border-line bg-surface shadow-soft' => ! $navy,
     'border-emphasis bg-emphasis' => $navy,
 ]) }}>

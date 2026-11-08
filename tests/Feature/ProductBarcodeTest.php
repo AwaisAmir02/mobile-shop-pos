@@ -159,8 +159,12 @@ class ProductBarcodeTest extends TestCase
         [$shop] = $this->shopOwner();
         $this->product($shop->id, 'Missing');
 
+        // Design overhaul D3: a styled confirmation replaced wire:confirm. The
+        // visible item asks first; only its hidden twin carries the action.
         $this->get(route('products.index'))
-            ->assertSee('wire:confirm="Generate barcodes for up to '.BarcodeService::BULK_RUN_LIMIT.' products', false);
+            ->assertSee('Generate barcodes for up to '.BarcodeService::BULK_RUN_LIMIT.' products', false)
+            ->assertSee('$store.confirm.ask', false)
+            ->assertSee('data-confirm-twin wire:click="runBulkBarcodeGeneration"', false);
     }
 
     public function test_a_single_product_without_a_barcode_can_be_given_one(): void

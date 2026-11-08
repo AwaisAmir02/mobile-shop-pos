@@ -75,6 +75,7 @@ export default {
             },
             zIndex: {
                 menu: '60',
+                dialog: '65',
                 toast: '70',
             },
         },

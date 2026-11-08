@@ -7,7 +7,9 @@ one page by hand.
 
 **Status:** agreed at D0. Built so far: colour tokens, type, the restyled kit and
 shell (D1); page header, module tabs, sidebar regroup, list-first sidebar links,
-the Reports hub and the Settings landing (D2). Other sections describe the target
+the Reports hub and the Settings landing (D2); filter bar, date ranges, stat row,
+row menus, styled confirmations and phone cards on Products, Sales History, Stock
+In History and the seven counter histories (D3). Other sections describe the target
 until their stage ships.
 
 **The one hard rule:** this is a visual and navigation pass. Actions, Models, FIFO,
@@ -235,6 +237,34 @@ fully supported but not the design lead.
 - **Cancelling `wire:confirm` leaves the menu open**, as confirm stops the click
   handler that closes it. The row is safe, it just looks untidy. Use `x-ui.confirm`
   in menus, which closes the menu first.
+
+## Lists (built in D3)
+
+A list screen reads top to bottom: header (title, one primary action), module
+tabs, `x-ui.filter-bar`, `x-ui.stat-row`, then the table.
+
+- **Header slot holds no Livewire actions.** It renders in the layout, outside the
+  component, so `wire:click` there does nothing. Links (`href`) are fine; buttons
+  that call the component go in the body, usually the filter bar's `actions` slot.
+  `ModuleNavigationTest` fails on any `wire:` action in a header slot.
+- **Filters:** `x-ui.filter-bar :active="n"` holds the fields; on a phone they fold
+  behind a Filters button showing how many are set. `x-ui.date-range` adds quick
+  ranges (Today, Yesterday, Last 7 days, This month, Last month) over the screen's
+  existing `from`/`to` properties, with the same ids.
+- **Totals:** `x-ui.stat-row` of `x-ui.stat`, never squeezed beside the filters.
+- **Fit at 1366:** rows put every action in one ⋯ menu (`x-ui.row-actions`,
+  `x-ui.menu-item`, `x-ui.menu-divider` before destructive items). A table that
+  still doesn't fit puts a quieter fact under its main value with
+  `<span class="ui-sub">` (vendor under product, owed under payment) rather than
+  hiding a column.
+- **Phones:** `x-ui.table stack` turns rows into cards below `md`. Give the
+  identifying cell `primary`, the actions cell `actions`, and every other cell a
+  `label`. Cards show the title and ⋯ on one line and the rest two across.
+- **Confirmations:** `confirm="..."` on `x-ui.button` or `x-ui.menu-item` asks in
+  the styled dialog (`x-ui.confirm-dialog`, the Alpine `confirm` store) and then
+  clicks a hidden twin carrying the original `wire:click`, so the Livewire call is
+  unchanged. Add `danger` for destructive actions. Use it instead of
+  `wire:confirm`, which is a browser pop-up and leaves a row menu open on cancel.
 
 ## Sales register
 
