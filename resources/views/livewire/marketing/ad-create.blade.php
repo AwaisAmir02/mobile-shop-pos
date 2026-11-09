@@ -148,7 +148,7 @@ new #[Layout('layouts.app')] #[Title('New Ad')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Marketing</h1>
+        <x-ui.page-header>Marketing</x-ui.page-header>
     </x-slot>
 
     <x-marketing.nav active="marketing.ads" />
@@ -159,19 +159,19 @@ new #[Layout('layouts.app')] #[Title('New Ad')] class extends Component
                 <x-ui.card title="Goal">
                     <div class="grid gap-3 sm:grid-cols-2">
                         @foreach (AdGoal::cases() as $option)
-                            <label @class(['flex cursor-pointer flex-col gap-1 rounded-lg border p-4', 'border-brand-500 ring-1 ring-brand-500' => $goal === $option->value, 'border-slate-200' => $goal !== $option->value])>
-                                <span class="flex items-center gap-2 font-medium text-slate-900"><input type="radio" wire:model.live="goal" value="{{ $option->value }}" class="text-brand-600 focus:ring-brand-500"> {{ $option->label() }}</span>
-                                <span class="text-xs text-slate-500">{{ $option->description() }}</span>
+                            <label @class(['flex cursor-pointer flex-col gap-1 rounded-lg border p-4', 'border-link ring-1 ring-link' => $goal === $option->value, 'border-line' => $goal !== $option->value])>
+                                <span class="flex items-center gap-2 font-medium text-ink"><input type="radio" wire:model.live="goal" value="{{ $option->value }}" class="text-link focus:ring-link"> {{ $option->label() }}</span>
+                                <span class="text-xs text-ink-faint">{{ $option->description() }}</span>
                             </label>
                         @endforeach
                     </div>
                     <x-ui.error :messages="$errors->get('goal')" class="mt-2" />
                     @if ($statusAvailable)
-                        <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-4">
-                            <input type="checkbox" wire:model="whatsappStatus" class="mt-0.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                        <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-line p-4">
+                            <input type="checkbox" wire:model="whatsappStatus" class="mt-0.5 rounded border-line-strong text-link focus:ring-link">
                             <span>
-                                <span class="block font-medium text-slate-900">Also show in WhatsApp Status</span>
-                                <span class="block text-xs text-slate-500">Your ad also appears as a Sponsored update in people's WhatsApp Status, alongside Instagram Stories. Same budget — Meta splits it across placements.</span>
+                                <span class="block font-medium text-ink">Also show in WhatsApp Status</span>
+                                <span class="block text-xs text-ink-faint">Your ad also appears as a Sponsored update in people's WhatsApp Status, alongside Instagram Stories. Same budget — Meta splits it across placements.</span>
                             </span>
                         </label>
                     @endif
@@ -208,17 +208,17 @@ new #[Layout('layouts.app')] #[Title('New Ad')] class extends Component
                                     <x-ui.input wire:model.live.debounce.400ms="citySearch" id="citySearch" placeholder="e.g. Lahore" autocomplete="off" />
                                 </x-ui.field>
                                 @if ($cityResults !== [])
-                                    <div class="mt-1 divide-y divide-slate-100 rounded-lg border border-slate-200">
+                                    <div class="mt-1 divide-y divide-line rounded-lg border border-line">
                                         @foreach ($cityResults as $city)
-                                            <button type="button" wire:click="addCity('{{ $city['key'] }}')" class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50">{{ $city['name'] }}</button>
+                                            <button type="button" wire:click="addCity('{{ $city['key'] }}')" class="block w-full px-3 py-2 text-left text-sm hover:bg-surface-sunken">{{ $city['name'] }}</button>
                                         @endforeach
                                     </div>
                                 @endif
                                 <div class="mt-2 flex flex-wrap gap-2">
                                     @foreach ($cities as $city)
-                                        <span class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-800">
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-primary-soft px-3 py-1 text-xs font-medium text-on-primary-soft">
                                             {{ $city['name'] }}
-                                            <button type="button" wire:click="removeCity('{{ $city['key'] }}')" class="text-brand-600 hover:text-brand-900" aria-label="Remove {{ $city['name'] }}">×</button>
+                                            <button type="button" wire:click="removeCity('{{ $city['key'] }}')" class="text-link hover:text-on-primary-soft" aria-label="Remove {{ $city['name'] }}">×</button>
                                         </span>
                                     @endforeach
                                 </div>
@@ -233,7 +233,7 @@ new #[Layout('layouts.app')] #[Title('New Ad')] class extends Component
                                 <x-ui.field label="Longitude" name="longitude" for="longitude"><x-ui.input wire:model="longitude" id="longitude" placeholder="74.3587" /></x-ui.field>
                                 <x-ui.field label="Radius (km)" name="radiusKm" for="radiusKm"><x-ui.input wire:model="radiusKm" id="radiusKm" type="number" min="1" max="80" /></x-ui.field>
                             </div>
-                            <p class="text-xs text-slate-500">Tip: long-press your shop in Google Maps to copy its coordinates.</p>
+                            <p class="text-xs text-ink-faint">Tip: long-press your shop in Google Maps to copy its coordinates.</p>
                         @endif
 
                         <div class="grid gap-4 sm:grid-cols-3">
@@ -257,12 +257,12 @@ new #[Layout('layouts.app')] #[Title('New Ad')] class extends Component
         <div class="space-y-4">
             <x-ui.card title="Ad preview" :padding="false">
                 <img src="{{ $postModel->imageUrl() }}" alt="Ad image" class="aspect-square w-full rounded-t-xl object-cover">
-                <p class="whitespace-pre-line p-4 text-xs text-slate-600">{{ \Illuminate\Support\Str::limit($postModel->caption, 300) }}</p>
+                <p class="whitespace-pre-line p-4 text-xs text-ink-muted">{{ \Illuminate\Support\Str::limit($postModel->caption, 300) }}</p>
             </x-ui.card>
             <x-ui.card>
-                <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Maximum you can be charged</p>
-                <p class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{{ $currency }} {{ number_format($this->maxSpend(), 2) }}</p>
-                <p class="mt-1 text-xs text-slate-500">{{ $currency }} {{ number_format((float) $dailyBudget) }} × {{ (int) $days }} days, billed by Meta to your own ad account. You confirm this again before the ad starts.</p>
+                <p class="text-xs font-medium uppercase tracking-wide text-ink-faint">Maximum you can be charged</p>
+                <p class="mt-1 text-2xl font-semibold tabular-nums text-ink">{{ $currency }} {{ number_format($this->maxSpend(), 2) }}</p>
+                <p class="mt-1 text-xs text-ink-faint">{{ $currency }} {{ number_format((float) $dailyBudget) }} × {{ (int) $days }} days, billed by Meta to your own ad account. You confirm this again before the ad starts.</p>
             </x-ui.card>
         </div>
     </div>

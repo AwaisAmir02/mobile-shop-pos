@@ -149,22 +149,22 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Dashboard</h1>
+        <x-ui.page-header>Dashboard</x-ui.page-header>
     </x-slot>
 
     <div class="mb-5 flex flex-wrap items-end gap-4">
         <div>
             <x-ui.label value="Period" />
-            <div class="mt-1 inline-flex rounded-md border border-slate-300 bg-white p-0.5 shadow-sm">
+            <div class="mt-1.5 inline-flex gap-1 rounded-full border border-line bg-surface-sunken/60 p-1" role="group" aria-label="Period">
                 @foreach (['day' => 'Day', 'month' => 'Month', 'year' => 'Year'] as $type => $typeLabel)
                     <button
                         type="button"
                         wire:click="setPeriodType('{{ $type }}')"
                         @if ($periodType === $type) aria-pressed="true" @endif
                         @class([
-                            'rounded px-3 py-1.5 text-sm font-medium transition-colors',
-                            'bg-brand-600 text-white' => $periodType === $type,
-                            'text-slate-600 hover:bg-slate-100 hover:text-slate-900' => $periodType !== $type,
+                            'rounded-full px-4 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-link',
+                            'bg-surface text-ink shadow-soft ring-1 ring-line' => $periodType === $type,
+                            'text-ink-faint hover:text-ink' => $periodType !== $type,
                         ])
                     >
                         {{ $typeLabel }}
@@ -202,9 +202,9 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     @foreach ($expiryCards as $card)
                         <div>
-                            <p class="text-sm text-slate-500">{{ $card['label'] }}</p>
-                            <p class="text-lg font-semibold text-slate-900">{{ $card['value'] }}</p>
-                            <p class="text-xs text-slate-400">{{ $card['sub'] }}</p>
+                            <p class="text-sm text-ink-faint">{{ $card['label'] }}</p>
+                            <p class="text-lg font-semibold text-ink">{{ $card['value'] }}</p>
+                            <p class="text-xs text-ink-faint">{{ $card['sub'] }}</p>
                         </div>
                     @endforeach
                 </div>
@@ -226,30 +226,30 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
             >
                 <svg viewBox="0 0 {{ $chart['width'] }} {{ $chart['height'] }}" class="h-auto w-full overflow-visible" role="img" aria-label="Revenue trend chart">
                     @foreach ($chart['gridlines'] as $gridline)
-                        <line x1="{{ $chart['padding']['left'] }}" y1="{{ $gridline['y'] }}" x2="{{ $chart['width'] - $chart['padding']['right'] }}" y2="{{ $gridline['y'] }}" stroke="#e2e8f0" stroke-width="1" />
-                        <text x="{{ $chart['padding']['left'] - 10 }}" y="{{ $gridline['y'] + 4 }}" text-anchor="end" class="fill-slate-400" font-size="11">Rs {{ $gridline['label'] }}</text>
+                        <line x1="{{ $chart['padding']['left'] }}" y1="{{ $gridline['y'] }}" x2="{{ $chart['width'] - $chart['padding']['right'] }}" y2="{{ $gridline['y'] }}" class="stroke-line" stroke-width="1" />
+                        <text x="{{ $chart['padding']['left'] - 10 }}" y="{{ $gridline['y'] + 4 }}" text-anchor="end" class="fill-ink-faint" font-size="11">Rs {{ $gridline['label'] }}</text>
                     @endforeach
 
                     @foreach ($chart['points'] as $i => $point)
                         @if ($i % $chart['labelEvery'] === 0 || $i === count($chart['points']) - 1)
-                            <text x="{{ $point['x'] }}" y="{{ $chart['height'] - 6 }}" text-anchor="middle" class="fill-slate-400" font-size="11">{{ $point['label'] }}</text>
+                            <text x="{{ $point['x'] }}" y="{{ $chart['height'] - 6 }}" text-anchor="middle" class="fill-ink-faint" font-size="11">{{ $point['label'] }}</text>
                         @endif
                     @endforeach
 
-                    <path d="{{ $chart['areaPath'] }}" fill="#0033a9" opacity="0.1" />
-                    <path d="{{ $chart['linePath'] }}" fill="none" stroke="#0033a9" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+                    <path d="{{ $chart['areaPath'] }}" class="fill-primary" opacity="0.1" />
+                    <path d="{{ $chart['linePath'] }}" fill="none" class="stroke-primary" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
 
                     @php $last = end($chart['points']); @endphp
-                    <circle cx="{{ $last['x'] }}" cy="{{ $last['y'] }}" r="4" fill="#0033a9" stroke="white" stroke-width="2" />
-                    <text x="{{ $last['x'] }}" y="{{ $last['y'] - 10 }}" text-anchor="end" class="fill-slate-700" font-size="11" font-weight="600">
+                    <circle cx="{{ $last['x'] }}" cy="{{ $last['y'] }}" r="4" class="fill-primary stroke-surface" stroke-width="2" />
+                    <text x="{{ $last['x'] }}" y="{{ $last['y'] - 10 }}" text-anchor="end" class="fill-ink-muted" font-size="11" font-weight="600">
                         Rs {{ $last['value'] >= 1000 ? number_format($last['value'] / 1000, 1).'K' : number_format($last['value'], 0) }}
                     </text>
 
                     {{-- Hover marker. Plain SVG nodes toggled with x-show: <template> inside <svg>
                          has no .content, which is what broke Alpine's x-for/x-if here before. --}}
                     <g class="pointer-events-none" x-show="point" style="display: none">
-                        <line :x1="point?.x ?? 0" :x2="point?.x ?? 0" y1="{{ $chart['padding']['top'] }}" y2="{{ $chart['baselineY'] }}" stroke="#94a3b8" stroke-width="1" />
-                        <circle :cx="point?.x ?? 0" :cy="point?.y ?? 0" r="5" fill="#0033a9" stroke="white" stroke-width="2" />
+                        <line :x1="point?.x ?? 0" :x2="point?.x ?? 0" y1="{{ $chart['padding']['top'] }}" y2="{{ $chart['baselineY'] }}" class="stroke-line-strong" stroke-width="1" />
+                        <circle :cx="point?.x ?? 0" :cy="point?.y ?? 0" r="5" class="fill-primary stroke-surface" stroke-width="2" />
                     </g>
 
                     {{-- One full-height hover/focus band per point, rendered server-side. Each band
@@ -268,7 +268,7 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
 
                 <div
                     x-show="point" x-cloak
-                    class="pointer-events-none absolute rounded-md bg-brand-950 px-2.5 py-1.5 text-xs whitespace-nowrap text-white shadow-lg"
+                    class="pointer-events-none absolute rounded-lg bg-ink px-2.5 py-1.5 text-xs whitespace-nowrap text-surface shadow-float"
                     :style="point ? `left:` + (point.x / {{ $chart['width'] }} * 100) + `%; top:` + (point.y / {{ $chart['height'] }} * 100) + `%; transform: translate(-50%, -140%)` : ''"
                 >
                     <span x-text="point ? point.label : ''"></span>:
@@ -277,73 +277,76 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
             </div>
         </x-ui.card>
 
-        {{-- Everything else, as a compact list. Each row keeps its original screen gate. --}}
+        {{-- Everything else, as a compact list. Each row keeps its original screen gate.
+             Rows with nothing this period fold behind "Show all"; they stay in the page. --}}
+        @php
+            $viewerShop = auth()->user()->shop;
+            $money = fn ($value) => 'Rs '.number_format($value, 2);
+            $counterRows = [
+                ['label' => 'Items Sold', 'value' => number_format($totalItemsSold), 'zero' => (float) $totalItemsSold == 0,
+                    'note' => ($categories->firstWhere('slug', 'mobile')['units'] ?? 0).' mobile · '.($categories->firstWhere('slug', 'accessory')['units'] ?? 0).' accessory · '.($categories->firstWhere('slug', 'sim')['units'] ?? 0).' SIM',
+                    'valueNote' => $soldByUnit ? \App\Enums\QuantityUnit::summarize($soldByUnit) : null],
+            ];
+            if (! $viewerShop?->isScreenHidden('balance-loads')) {
+                $counterRows[] = ['label' => 'Balance Loaded', 'value' => $money($totalBalanceLoaded), 'zero' => (float) $totalBalanceLoaded == 0];
+                $counterRows[] = ['label' => 'Balance Load Fees', 'note' => 'Net service revenue', 'value' => $money($totalBalanceLoadFees), 'zero' => (float) $totalBalanceLoadFees == 0];
+            }
+            if (! $viewerShop?->isScreenHidden('wallet-loads')) {
+                $counterRows[] = ['label' => 'Wallet Cash In', 'value' => $money($totalWalletCashInAmount), 'zero' => (float) $totalWalletCashInAmount == 0];
+                $counterRows[] = ['label' => 'Wallet Cash Out', 'value' => $money($totalWalletCashOutAmount), 'zero' => (float) $totalWalletCashOutAmount == 0];
+                $counterRows[] = ['label' => 'Wallet Load Fees', 'note' => 'Net service revenue, both directions', 'value' => $money($totalWalletLoadFees), 'zero' => (float) $totalWalletLoadFees == 0];
+            }
+            if (! $viewerShop?->isScreenHidden('sim-sales')) {
+                $counterRows[] = ['label' => 'SIM Sales', 'note' => $money($totalSimSaleRevenue).' revenue', 'value' => number_format($totalSimSalesSold), 'zero' => (float) $totalSimSalesSold == 0];
+            }
+            if (! $viewerShop?->isScreenHidden('bills')) {
+                $counterRows[] = ['label' => 'Bills Collected', 'value' => $money($totalBillsCollected), 'zero' => (float) $totalBillsCollected == 0];
+                $counterRows[] = ['label' => 'Bills Fee Revenue', 'note' => 'Net service revenue', 'value' => $money($totalBillsFeeRevenue), 'zero' => (float) $totalBillsFeeRevenue == 0];
+            }
+            if (! $viewerShop?->isScreenHidden('repairs')) {
+                $counterRows[] = ['label' => 'Repairs Revenue', 'value' => $money($totalRepairsRevenue), 'zero' => (float) $totalRepairsRevenue == 0];
+            }
+            if (! $viewerShop?->isScreenHidden('nadra-verifications')) {
+                $counterRows[] = ['label' => 'NADRA Verifications', 'note' => $money($totalNadraRevenue).' revenue', 'value' => number_format($totalNadraVerifications), 'zero' => (float) $totalNadraVerifications == 0];
+            }
+            $quietRows = count(array_filter($counterRows, fn ($row) => $row['zero']));
+        @endphp
         <x-ui.card title="Services & counters" :description="$periodLabel" :padding="false">
-            <dl class="divide-y divide-slate-100">
-                @php
-                    $row = 'flex items-start justify-between gap-4 px-4 py-2.5 sm:px-5';
-                    $term = 'text-sm text-slate-600';
-                    $figure = 'whitespace-nowrap text-right text-sm font-semibold tabular-nums text-slate-900';
-                    $note = 'mt-0.5 text-xs text-slate-400';
-                @endphp
+            <div x-data="{ showAll: false }">
+                <dl class="divide-y divide-line">
+                    @foreach ($counterRows as $counterRow)
+                        <div
+                            class="flex items-start justify-between gap-4 px-4 py-2.5 sm:px-5"
+                            {!! $counterRow['zero'] ? 'x-show="showAll" x-cloak data-quiet' : '' !!}
+                        >
+                            <dt class="text-sm text-ink-muted">
+                                {{ $counterRow['label'] }}
+                                @if ($counterRow['note'] ?? null)
+                                    <p class="mt-0.5 text-xs text-ink-faint">{{ $counterRow['note'] }}</p>
+                                @endif
+                            </dt>
+                            <dd class="whitespace-nowrap text-right text-sm font-semibold tabular-nums text-ink">
+                                {{ $counterRow['value'] }}
+                                @if ($counterRow['valueNote'] ?? null)
+                                    <p class="mt-0.5 text-xs font-normal text-ink-faint">{{ $counterRow['valueNote'] }}</p>
+                                @endif
+                            </dd>
+                        </div>
+                    @endforeach
+                </dl>
 
-                <div class="{{ $row }}">
-                    <dt class="{{ $term }}">Items Sold<p class="{{ $note }}">{{ $categories->firstWhere('slug', 'mobile')['units'] ?? 0 }} mobile · {{ $categories->firstWhere('slug', 'accessory')['units'] ?? 0 }} accessory · {{ $categories->firstWhere('slug', 'sim')['units'] ?? 0 }} SIM</p></dt>
-                    <dd class="{{ $figure }}">{{ number_format($totalItemsSold) }}@if ($soldByUnit)<p class="{{ $note }}">{{ \App\Enums\QuantityUnit::summarize($soldByUnit) }}</p>@endif</dd>
-                </div>
-                @unless (auth()->user()->shop?->isScreenHidden('balance-loads'))
-                <div class="{{ $row }}">
-                    <dt class="{{ $term }}">Balance Loaded</dt>
-                    <dd class="{{ $figure }}">Rs {{ number_format($totalBalanceLoaded, 2) }}</dd>
-                </div>
-                <div class="{{ $row }}">
-                    <dt class="{{ $term }}">Balance Load Fees<p class="{{ $note }}">Net service revenue</p></dt>
-                    <dd class="{{ $figure }}">Rs {{ number_format($totalBalanceLoadFees, 2) }}</dd>
-                </div>
-                @endunless
-                @unless (auth()->user()->shop?->isScreenHidden('wallet-loads'))
-                <div class="{{ $row }}">
-                    <dt class="{{ $term }}">Wallet Cash In</dt>
-                    <dd class="{{ $figure }}">Rs {{ number_format($totalWalletCashInAmount, 2) }}</dd>
-                </div>
-                <div class="{{ $row }}">
-                    <dt class="{{ $term }}">Wallet Cash Out</dt>
-                    <dd class="{{ $figure }}">Rs {{ number_format($totalWalletCashOutAmount, 2) }}</dd>
-                </div>
-                <div class="{{ $row }}">
-                    <dt class="{{ $term }}">Wallet Load Fees<p class="{{ $note }}">Net service revenue, both directions</p></dt>
-                    <dd class="{{ $figure }}">Rs {{ number_format($totalWalletLoadFees, 2) }}</dd>
-                </div>
-                @endunless
-                @unless (auth()->user()->shop?->isScreenHidden('sim-sales'))
-                <div class="{{ $row }}">
-                    <dt class="{{ $term }}">SIM Sales<p class="{{ $note }}">Rs {{ number_format($totalSimSaleRevenue, 2) }} revenue</p></dt>
-                    <dd class="{{ $figure }}">{{ number_format($totalSimSalesSold) }}</dd>
-                </div>
-                @endunless
-                @unless (auth()->user()->shop?->isScreenHidden('bills'))
-                <div class="{{ $row }}">
-                    <dt class="{{ $term }}">Bills Collected</dt>
-                    <dd class="{{ $figure }}">Rs {{ number_format($totalBillsCollected, 2) }}</dd>
-                </div>
-                <div class="{{ $row }}">
-                    <dt class="{{ $term }}">Bills Fee Revenue<p class="{{ $note }}">Net service revenue</p></dt>
-                    <dd class="{{ $figure }}">Rs {{ number_format($totalBillsFeeRevenue, 2) }}</dd>
-                </div>
-                @endunless
-                @unless (auth()->user()->shop?->isScreenHidden('repairs'))
-                <div class="{{ $row }}">
-                    <dt class="{{ $term }}">Repairs Revenue</dt>
-                    <dd class="{{ $figure }}">Rs {{ number_format($totalRepairsRevenue, 2) }}</dd>
-                </div>
-                @endunless
-                @unless (auth()->user()->shop?->isScreenHidden('nadra-verifications'))
-                <div class="{{ $row }}">
-                    <dt class="{{ $term }}">NADRA Verifications<p class="{{ $note }}">Rs {{ number_format($totalNadraRevenue, 2) }} revenue</p></dt>
-                    <dd class="{{ $figure }}">{{ number_format($totalNadraVerifications) }}</dd>
-                </div>
-                @endunless
-            </dl>
+                @if ($quietRows > 0)
+                    <button
+                        type="button"
+                        x-on:click="showAll = ! showAll"
+                        :aria-expanded="showAll.toString()"
+                        class="flex w-full items-center justify-center gap-1.5 border-t border-line px-4 py-2.5 text-xs font-semibold text-ink-faint transition-colors hover:bg-surface-sunken hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-link"
+                    >
+                        <span x-show="! showAll">Show {{ $quietRows }} with nothing this period</span>
+                        <span x-show="showAll" x-cloak>Hide the empty ones</span>
+                    </button>
+                @endif
+            </div>
         </x-ui.card>
     </div>
 </div>

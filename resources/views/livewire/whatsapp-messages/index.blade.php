@@ -134,46 +134,46 @@ new #[Layout('layouts.app')] #[Title('Customer Messages')] class extends Compone
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Customer Messages</h1>
+        <x-ui.page-header>Customer Messages</x-ui.page-header>
     </x-slot>
 
     <x-billing.limit-notice limit="whatsapp_messages_per_month" />
 
     @if (! $connected)
-        <div class="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+        <div class="mb-4 rounded-lg bg-warning-soft p-3 text-sm text-warning">
             WhatsApp is not connected yet. Connect it in Settings → Integrations to send messages.
         </div>
     @endif
 
-    <div class="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200">
+    <div class="mb-4 flex gap-1 overflow-x-auto border-b border-line">
         @foreach (['reminders' => 'Payment reminders', 'repairs' => 'Repairs ready', 'log' => 'Sent messages'] as $key => $label)
             <button type="button" wire:click="setTab('{{ $key }}')" @class([
                 'whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition',
-                'border-brand-600 text-brand-700' => $tab === $key,
-                'border-transparent text-slate-500 hover:text-slate-700' => $tab !== $key,
+                'border-primary text-link' => $tab === $key,
+                'border-transparent text-ink-faint hover:text-ink-muted' => $tab !== $key,
             ])>{{ $label }}</button>
         @endforeach
     </div>
 
     @if ($tab === 'reminders')
-        <p class="mb-3 text-sm text-slate-500">Customers with an outstanding balance (same total as the Udhaar screen). The reminder lists every item separately so the customer knows exactly what each amount is for. One reminder per customer every {{ CustomerNotifications::REMINDER_COOLDOWN_HOURS / 24 }} days.</p>
+        <p class="mb-3 text-sm text-ink-faint">Customers with an outstanding balance (same total as the Udhaar screen). The reminder lists every item separately so the customer knows exactly what each amount is for. One reminder per customer every {{ CustomerNotifications::REMINDER_COOLDOWN_HOURS / 24 }} days.</p>
 
         @if ($reminderRows->isEmpty())
             <x-ui.empty-state title="No outstanding balances" description="Nobody owes the shop anything right now." />
         @else
-            <x-ui.table :headers="['Customer', 'Phone', 'Total due', 'Last reminder', '']">
+            <x-ui.table stack :headers="['Customer', 'Phone', 'Total due', 'Last reminder', '']">
                 @foreach ($reminderRows as $row)
                     @php($customer = $row['customer'])
                     <x-ui.table-row wire:key="reminder-{{ $customer->id }}">
-                        <x-ui.table-cell class="font-medium text-slate-900">{{ $customer->name }}</x-ui.table-cell>
-                        <x-ui.table-cell>{{ $customer->phone ?? '—' }}</x-ui.table-cell>
-                        <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($row['balance'], 2) }}</x-ui.table-cell>
-                        <x-ui.table-cell>{{ isset($lastReminders[$customer->id]) ? \Illuminate\Support\Carbon::parse($lastReminders[$customer->id])->diffForHumans() : 'Never' }}</x-ui.table-cell>
-                        <x-ui.table-cell align="right">
+                        <x-ui.table-cell primary class="font-medium text-ink">{{ $customer->name }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Phone">{{ $customer->phone ?? '—' }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Total due" class="font-semibold text-ink">Rs {{ number_format($row['balance'], 2) }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Last reminder">{{ isset($lastReminders[$customer->id]) ? \Illuminate\Support\Carbon::parse($lastReminders[$customer->id])->diffForHumans() : 'Never' }}</x-ui.table-cell>
+                        <x-ui.table-cell actions align="right">
                             @if (PhoneNumber::normalize($customer->phone))
                                 <x-ui.button size="sm" variant="secondary" wire:click="previewReminder({{ $customer->id }})">Preview &amp; send</x-ui.button>
                             @else
-                                <span class="text-xs text-slate-400">No phone number</span>
+                                <span class="text-xs text-ink-faint">No phone number</span>
                             @endif
                         </x-ui.table-cell>
                     </x-ui.table-row>
@@ -184,9 +184,9 @@ new #[Layout('layouts.app')] #[Title('Customer Messages')] class extends Compone
         <x-ui.modal name="reminder-preview" maxWidth="lg">
             @if ($preview && $previewCustomer)
                 <div class="p-6">
-                    <h2 class="text-lg font-semibold text-slate-900">Reminder to {{ $previewCustomer->name }}</h2>
-                    <pre class="mt-4 whitespace-pre-wrap rounded-lg bg-emerald-50 p-4 font-sans text-sm text-slate-800">{{ $preview['text'] }}</pre>
-                    <p class="mt-2 text-xs text-slate-500">Sent in the customer's chosen language. If they haven't messaged in 24 hours, WhatsApp's approved reminder template is used with the same items.</p>
+                    <h2 class="text-lg font-semibold text-ink">Reminder to {{ $previewCustomer->name }}</h2>
+                    <pre class="mt-4 whitespace-pre-wrap rounded-lg bg-success-soft p-4 font-sans text-sm text-ink">{{ $preview['text'] }}</pre>
+                    <p class="mt-2 text-xs text-ink-faint">Sent in the customer's chosen language. If they haven't messaged in 24 hours, WhatsApp's approved reminder template is used with the same items.</p>
                     <div class="mt-6 flex justify-end gap-2">
                         <x-ui.button variant="secondary" x-on:click="$dispatch('close-modal', { name: 'reminder-preview' })">Cancel</x-ui.button>
                         <x-ui.button wire:click="sendReminder({{ $previewCustomer->id }})" wire:loading.attr="disabled">Send on WhatsApp</x-ui.button>
@@ -198,16 +198,16 @@ new #[Layout('layouts.app')] #[Title('Customer Messages')] class extends Compone
         @if ($repairs->isEmpty())
             <x-ui.empty-state title="No repairs with a customer yet" description="Repairs linked to a customer appear here so you can tell them it's ready." />
         @else
-            <x-ui.table :headers="['Receipt', 'Date', 'Customer', 'Device', 'Remaining', 'Ready notice', '']">
+            <x-ui.table stack :headers="['Receipt', 'Date', 'Customer', 'Device', 'Remaining', 'Ready notice', '']">
                 @foreach ($repairs as $repair)
                     @php($notice = $repairNotices[$repair->id] ?? null)
                     <x-ui.table-row wire:key="repair-{{ $repair->id }}">
-                        <x-ui.table-cell class="font-medium text-slate-900">{{ $repair->receiptNumber() }}</x-ui.table-cell>
-                        <x-ui.table-cell>{{ $repair->created_at->format('d M Y') }}</x-ui.table-cell>
-                        <x-ui.table-cell>{{ $repair->customer?->name }}</x-ui.table-cell>
-                        <x-ui.table-cell>{{ $repair->categoryLabel() }}</x-ui.table-cell>
-                        <x-ui.table-cell>{{ $repair->amountOwed() > 0 ? 'Rs '.number_format($repair->amountOwed(), 2) : '—' }}</x-ui.table-cell>
-                        <x-ui.table-cell>
+                        <x-ui.table-cell primary class="font-medium text-ink">{{ $repair->receiptNumber() }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Date">{{ $repair->created_at->format('d M Y') }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Customer">{{ $repair->customer?->name }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Device">{{ $repair->categoryLabel() }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Remaining">{{ $repair->amountOwed() > 0 ? 'Rs '.number_format($repair->amountOwed(), 2) : '—' }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Ready notice">
                             @if ($notice?->wasSent())
                                 <x-ui.badge variant="success">Sent {{ $notice->sent_at->diffForHumans() }}</x-ui.badge>
                             @elseif ($notice)
@@ -216,13 +216,13 @@ new #[Layout('layouts.app')] #[Title('Customer Messages')] class extends Compone
                                 —
                             @endif
                         </x-ui.table-cell>
-                        <x-ui.table-cell align="right">
+                        <x-ui.table-cell actions align="right">
                             @if (PhoneNumber::normalize($repair->customer?->phone))
-                                <x-ui.button size="sm" variant="secondary" wire:click="notifyRepairReady({{ $repair->id }})" wire:confirm="Tell {{ $repair->customer?->name }} the repair is ready for pickup?">
+                                <x-ui.button size="sm" variant="secondary" wire:click="notifyRepairReady({{ $repair->id }})" confirm="Tell {{ $repair->customer?->name }} the repair is ready for pickup?">
                                     {{ $notice?->wasSent() ? 'Send again' : 'Notify ready' }}
                                 </x-ui.button>
                             @else
-                                <span class="text-xs text-slate-400">No phone number</span>
+                                <span class="text-xs text-ink-faint">No phone number</span>
                             @endif
                         </x-ui.table-cell>
                     </x-ui.table-row>
@@ -234,17 +234,17 @@ new #[Layout('layouts.app')] #[Title('Customer Messages')] class extends Compone
         @if ($notifications->isEmpty())
             <x-ui.empty-state title="No messages sent yet" />
         @else
-            <x-ui.table :headers="['When', 'Type', 'To', 'Via', 'Status', 'By']">
+            <x-ui.table stack :headers="['When', 'Type', 'To', 'Via', 'Status', 'By']">
                 @foreach ($notifications as $notification)
                     <x-ui.table-row wire:key="notification-{{ $notification->id }}">
-                        <x-ui.table-cell>{{ $notification->created_at->format('d M Y, h:i A') }}</x-ui.table-cell>
-                        <x-ui.table-cell>{{ $notification->type->label() }}</x-ui.table-cell>
-                        <x-ui.table-cell>{{ $notification->customer?->name ?? $notification->contact?->displayName() ?? '—' }}</x-ui.table-cell>
-                        <x-ui.table-cell>{{ $notification->delivery_mode === 'template' ? 'Template' : ($notification->delivery_mode === 'session' ? 'Chat' : '—') }}</x-ui.table-cell>
-                        <x-ui.table-cell>
+                        <x-ui.table-cell primary>{{ $notification->created_at->format('d M Y, h:i A') }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Type">{{ $notification->type->label() }}</x-ui.table-cell>
+                        <x-ui.table-cell label="To">{{ $notification->customer?->name ?? $notification->contact?->displayName() ?? '—' }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Via">{{ $notification->delivery_mode === 'template' ? 'Template' : ($notification->delivery_mode === 'session' ? 'Chat' : '—') }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Status">
                             <x-ui.badge :variant="$notification->wasSent() ? 'success' : 'danger'" title="{{ $notification->error }}">{{ $notification->status->label() }}</x-ui.badge>
                         </x-ui.table-cell>
-                        <x-ui.table-cell>{{ $notification->sentBy?->name ?? 'Automatic' }}</x-ui.table-cell>
+                        <x-ui.table-cell label="By">{{ $notification->sentBy?->name ?? 'Automatic' }}</x-ui.table-cell>
                     </x-ui.table-row>
                 @endforeach
             </x-ui.table>

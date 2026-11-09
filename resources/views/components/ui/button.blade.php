@@ -39,15 +39,18 @@
         {{ $slot }}
     </a>
 @elseif ($confirm)
-    {{-- The visible button asks; the hidden twin carries the original wire:click. --}}
+    {{-- The visible button asks; the hidden twin carries the original wire:click,
+         or, for a submit button, submits its form as the button itself did. The
+         visible one keeps its type and stops its own default, so pressing Enter in
+         the form also comes here and asks first. --}}
     <button
-        type="button"
+        type="{{ $type }}"
         {{ $attributes->whereDoesntStartWith('wire:')->except(['variant', 'size', 'type'])->class([$classes]) }}
-        x-on:click="{{ \App\Support\ConfirmAction::handler($confirm, $confirmTitle, $confirmLabel, str_starts_with($variant, 'danger')) }}"
+        x-on:click.prevent="{{ \App\Support\ConfirmAction::handler($confirm, $confirmTitle, $confirmLabel, str_starts_with($variant, 'danger')) }}"
     >
         {{ $slot }}
     </button>
-    <button type="button" hidden tabindex="-1" aria-hidden="true" data-confirm-twin {{ $attributes->whereStartsWith('wire:') }}></button>
+    <button type="{{ $type === 'submit' ? 'submit' : 'button' }}" hidden tabindex="-1" aria-hidden="true" data-confirm-twin {{ $attributes->whereStartsWith('wire:') }}></button>
 @else
     <button type="{{ $type }}" {{ $attributes->except(['variant', 'size', 'type'])->class([$classes]) }}>
         {{ $slot }}

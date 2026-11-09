@@ -227,7 +227,7 @@ new class extends Component
         @endif
 
         @if ($connections->isEmpty())
-            <p class="mt-4 text-sm text-slate-500">No store connected yet.</p>
+            <p class="mt-4 text-sm text-ink-faint">No store connected yet.</p>
         @endif
     </x-ui.card>
 
@@ -251,7 +251,7 @@ new class extends Component
     @if ($connection)
         <x-ui.card :title="$connection->name" description="Give your store's developer the API token, the signing secret and the connection ID.">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div class="space-y-1 text-sm text-slate-600">
+                <div class="space-y-1 text-sm text-ink-muted">
                     <div class="flex items-center gap-2">
                         <x-ui.badge :variant="$connection->isLive() ? 'success' : 'warning'">{{ $connection->isLive() ? 'Active' : 'Paused' }}</x-ui.badge>
                         <code class="text-xs">{{ $connection->public_id }}</code>
@@ -260,27 +260,27 @@ new class extends Component
                     <p>{{ number_format($publishedCount) }} products published</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <x-ui.button size="sm" variant="secondary" wire:click="newToken" wire:confirm="Make a new API token? The current one stops working straight away.">New token</x-ui.button>
-                    <x-ui.button size="sm" variant="secondary" wire:click="newSecret" wire:confirm="Make a new signing secret? The current one keeps working for {{ StoreConnections::SECRET_OVERLAP_HOURS }} hours.">New secret</x-ui.button>
+                    <x-ui.button size="sm" variant="secondary" wire:click="newToken" confirm="Make a new API token? The current one stops working straight away.">New token</x-ui.button>
+                    <x-ui.button size="sm" variant="secondary" wire:click="newSecret" confirm="Make a new signing secret? The current one keeps working for {{ StoreConnections::SECRET_OVERLAP_HOURS }} hours.">New secret</x-ui.button>
                     @if ($connection->status === StoreConnection::ACTIVE)
-                        <x-ui.button size="sm" variant="secondary" wire:click="pause" wire:confirm="Pause this connection? The store should stop selling until you resume.">Pause</x-ui.button>
+                        <x-ui.button size="sm" variant="secondary" wire:click="pause" confirm="Pause this connection? The store should stop selling until you resume.">Pause</x-ui.button>
                     @else
                         <x-ui.button size="sm" variant="secondary" wire:click="resume">Resume</x-ui.button>
                     @endif
-                    <x-ui.button size="sm" variant="danger" wire:click="removeConnection" wire:confirm="Remove this connection for good? Its token stops working and it can't be brought back.">Remove</x-ui.button>
+                    <x-ui.button size="sm" variant="danger" wire:click="removeConnection" confirm="Remove this connection for good? Its token stops working and it can't be brought back.">Remove</x-ui.button>
                 </div>
             </div>
 
-            <form wire:submit="saveSettings" class="mt-6 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2">
+            <form wire:submit="saveSettings" class="mt-6 grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
                 <x-ui.field label="Safety buffer" name="safetyBuffer" for="storeSafetyBuffer">
                     <x-ui.input wire:model="safetyBuffer" id="storeSafetyBuffer" type="number" min="0" />
-                    <p class="mt-1 text-xs text-slate-500">Keep this many of each product back from the store, to reduce overselling.</p>
+                    <p class="mt-1 text-xs text-ink-faint">Keep this many of each product back from the store, to reduce overselling.</p>
                 </x-ui.field>
-                <label class="flex items-start gap-2 text-sm text-slate-700">
-                    <input type="checkbox" wire:model="priceSync" class="mt-1 rounded border-slate-300">
+                <label class="flex items-start gap-2 text-sm text-ink-muted">
+                    <input type="checkbox" wire:model="priceSync" class="mt-1 rounded border-line-strong">
                     <span>
                         Send prices to the store
-                        <span class="block text-xs text-slate-500">Off means the store sets its own prices. On sends the price of the next batch to sell, which can change when a batch runs out.</span>
+                        <span class="block text-xs text-ink-faint">Off means the store sets its own prices. On sends the price of the next batch to sell, which can change when a batch runs out.</span>
                     </span>
                 </label>
                 {{-- Keyed by connection so switching connection re-renders the select's label. --}}
@@ -319,15 +319,15 @@ new class extends Component
             </form>
 
             @if ($connection->last_delivery_error && ! $connection->delivery_paused_at)
-                <p class="mt-3 text-sm text-amber-800">Last problem: {{ $connection->last_delivery_error }} Trying again automatically.</p>
+                <p class="mt-3 text-sm text-warning">Last problem: {{ $connection->last_delivery_error }} Trying again automatically.</p>
             @endif
 
             @if ($recentEvents->isNotEmpty())
-                <div class="mt-5 divide-y divide-slate-100 border-t border-slate-100">
+                <div class="mt-5 divide-y divide-line border-t border-line">
                     @foreach ($recentEvents as $event)
                         <div class="flex items-center justify-between gap-3 py-2 text-sm" wire:key="store-event-{{ $event->id }}">
-                            <span class="text-slate-700">{{ $event->type }}</span>
-                            <span class="flex items-center gap-2 text-xs text-slate-500">
+                            <span class="text-ink-muted">{{ $event->type }}</span>
+                            <span class="flex items-center gap-2 text-xs text-ink-faint">
                                 {{ $event->created_at->diffForHumans() }}
                                 <x-ui.badge :variant="match ($event->statusLabel()) { 'Delivered' => 'success', 'Gave up' => 'danger', default => 'warning' }">{{ $event->statusLabel() }}</x-ui.badge>
                             </span>
@@ -342,22 +342,22 @@ new class extends Component
                 <div class="flex-1">
                     <x-ui.input wire:model.live.debounce.300ms="search" placeholder="Search products" aria-label="Search products" />
                 </div>
-                <x-ui.button size="sm" variant="secondary" wire:click="publishAll" wire:confirm="Publish every product that can be sold online?">Publish all</x-ui.button>
+                <x-ui.button size="sm" variant="secondary" wire:click="publishAll" confirm="Publish every product that can be sold online?">Publish all</x-ui.button>
             </div>
 
             @if ($excludedCount > 0)
-                <p class="mt-3 text-xs text-slate-500">{{ number_format($excludedCount) }} products aren't listed because they're sold by weight or length, IMEI-tracked, or SIMs.</p>
+                <p class="mt-3 text-xs text-ink-faint">{{ number_format($excludedCount) }} products aren't listed because they're sold by weight or length, IMEI-tracked, or SIMs.</p>
             @endif
 
-            <div class="mt-4 divide-y divide-slate-100">
+            <div class="mt-4 divide-y divide-line">
                 @forelse ($products as $product)
                     @php($row = $rows->get($product->id))
                     <div class="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between" wire:key="store-product-{{ $product->id }}">
                         <label class="flex items-center gap-3 text-sm">
-                            <input type="checkbox" @checked($row?->published) wire:click="togglePublished({{ $product->id }})" class="rounded border-slate-300">
+                            <input type="checkbox" @checked($row?->published) wire:click="togglePublished({{ $product->id }})" class="rounded border-line-strong">
                             <span>
-                                <span class="font-medium text-slate-900">{{ $product->name }}</span>
-                                <span class="block text-xs text-slate-500">{{ Quantity::plain($product->stock_quantity) }} in stock</span>
+                                <span class="font-medium text-ink">{{ $product->name }}</span>
+                                <span class="block text-xs text-ink-faint">{{ Quantity::plain($product->stock_quantity) }} in stock</span>
                             </span>
                         </label>
                         <div class="sm:w-56">
@@ -365,7 +365,7 @@ new class extends Component
                         </div>
                     </div>
                 @empty
-                    <p class="py-3 text-sm text-slate-500">No products to show.</p>
+                    <p class="py-3 text-sm text-ink-faint">No products to show.</p>
                 @endforelse
             </div>
 

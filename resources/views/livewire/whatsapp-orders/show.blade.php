@@ -249,20 +249,20 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
             <x-ui.card title="Items" :description="$order->isDecidable() ? 'Adjust quantities or prices before accepting. Stock is only taken when you accept.' : null" :padding="false">
-                <div class="divide-y divide-slate-100">
+                <div class="divide-y divide-line">
                     @foreach ($lines as $id => $line)
                         <div wire:key="line-{{ $id }}" @class(['flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center', 'opacity-50' => $line['removed']])>
                             <div class="min-w-0 flex-1">
-                                <p class="font-medium text-slate-900">{{ $line['name'] }}</p>
-                                <p class="text-xs text-slate-500">
+                                <p class="font-medium text-ink">{{ $line['name'] }}</p>
+                                <p class="text-xs text-ink-faint">
                                     Quoted Rs {{ number_format($line['quoted_price'], 2) }}
                                     @if ($line['product_id'] === null)
-                                        · <span class="text-red-600">product deleted</span>
+                                        · <span class="text-danger">product deleted</span>
                                     @else
                                         @if ($line['current_price'] !== null && abs($line['current_price'] - $line['quoted_price']) > 0.009)
-                                            · <span class="text-amber-700">now Rs {{ number_format($line['current_price'], 2) }}</span>
+                                            · <span class="text-warning">now Rs {{ number_format($line['current_price'], 2) }}</span>
                                         @endif
-                                        · <span @class(['text-red-600' => Quantity::compare($line['stock'], $line['quantity']) < 0])>{{ QuantityUnit::fromValue($line['unit'])->amount($line['stock']) }} in stock</span>
+                                        · <span @class(['text-danger' => Quantity::compare($line['stock'], $line['quantity']) < 0])>{{ QuantityUnit::fromValue($line['unit'])->amount($line['stock']) }} in stock</span>
                                     @endif
                                 </p>
                             </div>
@@ -280,7 +280,7 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
                                     </x-ui.button>
                                 </div>
                             @else
-                                <p class="text-sm text-slate-700">{{ QuantityUnit::fromValue($line['unit'])->amount($line['quantity']) }} × Rs {{ number_format((float) $line['unit_price'], 2) }}</p>
+                                <p class="text-sm text-ink-muted">{{ QuantityUnit::fromValue($line['unit'])->amount($line['quantity']) }} × Rs {{ number_format((float) $line['unit_price'], 2) }}</p>
                             @endif
                         </div>
                     @endforeach
@@ -294,7 +294,7 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
                         <x-ui.field label="Reason (sent to the customer)" name="rejectReason" for="rejectReason" class="flex-1">
                             <x-ui.input wire:model="rejectReason" id="rejectReason" placeholder="e.g. Out of stock in this colour" />
                         </x-ui.field>
-                        <x-ui.button type="submit" variant="danger" wire:confirm="Reject this order and notify the customer?">Reject</x-ui.button>
+                        <x-ui.button type="submit" variant="danger" confirm="Reject this order and notify the customer?">Reject</x-ui.button>
                     </form>
                 </x-ui.card>
             @endif
@@ -303,17 +303,17 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
         <div class="space-y-6">
             <x-ui.card title="Customer">
                 <dl class="space-y-2 text-sm">
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">WhatsApp</dt><dd class="font-medium text-slate-900">+{{ $order->contact?->wa_id }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">WhatsApp name</dt><dd class="text-slate-900">{{ $order->contact?->profile_name ?? '—' }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Order name</dt><dd class="text-right text-slate-900">{{ $order->delivery_name ?? '—' }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Phone</dt><dd class="text-right text-slate-900">{{ $order->delivery_phone ?? '—' }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">{{ $order->isPickup() ? 'Collection' : 'Delivery' }}</dt><dd class="text-right text-slate-900">{{ $order->delivery_address ?? '—' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">WhatsApp</dt><dd class="font-medium text-ink">+{{ $order->contact?->wa_id }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">WhatsApp name</dt><dd class="text-ink">{{ $order->contact?->profile_name ?? '—' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Order name</dt><dd class="text-right text-ink">{{ $order->delivery_name ?? '—' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Phone</dt><dd class="text-right text-ink">{{ $order->delivery_phone ?? '—' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">{{ $order->isPickup() ? 'Collection' : 'Delivery' }}</dt><dd class="text-right text-ink">{{ $order->delivery_address ?? '—' }}</dd></div>
                     @if (! $order->isPickup() && filled($order->delivery_area))
-                        <div class="flex justify-between gap-3"><dt class="text-slate-500">Area / zip</dt><dd class="text-right text-slate-900">{{ $order->delivery_area }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-ink-faint">Area / zip</dt><dd class="text-right text-ink">{{ $order->delivery_area }}</dd></div>
                     @endif
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Will pay by</dt><dd class="text-right text-slate-900">{{ $order->payment_choice?->label() ?? 'Not chosen' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Will pay by</dt><dd class="text-right text-ink">{{ $order->payment_choice?->label() ?? 'Not chosen' }}</dd></div>
                     @if ($order->origin_ref || $order->referral)
-                        <div class="flex justify-between gap-3"><dt class="text-slate-500">Came from</dt><dd class="text-slate-900">{{ $order->origin_ref ? 'Post REF-'.$order->origin_ref : 'Click-to-WhatsApp ad' }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-ink-faint">Came from</dt><dd class="text-ink">{{ $order->origin_ref ? 'Post REF-'.$order->origin_ref : 'Click-to-WhatsApp ad' }}</dd></div>
                     @endif
                 </dl>
             </x-ui.card>
@@ -322,19 +322,19 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
                 <x-ui.card title="Payment screenshot">
                     @if ($order->payment_slip_path)
                         @if ($order->slipIsPdf())
-                            <p class="text-sm text-slate-600">The customer sent a PDF receipt.</p>
+                            <p class="text-sm text-ink-muted">The customer sent a PDF receipt.</p>
                         @else
                             <a href="{{ route('whatsapp-orders.slip', $order) }}" target="_blank" rel="noopener">
-                                <img src="{{ route('whatsapp-orders.slip', $order) }}" alt="Payment screenshot for {{ $order->orderNumber() }}" class="max-h-96 w-full rounded-lg border border-slate-200 object-contain">
+                                <img src="{{ route('whatsapp-orders.slip', $order) }}" alt="Payment screenshot for {{ $order->orderNumber() }}" class="max-h-96 w-full rounded-lg border border-line object-contain">
                             </a>
                         @endif
                         <div class="mt-3 flex gap-2">
                             <x-ui.button size="sm" variant="secondary" href="{{ route('whatsapp-orders.slip', $order) }}" target="_blank" rel="noopener">Open</x-ui.button>
                             <x-ui.button size="sm" variant="secondary" href="{{ route('whatsapp-orders.slip', ['order' => $order, 'download' => 1]) }}">Download</x-ui.button>
                         </div>
-                        <p class="mt-2 text-xs text-slate-500">Check the amount reached your account before accepting.</p>
+                        <p class="mt-2 text-xs text-ink-faint">Check the amount reached your account before accepting.</p>
                     @else
-                        <p class="text-sm text-slate-500">No screenshot yet. The customer can still send one in the chat until you accept or reject this order.</p>
+                        <p class="text-sm text-ink-faint">No screenshot yet. The customer can still send one in the chat until you accept or reject this order.</p>
                     @endif
                 </x-ui.card>
             @endif
@@ -368,9 +368,9 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
 
                         <x-sales.payment-method-picker :accounts="$this->paymentAccounts()" :value="$paymentMethod" amount="amountPaid" />
 
-                        <div class="flex items-center justify-between border-t border-slate-100 pt-4">
-                            <span class="text-sm text-slate-500">Total</span>
-                            <span class="text-lg font-semibold text-slate-900">Rs {{ number_format($this->total(), 2) }}</span>
+                        <div class="flex items-center justify-between border-t border-line pt-4">
+                            <span class="text-sm text-ink-faint">Total</span>
+                            <span class="text-lg font-semibold text-ink">Rs {{ number_format($this->total(), 2) }}</span>
                         </div>
 
                         <x-ui.error :messages="$errors->get('order')" />
@@ -381,23 +381,23 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
             @else
                 <x-ui.card title="Decision">
                     <dl class="space-y-2 text-sm">
-                        <div class="flex justify-between gap-3"><dt class="text-slate-500">Status</dt><dd><x-ui.badge :variant="$order->status === WhatsAppOrderStatus::Accepted ? 'success' : ($order->isDecidable() ? 'warning' : 'danger')">{{ $order->status->label() }}</x-ui.badge></dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-ink-faint">Status</dt><dd><x-ui.badge :variant="$order->status === WhatsAppOrderStatus::Accepted ? 'success' : ($order->isDecidable() ? 'warning' : 'danger')">{{ $order->status->label() }}</x-ui.badge></dd></div>
                         @if ($order->decided_at)
-                            <div class="flex justify-between gap-3"><dt class="text-slate-500">By</dt><dd class="text-slate-900">{{ $order->decidedBy?->name ?? '—' }}, {{ $order->decided_at->format('d M Y, h:i A') }}</dd></div>
+                            <div class="flex justify-between gap-3"><dt class="text-ink-faint">By</dt><dd class="text-ink">{{ $order->decidedBy?->name ?? '—' }}, {{ $order->decided_at->format('d M Y, h:i A') }}</dd></div>
                         @endif
                         @if ($order->reject_reason)
-                            <div class="flex justify-between gap-3"><dt class="text-slate-500">Reason</dt><dd class="text-right text-slate-900">{{ $order->reject_reason }}</dd></div>
+                            <div class="flex justify-between gap-3"><dt class="text-ink-faint">Reason</dt><dd class="text-right text-ink">{{ $order->reject_reason }}</dd></div>
                         @endif
                         @if ($order->sale_id)
-                            <div class="flex justify-between gap-3"><dt class="text-slate-500">Sale</dt><dd><a href="{{ route('sales.show', $order->sale_id) }}" wire:navigate class="font-medium text-brand-700 hover:text-brand-800">View sale →</a></dd></div>
+                            <div class="flex justify-between gap-3"><dt class="text-ink-faint">Sale</dt><dd><a href="{{ route('sales.show', $order->sale_id) }}" wire:navigate class="font-medium text-link hover:underline">View sale →</a></dd></div>
                         @endif
                         @if ($order->status === WhatsAppOrderStatus::Accepted)
-                            <div class="flex justify-between gap-3"><dt class="text-slate-500">Fulfilment</dt><dd class="text-slate-900">{{ $order->fulfillment_status?->label() ?? 'Not started' }}</dd></div>
+                            <div class="flex justify-between gap-3"><dt class="text-ink-faint">Fulfilment</dt><dd class="text-ink">{{ $order->fulfillment_status?->label() ?? 'Not started' }}</dd></div>
                             @if ($canDecide && $order->fulfillment_status !== FulfillmentStatus::Delivered)
                                 <div class="flex flex-wrap gap-2 pt-2">
                                     @foreach (FulfillmentStatus::cases() as $next)
                                         @if ($order->fulfillment_status === null || $next->step() > $order->fulfillment_status->step())
-                                            <x-ui.button size="sm" variant="secondary" wire:click="setFulfillment('{{ $next->value }}')" wire:confirm="Mark as {{ strtolower($next->label()) }} and message the customer?">{{ $next->label() }}</x-ui.button>
+                                            <x-ui.button size="sm" variant="secondary" wire:click="setFulfillment('{{ $next->value }}')" confirm="Mark as {{ strtolower($next->label()) }} and message the customer?">{{ $next->label() }}</x-ui.button>
                                         @endif
                                     @endforeach
                                 </div>
@@ -405,9 +405,9 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
                             @endif
                         @endif
                         @if ($order->notify_error)
-                            <p class="rounded-lg bg-red-50 p-3 text-xs text-red-700">Customer was not notified: {{ $order->notify_error }}</p>
+                            <p class="rounded-lg bg-danger-soft p-3 text-xs text-danger">Customer was not notified: {{ $order->notify_error }}</p>
                         @elseif ($order->customer_notified_at)
-                            <p class="text-xs text-emerald-700">Customer notified on WhatsApp {{ $order->customer_notified_at->diffForHumans() }}.</p>
+                            <p class="text-xs text-success">Customer notified on WhatsApp {{ $order->customer_notified_at->diffForHumans() }}.</p>
                         @endif
                     </dl>
                 </x-ui.card>

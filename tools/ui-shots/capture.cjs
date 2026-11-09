@@ -38,6 +38,9 @@ const PAGES = {
     'wa-orders': '/whatsapp-orders', 'online-orders': '/online-orders', messages: '/customer-messages',
     marketing: '/marketing', 'marketing-posts': '/marketing/posts', 'marketing-reviews': '/marketing/reviews', 'marketing-ads': '/marketing/ads', 'marketing-qr': '/marketing/qr',
     team: '/users', branches: '/branches', settings: '/settings', billing: '/billing', profile: '/profile', welcome: '/welcome',
+    'wa-order': '/whatsapp-orders/1', 'online-order': '/online-orders/1',
+    ...Object.fromEntries(['branding', 'shop-accounts', 'accessory-categories', 'brands', 'networks', 'percentage', 'bills', 'services', 'deduction-types', 'roles', 'modules', 'integrations', 'profile']
+      .map((tab) => ['settings-' + tab, '/settings?tab=' + tab])),
   },
   cashier: {
     'cashier-welcome': '/welcome', 'cashier-sales': '/sales', 'cashier-sales-history': '/sales/history', 'cashier-products': '/products', 'cashier-customers': '/customers', 'cashier-udhaar': '/udhaar', 'cashier-balance-load': '/balance-loads',

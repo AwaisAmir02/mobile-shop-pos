@@ -235,19 +235,19 @@ new #[Layout('layouts.app')] #[Title('Online Store Order')] class extends Compon
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
             <x-ui.card title="Items" :description="$order->isDecidable() ? 'Prices are what the store charged. Stock is only taken when you accept.' : null" :padding="false">
-                <div class="divide-y divide-slate-100">
+                <div class="divide-y divide-line">
                     @foreach ($order->items as $item)
                         @php($isRemoved = $item->removed || in_array($item->id, $removed, true))
                         <div wire:key="item-{{ $item->id }}" @class(['flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center', 'opacity-50' => $isRemoved])>
                             <div class="min-w-0 flex-1">
-                                <p class="font-medium text-slate-900">{{ $item->product?->name ?? $item->product_name }}</p>
-                                <p class="text-xs text-slate-500">
+                                <p class="font-medium text-ink">{{ $item->product?->name ?? $item->product_name }}</p>
+                                <p class="text-xs text-ink-faint">
                                     {{ $item->quantity }} × Rs {{ number_format((float) $item->unit_price, 2) }}
                                     @if ($item->external_sku) · {{ $item->external_sku }} @endif
                                     @if ($item->product)
-                                        · <span @class(['text-red-600' => $order->isDecidable() && Quantity::compare($item->product->stock_quantity, $item->quantity) < 0])>{{ $item->product->stockLabel() }} in stock</span>
+                                        · <span @class(['text-danger' => $order->isDecidable() && Quantity::compare($item->product->stock_quantity, $item->quantity) < 0])>{{ $item->product->stockLabel() }} in stock</span>
                                     @elseif (! $item->removed)
-                                        · <span class="text-red-600">not matched to a product</span>
+                                        · <span class="text-danger">not matched to a product</span>
                                     @endif
                                 </p>
                             </div>
@@ -279,7 +279,7 @@ new #[Layout('layouts.app')] #[Title('Online Store Order')] class extends Compon
                         <x-ui.field label="Reason (sent to the store)" name="rejectReason" for="rejectReason" class="flex-1">
                             <x-ui.input wire:model="rejectReason" id="rejectReason" placeholder="e.g. Out of stock" />
                         </x-ui.field>
-                        <x-ui.button type="submit" variant="danger" wire:confirm="Reject this order?">Reject</x-ui.button>
+                        <x-ui.button type="submit" variant="danger" confirm="Reject this order?">Reject</x-ui.button>
                     </form>
                 </x-ui.card>
             @endif
@@ -288,16 +288,16 @@ new #[Layout('layouts.app')] #[Title('Online Store Order')] class extends Compon
         <div class="space-y-6">
             <x-ui.card title="Customer">
                 <dl class="space-y-2 text-sm">
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Store</dt><dd class="text-right text-slate-900">{{ $order->connection?->name }}, #{{ $order->external_order_id }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Name</dt><dd class="text-right text-slate-900">{{ $order->customer_name ?? '—' }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Phone</dt><dd class="text-right text-slate-900">{{ $order->customer_phone ?? '—' }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Deliver to</dt><dd class="text-right text-slate-900">{{ collect([$order->delivery_address, $order->delivery_area])->filter()->implode(', ') ?: '—' }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Payment</dt><dd class="text-right text-slate-900">{{ $order->isPrepaid() ? 'Prepaid, Rs '.number_format((float) $order->amount_paid, 2) : 'Cash on delivery' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Store</dt><dd class="text-right text-ink">{{ $order->connection?->name }}, #{{ $order->external_order_id }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Name</dt><dd class="text-right text-ink">{{ $order->customer_name ?? '—' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Phone</dt><dd class="text-right text-ink">{{ $order->customer_phone ?? '—' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Deliver to</dt><dd class="text-right text-ink">{{ collect([$order->delivery_address, $order->delivery_area])->filter()->implode(', ') ?: '—' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Payment</dt><dd class="text-right text-ink">{{ $order->isPrepaid() ? 'Prepaid, Rs '.number_format((float) $order->amount_paid, 2) : 'Cash on delivery' }}</dd></div>
                     @if ((float) $order->shipping_amount > 0)
-                        <div class="flex justify-between gap-3"><dt class="text-slate-500">Delivery charge</dt><dd class="text-right text-slate-900">Rs {{ number_format((float) $order->shipping_amount, 2) }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-ink-faint">Delivery charge</dt><dd class="text-right text-ink">Rs {{ number_format((float) $order->shipping_amount, 2) }}</dd></div>
                     @endif
                     @if ($order->note)
-                        <div class="flex justify-between gap-3"><dt class="text-slate-500">Note</dt><dd class="text-right text-slate-900">{{ $order->note }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-ink-faint">Note</dt><dd class="text-right text-ink">{{ $order->note }}</dd></div>
                     @endif
                 </dl>
             </x-ui.card>
@@ -326,16 +326,16 @@ new #[Layout('layouts.app')] #[Title('Online Store Order')] class extends Compon
                         <x-sales.payment-method-picker :accounts="$this->paymentAccounts()" :value="$paymentMethod" amount="amountPaid" />
 
                         @if ((float) $order->discount_amount > 0)
-                            <div class="flex items-center justify-between text-sm text-slate-500"><span>Store discount</span><span>Rs {{ number_format((float) $order->discount_amount, 2) }}</span></div>
+                            <div class="flex items-center justify-between text-sm text-ink-faint"><span>Store discount</span><span>Rs {{ number_format((float) $order->discount_amount, 2) }}</span></div>
                         @endif
 
-                        <div class="flex items-center justify-between border-t border-slate-100 pt-4">
-                            <span class="text-sm text-slate-500">Sale total</span>
-                            <span class="text-lg font-semibold text-slate-900">Rs {{ number_format($this->total(), 2) }}</span>
+                        <div class="flex items-center justify-between border-t border-line pt-4">
+                            <span class="text-sm text-ink-faint">Sale total</span>
+                            <span class="text-lg font-semibold text-ink">Rs {{ number_format($this->total(), 2) }}</span>
                         </div>
 
                         @if ((float) $order->shipping_amount > 0 || ($order->isPrepaid() && (float) $order->amount_paid > $this->total()))
-                            <p class="text-xs text-slate-500">The sale records goods only. The delivery charge, and any prepaid money above the goods total, isn't part of it.</p>
+                            <p class="text-xs text-ink-faint">The sale records goods only. The delivery charge, and any prepaid money above the goods total, isn't part of it.</p>
                         @endif
 
                         <x-ui.error :messages="$errors->get('order')" />
@@ -346,18 +346,18 @@ new #[Layout('layouts.app')] #[Title('Online Store Order')] class extends Compon
             @else
                 <x-ui.card title="Decision">
                     <dl class="space-y-2 text-sm">
-                        <div class="flex justify-between gap-3"><dt class="text-slate-500">Status</dt><dd><x-ui.badge :variant="match ($order->status) { StoreOrderStatus::Pending => 'warning', StoreOrderStatus::Accepted => 'success', default => 'danger' }">{{ $order->status->label() }}</x-ui.badge></dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-ink-faint">Status</dt><dd><x-ui.badge :variant="match ($order->status) { StoreOrderStatus::Pending => 'warning', StoreOrderStatus::Accepted => 'success', default => 'danger' }">{{ $order->status->label() }}</x-ui.badge></dd></div>
                         @if ($order->decided_at && $order->decidedBy)
-                            <div class="flex justify-between gap-3"><dt class="text-slate-500">By</dt><dd class="text-slate-900">{{ $order->decidedBy->name }}, {{ $order->decided_at->format('d M Y, h:i A') }}</dd></div>
+                            <div class="flex justify-between gap-3"><dt class="text-ink-faint">By</dt><dd class="text-ink">{{ $order->decidedBy->name }}, {{ $order->decided_at->format('d M Y, h:i A') }}</dd></div>
                         @endif
                         @if ($order->reject_reason)
-                            <div class="flex justify-between gap-3"><dt class="text-slate-500">Reason</dt><dd class="text-right text-slate-900">{{ $order->reject_reason }}</dd></div>
+                            <div class="flex justify-between gap-3"><dt class="text-ink-faint">Reason</dt><dd class="text-right text-ink">{{ $order->reject_reason }}</dd></div>
                         @endif
                         @if ($order->sale_id && $canViewSale)
-                            <div class="flex justify-between gap-3"><dt class="text-slate-500">Sale</dt><dd><a href="{{ route('sales.show', $order->sale_id) }}" wire:navigate class="font-medium text-brand-700 hover:text-brand-800">View sale →</a></dd></div>
+                            <div class="flex justify-between gap-3"><dt class="text-ink-faint">Sale</dt><dd><a href="{{ route('sales.show', $order->sale_id) }}" wire:navigate class="font-medium text-link hover:underline">View sale →</a></dd></div>
                         @endif
                         @if ($order->status === StoreOrderStatus::Accepted)
-                            <div class="flex justify-between gap-3"><dt class="text-slate-500">Fulfilment</dt><dd class="text-slate-900">{{ $order->fulfillment_status?->label() ?? 'Not started' }}</dd></div>
+                            <div class="flex justify-between gap-3"><dt class="text-ink-faint">Fulfilment</dt><dd class="text-ink">{{ $order->fulfillment_status?->label() ?? 'Not started' }}</dd></div>
                             @if ($canDecide && $order->fulfillment_status !== FulfillmentStatus::Delivered)
                                 <div class="flex flex-wrap gap-2 pt-2">
                                     @foreach (FulfillmentStatus::cases() as $next)

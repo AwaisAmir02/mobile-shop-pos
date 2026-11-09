@@ -1084,7 +1084,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Settings</h1>
+        <x-ui.page-header>Settings</x-ui.page-header>
     </x-slot>
 
     @php
@@ -1169,10 +1169,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                     </x-ui.button>
                 </x-slot>
 
-                <x-ui.table :headers="['Main Category', 'Sub-Categories', '']">
+                <x-ui.table stack :headers="['Main Category', 'Sub-Categories', '']">
                     @foreach ($mainCategories as $category)
                         <x-ui.table-row wire:key="main-category-{{ $category->id }}">
-                            <x-ui.table-cell class="font-medium text-slate-900">
+                            <x-ui.table-cell primary class="font-medium text-ink">
                                 <div class="flex items-center gap-2">
                                     {{ $category->name }}
                                     @if ($category->is_builtin)
@@ -1180,8 +1180,8 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                     @endif
                                 </div>
                             </x-ui.table-cell>
-                            <x-ui.table-cell>{{ $category->sub_categories_count }}</x-ui.table-cell>
-                            <x-ui.table-cell align="right">
+                            <x-ui.table-cell label="Sub-Categories">{{ $category->sub_categories_count }}</x-ui.table-cell>
+                            <x-ui.table-cell actions align="right">
                                 <div class="flex justify-end gap-2">
                                     <x-ui.button size="sm" variant="ghost" wire:click="openMainCategoryEdit({{ $category->id }})">
                                         Edit
@@ -1191,7 +1191,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                             size="sm"
                                             variant="danger-ghost"
                                             wire:click="deleteMainCategory({{ $category->id }})"
-                                            wire:confirm="Delete {{ $category->name }}?"
+                                            confirm="Delete {{ $category->name }}?"
                                            
                                         >
                                             Delete
@@ -1224,17 +1224,17 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                         </x-slot>
                     </x-ui.empty-state>
                 @else
-                    <x-ui.table :headers="['Sub-Category', 'Main Category', '']">
+                    <x-ui.table stack :headers="['Sub-Category', 'Main Category', '']">
                         @foreach ($accessoryCategories as $option)
                             <x-ui.table-row wire:key="accessory-category-{{ $option->id }}">
-                                <x-ui.table-cell class="font-medium text-slate-900">
+                                <x-ui.table-cell primary class="font-medium text-ink">
                                     <div class="flex items-center gap-3">
                                         <x-ui.thumbnail :src="$option->imageUrl()" :label="$option->name" />
                                         {{ $option->name }}
                                     </div>
                                 </x-ui.table-cell>
-                                <x-ui.table-cell>{{ $option->mainCategory?->name ?? '—' }}</x-ui.table-cell>
-                                <x-ui.table-cell align="right">
+                                <x-ui.table-cell label="Main Category">{{ $option->mainCategory?->name ?? '—' }}</x-ui.table-cell>
+                                <x-ui.table-cell actions align="right">
                                     <div class="flex justify-end gap-2">
                                         <x-ui.button size="sm" variant="ghost" wire:click="openAccessoryCategoryEdit({{ $option->id }})">
                                             Edit
@@ -1243,7 +1243,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                             size="sm"
                                             variant="danger-ghost"
                                             wire:click="deleteAccessoryCategory({{ $option->id }})"
-                                            wire:confirm="Delete {{ $option->name }}?"
+                                            confirm="Delete {{ $option->name }}?"
                                            
                                         >
                                             Delete
@@ -1277,11 +1277,11 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                     </x-slot>
                 </x-ui.empty-state>
             @else
-                <x-ui.table :headers="['Brand', '']">
+                <x-ui.table stack :headers="['Brand', '']">
                     @foreach ($brands as $brand)
                         <x-ui.table-row wire:key="brand-{{ $brand->id }}">
-                            <x-ui.table-cell class="font-medium text-slate-900">{{ $brand->name }}</x-ui.table-cell>
-                            <x-ui.table-cell align="right">
+                            <x-ui.table-cell primary class="font-medium text-ink">{{ $brand->name }}</x-ui.table-cell>
+                            <x-ui.table-cell actions align="right">
                                 <div class="flex justify-end gap-2">
                                     <x-ui.button size="sm" variant="ghost" wire:click="openBrandEdit({{ $brand->id }})">
                                         Edit
@@ -1290,7 +1290,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                         size="sm"
                                         variant="danger-ghost"
                                         wire:click="deleteBrand({{ $brand->id }})"
-                                        wire:confirm="Delete {{ $brand->name }}?"
+                                        confirm="Delete {{ $brand->name }}?"
                                        
                                     >
                                         Delete
@@ -1323,17 +1323,17 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                     </x-slot>
                 </x-ui.empty-state>
             @else
-                <x-ui.table :headers="['Network', '']">
+                <x-ui.table stack :headers="['Network', '']">
                     @foreach ($networks as $network)
                         <x-ui.table-row wire:key="network-{{ $network->id }}">
-                            <x-ui.table-cell class="font-medium text-slate-900">
+                            <x-ui.table-cell primary class="font-medium text-ink">
                                 <div class="flex items-center gap-3">
                                     <x-ui.thumbnail :src="$network->imageUrl()" :label="$network->name" :color="$network->color" />
                                     {{ $network->name }}
                                     <x-ui.color-dot :color="$network->color" />
                                 </div>
                             </x-ui.table-cell>
-                            <x-ui.table-cell align="right">
+                            <x-ui.table-cell actions align="right">
                                 <div class="flex justify-end gap-2">
                                     <x-ui.button size="sm" variant="ghost" wire:click="openNetworkEdit({{ $network->id }})">
                                         Edit
@@ -1342,7 +1342,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                         size="sm"
                                         variant="danger-ghost"
                                         wire:click="deleteNetwork({{ $network->id }})"
-                                        wire:confirm="Delete {{ $network->name }}?"
+                                        confirm="Delete {{ $network->name }}?"
                                        
                                     >
                                         Delete
@@ -1375,22 +1375,22 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                     </x-slot>
                 </x-ui.empty-state>
             @else
-                <x-ui.table :headers="['Account', 'Provider / Type', 'Total Sent', 'Total Received', '']">
+                <x-ui.table stack :headers="['Account', 'Provider / Type', 'Total Sent', 'Total Received', '']">
                     @foreach ($shopAccounts as $account)
                         <x-ui.table-row wire:key="shop-account-{{ $account->id }}">
-                            <x-ui.table-cell class="font-medium text-slate-900">
+                            <x-ui.table-cell primary class="font-medium text-ink">
                                 {{ $account->name }}
                                 @if ($multipleBranches)
-                                    <span class="block text-xs font-normal text-slate-500">{{ $account->branch ? $account->branch->name.' cash drawer' : 'Shared by all branches' }}</span>
+                                    <span class="block text-xs font-normal text-ink-faint">{{ $account->branch ? $account->branch->name.' cash drawer' : 'Shared by all branches' }}</span>
                                 @endif
                                 @if ($account->hasPaymentDetails())
-                                    <span class="block text-xs font-normal text-slate-500">{{ collect([$account->account_title, $account->account_number])->filter()->implode(' · ') }}</span>
+                                    <span class="block text-xs font-normal text-ink-faint">{{ collect([$account->account_title, $account->account_number])->filter()->implode(' · ') }}</span>
                                 @endif
                             </x-ui.table-cell>
-                            <x-ui.table-cell>{{ $account->provider_type }}</x-ui.table-cell>
-                            <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format(($account->wallet_cash_in_sum_amount ?? 0) + ($account->bill_payments_sum_amount ?? 0), 2) }}</x-ui.table-cell>
-                            <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($account->wallet_cash_out_sum_amount ?? 0, 2) }}</x-ui.table-cell>
-                            <x-ui.table-cell align="right">
+                            <x-ui.table-cell label="Provider / Type">{{ $account->provider_type }}</x-ui.table-cell>
+                            <x-ui.table-cell label="Total Sent" class="font-semibold text-ink">Rs {{ number_format(($account->wallet_cash_in_sum_amount ?? 0) + ($account->bill_payments_sum_amount ?? 0), 2) }}</x-ui.table-cell>
+                            <x-ui.table-cell label="Total Received" class="font-semibold text-ink">Rs {{ number_format($account->wallet_cash_out_sum_amount ?? 0, 2) }}</x-ui.table-cell>
+                            <x-ui.table-cell actions align="right">
                                 <div class="flex justify-end gap-2">
                                     <x-ui.button size="sm" variant="ghost" wire:click="openShopAccountEdit({{ $account->id }})">
                                         Edit
@@ -1399,7 +1399,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                         size="sm"
                                         variant="danger-ghost"
                                         wire:click="deleteShopAccount({{ $account->id }})"
-                                        wire:confirm="Delete {{ $account->name }}?"
+                                        confirm="Delete {{ $account->name }}?"
                                        
                                     >
                                         Delete
@@ -1433,12 +1433,12 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                         </x-slot>
                     </x-ui.empty-state>
                 @else
-                    <x-ui.table :headers="['Category', 'Providers', '']">
+                    <x-ui.table stack :headers="['Category', 'Providers', '']">
                         @foreach ($billCategories as $category)
                             <x-ui.table-row wire:key="bill-category-{{ $category->id }}">
-                                <x-ui.table-cell class="font-medium text-slate-900">{{ $category->name }}</x-ui.table-cell>
-                                <x-ui.table-cell>{{ $category->bill_providers_count }}</x-ui.table-cell>
-                                <x-ui.table-cell align="right">
+                                <x-ui.table-cell primary class="font-medium text-ink">{{ $category->name }}</x-ui.table-cell>
+                                <x-ui.table-cell label="Providers">{{ $category->bill_providers_count }}</x-ui.table-cell>
+                                <x-ui.table-cell actions align="right">
                                     <div class="flex justify-end gap-2">
                                         <x-ui.button size="sm" variant="ghost" wire:click="openBillCategoryEdit({{ $category->id }})">
                                             Edit
@@ -1447,7 +1447,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                             size="sm"
                                             variant="danger-ghost"
                                             wire:click="deleteBillCategory({{ $category->id }})"
-                                            wire:confirm="Delete {{ $category->name }}?"
+                                            confirm="Delete {{ $category->name }}?"
                                            
                                         >
                                             Delete
@@ -1480,13 +1480,13 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                         </x-slot>
                     </x-ui.empty-state>
                 @else
-                    <x-ui.table :headers="['Provider', 'Category', 'Region', '']">
+                    <x-ui.table stack :headers="['Provider', 'Category', 'Region', '']">
                         @foreach ($billProviders as $provider)
                             <x-ui.table-row wire:key="bill-provider-{{ $provider->id }}">
-                                <x-ui.table-cell class="font-medium text-slate-900">{{ $provider->name }}</x-ui.table-cell>
-                                <x-ui.table-cell>{{ $provider->billCategory->name }}</x-ui.table-cell>
-                                <x-ui.table-cell>{{ $provider->region ?? '—' }}</x-ui.table-cell>
-                                <x-ui.table-cell align="right">
+                                <x-ui.table-cell primary class="font-medium text-ink">{{ $provider->name }}</x-ui.table-cell>
+                                <x-ui.table-cell label="Category">{{ $provider->billCategory->name }}</x-ui.table-cell>
+                                <x-ui.table-cell label="Region">{{ $provider->region ?? '—' }}</x-ui.table-cell>
+                                <x-ui.table-cell actions align="right">
                                     <div class="flex justify-end gap-2">
                                         <x-ui.button size="sm" variant="ghost" wire:click="openBillProviderEdit({{ $provider->id }})">
                                             Edit
@@ -1495,7 +1495,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                             size="sm"
                                             variant="danger-ghost"
                                             wire:click="deleteBillProvider({{ $provider->id }})"
-                                            wire:confirm="Delete {{ $provider->name }}?"
+                                            confirm="Delete {{ $provider->name }}?"
                                            
                                         >
                                             Delete
@@ -1530,12 +1530,12 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                         </x-slot>
                     </x-ui.empty-state>
                 @else
-                    <x-ui.table :headers="['Category', 'Items', '']">
+                    <x-ui.table stack :headers="['Category', 'Items', '']">
                         @foreach ($serviceCategories as $category)
                             <x-ui.table-row wire:key="service-category-{{ $category->id }}">
-                                <x-ui.table-cell class="font-medium text-slate-900">{{ $category->name }}</x-ui.table-cell>
-                                <x-ui.table-cell>{{ $category->service_items_count }}</x-ui.table-cell>
-                                <x-ui.table-cell align="right">
+                                <x-ui.table-cell primary class="font-medium text-ink">{{ $category->name }}</x-ui.table-cell>
+                                <x-ui.table-cell label="Items">{{ $category->service_items_count }}</x-ui.table-cell>
+                                <x-ui.table-cell actions align="right">
                                     <div class="flex justify-end gap-2">
                                         <x-ui.button size="sm" variant="ghost" wire:click="openServiceCategoryEdit({{ $category->id }})">
                                             Edit
@@ -1544,7 +1544,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                             size="sm"
                                             variant="danger-ghost"
                                             wire:click="deleteServiceCategory({{ $category->id }})"
-                                            wire:confirm="Delete {{ $category->name }}?"
+                                            confirm="Delete {{ $category->name }}?"
                                            
                                         >
                                             Delete
@@ -1577,12 +1577,12 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                         </x-slot>
                     </x-ui.empty-state>
                 @else
-                    <x-ui.table :headers="['Item', 'Category', '']">
+                    <x-ui.table stack :headers="['Item', 'Category', '']">
                         @foreach ($serviceItems as $item)
                             <x-ui.table-row wire:key="service-item-{{ $item->id }}">
-                                <x-ui.table-cell class="font-medium text-slate-900">{{ $item->name }}</x-ui.table-cell>
-                                <x-ui.table-cell>{{ $item->serviceCategory->name }}</x-ui.table-cell>
-                                <x-ui.table-cell align="right">
+                                <x-ui.table-cell primary class="font-medium text-ink">{{ $item->name }}</x-ui.table-cell>
+                                <x-ui.table-cell label="Category">{{ $item->serviceCategory->name }}</x-ui.table-cell>
+                                <x-ui.table-cell actions align="right">
                                     <div class="flex justify-end gap-2">
                                         <x-ui.button size="sm" variant="ghost" wire:click="openServiceItemEdit({{ $item->id }})">
                                             Edit
@@ -1591,7 +1591,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                             size="sm"
                                             variant="danger-ghost"
                                             wire:click="deleteServiceItem({{ $item->id }})"
-                                            wire:confirm="Delete {{ $item->name }}?"
+                                            confirm="Delete {{ $item->name }}?"
                                            
                                         >
                                             Delete
@@ -1630,7 +1630,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                         </x-ui.field>
                     </div>
 
-                    <p class="text-sm text-slate-500">
+                    <p class="text-sm text-ink-faint">
                         Udhaar isn't listed here — it's a customer loan, not a paid service, so it has no commission.
                     </p>
 
@@ -1644,7 +1644,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         <div class="max-w-2xl space-y-6">
             <x-ui.card title="Branding" description="Shown on this shop's own receipts and invoices in place of the plain shop name.">
                 <form wire:submit="saveBranding" class="space-y-5">
-                    <x-ui.field label="Logo" name="brandingLogo" for="brandingLogo" help="Optional">
+                    <x-ui.field label="Logo" name="brandingLogo" for="brandingLogo">
                         <x-ui.file-input
                             wire:model="brandingLogo"
                             id="brandingLogo"
@@ -1661,7 +1661,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                             wire:model="brandingAddress"
                             id="brandingAddress"
                             rows="2"
-                            class="block w-full rounded-lg border-slate-300 py-2 px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:ring-brand-500"
+                            class="block w-full rounded-lg border-line-strong py-2 px-3 text-sm text-ink shadow-sm placeholder:text-ink-faint focus:border-link focus:ring-link"
                             placeholder="Shop #, Street, Market / City"
                         ></textarea>
                     </x-ui.field>
@@ -1715,11 +1715,11 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                     </x-slot>
                 </x-ui.empty-state>
             @else
-                <x-ui.table :headers="['Role', 'Screen Access', 'Users', '']">
+                <x-ui.table stack :headers="['Role', 'Screen Access', 'Users', '']">
                     @foreach ($roles as $role)
                         <x-ui.table-row wire:key="role-{{ $role->id }}">
-                            <x-ui.table-cell class="font-medium text-slate-900">{{ $role->name }}</x-ui.table-cell>
-                            <x-ui.table-cell>
+                            <x-ui.table-cell primary class="font-medium text-ink">{{ $role->name }}</x-ui.table-cell>
+                            <x-ui.table-cell label="Screen Access">
                                 <div class="flex flex-wrap gap-1.5">
                                     @foreach (ShopScreen::cases() as $screen)
                                         @if ($role->hasAccess($screen))
@@ -1727,12 +1727,12 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                         @endif
                                     @endforeach
                                     @if (empty($role->permissions))
-                                        <span class="text-sm text-slate-400">No access</span>
+                                        <span class="text-sm text-ink-faint">No access</span>
                                     @endif
                                 </div>
                             </x-ui.table-cell>
-                            <x-ui.table-cell>{{ $role->users_count }}</x-ui.table-cell>
-                            <x-ui.table-cell align="right">
+                            <x-ui.table-cell label="Users">{{ $role->users_count }}</x-ui.table-cell>
+                            <x-ui.table-cell actions align="right">
                                 <div class="flex justify-end gap-2">
                                     <x-ui.button size="sm" variant="ghost" wire:click="openRoleEdit({{ $role->id }})">
                                         Edit
@@ -1741,7 +1741,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                                         size="sm"
                                         variant="danger-ghost"
                                         wire:click="deleteRole({{ $role->id }})"
-                                        wire:confirm="Delete the {{ $role->name }} role? This cannot be undone."
+                                        confirm="Delete the {{ $role->name }} role? This cannot be undone."
                                        
                                     >
                                         Delete
@@ -1759,7 +1759,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     <x-ui.modal name="main-category-form" max-width="sm">
         <form wire:submit="saveMainCategory" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-semibold text-ink">
                 {{ $mainCategoryEditingId ? 'Edit Main Category' : 'Add Main Category' }}
             </h2>
 
@@ -1783,7 +1783,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     <x-ui.modal name="accessory-category-form" max-width="md">
         <form wire:submit="saveAccessoryCategory" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-semibold text-ink">
                 {{ $accessoryCategoryEditingId ? 'Edit Sub-Category' : 'Add Sub-Category' }}
             </h2>
 
@@ -1802,7 +1802,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                     </x-ui.field>
                 </div>
 
-                <x-ui.field label="Image" name="accessoryCategoryImage" for="accessoryCategoryImage" help="Optional">
+                <x-ui.field label="Image" name="accessoryCategoryImage" for="accessoryCategoryImage">
                     <x-ui.file-input
                         wire:model="accessoryCategoryImage"
                         id="accessoryCategoryImage"
@@ -1825,7 +1825,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     <x-ui.modal name="brand-form" max-width="sm">
         <form wire:submit="saveBrand" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-semibold text-ink">
                 {{ $brandEditingId ? 'Edit Brand' : 'Add Brand' }}
             </h2>
 
@@ -1849,7 +1849,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     <x-ui.modal name="network-form" max-width="md">
         <form wire:submit="saveNetwork" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-semibold text-ink">
                 {{ $networkEditingId ? 'Edit Network' : 'Add Network' }}
             </h2>
 
@@ -1861,13 +1861,13 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
                     <x-ui.field label="Color" name="networkColor" for="networkColor">
                         <div class="flex items-center gap-3">
-                            <input type="color" wire:model="networkColor" id="networkColor" class="h-10 w-14 cursor-pointer rounded-lg border border-slate-300">
-                            <span class="text-sm text-slate-500">{{ $networkColor }}</span>
+                            <input type="color" wire:model="networkColor" id="networkColor" class="h-10 w-14 cursor-pointer rounded-lg border border-line-strong">
+                            <span class="text-sm text-ink-faint">{{ $networkColor }}</span>
                         </div>
                     </x-ui.field>
                 </div>
 
-                <x-ui.field label="Image" name="networkImage" for="networkImage" help="Optional">
+                <x-ui.field label="Image" name="networkImage" for="networkImage">
                     <x-ui.file-input
                         wire:model="networkImage"
                         id="networkImage"
@@ -1891,7 +1891,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     <x-ui.modal name="shop-account-form" max-width="md">
         <form wire:submit="saveShopAccount" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-semibold text-ink">
                 {{ $shopAccountEditingId ? 'Edit Shop Account' : 'Add Shop Account' }}
             </h2>
 
@@ -1905,11 +1905,11 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                         <x-ui.input wire:model="shopAccountProviderType" id="shopAccountProviderType" />
                     </x-ui.field>
 
-                    <x-ui.field label="Account Title" name="shopAccountTitle" for="shopAccountTitle" help="Optional — the name on the account">
+                    <x-ui.field label="Account Title" name="shopAccountTitle" for="shopAccountTitle" help="The name on the account">
                         <x-ui.input wire:model="shopAccountTitle" id="shopAccountTitle" />
                     </x-ui.field>
 
-                    <x-ui.field label="Account Number / IBAN" name="shopAccountNumber" for="shopAccountNumber" help="Optional — shown to WhatsApp customers who pay online">
+                    <x-ui.field label="Account Number / IBAN" name="shopAccountNumber" for="shopAccountNumber" help="Shown to WhatsApp customers who pay online">
                         <x-ui.input wire:model="shopAccountNumber" id="shopAccountNumber" />
                     </x-ui.field>
 
@@ -1940,7 +1940,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     <x-ui.modal name="bill-category-form" max-width="sm">
         <form wire:submit="saveBillCategory" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-semibold text-ink">
                 {{ $billCategoryEditingId ? 'Edit Bill Category' : 'Add Bill Category' }}
             </h2>
 
@@ -1964,7 +1964,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     <x-ui.modal name="bill-provider-form" max-width="md">
         <form wire:submit="saveBillProvider" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-semibold text-ink">
                 {{ $billProviderEditingId ? 'Edit Bill Provider' : 'Add Bill Provider' }}
             </h2>
 
@@ -1982,7 +1982,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                         <x-ui.input wire:model="billProviderName" id="billProviderName" />
                     </x-ui.field>
 
-                    <x-ui.field label="Region / Province" name="billProviderRegion" for="billProviderRegion" help="Optional">
+                    <x-ui.field label="Region / Province" name="billProviderRegion" for="billProviderRegion">
                         <x-ui.input wire:model="billProviderRegion" id="billProviderRegion" placeholder="e.g. Punjab" />
                     </x-ui.field>
                 </div>
@@ -2002,7 +2002,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     <x-ui.modal name="service-category-form" max-width="sm">
         <form wire:submit="saveServiceCategory" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-semibold text-ink">
                 {{ $serviceCategoryEditingId ? 'Edit Service Category' : 'Add Service Category' }}
             </h2>
 
@@ -2026,7 +2026,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     <x-ui.modal name="service-item-form" max-width="md">
         <form wire:submit="saveServiceItem" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-semibold text-ink">
                 {{ $serviceItemEditingId ? 'Edit Service Item' : 'Add Service Item' }}
             </h2>
 
@@ -2058,7 +2058,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     <x-ui.modal name="role-form" max-width="lg">
         <form wire:submit="saveRole" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-semibold text-ink">
                 {{ $roleEditingId ? 'Edit Role' : 'Add Role' }}
             </h2>
 
@@ -2068,10 +2068,10 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 </x-ui.field>
 
                 <x-ui.field label="Screen Access" name="rolePermissions">
-                    <div class="max-h-96 space-y-4 overflow-y-auto rounded-lg border border-slate-200 p-4">
+                    <div class="max-h-96 space-y-4 overflow-y-auto rounded-lg border border-line p-4">
                         @foreach ($groupedScreens as $groupLabel => $groupScreens)
                             <div>
-                                <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">{{ $groupLabel }}</h4>
+                                <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-faint">{{ $groupLabel }}</h4>
                                 <div class="grid grid-cols-2 gap-3">
                                     @foreach ($groupScreens as $screen)
                                         <x-ui.checkbox wire:model="rolePermissions" value="{{ $screen->value }}" :label="$screen->label()" />

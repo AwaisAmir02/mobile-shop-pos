@@ -104,25 +104,25 @@ new class extends Component
     <form wire:submit="save" class="space-y-8">
         @foreach ($messages as $key => $message)
             <div wire:key="message-{{ $key }}">
-                <h3 class="text-sm font-semibold text-slate-900">{{ $message['title'] }}</h3>
-                <p class="mt-1 text-xs text-slate-500">{{ $message['help'] }}</p>
+                <h3 class="text-sm font-semibold text-ink">{{ $message['title'] }}</h3>
+                <p class="mt-1 text-xs text-ink-faint">{{ $message['help'] }}</p>
 
                 <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
                     @foreach ($languages as $language => $languageLabel)
                         <div wire:key="message-{{ $key }}-{{ $language }}">
-                            <label for="text-{{ $key }}-{{ $language }}" class="block text-sm font-medium text-slate-700">{{ $languageLabel }}</label>
+                            <label for="text-{{ $key }}-{{ $language }}" class="block text-sm font-medium text-ink-muted">{{ $languageLabel }}</label>
                             <textarea
                                 wire:model="texts.{{ $key }}.{{ $language }}"
                                 id="text-{{ $key }}-{{ $language }}"
                                 rows="6"
                                 maxlength="{{ \App\Support\WhatsAppMessageSuggestions::MAX_LENGTH }}"
                                 placeholder="{{ $defaults[$key][$language] }}"
-                                class="mt-1 block w-full rounded-lg border-slate-300 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                                class="mt-1 block w-full rounded-lg border-line-strong text-sm text-ink shadow-sm focus:border-link focus:ring-link"
                             ></textarea>
                             <x-ui.error :messages="$errors->get('texts.'.$key.'.'.$language)" />
 
                             <div class="mt-2 flex flex-wrap items-center gap-2">
-                                <span class="text-xs text-slate-500">Suggestions:</span>
+                                <span class="text-xs text-ink-faint">Suggestions:</span>
                                 @foreach ($suggestions[$key] as $index => $suggestion)
                                     <x-ui.button type="button" size="sm" variant="secondary" wire:click="useSuggestion('{{ $key }}', '{{ $language }}', {{ $index }})">{{ $suggestion['label'] }}</x-ui.button>
                                 @endforeach
@@ -134,7 +134,7 @@ new class extends Component
             </div>
         @endforeach
 
-        <div class="flex justify-end border-t border-slate-100 pt-5">
+        <div class="flex justify-end border-t border-line pt-5">
             <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="save">Save messages</x-ui.button>
         </div>
     </form>

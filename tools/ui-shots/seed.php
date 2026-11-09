@@ -182,6 +182,21 @@ for ($i = 0; $i < 18; $i++) {
     ]));
 }
 
+// Orders waiting in the inboxes, so the order lists and detail pages have
+// something to show. Pending only: nothing is accepted, so no sale or stock moves.
+$contact = $try('whatsapp contact', fn () => \App\Models\WhatsAppContact::create(['shop_id' => $shop->id, 'wa_id' => '923001112223', 'customer_id' => $customers[0]->id, 'last_inbound_at' => now()]));
+foreach ([[$sellable[0], 1], [$sellable[1] ?? $sellable[0], 2]] as $n => [$product, $quantity]) {
+    $try("whatsapp order $n", function () use ($shop, $contact, $product, $quantity, $n) {
+        $order = \App\Models\WhatsAppOrder::create(['shop_id' => $shop->id, 'whatsapp_contact_id' => $contact->id, 'status' => \App\Enums\WhatsAppOrderStatus::Pending, 'submitted_at' => now()->subHours($n + 1)]);
+        \App\Models\WhatsAppOrderItem::create(['shop_id' => $shop->id, 'whatsapp_order_id' => $order->id, 'product_id' => $product->id, 'product_name' => $product->name, 'quantity' => $quantity, 'quoted_unit_price' => (float) $product->price]);
+    });
+}
+$connection = $try('store connection', fn () => \App\Models\StoreConnection::create(['shop_id' => $shop->id, 'public_id' => 'demo'.substr(md5((string) $shop->id), 0, 12), 'name' => 'Demo web store', 'signing_secret' => 'demo-secret', 'created_by' => $owner->id]));
+$try('store order', function () use ($shop, $connection, $sellable) {
+    $order = \App\Models\StoreOrder::create(['shop_id' => $shop->id, 'store_connection_id' => $connection->id, 'external_order_id' => 'WEB-1001', 'event_id' => 'evt-demo-1', 'status' => 'pending', 'customer_name' => 'Zara Ahmed', 'customer_phone' => '0300-7654321', 'delivery_address' => 'House 12, Street 4, Gulshan', 'delivery_area' => 'Karachi', 'payment_method' => 'cod', 'placed_at' => now()->subHour()]);
+    \App\Models\StoreOrderItem::create(['shop_id' => $shop->id, 'store_order_id' => $order->id, 'product_id' => $sellable[0]->id, 'product_name' => $sellable[0]->name, 'quantity' => 1, 'unit_price' => (float) $sellable[0]->price]);
+});
+
 $try('start ledger', fn () => StartLedger::handle($shop->fresh(), []));
 
 echo 'products='.Product::count().' sales='.Sale::count().' stockins='.StockIn::count().' failures='.$failures."\n";

@@ -295,12 +295,12 @@ new class extends Component
 }; ?>
 
 <div class="space-y-6">
-    <div class="flex gap-1 overflow-x-auto border-b border-slate-200">
+    <div class="flex gap-1 overflow-x-auto border-b border-line">
         @foreach ($sections as $key => $label)
             <button type="button" wire:click="setSection('{{ $key }}')" @class([
                 'whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition',
-                'border-brand-600 text-brand-700' => $section === $key,
-                'border-transparent text-slate-500 hover:text-slate-700' => $section !== $key,
+                'border-primary text-link' => $section === $key,
+                'border-transparent text-ink-faint hover:text-ink-muted' => $section !== $key,
             ])>{{ $label }}</button>
         @endforeach
     </div>
@@ -310,30 +310,30 @@ new class extends Component
     @elseif ($section === 'whatsapp')
         <x-ui.card title="WhatsApp" description="Connect your shop's WhatsApp Business number so customers can browse and order through a chatbot.">
             @if (! $shop->usesWhatsApp())
-                <p class="text-sm text-slate-500">WhatsApp ordering is not enabled for your shop. Contact HisabOKitab support to turn it on.</p>
+                <p class="text-sm text-ink-faint">WhatsApp ordering is not enabled for your shop. Contact HisabOKitab support to turn it on.</p>
             @elseif ($whatsappConnection)
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <div class="flex items-center gap-2">
                             <x-ui.badge variant="success">Connected</x-ui.badge>
-                            <span class="font-medium text-slate-900">{{ $whatsappConnection->display_name ?? $whatsappConnection->external_id }}</span>
+                            <span class="font-medium text-ink">{{ $whatsappConnection->display_name ?? $whatsappConnection->external_id }}</span>
                         </div>
-                        <p class="mt-1 text-xs text-slate-500">
+                        <p class="mt-1 text-xs text-ink-faint">
                             Connected {{ $whatsappConnection->connected_at?->diffForHumans() }}.
                             Keep using the WhatsApp Business app on your phone as normal — open it at least once every 13 days to stay connected.
                         </p>
                         @if ($whatsappConnection->last_error)
-                            <p class="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">Last delivery problem: {{ $whatsappConnection->last_error }}</p>
+                            <p class="mt-2 rounded-lg bg-warning-soft p-2 text-xs text-warning">Last delivery problem: {{ $whatsappConnection->last_error }}</p>
                         @endif
                     </div>
-                    <x-ui.button variant="secondary" size="sm" wire:click="disconnectWhatsApp" wire:confirm="Disconnect WhatsApp? The chatbot will stop replying to customers.">Disconnect</x-ui.button>
+                    <x-ui.button variant="secondary" size="sm" wire:click="disconnectWhatsApp" confirm="Disconnect WhatsApp? The chatbot will stop replying to customers.">Disconnect</x-ui.button>
                 </div>
 
-                <div class="mt-6 border-t border-slate-100 pt-5">
+                <div class="mt-6 border-t border-line pt-5">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                            <p class="text-sm font-medium text-slate-900">Message templates</p>
-                            <p class="text-xs text-slate-500">WhatsApp needs pre-approved templates to message customers who haven't written to you in the last 24 hours (payment reminders, repair ready, order updates, back-in-stock, review requests).</p>
+                            <p class="text-sm font-medium text-ink">Message templates</p>
+                            <p class="text-xs text-ink-faint">WhatsApp needs pre-approved templates to message customers who haven't written to you in the last 24 hours (payment reminders, repair ready, order updates, back-in-stock, review requests).</p>
                         </div>
                         <div class="flex shrink-0 gap-2">
                             <x-ui.button size="sm" variant="secondary" wire:click="refreshTemplates">Refresh status</x-ui.button>
@@ -353,7 +353,7 @@ new class extends Component
                     @endif
                 </div>
             @elseif (! $whatsappReady)
-                <p class="text-sm text-slate-500">WhatsApp connection is not available yet. HisabOKitab is finishing setup with Meta — please check back soon.</p>
+                <p class="text-sm text-ink-faint">WhatsApp connection is not available yet. HisabOKitab is finishing setup with Meta — please check back soon.</p>
             @else
                 <div
                     x-data="{
@@ -403,7 +403,7 @@ new class extends Component
                     }"
                     class="space-y-3"
                 >
-                    <p class="text-sm text-slate-600">
+                    <p class="text-sm text-ink-muted">
                         You'll sign in with Facebook and pick the WhatsApp Business number you already use on your phone.
                         Your chats stay in the WhatsApp Business app — HisabOKitab only adds the ordering chatbot.
                     </p>
@@ -415,8 +415,8 @@ new class extends Component
             @endif
 
             @if ($shop->usesWhatsApp() && ! $whatsappConnection && $allowManual)
-                <form wire:submit="connectManually" class="mt-6 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-2">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400 sm:col-span-2">Manual connection (testing only)</p>
+                <form wire:submit="connectManually" class="mt-6 grid gap-3 border-t border-line pt-5 sm:grid-cols-2">
+                    <p class="text-xs font-medium uppercase tracking-wide text-ink-faint sm:col-span-2">Manual connection (testing only)</p>
                     <x-ui.field label="Phone number ID" name="manualPhoneNumberId" for="manualPhoneNumberId">
                         <x-ui.input wire:model="manualPhoneNumberId" id="manualPhoneNumberId" />
                     </x-ui.field>
@@ -440,29 +440,29 @@ new class extends Component
     @elseif ($section === 'facebook')
         <x-ui.card title="Facebook & Instagram" description="Connect your shop's Facebook Page (and the Instagram business account linked to it) to post products and stories from HisabOKitab.">
             @if (! $shop->social_enabled)
-                <p class="text-sm text-slate-500">Social posting is not enabled for your shop. Contact HisabOKitab support to turn it on.</p>
+                <p class="text-sm text-ink-faint">Social posting is not enabled for your shop. Contact HisabOKitab support to turn it on.</p>
             @elseif ($facebookConnection)
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div class="space-y-1 text-sm">
-                        <div class="flex items-center gap-2"><x-ui.badge variant="success">Connected</x-ui.badge><span class="font-medium text-slate-900">{{ $facebookConnection->display_name }}</span><span class="text-xs text-slate-500">Facebook Page</span></div>
+                        <div class="flex items-center gap-2"><x-ui.badge variant="success">Connected</x-ui.badge><span class="font-medium text-ink">{{ $facebookConnection->display_name }}</span><span class="text-xs text-ink-faint">Facebook Page</span></div>
                         @if ($instagramConnection)
-                            <div class="flex items-center gap-2"><x-ui.badge variant="success">Connected</x-ui.badge><span class="font-medium text-slate-900">{{ $instagramConnection->display_name }}</span><span class="text-xs text-slate-500">Instagram</span></div>
+                            <div class="flex items-center gap-2"><x-ui.badge variant="success">Connected</x-ui.badge><span class="font-medium text-ink">{{ $instagramConnection->display_name }}</span><span class="text-xs text-ink-faint">Instagram</span></div>
                         @else
-                            <p class="text-xs text-slate-500">No Instagram business account is linked to this Page. Link one in Instagram settings, then reconnect.</p>
+                            <p class="text-xs text-ink-faint">No Instagram business account is linked to this Page. Link one in Instagram settings, then reconnect.</p>
                         @endif
                     </div>
-                    <x-ui.button variant="secondary" size="sm" wire:click="disconnectMeta" wire:confirm="Disconnect Facebook and Instagram? Scheduled posts will fail until you reconnect.">Disconnect</x-ui.button>
+                    <x-ui.button variant="secondary" size="sm" wire:click="disconnectMeta" confirm="Disconnect Facebook and Instagram? Scheduled posts will fail until you reconnect.">Disconnect</x-ui.button>
                 </div>
             @elseif (! $metaReady)
-                <p class="text-sm text-slate-500">Facebook & Instagram connection is not available yet. HisabOKitab is finishing setup with Meta — please check back soon.</p>
+                <p class="text-sm text-ink-faint">Facebook & Instagram connection is not available yet. HisabOKitab is finishing setup with Meta — please check back soon.</p>
             @elseif ($pageCandidates !== [])
-                <p class="mb-3 text-sm text-slate-600">Which Page is your shop's?</p>
-                <div class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                <p class="mb-3 text-sm text-ink-muted">Which Page is your shop's?</p>
+                <div class="divide-y divide-line rounded-lg border border-line">
                     @foreach ($pageCandidates as $page)
                         <div class="flex items-center justify-between gap-3 px-4 py-3" wire:key="page-{{ $page['id'] }}">
                             <div>
-                                <p class="font-medium text-slate-900">{{ $page['name'] }}</p>
-                                <p class="text-xs text-slate-500">{{ $page['instagram_username'] ? 'Instagram: @'.$page['instagram_username'] : 'No Instagram linked' }}</p>
+                                <p class="font-medium text-ink">{{ $page['name'] }}</p>
+                                <p class="text-xs text-ink-faint">{{ $page['instagram_username'] ? 'Instagram: @'.$page['instagram_username'] : 'No Instagram linked' }}</p>
                             </div>
                             <x-ui.button size="sm" wire:click="attachMetaPage('{{ $page['id'] }}')">Use this Page</x-ui.button>
                         </div>
@@ -497,7 +497,7 @@ new class extends Component
                     }"
                     class="space-y-3"
                 >
-                    <p class="text-sm text-slate-600">You'll sign in with Facebook and choose the Page you manage. We only post what you approve.</p>
+                    <p class="text-sm text-ink-muted">You'll sign in with Facebook and choose the Page you manage. We only post what you approve.</p>
                     <x-ui.button x-on:click="connect" x-bind:disabled="connecting">
                         <span x-show="! connecting">Connect Facebook &amp; Instagram</span>
                         <span x-show="connecting" x-cloak>Connecting…</span>
@@ -511,23 +511,23 @@ new class extends Component
                 @if ($adAccountConnection)
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div class="space-y-1 text-sm">
-                            <div class="flex items-center gap-2"><x-ui.badge variant="success">Connected</x-ui.badge><span class="font-medium text-slate-900">{{ $adAccountConnection->display_name }}</span><span class="text-xs text-slate-500">{{ $adAccountConnection->meta['currency'] ?? '' }}</span></div>
+                            <div class="flex items-center gap-2"><x-ui.badge variant="success">Connected</x-ui.badge><span class="font-medium text-ink">{{ $adAccountConnection->display_name }}</span><span class="text-xs text-ink-faint">{{ $adAccountConnection->meta['currency'] ?? '' }}</span></div>
                             @if ($adAccountConnection->token_expires_at && $adAccountConnection->token_expires_at->lt(now()->addDays(7)))
-                                <p class="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">Access expires {{ $adAccountConnection->token_expires_at->diffForHumans() }}. Reconnect to keep managing your ads.</p>
+                                <p class="rounded-lg bg-warning-soft p-2 text-xs text-warning">Access expires {{ $adAccountConnection->token_expires_at->diffForHumans() }}. Reconnect to keep managing your ads.</p>
                             @endif
                         </div>
-                        <x-ui.button variant="secondary" size="sm" wire:click="disconnectAds" wire:confirm="Disconnect the ad account? Ads already running keep running on Meta until you stop them there.">Disconnect</x-ui.button>
+                        <x-ui.button variant="secondary" size="sm" wire:click="disconnectAds" confirm="Disconnect the ad account? Ads already running keep running on Meta until you stop them there.">Disconnect</x-ui.button>
                     </div>
                 @elseif (! ($metaReady && $adsLoginConfigId))
-                    <p class="text-sm text-slate-500">Ad account connection is not available yet. HisabOKitab is finishing setup with Meta.</p>
+                    <p class="text-sm text-ink-faint">Ad account connection is not available yet. HisabOKitab is finishing setup with Meta.</p>
                 @elseif ($adAccountCandidates !== [])
-                    <p class="mb-3 text-sm text-slate-600">Which ad account should pay for your ads?</p>
-                    <div class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                    <p class="mb-3 text-sm text-ink-muted">Which ad account should pay for your ads?</p>
+                    <div class="divide-y divide-line rounded-lg border border-line">
                         @foreach ($adAccountCandidates as $account)
                             <div class="flex items-center justify-between gap-3 px-4 py-3" wire:key="adacct-{{ $account['id'] }}">
                                 <div>
-                                    <p class="font-medium text-slate-900">{{ $account['name'] }}</p>
-                                    <p class="text-xs text-slate-500">{{ $account['currency'] }}{{ $account['business'] ? ' · '.$account['business'] : '' }}</p>
+                                    <p class="font-medium text-ink">{{ $account['name'] }}</p>
+                                    <p class="text-xs text-ink-faint">{{ $account['currency'] }}{{ $account['business'] ? ' · '.$account['business'] : '' }}</p>
                                 </div>
                                 <x-ui.button size="sm" wire:click="attachAdAccount('{{ $account['id'] }}')">Use this account</x-ui.button>
                             </div>

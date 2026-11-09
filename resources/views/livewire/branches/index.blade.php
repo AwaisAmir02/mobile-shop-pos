@@ -177,13 +177,13 @@ new #[Layout('layouts.app')] #[Title('Branches')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Branches</h1>
+        <x-ui.page-header>Branches</x-ui.page-header>
     </x-slot>
 
     <x-billing.limit-notice limit="branches" />
 
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p class="text-sm text-slate-500">
+        <p class="text-sm text-ink-faint">
             @if ($limit !== null)
                 {{ $used }} of {{ $limit }} {{ Str::plural('branch', $limit) }} on your plan.
             @else
@@ -199,10 +199,10 @@ new #[Layout('layouts.app')] #[Title('Branches')] class extends Component
         </x-ui.button>
     </div>
 
-    <x-ui.table :headers="['Branch', 'Address', 'Phone', 'Staff', '']">
+    <x-ui.table stack :headers="['Branch', 'Address', 'Phone', 'Staff', '']">
         @foreach ($branches as $branch)
             <x-ui.table-row wire:key="branch-{{ $branch->id }}">
-                <x-ui.table-cell class="font-medium text-slate-900">
+                <x-ui.table-cell primary class="font-medium text-ink">
                     {{ $branch->name }}
                     @if ($branch->is_main)
                         <x-ui.badge variant="brand">Main</x-ui.badge>
@@ -211,18 +211,19 @@ new #[Layout('layouts.app')] #[Title('Branches')] class extends Component
                         <x-ui.badge>Archived</x-ui.badge>
                     @endif
                 </x-ui.table-cell>
-                <x-ui.table-cell>{{ $branch->address ?? '—' }}</x-ui.table-cell>
-                <x-ui.table-cell>{{ $branch->phone ?? '—' }}</x-ui.table-cell>
-                <x-ui.table-cell>{{ $branch->users_count ?: '—' }}</x-ui.table-cell>
-                <x-ui.table-cell align="right">
-                    <div class="flex justify-end gap-2">
-                        <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $branch->id }})">Edit</x-ui.button>
+                <x-ui.table-cell label="Address">{{ $branch->address ?? '—' }}</x-ui.table-cell>
+                <x-ui.table-cell label="Phone">{{ $branch->phone ?? '—' }}</x-ui.table-cell>
+                <x-ui.table-cell label="Staff">{{ $branch->users_count ?: '—' }}</x-ui.table-cell>
+                <x-ui.table-cell actions align="right">
+                    <x-ui.row-actions label="Actions for {{ $branch->name }}">
+                        <x-ui.menu-item wire:click="openEdit({{ $branch->id }})">Edit</x-ui.menu-item>
                         @if ($branch->isArchived())
-                            <x-ui.button size="sm" variant="ghost" wire:click="reactivate({{ $branch->id }})">Reactivate</x-ui.button>
+                            <x-ui.menu-item wire:click="reactivate({{ $branch->id }})">Reactivate</x-ui.menu-item>
                         @elseif (! $branch->is_main)
-                            <x-ui.button size="sm" variant="danger-ghost" wire:click="archive({{ $branch->id }})" wire:confirm="Archive {{ $branch->name }}? Its history stays; nothing new can be recorded there.">Archive</x-ui.button>
+                            <x-ui.menu-divider />
+                            <x-ui.menu-item danger wire:click="archive({{ $branch->id }})" confirm="Archive {{ $branch->name }}? Its history stays; nothing new can be recorded there." confirm-label="Archive">Archive</x-ui.menu-item>
                         @endif
-                    </div>
+                    </x-ui.row-actions>
                 </x-ui.table-cell>
             </x-ui.table-row>
         @endforeach
@@ -230,7 +231,7 @@ new #[Layout('layouts.app')] #[Title('Branches')] class extends Component
 
     <x-ui.modal name="branch-form" max-width="md">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">{{ $editingId ? 'Edit Branch' : 'Add Branch' }}</h2>
+            <h2 class="text-lg font-semibold text-ink">{{ $editingId ? 'Edit Branch' : 'Add Branch' }}</h2>
 
             <div class="mt-5 space-y-5">
                 <x-ui.field label="Name" name="name" for="branchName">

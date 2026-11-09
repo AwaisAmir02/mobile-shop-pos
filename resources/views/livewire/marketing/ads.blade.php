@@ -46,13 +46,13 @@ new #[Layout('layouts.app')] #[Title('Ads')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Marketing</h1>
+        <x-ui.page-header>Marketing</x-ui.page-header>
     </x-slot>
 
     <x-marketing.nav active="marketing.ads" />
 
     @if (! $adAccount)
-        <div class="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+        <div class="mb-4 rounded-lg bg-warning-soft p-3 text-sm text-warning">
             Connect your Meta ad account in Settings → Integrations to run ads. Meta charges your own ad account — HisabOKitab never charges for ad spend.
         </div>
     @endif
@@ -66,8 +66,8 @@ new #[Layout('layouts.app')] #[Title('Ads')] class extends Component
         ] as $label => $value)
             <x-ui.card :padding="false">
                 <div class="px-5 py-4">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ $label }}</p>
-                    <p class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">{{ $value }}</p>
+                    <p class="text-xs font-medium uppercase tracking-wide text-ink-faint">{{ $label }}</p>
+                    <p class="mt-1 text-2xl font-semibold tabular-nums text-ink">{{ $value }}</p>
                 </div>
             </x-ui.card>
         @endforeach
@@ -93,22 +93,22 @@ new #[Layout('layouts.app')] #[Title('Ads')] class extends Component
         @if ($campaigns->isEmpty())
             <x-ui.empty-state title="No ads yet" description="Boost a post to reach more people, or run a WhatsApp ad that brings customers straight into your chat." />
         @else
-            <x-ui.table :headers="['Campaign', 'Goal', 'Status', 'Budget', 'Spent', 'Orders', 'Sales', 'ROAS', '']">
+            <x-ui.table stack :headers="['Campaign', 'Goal', 'Status', 'Budget', 'Spent', 'Orders', 'Sales', 'ROAS', '']">
                 @foreach ($campaigns as $campaign)
                     @php($r = $results[$campaign->id])
                     <x-ui.table-row wire:key="ad-{{ $campaign->id }}">
-                        <x-ui.table-cell class="font-medium text-slate-900">
+                        <x-ui.table-cell primary class="font-medium text-ink">
                             {{ $campaign->post?->title ?? $campaign->name }}
-                            <div class="text-xs text-slate-400">{{ $campaign->start_at->format('d M') }} – {{ $campaign->end_at->format('d M Y') }}</div>
+                            <div class="text-xs text-ink-faint">{{ $campaign->start_at->format('d M') }} – {{ $campaign->end_at->format('d M Y') }}</div>
                         </x-ui.table-cell>
-                        <x-ui.table-cell>{{ $campaign->goal->label() }}</x-ui.table-cell>
-                        <x-ui.table-cell><x-ui.badge :variant="$campaign->status->badge()">{{ $campaign->status->label() }}</x-ui.badge></x-ui.table-cell>
-                        <x-ui.table-cell class="tabular-nums">{{ $campaign->currency }} {{ number_format($campaign->daily_budget) }}/day</x-ui.table-cell>
-                        <x-ui.table-cell class="tabular-nums">{{ $campaign->currency }} {{ number_format($r['spend'], 2) }}</x-ui.table-cell>
-                        <x-ui.table-cell class="font-semibold tabular-nums text-slate-900">{{ $r['orders'] }}</x-ui.table-cell>
-                        <x-ui.table-cell class="tabular-nums">Rs {{ number_format($r['revenue']) }}</x-ui.table-cell>
-                        <x-ui.table-cell class="tabular-nums">{{ $r['roas'] !== null ? $r['roas'].'×' : '—' }}</x-ui.table-cell>
-                        <x-ui.table-cell align="right">
+                        <x-ui.table-cell label="Goal">{{ $campaign->goal->label() }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Status"><x-ui.badge :variant="$campaign->status->badge()">{{ $campaign->status->label() }}</x-ui.badge></x-ui.table-cell>
+                        <x-ui.table-cell label="Budget" class="tabular-nums">{{ $campaign->currency }} {{ number_format($campaign->daily_budget) }}/day</x-ui.table-cell>
+                        <x-ui.table-cell label="Spent" class="tabular-nums">{{ $campaign->currency }} {{ number_format($r['spend'], 2) }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Orders" class="font-semibold tabular-nums text-ink">{{ $r['orders'] }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Sales" class="tabular-nums">Rs {{ number_format($r['revenue']) }}</x-ui.table-cell>
+                        <x-ui.table-cell label="ROAS" class="tabular-nums">{{ $r['roas'] !== null ? $r['roas'].'×' : '—' }}</x-ui.table-cell>
+                        <x-ui.table-cell actions align="right">
                             <x-ui.button href="{{ route('marketing.ads.show', $campaign) }}" wire:navigate size="sm" variant="secondary">Open</x-ui.button>
                         </x-ui.table-cell>
                     </x-ui.table-row>

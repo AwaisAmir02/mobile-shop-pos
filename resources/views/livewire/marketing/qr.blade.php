@@ -71,7 +71,7 @@ new #[Layout('layouts.app')] #[Title('QR Codes')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Marketing</h1>
+        <x-ui.page-header>Marketing</x-ui.page-header>
     </x-slot>
 
     <x-marketing.nav active="marketing.qr" />
@@ -90,7 +90,7 @@ new #[Layout('layouts.app')] #[Title('QR Codes')] class extends Component
             <div><x-ui.button type="submit" :disabled="! $hasNumber">Create QR code</x-ui.button></div>
         </form>
         @unless ($hasNumber)
-            <p class="mt-3 text-sm text-amber-700">Connect WhatsApp (Settings → Integrations) or add a phone number to your shop first.</p>
+            <p class="mt-3 text-sm text-warning">Connect WhatsApp (Settings → Integrations) or add a phone number to your shop first.</p>
         @endunless
     </x-ui.card>
 
@@ -99,12 +99,12 @@ new #[Layout('layouts.app')] #[Title('QR Codes')] class extends Component
             <x-ui.card wire:key="qr-{{ $row['qr']->id }}">
                 <div class="flex items-start gap-4">
                     @if ($row['image'])
-                        <img src="{{ $row['image'] }}" alt="QR code for {{ $row['qr']->title }}" class="h-28 w-28 rounded border border-slate-200">
+                        <img src="{{ $row['image'] }}" alt="QR code for {{ $row['qr']->title }}" class="h-28 w-28 rounded border border-line">
                     @endif
                     <div class="min-w-0">
-                        <p class="font-medium text-slate-900">{{ $row['qr']->title }}</p>
-                        <p class="text-xs text-slate-500">{{ str_starts_with((string) $row['qr']->caption, 'CATALOG') ? 'Opens product catalog' : 'Opens chat' }} · {{ $row['qr']->refTag() }}</p>
-                        <p class="mt-2 text-sm text-slate-700"><span class="font-semibold">{{ $row['orders'] }}</span> {{ \Illuminate\Support\Str::plural('order', $row['orders']) }} · {{ $row['accepted'] }} accepted</p>
+                        <p class="font-medium text-ink">{{ $row['qr']->title }}</p>
+                        <p class="text-xs text-ink-faint">{{ str_starts_with((string) $row['qr']->caption, 'CATALOG') ? 'Opens product catalog' : 'Opens chat' }} · {{ $row['qr']->refTag() }}</p>
+                        <p class="mt-2 text-sm text-ink-muted"><span class="font-semibold">{{ $row['orders'] }}</span> {{ \Illuminate\Support\Str::plural('order', $row['orders']) }} · {{ $row['accepted'] }} accepted</p>
                     </div>
                 </div>
                 @if ($row['link'])

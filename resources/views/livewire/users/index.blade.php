@@ -205,7 +205,7 @@ new #[Layout('layouts.app')] #[Title('Team')] class extends Component
 
     <x-billing.limit-notice limit="staff_users" />
 
-    <div class="mb-4 flex justify-end">
+    <div class="mb-5 flex justify-end">
         <x-ui.button wire:click="openCreate">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -214,12 +214,12 @@ new #[Layout('layouts.app')] #[Title('Team')] class extends Component
         </x-ui.button>
     </div>
 
-    <x-ui.table :headers="$multipleBranches ? ['Name', 'Login', 'Role', 'Branch', ''] : ['Name', 'Login', 'Role', '']">
+    <x-ui.table stack :headers="$multipleBranches ? ['Name', 'Login', 'Role', 'Branch', ''] : ['Name', 'Login', 'Role', '']">
         @foreach ($users as $user)
             <x-ui.table-row wire:key="user-{{ $user->id }}">
-                <x-ui.table-cell class="font-medium text-slate-900">{{ $user->name }}</x-ui.table-cell>
-                <x-ui.table-cell>{{ $user->loginLabel() }}</x-ui.table-cell>
-                <x-ui.table-cell>
+                <x-ui.table-cell primary class="font-semibold text-ink">{{ $user->name }}</x-ui.table-cell>
+                <x-ui.table-cell label="Login">{{ $user->loginLabel() }}</x-ui.table-cell>
+                <x-ui.table-cell label="Role">
                     @if ($user->is_owner)
                         <x-ui.badge variant="brand">Owner · Full Access</x-ui.badge>
                     @else
@@ -227,29 +227,19 @@ new #[Layout('layouts.app')] #[Title('Team')] class extends Component
                     @endif
                 </x-ui.table-cell>
                 @if ($multipleBranches)
-                    <x-ui.table-cell>{{ $user->is_owner || ! $user->branch ? 'All branches' : $user->branch->name }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Branch">{{ $user->is_owner || ! $user->branch ? 'All branches' : $user->branch->name }}</x-ui.table-cell>
                 @endif
-                <x-ui.table-cell align="right">
-                    <div class="flex justify-end gap-2">
-                        <x-ui.button size="sm" variant="ghost" wire:click="openResetPassword({{ $user->id }})">
-                            Reset Password
-                        </x-ui.button>
-
+                <x-ui.table-cell actions align="right">
+                    <x-ui.row-actions label="Actions for {{ $user->name }}">
                         @unless ($user->is_owner)
-                            <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $user->id }})">
-                                Edit
-                            </x-ui.button>
-                            <x-ui.button
-                                size="sm"
-                                variant="danger-ghost"
-                                wire:click="delete({{ $user->id }})"
-                                wire:confirm="Delete {{ $user->name }}? This cannot be undone."
-                               
-                            >
-                                Delete
-                            </x-ui.button>
+                            <x-ui.menu-item wire:click="openEdit({{ $user->id }})">Edit</x-ui.menu-item>
                         @endunless
-                    </div>
+                        <x-ui.menu-item wire:click="openResetPassword({{ $user->id }})">Reset Password</x-ui.menu-item>
+                        @unless ($user->is_owner)
+                            <x-ui.menu-divider />
+                            <x-ui.menu-item danger wire:click="delete({{ $user->id }})" confirm="Delete {{ $user->name }}? This cannot be undone." confirm-label="Delete">Delete</x-ui.menu-item>
+                        @endunless
+                    </x-ui.row-actions>
                 </x-ui.table-cell>
             </x-ui.table-row>
         @endforeach
@@ -257,7 +247,7 @@ new #[Layout('layouts.app')] #[Title('Team')] class extends Component
 
     <x-ui.modal name="user-form" max-width="md">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-semibold text-ink">
                 {{ $editingId ? 'Edit User' : 'Add User' }}
             </h2>
 
@@ -297,7 +287,7 @@ new #[Layout('layouts.app')] #[Title('Team')] class extends Component
                 </div>
 
                 @unless ($editingId)
-                    <p class="text-sm text-slate-500">
+                    <p class="text-sm text-ink-faint">
                         A temporary password is generated automatically — use "Reset Password" from the list afterward to set the one you'll share with them.
                     </p>
                 @endunless
@@ -317,8 +307,8 @@ new #[Layout('layouts.app')] #[Title('Team')] class extends Component
 
     <x-ui.modal name="reset-password-form" max-width="sm">
         <form wire:submit="resetPassword" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Reset Password</h2>
-            <p class="mt-1 text-sm text-slate-500">Sets a new password without needing the current one.</p>
+            <h2 class="text-lg font-semibold text-ink">Reset Password</h2>
+            <p class="mt-1 text-sm text-ink-faint">Sets a new password without needing the current one.</p>
 
             <div class="mt-5 space-y-5">
                 <x-ui.field label="New Password" name="newPassword" for="newPassword">

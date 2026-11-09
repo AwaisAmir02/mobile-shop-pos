@@ -392,6 +392,23 @@ lets the user open it; one tab alone shows nothing.
 **`x-ui.note`** sets an explanatory sentence apart (Accounts, Payroll), so the
 long explanations the ledger needs stay but read as notes, not body text.
 
+## Shop and account screens (built in D9)
+
+- **In-page switches look segmented, page tabs look like tabs.** Dashboard's
+  Day/Month/Year and the order inboxes' Pending/Accepted/Rejected change the view
+  of one page, so they use the segmented pill (`aria-pressed`). Moving to another
+  page stays `x-ui.module-tabs`.
+- **Fold, don't drop.** Long lists that are mostly empty or mostly fixed fold
+  behind a toggle and stay in the page: the dashboard's counter rows with nothing
+  this period, and Plan & Usage's feature list after the first eight.
+- **Confirm on a submit button.** `x-ui.button type="submit" confirm="..."` keeps
+  its type and stops its own default, so clicking it or pressing Enter in the form
+  asks first; on yes its hidden twin (also a submit button) submits the form.
+- **Even rows of cards.** A variable number of stat cards uses
+  `grid-cols-[repeat(auto-fit,minmax(12.5rem,1fr))]`, so no card sits alone on a
+  second row.
+- Chart colours come from the tokens (`fill-primary`, `stroke-line`), not hex.
+
 ## Checks for every stage
 
 1. Full "before" baseline, finished before the first edit.

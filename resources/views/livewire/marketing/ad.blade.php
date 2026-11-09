@@ -116,13 +116,13 @@ new #[Layout('layouts.app')] #[Title('Ad')] class extends Component
 
 <div @if ($campaign->status === AdCampaignStatus::Creating) wire:poll.4s @endif>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Marketing</h1>
+        <x-ui.page-header>Marketing</x-ui.page-header>
     </x-slot>
 
     <x-marketing.nav active="marketing.ads" />
 
     <div class="mb-4 flex flex-wrap items-center gap-3">
-        <h2 class="text-lg font-semibold text-slate-900">{{ $campaign->post?->title ?? $campaign->name }}</h2>
+        <h2 class="text-lg font-semibold text-ink">{{ $campaign->post?->title ?? $campaign->name }}</h2>
         <x-ui.badge :variant="$campaign->status->badge()">{{ $campaign->status->label() }}</x-ui.badge>
         @if ($campaign->effective_status && $campaign->status->isLive())
             <x-ui.badge>Meta: {{ str_replace('_', ' ', strtolower($campaign->effective_status)) }}</x-ui.badge>
@@ -145,20 +145,20 @@ new #[Layout('layouts.app')] #[Title('Ad')] class extends Component
                     ] as $label => $value)
                         <x-ui.card :padding="false">
                             <div class="px-5 py-4">
-                                <p class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ $label }}</p>
-                                <p class="mt-1 text-xl font-semibold tabular-nums text-slate-900">{{ $value }}</p>
+                                <p class="text-xs font-medium uppercase tracking-wide text-ink-faint">{{ $label }}</p>
+                                <p class="mt-1 text-xl font-semibold tabular-nums text-ink">{{ $value }}</p>
                             </div>
                         </x-ui.card>
                     @endforeach
                 </div>
-                <div class="flex items-center gap-3 text-xs text-slate-500">
+                <div class="flex items-center gap-3 text-xs text-ink-faint">
                     <span>Results updated {{ $campaign->metrics_synced_at?->diffForHumans() ?? 'never' }}.</span>
-                    <button type="button" wire:click="refreshResults" class="font-medium text-brand-700 hover:text-brand-800">Refresh now</button>
+                    <button type="button" wire:click="refreshResults" class="font-medium text-link hover:underline">Refresh now</button>
                 </div>
             @endif
 
             @if ($campaign->review_feedback)
-                <div class="rounded-lg bg-red-50 p-4 text-sm text-red-800">
+                <div class="rounded-lg bg-danger-soft p-4 text-sm text-danger">
                     <p class="font-medium">Meta flagged this ad</p>
                     <p class="mt-1">{{ $campaign->review_feedback }}</p>
                 </div>
@@ -169,16 +169,16 @@ new #[Layout('layouts.app')] #[Title('Ad')] class extends Component
                     <ol class="space-y-2 text-sm">
                         @foreach ($steps as $label => $done)
                             <li class="flex items-center gap-2">
-                                <span @class(['flex h-5 w-5 items-center justify-center rounded-full text-xs', 'bg-emerald-100 text-emerald-700' => $done, 'bg-slate-100 text-slate-400' => ! $done])>{{ $done ? '✓' : '·' }}</span>
+                                <span @class(['flex h-5 w-5 items-center justify-center rounded-full text-xs', 'bg-success-soft text-success' => $done, 'bg-surface-sunken text-ink-faint' => ! $done])>{{ $done ? '✓' : '·' }}</span>
                                 {{ $label }}
                             </li>
                         @endforeach
                     </ol>
                     @if ($campaign->status === AdCampaignStatus::Failed)
-                        <p class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{{ $campaign->error }}</p>
+                        <p class="mt-4 rounded-lg bg-danger-soft p-3 text-sm text-danger">{{ $campaign->error }}</p>
                         <div class="mt-3 flex gap-2">
                             <x-ui.button size="sm" wire:click="retrySetup">Retry setup</x-ui.button>
-                            <x-ui.button size="sm" variant="ghost" wire:click="discard" wire:confirm="Discard this ad?">Discard</x-ui.button>
+                            <x-ui.button size="sm" variant="ghost" wire:click="discard" confirm="Discard this ad?">Discard</x-ui.button>
                         </div>
                     @endif
                 </x-ui.card>
@@ -187,14 +187,14 @@ new #[Layout('layouts.app')] #[Title('Ad')] class extends Component
             @if ($campaign->status === AdCampaignStatus::Ready)
                 <x-ui.card title="Launch">
                     <form wire:submit="launch" class="space-y-4">
-                        <label class="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                            <input type="checkbox" wire:model="confirmSpend" class="mt-0.5 rounded border-amber-300 text-brand-600 focus:ring-brand-500">
+                        <label class="flex items-start gap-3 rounded-lg border border-warning/20 bg-warning-soft p-4 text-sm text-warning">
+                            <input type="checkbox" wire:model="confirmSpend" class="mt-0.5 rounded border-warning/30 text-link focus:ring-link">
                             <span>I understand Meta will charge my ad account up to <strong>{{ $campaign->currency }} {{ number_format($campaign->maxSpend(), 2) }}</strong> ({{ $campaign->currency }} {{ number_format($campaign->daily_budget) }} a day for {{ $campaign->days() }} {{ \Illuminate\Support\Str::plural('day', $campaign->days()) }}). HisabOKitab does not charge for ad spend.</span>
                         </label>
                         <x-ui.error :messages="$errors->get('confirmSpend')" />
                         <div class="flex gap-2">
                             <x-ui.button type="submit" wire:loading.attr="disabled">Launch ad</x-ui.button>
-                            <x-ui.button variant="ghost" wire:click="discard" wire:confirm="Discard this ad? It will be removed from Meta.">Discard</x-ui.button>
+                            <x-ui.button variant="ghost" wire:click="discard" confirm="Discard this ad? It will be removed from Meta.">Discard</x-ui.button>
                         </div>
                     </form>
                 </x-ui.card>
@@ -207,7 +207,7 @@ new #[Layout('layouts.app')] #[Title('Ad')] class extends Component
                     @else
                         <x-ui.button variant="secondary" wire:click="resume">Resume</x-ui.button>
                     @endif
-                    <x-ui.button variant="danger" wire:click="stop" wire:confirm="Stop this ad for good? It cannot be restarted.">Stop</x-ui.button>
+                    <x-ui.button variant="danger" wire:click="stop" confirm="Stop this ad for good? It cannot be restarted.">Stop</x-ui.button>
                 </div>
             @endif
         </div>
@@ -215,25 +215,25 @@ new #[Layout('layouts.app')] #[Title('Ad')] class extends Component
         <div class="space-y-4">
             <x-ui.card title="Details">
                 <dl class="space-y-2 text-sm">
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Goal</dt><dd class="text-right text-slate-900">{{ $campaign->goal->label() }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Budget</dt><dd class="text-slate-900">{{ $campaign->currency }} {{ number_format($campaign->daily_budget) }}/day</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Runs</dt><dd class="text-right text-slate-900">{{ $campaign->start_at->format('d M, h:i A') }} – {{ $campaign->end_at->format('d M Y') }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Where</dt><dd class="text-right text-slate-900">
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Goal</dt><dd class="text-right text-ink">{{ $campaign->goal->label() }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Budget</dt><dd class="text-ink">{{ $campaign->currency }} {{ number_format($campaign->daily_budget) }}/day</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Runs</dt><dd class="text-right text-ink">{{ $campaign->start_at->format('d M, h:i A') }} – {{ $campaign->end_at->format('d M Y') }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Where</dt><dd class="text-right text-ink">
                         @switch($campaign->targeting['mode'] ?? 'country')
                             @case('cities') {{ collect($campaign->targeting['cities'] ?? [])->pluck('name')->implode(', ') }} @break
                             @case('radius') {{ $campaign->targeting['radius_km'] }} km around the shop @break
                             @default All of Pakistan
                         @endswitch
                     </dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Who</dt><dd class="text-slate-900">{{ ['all' => 'Everyone', 'male' => 'Men', 'female' => 'Women'][$campaign->targeting['gender'] ?? 'all'] }}, {{ $campaign->targeting['age_min'] ?? 18 }}–{{ $campaign->targeting['age_max'] ?? 65 }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Shows on</dt><dd class="text-right text-slate-900">Facebook, Instagram{{ ! empty($campaign->targeting['whatsapp_status']) ? ', WhatsApp Status' : '' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Who</dt><dd class="text-ink">{{ ['all' => 'Everyone', 'male' => 'Men', 'female' => 'Women'][$campaign->targeting['gender'] ?? 'all'] }}, {{ $campaign->targeting['age_min'] ?? 18 }}–{{ $campaign->targeting['age_max'] ?? 65 }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-ink-faint">Shows on</dt><dd class="text-right text-ink">Facebook, Instagram{{ ! empty($campaign->targeting['whatsapp_status']) ? ', WhatsApp Status' : '' }}</dd></div>
                     @if ($campaign->launched_at)
-                        <div class="flex justify-between gap-3"><dt class="text-slate-500">Launched</dt><dd class="text-slate-900">{{ $campaign->launched_at->format('d M, h:i A') }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-ink-faint">Launched</dt><dd class="text-ink">{{ $campaign->launched_at->format('d M, h:i A') }}</dd></div>
                     @endif
                 </dl>
             </x-ui.card>
             @if ($campaign->post)
-                <a href="{{ route('marketing.posts.show', $campaign->post) }}" wire:navigate class="block text-sm font-medium text-brand-700 hover:text-brand-800">View the post →</a>
+                <a href="{{ route('marketing.posts.show', $campaign->post) }}" wire:navigate class="block text-sm font-medium text-link hover:underline">View the post →</a>
             @endif
         </div>
     </div>

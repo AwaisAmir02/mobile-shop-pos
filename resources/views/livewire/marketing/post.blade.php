@@ -102,19 +102,19 @@ new #[Layout('layouts.app')] #[Title('Post')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Marketing</h1>
+        <x-ui.page-header>Marketing</x-ui.page-header>
     </x-slot>
 
     <x-marketing.nav active="marketing.posts" />
 
     <div class="mb-4 flex flex-wrap items-center gap-3">
-        <h2 class="text-lg font-semibold text-slate-900">{{ $post->title }}</h2>
+        <h2 class="text-lg font-semibold text-ink">{{ $post->title }}</h2>
         <x-ui.badge :variant="$post->status->badge()">{{ $post->status->label() }}</x-ui.badge>
         <x-ui.badge variant="brand">{{ $post->refTag() }}</x-ui.badge>
         @if ($shop->ads_enabled && auth()->user()->hasAccessTo('marketing-ads'))
             <x-ui.button href="{{ route('marketing.ads.create', ['post' => $post->id]) }}" wire:navigate size="sm" variant="secondary">Boost with an ad</x-ui.button>
         @endif
-        <span class="text-sm text-slate-500">{{ $ordersPlaced }} WhatsApp {{ \Illuminate\Support\Str::plural('order', $ordersPlaced) }} placed · {{ $ordersAccepted }} accepted</span>
+        <span class="text-sm text-ink-faint">{{ $ordersPlaced }} WhatsApp {{ \Illuminate\Support\Str::plural('order', $ordersPlaced) }} placed · {{ $ordersAccepted }} accepted</span>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-5">
@@ -122,12 +122,12 @@ new #[Layout('layouts.app')] #[Title('Post')] class extends Component
             <x-ui.card title="Images" :padding="false">
                 <div class="grid grid-cols-2 gap-3 p-4">
                     <figure>
-                        <img src="{{ $post->imageUrl() }}" alt="Feed image for {{ $post->title }}" class="aspect-square w-full rounded-lg border border-slate-200 object-cover">
-                        <figcaption class="mt-1 text-center text-xs text-slate-500">Feed · 1080×1080</figcaption>
+                        <img src="{{ $post->imageUrl() }}" alt="Feed image for {{ $post->title }}" class="aspect-square w-full rounded-lg border border-line object-cover">
+                        <figcaption class="mt-1 text-center text-xs text-ink-faint">Feed · 1080×1080</figcaption>
                     </figure>
                     <figure>
-                        <img src="{{ $post->storyImageUrl() }}" alt="Story image for {{ $post->title }}" class="aspect-[9/16] w-full rounded-lg border border-slate-200 object-cover">
-                        <figcaption class="mt-1 text-center text-xs text-slate-500">Story / Status · 1080×1920</figcaption>
+                        <img src="{{ $post->storyImageUrl() }}" alt="Story image for {{ $post->title }}" class="aspect-[9/16] w-full rounded-lg border border-line object-cover">
+                        <figcaption class="mt-1 text-center text-xs text-ink-faint">Story / Status · 1080×1920</figcaption>
                     </figure>
                 </div>
             </x-ui.card>
@@ -164,13 +164,13 @@ new #[Layout('layouts.app')] #[Title('Post')] class extends Component
                         <span x-show="! copied">Copy caption</span><span x-show="copied" x-cloak>Copied ✓</span>
                     </x-ui.button>
                     <x-ui.button size="sm" class="w-full" x-on:click="share">Share to WhatsApp</x-ui.button>
-                    <ol class="list-decimal space-y-1 pl-5 text-xs text-slate-500">
+                    <ol class="list-decimal space-y-1 pl-5 text-xs text-ink-faint">
                         <li>On your phone, tap <strong>Share to WhatsApp</strong> (or download the story image).</li>
                         <li>Choose <strong>My status</strong> or your Channel, paste the caption and post.</li>
                         <li>Customers who reply with <strong>{{ $post->refTag() }}</strong> are counted for this post.</li>
                     </ol>
                     @if ($shareLink)
-                        <p class="break-all text-xs text-slate-400">Order link: {{ $shareLink }}</p>
+                        <p class="break-all text-xs text-ink-faint">Order link: {{ $shareLink }}</p>
                     @endif
                 </div>
             </x-ui.card>
@@ -178,9 +178,9 @@ new #[Layout('layouts.app')] #[Title('Post')] class extends Component
 
         <div class="space-y-4 lg:col-span-3">
             <x-ui.card title="Caption">
-                <textarea wire:model="caption" rows="8" @disabled(! $editable) class="block w-full rounded-lg border-slate-300 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-50" aria-label="Caption"></textarea>
+                <textarea wire:model="caption" rows="8" @disabled(! $editable) class="block w-full rounded-lg border-line-strong text-sm text-ink shadow-sm focus:border-link focus:ring-link disabled:bg-surface-sunken" aria-label="Caption"></textarea>
                 <x-ui.error :messages="$errors->get('caption')" class="mt-1.5" />
-                <p class="mt-1.5 text-xs text-slate-500">Instagram stories don't show captions — the price is printed on the image instead. Keep the {{ $post->refTag() }} link so orders are tracked.</p>
+                <p class="mt-1.5 text-xs text-ink-faint">Instagram stories don't show captions — the price is printed on the image instead. Keep the {{ $post->refTag() }} link so orders are tracked.</p>
                 @if ($editable)
                     <div class="mt-3"><x-ui.button size="sm" variant="secondary" wire:click="saveCaption">Save caption</x-ui.button></div>
                 @endif
@@ -192,8 +192,8 @@ new #[Layout('layouts.app')] #[Title('Post')] class extends Component
                         <form wire:submit="publish" class="space-y-4">
                             <div class="grid gap-2 sm:grid-cols-2">
                                 @foreach (PostSurface::cases() as $surface)
-                                    <label @class(['flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm', 'border-slate-200 text-slate-700' => $connected[$surface->value], 'border-dashed border-slate-200 text-slate-400' => ! $connected[$surface->value]])>
-                                        <input type="checkbox" wire:model="surfaces" value="{{ $surface->value }}" @disabled(! $connected[$surface->value]) class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                                    <label @class(['flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm', 'border-line text-ink-muted' => $connected[$surface->value], 'border-dashed border-line text-ink-faint' => ! $connected[$surface->value]])>
+                                        <input type="checkbox" wire:model="surfaces" value="{{ $surface->value }}" @disabled(! $connected[$surface->value]) class="rounded border-line-strong text-link focus:ring-link">
                                         {{ $surface->label() }}
                                         @unless ($connected[$surface->value])
                                             <span class="ml-auto text-xs">not connected</span>
@@ -212,18 +212,18 @@ new #[Layout('layouts.app')] #[Title('Post')] class extends Component
                     @endif
 
                     @if ($targets->isNotEmpty())
-                        <div @class(['divide-y divide-slate-100', 'mt-5 border-t border-slate-100 pt-3' => $editable])>
+                        <div @class(['divide-y divide-line', 'mt-5 border-t border-line pt-3' => $editable])>
                             @foreach ($targets as $target)
                                 <div class="flex flex-col gap-1 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between" wire:key="target-{{ $target->id }}">
-                                    <span class="font-medium text-slate-900">{{ $target->surface->label() }}</span>
+                                    <span class="font-medium text-ink">{{ $target->surface->label() }}</span>
                                     <div class="flex items-center gap-2">
                                         @if ($target->status === 'published')
                                             <x-ui.badge variant="success">Published</x-ui.badge>
                                             @if ($target->permalink)
-                                                <a href="{{ $target->permalink }}" target="_blank" rel="noopener" class="text-xs font-medium text-brand-700 hover:text-brand-800">View →</a>
+                                                <a href="{{ $target->permalink }}" target="_blank" rel="noopener" class="text-xs font-medium text-link hover:underline">View →</a>
                                             @endif
                                             @if ($target->metric('reach') !== null)
-                                                <span class="text-xs text-slate-500">{{ number_format($target->metric('reach')) }} reached</span>
+                                                <span class="text-xs text-ink-faint">{{ number_format($target->metric('reach')) }} reached</span>
                                             @endif
                                         @elseif ($target->status === 'failed')
                                             <x-ui.badge variant="danger" title="{{ $target->error }}">Failed</x-ui.badge>
@@ -233,7 +233,7 @@ new #[Layout('layouts.app')] #[Title('Post')] class extends Component
                                     </div>
                                 </div>
                                 @if ($target->status === 'failed' && $target->error)
-                                    <p class="pb-2 text-xs text-red-700">{{ $target->error }}</p>
+                                    <p class="pb-2 text-xs text-danger">{{ $target->error }}</p>
                                 @endif
                             @endforeach
                         </div>

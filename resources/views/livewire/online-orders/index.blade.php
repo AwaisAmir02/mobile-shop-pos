@@ -55,7 +55,7 @@ new #[Layout('layouts.app')] #[Title('Online Store Orders')] class extends Compo
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Online Store Orders</h1>
+        <x-ui.page-header>Online Store Orders</x-ui.page-header>
     </x-slot>
 
     <x-billing.limit-notice limit="online_orders_per_month" />
@@ -68,12 +68,13 @@ new #[Layout('layouts.app')] #[Title('Online Store Orders')] class extends Compo
         <x-ui.alert variant="warning" class="mb-4">{{ $flaggedCount }} accepted {{ Str::plural('order', $flaggedCount) }} the store has asked to cancel. See the Accepted tab.</x-ui.alert>
     @endif
 
-    <div class="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200">
+    {{-- A view of this page, not another page, so a segmented switch (docs/design-system.md). --}}
+    <div class="mb-5 flex max-w-full gap-1 overflow-x-auto rounded-full border border-line bg-surface-sunken/60 p-1 sm:inline-flex" role="group" aria-label="Order status">
         @foreach ($tabs as $key => $label)
-            <button type="button" wire:click="setTab('{{ $key }}')" @class([
-                'whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition',
-                'border-brand-600 text-brand-700' => $tab === $key,
-                'border-transparent text-slate-500 hover:text-slate-700' => $tab !== $key,
+            <button type="button" wire:click="setTab('{{ $key }}')" aria-pressed="{{ $tab === $key ? 'true' : 'false' }}" @class([
+                    'min-w-0 flex-1 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-link sm:flex-none',
+                    'bg-surface text-ink shadow-soft ring-1 ring-line' => $tab === $key,
+                    'text-ink-faint hover:text-ink' => $tab !== $key,
             ])>
                 {{ $label }}
                 @if ($key === 'pending' && $pendingCount > 0)
@@ -89,28 +90,29 @@ new #[Layout('layouts.app')] #[Title('Online Store Orders')] class extends Compo
             description="Orders from your online store land here first. Nothing is added to Sales until you accept it."
         />
     @else
-        <x-ui.table :headers="['Order', 'Store', 'Customer', 'Payment', 'Goods Total', $tab === 'pending' ? 'Placed' : 'Decided', 'Status', '']">
+        @php $whenLabel = $tab === 'pending' ? 'Placed' : 'Decided'; @endphp
+        <x-ui.table stack :headers="['Order', 'Store', 'Customer', 'Payment', 'Goods Total', $whenLabel, 'Status', '']">
             @foreach ($orders as $order)
                 <x-ui.table-row wire:key="online-order-{{ $order->id }}">
-                    <x-ui.table-cell class="font-medium text-slate-900">
-                        {{ $order->orderNumber() }}
-                        <div class="text-xs font-normal text-slate-500">#{{ $order->external_order_id }}</div>
+                    <x-ui.table-cell primary class="font-semibold text-ink">
+                        <a href="{{ route('online-orders.show', $order) }}" wire:navigate class="hover:text-link hover:underline">{{ $order->orderNumber() }}</a>
+                        <span class="ui-sub">#{{ $order->external_order_id }}</span>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>{{ $order->connection?->name }}</x-ui.table-cell>
-                    <x-ui.table-cell>
-                        <div class="font-medium text-slate-900">{{ $order->customer_name ?? '—' }}</div>
-                        <div class="text-xs text-slate-500">{{ $order->customer_phone }}</div>
+                    <x-ui.table-cell label="Store">{{ $order->connection?->name }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Customer">
+                        <span class="font-medium text-ink">{{ $order->customer_name ?? '—' }}</span>
+                        <span class="ui-sub">{{ $order->customer_phone }}</span>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>{{ $order->isPrepaid() ? 'Prepaid' : 'Cash on delivery' }}</x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($order->goodsTotal(), 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ ($tab === 'pending' ? $order->placed_at : $order->decided_at)?->format('d M Y, h:i A') ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell label="Payment">{{ $order->isPrepaid() ? 'Prepaid' : 'Cash on delivery' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Goods Total" class="font-semibold text-ink">Rs {{ number_format($order->goodsTotal(), 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell :label="$whenLabel">{{ ($tab === 'pending' ? $order->placed_at : $order->decided_at)?->format('d M Y, h:i A') ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Status">
                         <x-ui.badge :variant="match ($order->status) { StoreOrderStatus::Pending => 'warning', StoreOrderStatus::Accepted => 'success', default => 'danger' }">{{ $order->status->label() }}</x-ui.badge>
                         @if ($order->cancel_flagged_at)
                             <x-ui.badge variant="danger">Cancel requested</x-ui.badge>
                         @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell align="right">
+                    <x-ui.table-cell actions align="right">
                         <x-ui.button href="{{ route('online-orders.show', $order) }}" wire:navigate size="sm" variant="{{ $order->isDecidable() ? 'primary' : 'secondary' }}">{{ $order->isDecidable() ? 'Review' : 'View' }}</x-ui.button>
                     </x-ui.table-cell>
                 </x-ui.table-row>
