@@ -27,8 +27,15 @@
             this.$refs.report.href = this.report();
             this.$nextTick(() => {
                 this.$refs.close.focus();
+                const body = this.$refs.body;
                 const target = section ? [...this.$root.querySelectorAll('[data-guide-section]')].find((el) => el.dataset.guideSection === section && el.offsetParent !== null) : null;
-                this.$refs.body.scrollTop = target ? target.offsetTop - 12 : 0;
+                // A short last section can't scroll to the top on its own, so leave room under it.
+                body.style.paddingBottom = '';
+                if (target) {
+                    const below = body.scrollHeight - target.offsetTop + 12;
+                    if (below < body.clientHeight) body.style.paddingBottom = (body.clientHeight - below + 20) + 'px';
+                }
+                body.scrollTop = target ? target.offsetTop - 12 : 0;
             });
         },
         hide() {
@@ -40,7 +47,7 @@
         },
         returnTo: null,
     }"
-    x-on:open-guide.window="show($event.detail?.section)"
+    x-on:open-guide.window="show($event.detail?.section ?? @js($guide['section'] ?? null))"
     data-guide="{{ $guide['key'] }}"
 >
     <div x-show="open" x-cloak x-transition.opacity.duration.150ms x-on:click="hide()" class="fixed inset-0 z-dialog bg-scrim/40" aria-hidden="true"></div>

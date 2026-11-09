@@ -41,8 +41,38 @@ final class Guide
     /** The language the panel opens in until the user picks one; the choice is remembered per device. */
     public const DEFAULT_LANGUAGE = 'ur';
 
+    /**
+     * Screens that share another screen's guide: route => [guide file, section it opens at].
+     * Each counter service's history page is covered by the service's own guide.
+     */
+    public const SHARED = [
+        'repairs.history' => ['repairs.index', 'history'],
+        'bills.history' => ['bills.index', 'history'],
+        'wallet-loads.history' => ['wallet-loads.index', 'history'],
+        'balance-loads.history' => ['balance-loads.index', 'history'],
+        'sim-sales.history' => ['sim-sales.index', 'history'],
+        'nadra-verifications.history' => ['nadra-verifications.index', 'history'],
+        'services.history' => ['services.index', 'history'],
+    ];
+
     /** @var array<string, array|null> */
     private static array $files = [];
+
+    /** Whether a screen (route name) has a guide, its own or a shared one. */
+    public static function covers(?string $route): bool
+    {
+        return self::resolve($route) !== null;
+    }
+
+    /** @return array{0: string, 1: ?string}|null the guide file and the section to open at */
+    public static function resolve(?string $route): ?array
+    {
+        if (isset(self::SHARED[$route])) {
+            return self::exists(self::SHARED[$route][0]) ? self::SHARED[$route] : null;
+        }
+
+        return self::exists($route) ? [$route, null] : null;
+    }
 
     public static function path(string $language, string $key): string
     {
@@ -77,15 +107,19 @@ final class Guide
     }
 
     /**
-     * The guide for a screen as this user should see it, in every language:
-     * ['key' => ..., 'languages' => ['en' => [...], 'ur' => [...]]], or null when
-     * the screen has no guide or the user isn't a shop user.
+     * The guide for a screen (route name) as this user should see it, in every language:
+     * ['key' => file, 'section' => where it opens, 'languages' => ['en' => [...], 'ur' => [...]]],
+     * or null when the screen has no guide or the user isn't a shop user.
      */
-    public static function forUser(?string $key, ?User $user): ?array
+    public static function forUser(?string $route, ?User $user): ?array
     {
-        if ($user === null || $user->is_super_admin || ! self::exists($key)) {
+        $resolved = self::resolve($route);
+
+        if ($user === null || $user->is_super_admin || $resolved === null) {
             return null;
         }
+
+        [$key, $startSection] = $resolved;
 
         $languages = [];
 
@@ -118,7 +152,7 @@ final class Guide
             $languages[$language] = $guide;
         }
 
-        return $languages === [] ? null : ['key' => $key, 'languages' => $languages];
+        return $languages === [] ? null : ['key' => $key, 'section' => $startSection, 'languages' => $languages];
     }
 
     private static function visibleTo(array $node, User $user): bool

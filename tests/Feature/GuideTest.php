@@ -28,12 +28,20 @@ class GuideTest extends TestCase
      * Shop screens that still have no guide. Lower it as each wave lands;
      * the failure message lists the screens without one.
      */
-    private const SCREENS_WITHOUT_GUIDE_BUDGET = 69;
+    private const SCREENS_WITHOUT_GUIDE_BUDGET = 51;
 
     /** Wave 1, as approved. */
     private const WAVE_ONE = [
         'sales.index', 'sales.show', 'sales.history', 'dashboard', 'products.index', 'products.show',
         'stock-ins.index', 'customers.index', 'customers.show', 'udhaar.index', 'udhaar.show',
+    ];
+
+    /** Wave 2: counter services (form and history), Expenses, Vendors, Party Ledger. */
+    private const WAVE_TWO = [
+        'repairs.index', 'repairs.history', 'bills.index', 'bills.history', 'wallet-loads.index', 'wallet-loads.history',
+        'balance-loads.index', 'balance-loads.history', 'sim-sales.index', 'sim-sales.history',
+        'nadra-verifications.index', 'nadra-verifications.history', 'services.index', 'services.history',
+        'expenses.index', 'vendors.index', 'vendors.show', 'party-ledger.index',
     ];
 
     private Shop $shop;
@@ -66,8 +74,16 @@ class GuideTest extends TestCase
 
     public function test_wave_one_screens_all_have_a_guide_and_every_guide_names_a_real_shop_screen(): void
     {
-        foreach (self::WAVE_ONE as $key) {
-            $this->assertTrue(Guide::exists($key), "No guide for {$key}");
+        foreach ([...self::WAVE_ONE, ...self::WAVE_TWO] as $route) {
+            $this->assertTrue(Guide::covers($route), "No guide for {$route}");
+        }
+
+        foreach (Guide::SHARED as $route => [$key, $section]) {
+            $this->assertNotNull(Route::getRoutes()->getByName($route), "Shared guide route {$route} doesn't exist");
+            $this->assertTrue(Guide::exists($key), "{$route} shares a guide that doesn't exist: {$key}");
+            foreach (array_keys(Guide::LANGUAGES) as $language) {
+                $this->assertContains($section, array_column(Guide::load($key, $language)['sections'], 'id'), "{$language}/{$key} has no '{$section}' section for {$route}");
+            }
         }
 
         foreach (Guide::keys() as $key) {
@@ -143,7 +159,8 @@ class GuideTest extends TestCase
             ->assertSee('data-guide="dashboard"', false)
             ->assertSee('Net (Revenue − Expenses)')
             ->assertSee('Waqt chunna')
-            ->assertSee('Roman Urdu');
+            ->assertSee('Roman Urdu')
+            ->assertSee('data-guide-tooltip', false);
 
         $this->get(route('support.index'))
             ->assertOk()
@@ -195,6 +212,26 @@ class GuideTest extends TestCase
         $this->assertCount(5, collect($guide['languages']['ur']['sections'])->firstWhere('id', 'add-product')['steps']);
     }
 
+    public function test_a_history_screen_opens_its_service_guide_at_the_history_part(): void
+    {
+        $guide = Guide::forUser('repairs.history', $this->owner);
+        $this->assertSame('repairs.index', $guide['key']);
+        $this->assertSame('history', $guide['section']);
+        $this->assertNull(Guide::forUser('repairs.index', $this->owner)['section']);
+
+        $this->actingAs($this->owner)->get(route('repairs.history'))
+            ->assertOk()
+            ->assertSee('data-guide="repairs.index"', false)
+            ->assertSee("open-guide.window=\"show(\$event.detail?.section ?? 'history')\"", false);
+
+        // Edit/Delete on a counter service need that service's edit/cancel permission.
+        $this->assertContains('Delete', $this->labels(Guide::forUser('repairs.history', $this->owner)));
+        $role = Role::create(['shop_id' => $this->shop->id, 'name' => 'Counter', 'permissions' => ['repairs']]);
+        $counter = User::factory()->staff()->create(['shop_id' => $this->shop->id, 'role_id' => $role->id]);
+        $this->assertNotContains('Delete', $this->labels(Guide::forUser('repairs.history', $counter)));
+        $this->assertContains('Add Payment', $this->labels(Guide::forUser('repairs.history', $counter)));
+    }
+
     public function test_super_admins_and_guests_get_no_guide(): void
     {
         $admin = User::factory()->create(['shop_id' => null, 'is_super_admin' => true, 'is_owner' => false]);
@@ -227,7 +264,7 @@ class GuideTest extends TestCase
                     && str_contains((new ReflectionFunction($uses))->getFileName(), 'volt');
             })
             ->map->getName()
-            ->reject(fn (string $name) => Guide::exists($name))
+            ->reject(fn (string $name) => Guide::covers($name))
             ->sort()
             ->values();
 
