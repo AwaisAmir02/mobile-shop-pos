@@ -305,7 +305,7 @@ new #[Layout('layouts.app')] #[Title('Run Payroll')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Run Payroll</h1>
+        <x-ui.page-header>Run Payroll</x-ui.page-header>
     </x-slot>
 
     <x-payroll.nav active="payroll.run" />
@@ -315,7 +315,7 @@ new #[Layout('layouts.app')] #[Title('Run Payroll')] class extends Component
     @endif
 
     @if ($manualSalaries->isNotEmpty())
-        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div class="mb-4 rounded-xl border border-warning/20 bg-warning-soft px-4 py-3 text-sm text-warning">
             <p class="font-semibold">These expenses this month might already be salaries</p>
             <ul class="mt-1 list-inside list-disc">
                 @foreach ($manualSalaries as $expense)
@@ -328,13 +328,12 @@ new #[Layout('layouts.app')] #[Title('Run Payroll')] class extends Component
 
     <x-ui.error :messages="$errors->get('payslip')" class="mb-4" />
 
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <x-ui.field label="Month" name="period" for="payrollPeriod" class="sm:max-w-[12rem]">
+    <x-ui.filter-bar :active="(int) filled($branchFilter)">
+            <x-ui.field label="Month" name="period" for="payrollPeriod" class="w-full sm:w-48">
                 <x-ui.input wire:model.live="period" id="payrollPeriod" type="month" />
             </x-ui.field>
             @if ($branches->count() > 1)
-                <x-ui.field label="Branch" name="branchFilter" for="payrollBranch" class="sm:max-w-[12rem]">
+                <x-ui.field label="Branch" name="branchFilter" for="payrollBranch" class="w-full sm:w-48">
                     <x-ui.select wire:model.live="branchFilter" id="payrollBranch">
                         <option value="">All branches</option>
                         @foreach ($branches as $branch)
@@ -343,45 +342,48 @@ new #[Layout('layouts.app')] #[Title('Run Payroll')] class extends Component
                     </x-ui.select>
                 </x-ui.field>
             @endif
-        </div>
+
         @if ($enabled)
-            <div class="flex gap-2">
+            <x-slot:actions>
                 <x-ui.button type="button" variant="secondary" wire:click="generate" wire:loading.attr="disabled" wire:target="generate" :disabled="$missing === 0">Generate Drafts{{ $missing > 0 ? ' ('.$missing.')' : '' }}</x-ui.button>
                 @if ($draftIds !== [])
                     <x-ui.button type="button" wire:click="openPay">Pay All Drafts ({{ count($draftIds) }})</x-ui.button>
                 @endif
-            </div>
+            </x-slot:actions>
         @endif
-    </div>
+    </x-ui.filter-bar>
 
     @if ($payslips->isEmpty())
         <x-ui.empty-state title="No payslips for this month" description="Generate drafts for everyone active, then check them and mark them paid." />
     @else
-        <x-ui.table :headers="['Employee', 'Earnings', 'Deductions', 'Advance', 'Net Pay', 'Status', '']">
+        <x-ui.table stack :headers="['Employee', 'Earnings', 'Deductions', 'Advance', 'Net Pay', 'Status', '']">
             @foreach ($payslips as $payslip)
                 <x-ui.table-row wire:key="payslip-{{ $payslip->id }}">
-                    <x-ui.table-cell class="font-medium text-slate-900">{{ $payslip->employee_name }}
-                        <p class="text-xs font-normal text-slate-400">
+                    <x-ui.table-cell primary class="font-medium text-ink">{{ $payslip->employee_name }}
+                        <p class="text-xs font-normal text-ink-faint">
                             {{ $payslip->number() }} · Rs {{ number_format($payslip->rate, 2) }}
                             @if ($payslip->salary_type === SalaryType::Daily)
-                                <span class="{{ $payslip->days === null ? 'text-amber-600' : '' }}">× {{ $payslip->days === null ? 'days needed' : (float) $payslip->days.' days' }}</span>
+                                <span class="{{ $payslip->days === null ? 'text-warning' : '' }}">× {{ $payslip->days === null ? 'days needed' : (float) $payslip->days.' days' }}</span>
                             @endif
                         </p>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>Rs {{ number_format($payslip->grossEarnings(), 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell>Rs {{ number_format((float) $payslip->cost_deductions + (float) $payslip->held_deductions, 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell>Rs {{ number_format($payslip->advance_recovery, 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold text-slate-900">{{ $payslip->salary_type === SalaryType::Daily && $payslip->days === null ? '—' : 'Rs '.number_format($payslip->net_pay, 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell><x-ui.badge :variant="$payslip->status->badge()">{{ $payslip->status->label() }}</x-ui.badge></x-ui.table-cell>
-                    <x-ui.table-cell align="right">
-                        <div class="flex justify-end gap-2">
+                    <x-ui.table-cell label="Earnings">Rs {{ number_format($payslip->grossEarnings(), 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Deductions">Rs {{ number_format((float) $payslip->cost_deductions + (float) $payslip->held_deductions, 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Advance">Rs {{ number_format($payslip->advance_recovery, 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Net Pay" class="font-semibold text-ink">{{ $payslip->salary_type === SalaryType::Daily && $payslip->days === null ? '—' : 'Rs '.number_format($payslip->net_pay, 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Status"><x-ui.badge :variant="$payslip->status->badge()">{{ $payslip->status->label() }}</x-ui.badge></x-ui.table-cell>
+                    <x-ui.table-cell actions align="right">
+                        <x-ui.row-actions label="Actions for {{ $payslip->employee_name }}">
                             @if ($payslip->isDraft() && $enabled)
-                                <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $payslip->id }})">Edit</x-ui.button>
-                                <x-ui.button size="sm" variant="ghost" wire:click="openPay({{ $payslip->id }})">Mark Paid</x-ui.button>
+                                <x-slot:primary>
+                                    <x-ui.button size="sm" variant="secondary" wire:click="openPay({{ $payslip->id }})">Mark Paid</x-ui.button>
+                                </x-slot:primary>
+                                <x-ui.menu-item wire:click="openEdit({{ $payslip->id }})">Edit</x-ui.menu-item>
                             @endif
-                            <x-ui.button size="sm" variant="ghost" wire:click="downloadPdf({{ $payslip->id }})">PDF</x-ui.button>
-                            <x-ui.button size="sm" variant="danger-ghost" wire:click="openCancel({{ $payslip->id }})">Cancel</x-ui.button>
-                        </div>
+                            <x-ui.menu-item wire:click="downloadPdf({{ $payslip->id }})">Download PDF</x-ui.menu-item>
+                            <x-ui.menu-divider />
+                            <x-ui.menu-item danger wire:click="openCancel({{ $payslip->id }})">Cancel</x-ui.menu-item>
+                        </x-ui.row-actions>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
@@ -391,7 +393,7 @@ new #[Layout('layouts.app')] #[Title('Run Payroll')] class extends Component
     <x-ui.modal name="payslip-form" max-width="2xl">
         <form wire:submit="saveEdit" class="p-6">
             @if ($editing)
-                <h2 class="text-lg font-semibold text-slate-900">{{ $editing->employee_name }}: {{ $editing->period->format('F Y') }}</h2>
+                <h2 class="text-lg font-semibold text-ink">{{ $editing->employee_name }}: {{ $editing->period->format('F Y') }}</h2>
 
                 <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <x-ui.field :label="$editing->salary_type->rateLabel()" name="editRate" for="editRate">
@@ -430,17 +432,17 @@ new #[Layout('layouts.app')] #[Title('Run Payroll')] class extends Component
                     <x-ui.button type="button" size="sm" variant="secondary" wire:click="addLine('earning')">Add Earning</x-ui.button>
                     <x-ui.button type="button" size="sm" variant="secondary" wire:click="addLine('deduction')" :disabled="$deductionTypes->isEmpty()">Add Deduction</x-ui.button>
                     @if ($deductionTypes->isEmpty())
-                        <a href="{{ route('payroll.deduction-types') }}" wire:navigate class="self-center text-sm font-medium text-brand-700 hover:text-brand-800">Set up deduction types →</a>
+                        <a href="{{ route('payroll.deduction-types') }}" wire:navigate class="self-center text-sm font-medium text-link hover:underline">Set up deduction types →</a>
                     @endif
                 </div>
 
                 <x-ui.error :messages="$errors->get('payslip')" class="mt-3" />
 
-                <dl class="mt-5 space-y-1 rounded-lg bg-slate-50 px-4 py-3 text-sm">
-                    <div class="flex justify-between"><dt class="text-slate-500">Earnings</dt><dd>Rs {{ number_format($editPreview['gross'], 2) }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-slate-500">Deductions</dt><dd>Rs {{ number_format($editPreview['deductions'], 2) }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-slate-500">Advance recovery</dt><dd>Rs {{ number_format((float) $editAdvance, 2) }}</dd></div>
-                    <div class="flex justify-between font-semibold text-slate-900"><dt>Net pay</dt><dd>Rs {{ number_format($editPreview['net'], 2) }}</dd></div>
+                <dl class="mt-5 space-y-1 rounded-lg bg-surface-sunken px-4 py-3 text-sm">
+                    <div class="flex justify-between"><dt class="text-ink-faint">Earnings</dt><dd>Rs {{ number_format($editPreview['gross'], 2) }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-ink-faint">Deductions</dt><dd>Rs {{ number_format($editPreview['deductions'], 2) }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-ink-faint">Advance recovery</dt><dd>Rs {{ number_format((float) $editAdvance, 2) }}</dd></div>
+                    <div class="flex justify-between font-semibold text-ink"><dt>Net pay</dt><dd>Rs {{ number_format($editPreview['net'], 2) }}</dd></div>
                 </dl>
 
                 <div class="mt-6 flex justify-end gap-3">
@@ -453,15 +455,15 @@ new #[Layout('layouts.app')] #[Title('Run Payroll')] class extends Component
 
     <x-ui.modal name="payslip-pay-form" max-width="sm">
         <form wire:submit="pay" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Mark {{ count($payingIds) === 1 ? 'Payslip' : count($payingIds).' Payslips' }} Paid</h2>
-            <p class="mt-1 text-sm text-slate-500">Each adds its salary cost to Expenses on this date, and recovers any advance on it.</p>
+            <h2 class="text-lg font-semibold text-ink">Mark {{ count($payingIds) === 1 ? 'Payslip' : count($payingIds).' Payslips' }} Paid</h2>
+            <p class="mt-1 text-sm text-ink-faint">Each adds its salary cost to Expenses on this date, and recovers any advance on it.</p>
 
             <div class="mt-5 space-y-4">
                 <x-ui.field label="Paid On" name="paidOn" for="paidOn">
                     <x-ui.input wire:model="paidOn" id="paidOn" type="date" />
                 </x-ui.field>
                 @if ($accounts->isNotEmpty())
-                    <x-ui.field label="Paid From" name="paidFromAccountId" for="paidFromAccountId" help="Optional">
+                    <x-ui.field label="Paid From" name="paidFromAccountId" for="paidFromAccountId">
                         <x-ui.select wire:model="paidFromAccountId" id="paidFromAccountId">
                             <option value="">Cash</option>
                             @foreach ($accounts as $account)
@@ -481,16 +483,16 @@ new #[Layout('layouts.app')] #[Title('Run Payroll')] class extends Component
 
     <x-ui.modal name="payslip-cancel-form" max-width="sm">
         <form wire:submit="cancelPayslip" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Cancel This Payslip?</h2>
-            <p class="mt-2 text-sm text-slate-600">If it was paid, this also cancels its expense and puts any recovered advance back on what they owe. It doesn't record the money coming back. This cannot be undone.</p>
+            <h2 class="text-lg font-semibold text-ink">Cancel This Payslip?</h2>
+            <p class="mt-2 text-sm text-ink-muted">If it was paid, this also cancels its expense and puts any recovered advance back on what they owe. It doesn't record the money coming back. This cannot be undone.</p>
             <div class="mt-5">
-                <x-ui.field label="Reason" name="cancelReason" for="payslipCancelReason" help="Optional">
+                <x-ui.field label="Reason" name="cancelReason" for="payslipCancelReason">
                     <x-ui.input wire:model="cancelReason" id="payslipCancelReason" />
                 </x-ui.field>
             </div>
             <div class="mt-6 flex justify-end gap-3">
                 <x-ui.button type="button" variant="secondary" wire:click="closeCancel">Keep It</x-ui.button>
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelPayslip" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">Cancel Payslip</x-ui.button>
+                <x-ui.button variant="danger" type="submit" wire:loading.attr="disabled" wire:target="cancelPayslip">Cancel Payslip</x-ui.button>
             </div>
         </form>
     </x-ui.modal>

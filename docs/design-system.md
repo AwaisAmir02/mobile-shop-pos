@@ -369,6 +369,29 @@ layout, so a cashier who knows one knows all seven:
 Required fields carry `required` on `x-ui.field` (matching the component's
 validation), and nothing says "Optional".
 
+## People and money screens (built in D8)
+
+**Balances are shown, never recalculated.** Every balance on these screens is a
+figure an existing screen already works out:
+
+| Where | Figure | Comes from |
+|---|---|---|
+| Customers list, Balance | Udhaar list's balance (loans plus unpaid sales and counter services) | `UdhaarReport::rows()` |
+| Customer profile, Total Owed | the same | `UdhaarReport::rows()` |
+| Customer profile, Sales Outstanding / Udhaar Loans | unchanged | `Customer::salesOutstandingBalance()`, `udhaarBalance()` |
+| Vendors list, Owed | the vendor page's Total Owed | `Vendor::totalOwed()`, stock-ins loaded once per page |
+| Udhaar page, Loans / Unpaid Sales & Services | the two parts of its own headline | its running balance and dues list |
+
+`x-party.balance` shows one: amount plus Due / Owed / Advance, or Settled.
+
+**One person, three screens, one set of tabs.** `x-party.tabs` links a customer's
+Profile, Udhaar and Statement (Party Ledger), or a vendor's Profile and Statement.
+Each tab uses the screen's existing URL and shows only when `hasAccessTo` already
+lets the user open it; one tab alone shows nothing.
+
+**`x-ui.note`** sets an explanatory sentence apart (Accounts, Payroll), so the
+long explanations the ledger needs stay but read as notes, not body text.
+
 ## Checks for every stage
 
 1. Full "before" baseline, finished before the first edit.

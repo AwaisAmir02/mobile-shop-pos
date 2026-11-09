@@ -79,7 +79,7 @@ new #[Layout('layouts.app')] #[Title('Owner & Held Money')] class extends Compon
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Owner & Held Money</h1>
+        <x-ui.page-header>Owner & Held Money</x-ui.page-header>
     </x-slot>
 
     <x-ledger.nav active="ledger.owner-money" />
@@ -97,9 +97,9 @@ new #[Layout('layouts.app')] #[Title('Owner & Held Money')] class extends Compon
                         </x-ui.select>
                     </x-ui.field>
                     @if ($kind === 'withheld')
-                        <p class="text-sm text-slate-600">Rs {{ number_format($held, 2) }} is being held from paid salaries.</p>
+                        <p class="text-sm text-ink-muted">Rs {{ number_format($held, 2) }} is being held from paid salaries.</p>
                     @else
-                        <p class="text-sm text-slate-600">This isn't a cost, so it stays out of Expenses and Net.</p>
+                        <p class="text-sm text-ink-muted">This isn't a cost, so it stays out of Expenses and Net.</p>
                     @endif
                     <x-ui.field label="Amount" name="amount" for="moneyAmount">
                         <x-ui.input wire:model="amount" id="moneyAmount" type="number" min="0.01" step="0.01" />
@@ -108,7 +108,7 @@ new #[Layout('layouts.app')] #[Title('Owner & Held Money')] class extends Compon
                         <x-ui.input wire:model="paidOn" id="moneyDate" type="date" />
                     </x-ui.field>
                     <x-ledger.paid-from :value="$paidFrom" />
-                    <x-ui.field label="Note" name="note" for="moneyNote" help="Optional">
+                    <x-ui.field label="Note" name="note" for="moneyNote">
                         <x-ui.input wire:model="note" id="moneyNote" />
                     </x-ui.field>
                     <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="save">Save</x-ui.button>
@@ -119,19 +119,19 @@ new #[Layout('layouts.app')] #[Title('Owner & Held Money')] class extends Compon
                 @foreach ([['Owner withdrawals', 'withdrawal', $withdrawals], ['Held salary paid over', 'withheld', $payments]] as [$title, $type, $rows])
                     <x-ui.card :title="$title" :padding="false">
                         @if ($rows->isEmpty())
-                            <p class="px-5 py-4 text-sm text-slate-500">Nothing yet.</p>
+                            <p class="px-5 py-4 text-sm text-ink-faint">Nothing yet.</p>
                         @else
-                            <x-ui.table :headers="['Date', 'Amount', 'Note', '']">
+                            <x-ui.table stack :headers="['Date', 'Amount', 'Note', '']">
                                 @foreach ($rows as $row)
                                     <x-ui.table-row wire:key="{{ $type }}-{{ $row->id }}" @class(['opacity-50' => $row->isCancelled()])>
-                                        <x-ui.table-cell>{{ $row->paid_on->format('d M Y') }}</x-ui.table-cell>
-                                        <x-ui.table-cell class="font-medium text-slate-900">Rs {{ number_format($row->amount, 2) }}</x-ui.table-cell>
-                                        <x-ui.table-cell>{{ $row->note ?? '—' }}</x-ui.table-cell>
-                                        <x-ui.table-cell align="right">
+                                        <x-ui.table-cell primary>{{ $row->paid_on->format('d M Y') }}</x-ui.table-cell>
+                                        <x-ui.table-cell label="Amount" class="font-medium text-ink">Rs {{ number_format($row->amount, 2) }}</x-ui.table-cell>
+                                        <x-ui.table-cell label="Note">{{ $row->note ?? '—' }}</x-ui.table-cell>
+                                        <x-ui.table-cell actions align="right">
                                             @if ($row->isCancelled())
                                                 <x-ui.badge variant="danger">Cancelled</x-ui.badge>
                                             @else
-                                                <x-ui.button size="sm" variant="danger-ghost" wire:click="cancel('{{ $type }}', {{ $row->id }})" wire:confirm="Cancel this?">Cancel</x-ui.button>
+                                                <x-ui.button size="sm" variant="danger-ghost" wire:click="cancel('{{ $type }}', {{ $row->id }})" confirm="Cancel this?">Cancel</x-ui.button>
                                             @endif
                                         </x-ui.table-cell>
                                     </x-ui.table-row>

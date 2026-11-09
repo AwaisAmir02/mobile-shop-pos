@@ -74,7 +74,7 @@ new #[Layout('layouts.app')] #[Title('Profit & Loss')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Profit & Loss</h1>
+        <x-ui.page-header>Profit & Loss</x-ui.page-header>
     </x-slot>
 
     <x-ledger.nav active="ledger.profit-and-loss" />
@@ -82,38 +82,41 @@ new #[Layout('layouts.app')] #[Title('Profit & Loss')] class extends Component
     @unless ($running)
         <x-ui.empty-state title="The ledger hasn't started" description="The owner can set it up from the Trial Balance screen." />
     @else
-        <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
-                <x-ui.field label="From" name="from" for="plFrom" class="sm:max-w-[10rem]">
-                    <x-ui.input wire:model.live="from" id="plFrom" type="date" />
-                </x-ui.field>
-                <x-ui.field label="To" name="to" for="plTo" class="sm:max-w-[10rem]">
-                    <x-ui.input wire:model.live="to" id="plTo" type="date" />
-                </x-ui.field>
-            </div>
-            <x-ui.export-dropdown />
-        </div>
+        <x-ui.filter-bar :active="(int) filled($from) + (int) filled($to)">
+            <x-ui.date-range />
 
-        <p class="mb-4 text-sm text-slate-600">This won't match Net on your Dashboard. Net is Revenue − Expenses, without the cost of what was sold. This is real profit from the ledger.</p>
+            <x-slot:actions>
+                <x-ui.export-dropdown />
+            </x-slot:actions>
+        </x-ui.filter-bar>
+
+        <x-ui.note>This won't match Net on your Dashboard. Net is Revenue − Expenses, without the cost of what was sold. This is real profit from the ledger.</x-ui.note>
 
         <x-ledger.warnings :failed="$failed" :no-cost="$noCost" />
 
-        <div class="max-w-2xl">
-            <x-ui.card :padding="false">
-                <dl class="divide-y divide-slate-100 text-sm">
-                    @foreach ($statement['income'] as $row)
-                        <div class="flex justify-between px-5 py-2.5"><dt class="text-slate-600">{{ $row['name'] }}</dt><dd>Rs {{ number_format($row['amount'], 2) }}</dd></div>
-                    @endforeach
-                    <div class="flex justify-between px-5 py-2.5 font-medium text-slate-900"><dt>Total Income</dt><dd>Rs {{ number_format($statement['total_income'], 2) }}</dd></div>
-                    <div class="flex justify-between px-5 py-2.5"><dt class="text-slate-600">Cost of Goods Sold</dt><dd>Rs {{ number_format($statement['cogs'], 2) }}</dd></div>
-                    <div class="flex justify-between bg-slate-50 px-5 py-2.5 font-semibold text-slate-900"><dt>Gross Profit</dt><dd>Rs {{ number_format($statement['gross_profit'], 2) }}</dd></div>
-                    @foreach ($statement['expenses'] as $row)
-                        <div class="flex justify-between px-5 py-2.5"><dt class="text-slate-600">{{ $row['name'] }}</dt><dd>Rs {{ number_format($row['amount'], 2) }}</dd></div>
-                    @endforeach
-                    <div class="flex justify-between px-5 py-2.5 font-medium text-slate-900"><dt>Total Expenses</dt><dd>Rs {{ number_format($statement['total_expenses'], 2) }}</dd></div>
-                    <div class="flex justify-between bg-slate-50 px-5 py-3 text-base font-semibold text-slate-900"><dt>Net Profit</dt><dd>Rs {{ number_format($statement['net_profit'], 2) }}</dd></div>
-                </dl>
-            </x-ui.card>
-        </div>
+        <x-ui.stat-row>
+            <x-ui.stat label="Total Income" value="Rs {{ number_format($statement['total_income'], 2) }}" />
+            <x-ui.stat label="Gross Profit" value="Rs {{ number_format($statement['gross_profit'], 2) }}" sub="After the cost of goods sold" />
+            <x-ui.stat label="Total Expenses" value="Rs {{ number_format($statement['total_expenses'], 2) }}" />
+            <x-ui.stat label="Net Profit" value="Rs {{ number_format($statement['net_profit'], 2) }}" />
+        </x-ui.stat-row>
+
+        <x-ui.card :padding="false" class="max-w-3xl">
+            <dl class="divide-y divide-line text-sm">
+                <div class="px-5 pb-2 pt-4 text-xs font-bold uppercase tracking-wider text-ink-faint">Income</div>
+                @foreach ($statement['income'] as $row)
+                    <div class="flex justify-between gap-4 px-5 py-2.5"><dt class="text-ink-muted">{{ $row['name'] }}</dt><dd class="tabular-nums">Rs {{ number_format($row['amount'], 2) }}</dd></div>
+                @endforeach
+                <div class="flex justify-between gap-4 px-5 py-2.5 font-medium text-ink"><dt>Total Income</dt><dd class="tabular-nums">Rs {{ number_format($statement['total_income'], 2) }}</dd></div>
+                <div class="flex justify-between gap-4 px-5 py-2.5"><dt class="text-ink-muted">Cost of Goods Sold</dt><dd class="tabular-nums">Rs {{ number_format($statement['cogs'], 2) }}</dd></div>
+                <div class="flex justify-between gap-4 bg-surface-sunken px-5 py-2.5 font-semibold text-ink"><dt>Gross Profit</dt><dd class="tabular-nums">Rs {{ number_format($statement['gross_profit'], 2) }}</dd></div>
+                <div class="px-5 pb-2 pt-4 text-xs font-bold uppercase tracking-wider text-ink-faint">Expenses</div>
+                @foreach ($statement['expenses'] as $row)
+                    <div class="flex justify-between gap-4 px-5 py-2.5"><dt class="text-ink-muted">{{ $row['name'] }}</dt><dd class="tabular-nums">Rs {{ number_format($row['amount'], 2) }}</dd></div>
+                @endforeach
+                <div class="flex justify-between gap-4 px-5 py-2.5 font-medium text-ink"><dt>Total Expenses</dt><dd class="tabular-nums">Rs {{ number_format($statement['total_expenses'], 2) }}</dd></div>
+                <div class="flex justify-between gap-4 bg-surface-sunken px-5 py-3 text-base font-bold text-ink"><dt>Net Profit</dt><dd class="tabular-nums">Rs {{ number_format($statement['net_profit'], 2) }}</dd></div>
+            </dl>
+        </x-ui.card>
     @endunless
 </div>

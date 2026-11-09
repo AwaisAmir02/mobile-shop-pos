@@ -795,21 +795,25 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Party Ledger</h1>
+        <x-ui.page-header subtitle="A customer's or vendor's statement, with each balance kept apart">Party Ledger</x-ui.page-header>
     </x-slot>
+
+    @if ($party)
+        <x-party.tabs :type="$vendorSide ? 'vendor' : 'customer'" :party="$party" active="statement" />
+    @endif
 
     <div class="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
         @if ($vendorsAvailable)
-            <div class="inline-flex rounded-lg border border-slate-300 p-1" role="group" aria-label="Party type">
+            <div class="inline-flex gap-1 rounded-full border border-line bg-surface-sunken/60 p-1" role="group" aria-label="Party type">
                 @foreach (['customer' => 'Customers', 'vendor' => 'Vendors'] as $type => $label)
                     <button
                         type="button"
                         wire:click="setPartyType('{{ $type }}')"
                         aria-pressed="{{ $partyType === $type ? 'true' : 'false' }}"
                         @class([
-                            'rounded-md px-3 py-1.5 text-sm font-medium transition',
-                            'bg-brand-600 text-white' => $partyType === $type,
-                            'text-slate-600 hover:text-slate-900' => $partyType !== $type,
+                            'rounded-full px-4 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-link',
+                            'bg-surface text-ink shadow-soft ring-1 ring-line' => $partyType === $type,
+                            'text-ink-faint hover:text-ink' => $partyType !== $type,
                         ])
                     >
                         {{ $label }}
@@ -821,8 +825,8 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
         <x-ui.checkbox wire:model.live="withBalanceOnly" label="Only {{ $vendorSide ? 'vendors' : 'customers' }} with a balance" />
     </div>
 
-    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div class="flex w-full flex-wrap items-end gap-4 sm:w-auto">
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-line bg-surface p-3 shadow-soft sm:p-4">
+        <div class="flex w-full flex-wrap items-end gap-3 sm:w-auto">
             {{-- Keyed by the filter: when the option list changes the native select loses its
                  selection, so rebuild the picker and let it read the chosen party again. --}}
             <div class="w-full sm:w-72" wire:key="picker-{{ $partyType }}-{{ $withBalanceOnly ? 'with-balance' : 'all' }}">
@@ -847,11 +851,11 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                 @endif
             </div>
 
-            <x-ui.field label="From" name="from" for="from">
+            <x-ui.field label="From" name="from" for="from" class="w-[calc(50%-0.375rem)] sm:w-40">
                 <x-ui.input wire:model.live="from" id="from" type="date" />
             </x-ui.field>
 
-            <x-ui.field label="To" name="to" for="to">
+            <x-ui.field label="To" name="to" for="to" class="w-[calc(50%-0.375rem)] sm:w-40">
                 <x-ui.input wire:model.live="to" id="to" type="date" />
             </x-ui.field>
 
@@ -862,9 +866,9 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                         wire:click="applyPreset('{{ $preset }}')"
                         aria-pressed="{{ $rangePreset === $preset ? 'true' : 'false' }}"
                         @class([
-                            'rounded-full border px-3 py-1 text-xs font-medium transition',
-                            'border-brand-600 bg-brand-50 text-brand-700' => $rangePreset === $preset,
-                            'border-slate-300 text-slate-600 hover:border-slate-400 hover:text-slate-900' => $rangePreset !== $preset,
+                            'rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-link',
+                            'border-primary/15 bg-primary-soft text-on-primary-soft' => $rangePreset === $preset,
+                            'border-line text-ink-faint hover:border-line-strong hover:text-ink' => $rangePreset !== $preset,
                         ])
                     >
                         {{ $label }}
@@ -900,17 +904,17 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
         @endif
     @else
         <div class="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 class="text-base font-semibold text-slate-900">
-                <a href="{{ $vendorSide ? route('vendors.show', $party) : route('customers.show', $party) }}" wire:navigate class="hover:text-brand-700">{{ $party->name }}</a>
+            <h2 class="text-lg font-bold tracking-tight text-ink">
+                <a href="{{ $vendorSide ? route('vendors.show', $party) : route('customers.show', $party) }}" wire:navigate class="hover:text-link hover:underline">{{ $party->name }}</a>
                 @if ($party->phone)
-                    <span class="ml-1 text-sm font-normal text-slate-500">{{ $party->phone }}</span>
+                    <span class="ml-1 text-sm font-normal text-ink-faint">{{ $party->phone }}</span>
                 @endif
             </h2>
-            <p class="text-sm text-slate-500">Statement {{ $rangeLabel }}</p>
+            <p class="text-sm text-ink-faint">Statement {{ $rangeLabel }}</p>
         </div>
 
         @if ($vendorSide)
-            <div class="mb-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="mb-2 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                 <x-ui.stat
                     label="Owed to vendor"
                     :value="$balanceText($statement['purchases']['closing'])"
@@ -922,9 +926,9 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                     :sub="$statement['manual']['closing'] < 0 ? 'In our favour' : 'Closing balance'"
                 />
             </div>
-            <p class="mb-6 text-xs text-slate-500">Two separate balances. They are never added together.</p>
+            <p class="mb-6 text-xs text-ink-faint">Two separate balances. They are never added together.</p>
         @else
-            <div class="mb-2 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div class="mb-2 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
                 <x-ui.stat label="Sales outstanding" :value="$balanceText($statement['sales']['closing'])" sub="Closing balance" />
                 <x-ui.stat
                     label="Udhaar balance"
@@ -937,7 +941,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                     :sub="$statement['manual']['closing'] < 0 ? 'In customer\'s favour' : 'Closing balance'"
                 />
             </div>
-            <p class="mb-6 text-xs text-slate-500">Three separate balances. They are never added together.</p>
+            <p class="mb-6 text-xs text-ink-faint">Three separate balances. They are never added together.</p>
         @endif
 
         <div class="space-y-6">
@@ -945,60 +949,60 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                 @php $section = $statement[$key]; @endphp
                 <section wire:key="section-{{ $key }}">
                     <div class="mb-2">
-                        <h3 class="text-sm font-semibold text-slate-900">{{ $meta['title'] }}</h3>
-                        <p class="text-xs text-slate-500">{{ $meta['description'] }}</p>
+                        <h3 class="text-base font-bold tracking-tight text-ink">{{ $meta['title'] }}</h3>
+                        <p class="text-xs text-ink-faint">{{ $meta['description'] }}</p>
                     </div>
                     {{-- Phones: a stacked list, so the amount and running balance are visible without scrolling sideways. --}}
-                    <div class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white text-sm shadow-card sm:hidden">
-                        <div class="flex items-baseline justify-between gap-3 bg-slate-50/60 px-4 py-2.5">
+                    <div class="divide-y divide-line rounded-2xl border border-line bg-surface text-sm shadow-soft sm:hidden">
+                        <div class="flex items-baseline justify-between gap-3 bg-surface-sunken/60 px-4 py-2.5">
                             <div>
-                                <p class="font-medium text-slate-600">Balance brought forward</p>
-                                <p class="text-xs text-slate-500">{{ $rangeFrom->format('d M Y') }}</p>
+                                <p class="font-medium text-ink-muted">Balance brought forward</p>
+                                <p class="text-xs text-ink-faint">{{ $rangeFrom->format('d M Y') }}</p>
                             </div>
-                            <p class="whitespace-nowrap font-medium tabular-nums text-slate-900">{{ $balanceText($section['opening']) }}{{ $section['opening'] < 0 ? ' (advance)' : '' }}</p>
+                            <p class="whitespace-nowrap font-medium tabular-nums text-ink">{{ $balanceText($section['opening']) }}{{ $section['opening'] < 0 ? ' (advance)' : '' }}</p>
                         </div>
 
                         @forelse ($section['rows'] as $row)
                             <div wire:key="m-{{ $row['key'] }}" class="flex items-start justify-between gap-3 px-4 py-2.5">
                                 <div class="min-w-0">
                                     @if ($row['url'])
-                                        <a href="{{ $row['url'] }}" wire:navigate class="font-medium text-slate-800 hover:text-brand-700">{{ $row['description'] }}</a>
+                                        <a href="{{ $row['url'] }}" wire:navigate class="font-medium text-ink hover:underline">{{ $row['description'] }}</a>
                                     @else
-                                        <p class="font-medium text-slate-800">{{ $row['description'] }}</p>
+                                        <p class="font-medium text-ink">{{ $row['description'] }}</p>
                                     @endif
-                                    <p class="text-xs text-slate-500">{{ $row['date']->format('d M Y') }}@if ($row['detail']) · {{ $row['detail'] }}@endif</p>
+                                    <p class="text-xs text-ink-faint">{{ $row['date']->format('d M Y') }}@if ($row['detail']) · {{ $row['detail'] }}@endif</p>
                                     @if ($key === 'manual')
-                                        <button type="button" wire:click="openCancelEntry({{ $row['entry']->id }})" class="mt-1 text-xs font-medium text-red-600 hover:text-red-700">Cancel</button>
+                                        <button type="button" wire:click="openCancelEntry({{ $row['entry']->id }})" class="mt-1 text-xs font-semibold text-danger hover:underline">Cancel</button>
                                     @endif
                                 </div>
                                 <div class="shrink-0 text-right tabular-nums">
                                     @php $raises = ($row['side'] === 'debit') !== $vendorSide; @endphp
-                                    <p @class(['whitespace-nowrap font-medium', 'text-red-600' => $raises, 'text-emerald-600' => ! $raises])>
+                                    <p @class(['whitespace-nowrap font-medium', 'text-danger' => $raises, 'text-success' => ! $raises])>
                                         {{ $raises ? '+' : '−' }} Rs {{ number_format($row['side'] === 'debit' ? $row['debit'] : $row['credit'], 2) }}
                                     </p>
-                                    <p class="whitespace-nowrap text-xs text-slate-500">Bal {{ $balanceText($row['balance']) }}{{ $row['balance'] < 0 ? ' (adv.)' : '' }}</p>
+                                    <p class="whitespace-nowrap text-xs text-ink-faint">Bal {{ $balanceText($row['balance']) }}{{ $row['balance'] < 0 ? ' (adv.)' : '' }}</p>
                                 </div>
                             </div>
                         @empty
-                            <p class="px-4 py-3 text-center text-slate-400">No entries in this period</p>
+                            <p class="px-4 py-3 text-center text-ink-faint">No entries in this period</p>
                         @endforelse
 
-                        <div class="flex items-baseline justify-between gap-3 bg-slate-50 px-4 py-2.5">
+                        <div class="flex items-baseline justify-between gap-3 bg-surface-sunken px-4 py-2.5">
                             <div>
-                                <p class="font-semibold text-slate-900">Closing balance</p>
-                                <p class="text-xs text-slate-500">{{ $rangeTo->format('d M Y') }}</p>
+                                <p class="font-semibold text-ink">Closing balance</p>
+                                <p class="text-xs text-ink-faint">{{ $rangeTo->format('d M Y') }}</p>
                             </div>
-                            <p class="whitespace-nowrap font-semibold tabular-nums text-slate-900">{{ $balanceText($section['closing']) }}{{ $section['closing'] < 0 ? ' (advance)' : '' }}</p>
+                            <p class="whitespace-nowrap font-semibold tabular-nums text-ink">{{ $balanceText($section['closing']) }}{{ $section['closing'] < 0 ? ' (advance)' : '' }}</p>
                         </div>
                     </div>
 
                     <x-ui.table class="hidden sm:block" :headers="$key === 'manual' ? ['Date', 'Description', 'Debit', 'Credit', 'Balance', ''] : ['Date', 'Description', 'Debit', 'Credit', 'Balance']">
-                        <x-ui.table-row class="bg-slate-50/60">
-                            <x-ui.table-cell class="text-slate-500">{{ $rangeFrom->format('d M Y') }}</x-ui.table-cell>
-                            <x-ui.table-cell class="font-medium text-slate-600">Balance brought forward</x-ui.table-cell>
+                        <x-ui.table-row class="bg-surface-sunken/60">
+                            <x-ui.table-cell class="text-ink-faint">{{ $rangeFrom->format('d M Y') }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-medium text-ink-muted">Balance brought forward</x-ui.table-cell>
                             <x-ui.table-cell></x-ui.table-cell>
                             <x-ui.table-cell></x-ui.table-cell>
-                            <x-ui.table-cell class="font-medium text-slate-900">
+                            <x-ui.table-cell class="font-medium text-ink">
                                 {{ $balanceText($section['opening']) }}{{ $section['opening'] < 0 ? ' (advance)' : '' }}
                             </x-ui.table-cell>
                             @if ($key === 'manual')
@@ -1012,18 +1016,18 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                                 <x-ui.table-cell class="whitespace-normal">
                                     <div class="flex min-w-[12rem] flex-col">
                                         @if ($row['url'])
-                                            <a href="{{ $row['url'] }}" wire:navigate class="font-medium text-slate-800 hover:text-brand-700">{{ $row['description'] }}</a>
+                                            <a href="{{ $row['url'] }}" wire:navigate class="font-medium text-ink hover:underline">{{ $row['description'] }}</a>
                                         @else
-                                            <span class="font-medium text-slate-800">{{ $row['description'] }}</span>
+                                            <span class="font-medium text-ink">{{ $row['description'] }}</span>
                                         @endif
                                         @if ($row['detail'])
-                                            <span class="text-xs text-slate-500">{{ $row['detail'] }}</span>
+                                            <span class="text-xs text-ink-faint">{{ $row['detail'] }}</span>
                                         @endif
                                     </div>
                                 </x-ui.table-cell>
                                 <x-ui.table-cell>{{ $row['side'] === 'debit' ? 'Rs '.number_format($row['debit'], 2) : '' }}</x-ui.table-cell>
                                 <x-ui.table-cell>{{ $row['side'] === 'credit' ? 'Rs '.number_format($row['credit'], 2) : '' }}</x-ui.table-cell>
-                                <x-ui.table-cell class="font-medium text-slate-900">
+                                <x-ui.table-cell class="font-medium text-ink">
                                     {{ $balanceText($row['balance']) }}{{ $row['balance'] < 0 ? ' (advance)' : '' }}
                                 </x-ui.table-cell>
                                 @if ($key === 'manual')
@@ -1036,16 +1040,16 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                             </x-ui.table-row>
                         @empty
                             <x-ui.table-row>
-                                <x-ui.table-cell :colspan="$key === 'manual' ? 6 : 5" class="py-4 text-center text-slate-400">No entries in this period</x-ui.table-cell>
+                                <x-ui.table-cell :colspan="$key === 'manual' ? 6 : 5" class="py-4 text-center text-ink-faint">No entries in this period</x-ui.table-cell>
                             </x-ui.table-row>
                         @endforelse
 
-                        <x-ui.table-row class="bg-slate-50">
-                            <x-ui.table-cell class="text-slate-500">{{ $rangeTo->format('d M Y') }}</x-ui.table-cell>
-                            <x-ui.table-cell class="font-semibold text-slate-900">Closing balance</x-ui.table-cell>
-                            <x-ui.table-cell class="text-slate-600">{{ $section['debits'] ? 'Rs '.number_format($section['debits'], 2) : '' }}</x-ui.table-cell>
-                            <x-ui.table-cell class="text-slate-600">{{ $section['credits'] ? 'Rs '.number_format($section['credits'], 2) : '' }}</x-ui.table-cell>
-                            <x-ui.table-cell class="font-semibold text-slate-900">
+                        <x-ui.table-row class="bg-surface-sunken">
+                            <x-ui.table-cell class="text-ink-faint">{{ $rangeTo->format('d M Y') }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-semibold text-ink">Closing balance</x-ui.table-cell>
+                            <x-ui.table-cell class="text-ink-muted">{{ $section['debits'] ? 'Rs '.number_format($section['debits'], 2) : '' }}</x-ui.table-cell>
+                            <x-ui.table-cell class="text-ink-muted">{{ $section['credits'] ? 'Rs '.number_format($section['credits'], 2) : '' }}</x-ui.table-cell>
+                            <x-ui.table-cell class="font-semibold text-ink">
                                 {{ $balanceText($section['closing']) }}{{ $section['closing'] < 0 ? ' (advance)' : '' }}
                             </x-ui.table-cell>
                             @if ($key === 'manual')
@@ -1061,27 +1065,27 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
             <section class="mt-8">
                 <div class="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                     <div>
-                        <h3 class="text-sm font-semibold text-slate-900">Other amounts owed</h3>
-                        <p class="text-xs text-slate-500">Unsettled Wallet Loads, Balance Loads, Bills, Repairs, NADRA, SIM Sales and Services. For reference only: not part of any balance above.</p>
+                        <h3 class="text-base font-bold tracking-tight text-ink">Other amounts owed</h3>
+                        <p class="text-xs text-ink-faint">Unsettled Wallet Loads, Balance Loads, Bills, Repairs, NADRA, SIM Sales and Services. For reference only: not part of any balance above.</p>
                     </div>
                     @if ($udhaarUrl)
-                        <a href="{{ $udhaarUrl }}" wire:navigate class="text-sm font-medium text-brand-700 hover:text-brand-800">Record payments on the Udhaar screen →</a>
+                        <a href="{{ $udhaarUrl }}" wire:navigate class="text-sm font-medium text-link hover:underline">Record payments on the Udhaar screen →</a>
                     @endif
                 </div>
-                <x-ui.table :headers="['Date', 'Source', 'Description', 'Amount due']">
+                <x-ui.table stack :headers="['Description', 'Date', 'Source', 'Amount due']">
                     @foreach ($otherDues as $due)
                         <x-ui.table-row wire:key="due-{{ $loop->index }}">
-                            <x-ui.table-cell>{{ $due['date']->format('d M Y') }}</x-ui.table-cell>
-                            <x-ui.table-cell><x-ui.badge variant="neutral">{{ $due['source'] }}</x-ui.badge></x-ui.table-cell>
-                            <x-ui.table-cell class="whitespace-normal">{{ $due['description'] }}</x-ui.table-cell>
-                            <x-ui.table-cell class="font-medium text-slate-900">Rs {{ number_format($due['amountDue'], 2) }}</x-ui.table-cell>
+                            <x-ui.table-cell primary class="whitespace-normal font-semibold text-ink">{{ $due['description'] }}</x-ui.table-cell>
+                            <x-ui.table-cell label="Date">{{ $due['date']->format('d M Y') }}</x-ui.table-cell>
+                            <x-ui.table-cell label="Source"><x-ui.badge variant="neutral">{{ $due['source'] }}</x-ui.badge></x-ui.table-cell>
+                            <x-ui.table-cell label="Amount due" class="font-medium text-ink">Rs {{ number_format($due['amountDue'], 2) }}</x-ui.table-cell>
                         </x-ui.table-row>
                     @endforeach
-                    <x-ui.table-row class="bg-slate-50">
-                        <x-ui.table-cell></x-ui.table-cell>
-                        <x-ui.table-cell></x-ui.table-cell>
-                        <x-ui.table-cell class="font-semibold text-slate-900">Total</x-ui.table-cell>
-                        <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($otherDues->sum('amountDue'), 2) }}</x-ui.table-cell>
+                    <x-ui.table-row class="bg-surface-sunken">
+                        <x-ui.table-cell primary class="font-semibold text-ink">Total</x-ui.table-cell>
+                        <x-ui.table-cell label="Date">—</x-ui.table-cell>
+                        <x-ui.table-cell label="Source">—</x-ui.table-cell>
+                        <x-ui.table-cell label="Amount due" class="font-semibold text-ink">Rs {{ number_format($otherDues->sum('amountDue'), 2) }}</x-ui.table-cell>
                     </x-ui.table-row>
                 </x-ui.table>
             </section>
@@ -1090,8 +1094,8 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
 
     <x-ui.modal name="ledger-entry-form" max-width="sm">
         <form wire:submit="saveEntry" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Add Entry</h2>
-            <p class="mt-1 text-sm text-slate-500">
+            <h2 class="text-lg font-semibold text-ink">Add Entry</h2>
+            <p class="mt-1 text-sm text-ink-faint">
                 @if ($vendorSide)
                     Counts only toward this vendor's "Opening & adjustments" balance, never Stock-In. To record a payment against a Stock-In, use Stock-In history.
                 @else
@@ -1149,8 +1153,8 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
 
     <x-ui.modal name="cancel-entry-form" max-width="sm">
         <form wire:submit="cancelEntry" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Cancel This Entry?</h2>
-            <p class="mt-2 text-sm text-slate-600">
+            <h2 class="text-lg font-semibold text-ink">Cancel This Entry?</h2>
+            <p class="mt-2 text-sm text-ink-muted">
                 The entry will be marked <strong>Cancelled</strong> and stop counting toward the balance. It is kept on record. This cannot be undone.
             </p>
 
@@ -1165,7 +1169,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                     Keep Entry
                 </x-ui.button>
 
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelEntry" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelEntry" variant="danger">
                     Cancel Entry
                 </x-ui.button>
             </div>

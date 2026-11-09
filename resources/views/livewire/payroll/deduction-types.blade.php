@@ -80,13 +80,13 @@ new #[Layout('layouts.app')] #[Title('Deduction Types')] class extends Component
 <div>
     @unless ($embedded)
         <x-slot name="header">
-            <h1 class="text-xl font-semibold text-slate-900">Deduction Types</h1>
+            <x-ui.page-header>Deduction Types</x-ui.page-header>
         </x-slot>
 
         <x-payroll.nav active="payroll.deduction-types" />
     @endunless
 
-    <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+    <div class="mb-4 rounded-xl border border-line bg-surface-sunken px-4 py-3 text-sm text-ink-muted">
         <span class="font-semibold">This isn't tax advice.</span> The app applies no tax, EOBI, SESSI or other legal rules. You decide what to deduct and how much, so please check what applies to your shop with a qualified advisor.
     </div>
 
@@ -102,7 +102,7 @@ new #[Layout('layouts.app')] #[Title('Deduction Types')] class extends Component
                         <option value="held">Held for someone else (still a cost, not take-home)</option>
                     </x-ui.select>
                 </x-ui.field>
-                <x-ui.field label="Default Amount" name="defaultAmount" for="deductionDefault" help="Optional. Added to every new draft. You can change it on each payslip">
+                <x-ui.field label="Default Amount" name="defaultAmount" for="deductionDefault" help="Added to every new draft. You can change it on each payslip">
                     <x-ui.input wire:model="defaultAmount" id="deductionDefault" type="number" min="0" step="0.01" />
                 </x-ui.field>
                 <div class="flex gap-2">
@@ -118,13 +118,13 @@ new #[Layout('layouts.app')] #[Title('Deduction Types')] class extends Component
             @if ($types->isEmpty())
                 <x-ui.empty-state title="No deduction types yet" description="Add the ones your shop uses." />
             @else
-                <x-ui.table :headers="['Name', 'What it does', 'Default', '']">
+                <x-ui.table stack :headers="['Name', 'What it does', 'Default', '']">
                     @foreach ($types as $type)
                         <x-ui.table-row wire:key="deduction-{{ $type->id }}" @class(['opacity-50' => ! $type->is_active])>
-                            <x-ui.table-cell class="font-medium text-slate-900">{{ $type->name }}</x-ui.table-cell>
-                            <x-ui.table-cell>{{ $type->reduces_cost ? 'Reduces salary cost' : 'Held for someone else' }}</x-ui.table-cell>
-                            <x-ui.table-cell>{{ $type->default_amount !== null ? 'Rs '.number_format($type->default_amount, 2) : '—' }}</x-ui.table-cell>
-                            <x-ui.table-cell align="right">
+                            <x-ui.table-cell primary class="font-medium text-ink">{{ $type->name }}</x-ui.table-cell>
+                            <x-ui.table-cell label="What it does">{{ $type->reduces_cost ? 'Reduces salary cost' : 'Held for someone else' }}</x-ui.table-cell>
+                            <x-ui.table-cell label="Default">{{ $type->default_amount !== null ? 'Rs '.number_format($type->default_amount, 2) : '—' }}</x-ui.table-cell>
+                            <x-ui.table-cell actions align="right">
                                 <div class="flex justify-end gap-2">
                                     <x-ui.button size="sm" variant="ghost" wire:click="edit({{ $type->id }})">Edit</x-ui.button>
                                     <x-ui.button size="sm" variant="ghost" wire:click="toggleActive({{ $type->id }})">{{ $type->is_active ? 'Turn off' : 'Turn on' }}</x-ui.button>

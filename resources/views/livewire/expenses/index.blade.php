@@ -162,22 +162,23 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Expenses</h1>
+        <x-ui.page-header>Expenses</x-ui.page-header>
     </x-slot>
 
-    <x-ui.card title="Log an Expense">
-        <form wire:submit="save" class="flex flex-col gap-4 sm:flex-row sm:items-start">
-            <x-ui.field label="Description" name="description" for="description" class="flex-1">
+    {{-- Quick-add row: one-line records go straight in above their list (docs/design-system.md). --}}
+    <x-ui.card title="Log an Expense" class="mb-6">
+        <form wire:submit="save" class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start">
+            <x-ui.field label="Description" name="description" for="description" class="min-w-[12rem] flex-1" required>
                 <x-ui.input wire:model="description" id="description" placeholder="e.g. Shop electricity bill" autofocus />
             </x-ui.field>
 
-            <x-ui.field label="Amount" name="amount" for="amount" class="sm:w-40">
+            <x-ui.field label="Amount" name="amount" for="amount" class="sm:w-40" required>
                 <x-ui.input wire:model="amount" id="amount" type="number" min="0.01" step="0.01" />
             </x-ui.field>
 
             <x-ledger.paid-from :value="$paidFrom" class="sm:w-48" />
 
-            <x-ui.field label="Date" name="expenseDate" for="expenseDate" class="sm:w-48">
+            <x-ui.field label="Date" name="expenseDate" for="expenseDate" class="sm:w-44" required>
                 <x-ui.input wire:model="expenseDate" id="expenseDate" type="date" />
             </x-ui.field>
 
@@ -189,32 +190,19 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
         </form>
     </x-ui.card>
 
-    <div class="mt-6 mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <x-ui.field label="From" name="from" for="from" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="from" id="from" type="date" />
-            </x-ui.field>
+    <x-ui.filter-bar :active="(int) filled($from) + (int) filled($to)">
+        <x-ui.date-range />
 
-            <x-ui.field label="To" name="to" for="to" class="sm:max-w-[10rem]">
-                <x-ui.input wire:model.live="to" id="to" type="date" />
-            </x-ui.field>
+        @if ($from || $to)
+            <x-ui.button type="button" variant="ghost" wire:click="clearDateFilters">
+                Clear
+            </x-ui.button>
+        @endif
+    </x-ui.filter-bar>
 
-            @if ($from || $to)
-                <div class="sm:pb-1">
-                    <x-ui.button type="button" variant="ghost" wire:click="clearDateFilters">
-                        Clear
-                    </x-ui.button>
-                </div>
-            @endif
-        </div>
-
-        <x-ui.card :padding="false" class="w-full sm:w-auto">
-            <div class="px-5 py-3 text-right">
-                <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total Expenses</p>
-                <p class="text-display-sm text-slate-900">Rs {{ number_format($totalExpenses, 2) }}</p>
-            </div>
-        </x-ui.card>
-    </div>
+    <x-ui.stat-row>
+        <x-ui.stat label="Total Expenses" value="Rs {{ number_format($totalExpenses, 2) }}" />
+    </x-ui.stat-row>
 
     @if ($expenses->isEmpty())
         <x-ui.empty-state
@@ -222,33 +210,30 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
             description="Expenses you log above will show up here."
         />
     @else
-        <x-ui.table :headers="['Date', 'Description', 'Amount', 'Status', '']">
+        <x-ui.table stack :headers="['Description', 'Date', 'Amount', 'Status', '']">
             @foreach ($expenses as $expense)
                 <x-ui.table-row wire:key="expense-{{ $expense->id }}" @class(['opacity-50' => $expense->isCancelled()])>
-                    <x-ui.table-cell>{{ $expense->expense_date->format('d M Y') }}</x-ui.table-cell>
-                    <x-ui.table-cell class="font-medium text-slate-900">{{ $expense->description }}</x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($expense->amount, 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell primary class="font-semibold text-ink whitespace-normal">{{ $expense->description }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Date">{{ $expense->expense_date->format('d M Y') }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Amount" class="font-semibold text-ink">Rs {{ number_format($expense->amount, 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Status">
                         @if ($expense->isCancelled())
                             <x-ui.badge variant="danger">Cancelled</x-ui.badge>
                         @else
                             <x-ui.badge variant="success">Active</x-ui.badge>
                         @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell align="right">
+                    <x-ui.table-cell actions align="right">
                         @if ($expense->employee_advance_id !== null)
-                            <span class="text-xs text-slate-400">Advance written off</span>
+                            <span class="text-xs text-ink-faint">Advance written off</span>
                         @elseif ($expense->payslip_id !== null)
-                            <span class="text-xs text-slate-400">From Payroll</span>
+                            <span class="text-xs text-ink-faint">From Payroll</span>
                         @elseif (! $expense->isCancelled() && auth()->user()->hasAccessTo('expenses-edit-cancel'))
-                            <div class="flex justify-end gap-2">
-                                <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $expense->id }})">
-                                    Edit
-                                </x-ui.button>
-                                <x-ui.button size="sm" variant="danger-ghost" wire:click="openCancel({{ $expense->id }})">
-                                    Delete
-                                </x-ui.button>
-                            </div>
+                            <x-ui.row-actions label="Actions for {{ $expense->description }}">
+                                <x-ui.menu-item wire:click="openEdit({{ $expense->id }})">Edit</x-ui.menu-item>
+                                <x-ui.menu-divider />
+                                <x-ui.menu-item danger wire:click="openCancel({{ $expense->id }})">Delete</x-ui.menu-item>
+                            </x-ui.row-actions>
                         @endif
                     </x-ui.table-cell>
                 </x-ui.table-row>
@@ -262,18 +247,18 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
 
     <x-ui.modal name="edit-expense-form" max-width="sm">
         <form wire:submit="saveEdit" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Edit Expense</h2>
+            <h2 class="text-lg font-bold text-ink">Edit Expense</h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Description" name="editDescription" for="editDescription">
+                <x-ui.field label="Description" name="editDescription" for="editDescription" required>
                     <x-ui.input wire:model="editDescription" id="editDescription" autofocus />
                 </x-ui.field>
 
-                <x-ui.field label="Amount" name="editAmount" for="editAmount">
+                <x-ui.field label="Amount" name="editAmount" for="editAmount" required>
                     <x-ui.input wire:model="editAmount" id="editAmount" type="number" min="0.01" step="0.01" />
                 </x-ui.field>
 
-                <x-ui.field label="Date" name="editExpenseDate" for="editExpenseDate">
+                <x-ui.field label="Date" name="editExpenseDate" for="editExpenseDate" required>
                     <x-ui.input wire:model="editExpenseDate" id="editExpenseDate" type="date" />
                 </x-ui.field>
             </div>
@@ -292,13 +277,13 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
 
     <x-ui.modal name="cancel-expense-form" max-width="sm">
         <form wire:submit="cancelExpense" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Cancel This Expense?</h2>
-            <p class="mt-2 text-sm text-slate-600">
+            <h2 class="text-lg font-bold text-ink">Cancel This Expense?</h2>
+            <p class="mt-2 text-sm text-ink-muted">
                 This expense will be marked <strong>Cancelled</strong> and will no longer count toward the total. This cannot be undone.
             </p>
 
             <div class="mt-5">
-                <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
+                <x-ui.field label="Reason" name="cancelReason" for="cancelReason">
                     <x-ui.input wire:model="cancelReason" id="cancelReason" />
                 </x-ui.field>
             </div>
@@ -308,7 +293,7 @@ new #[Layout('layouts.app')] #[Title('Expenses')] class extends Component
                     Keep Expense
                 </x-ui.button>
 
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelExpense" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                <x-ui.button type="submit" variant="danger" wire:loading.attr="disabled" wire:target="cancelExpense">
                     Cancel Expense
                 </x-ui.button>
             </div>

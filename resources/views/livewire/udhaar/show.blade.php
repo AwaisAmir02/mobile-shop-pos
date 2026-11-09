@@ -524,16 +524,35 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 
 <div>
     <x-slot name="header">
-        <x-ui.page-header back="{{ route('udhaar.index') }}" back-label="Udhaar">{{ $customer->name }} — Udhaar History</x-ui.page-header>
+        <x-ui.page-header back="{{ route('udhaar.index') }}" back-label="Udhaar" :subtitle="$customer->phone">{{ $customer->name }} — Udhaar History</x-ui.page-header>
     </x-slot>
 
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <x-ui.stat label="Current Balance" value="Rs {{ number_format(abs($balance), 2) }}" />
-        <x-ui.stat label="Status" :value="ucfirst($status)" />
-        <div class="flex items-center justify-end gap-2">
+    <x-party.tabs type="customer" :party="$customer" active="udhaar" />
+
+    @php
+        // Display only: the headline is already loans plus other dues (with()).
+        // These split it back into its two parts so the figures add up on screen.
+        $loanBalance = $rows->first(fn ($row) => true)['runningBalance'] ?? 0.0;
+        $otherDue = $dues->sum('amountDue');
+    @endphp
+
+    <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div class="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+            <x-ui.stat
+                label="Current Balance"
+                value="Rs {{ number_format(abs($balance), 2) }}"
+                :sub="match ($status) { 'due' => 'Due · everything they owe', 'advance' => 'Advance · paid ahead', default => 'Settled' }"
+            />
+            @if ($dues->isNotEmpty())
+                <x-ui.stat label="Udhaar Loans" value="Rs {{ number_format(abs($loanBalance), 2) }}" :sub="$loanBalance < 0 ? 'Advance, in the table below' : 'In the table below'" />
+                <x-ui.stat label="Unpaid Sales & Services" value="Rs {{ number_format($otherDue, 2) }}" sub="Listed further down" />
+            @endif
+        </div>
+
+        <div class="flex items-center gap-2">
             <x-ui.export-dropdown />
             <x-ui.button wire:click="openAddTransaction">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>
                 Add Transaction
@@ -541,61 +560,49 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
         </div>
     </div>
 
+    <h2 class="mb-3 text-base font-bold tracking-tight text-ink">Udhaar loans</h2>
+
     @if ($rows->isEmpty())
         <x-ui.empty-state
-            title="No transactions yet"
-            description="Record udhaar given or a repayment to start this customer's history."
-        >
-            <x-slot name="action">
-                <x-ui.button wire:click="openAddTransaction">Add Transaction</x-ui.button>
-            </x-slot>
-        </x-ui.empty-state>
+            title="No udhaar loans yet"
+            :description="$dues->isNotEmpty() ? 'Their balance above comes from the unpaid items further down. Record udhaar given or a repayment to start a loan history.' : 'Record udhaar given or a repayment to start this customer\'s history.'"
+        />
     @else
-        <x-ui.table :headers="['Date', 'Type', 'Amount', 'Running Balance', 'Note', 'Entered By', '']">
+        <x-ui.table stack :headers="['Date', 'Type', 'Amount', 'Running Balance', 'Note', 'Entered By', '']">
             @foreach ($rows as $row)
                 @php $transaction = $row['transaction']; @endphp
                 <x-ui.table-row wire:key="udhaar-txn-{{ $transaction->id }}" @class(['opacity-50' => $transaction->isCancelled()])>
-                    <x-ui.table-cell>{{ $transaction->transaction_date->format('d M Y') }}</x-ui.table-cell>
-                    <x-ui.table-cell>
-                        <div class="flex flex-col">
-                            <span class="text-slate-700">
-                                {{ $transaction->type->label() }}
-                                @if ($transaction->isCancelled())
-                                    <x-ui.badge variant="danger">Cancelled</x-ui.badge>
-                                @endif
-                            </span>
-                            @if ($transaction->reverses_transaction_id)
-                                <span class="text-xs text-slate-400">Reverses #{{ $transaction->reverses_transaction_id }}</span>
-                            @endif
-                        </div>
+                    <x-ui.table-cell primary class="font-semibold text-ink">{{ $transaction->transaction_date->format('d M Y') }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Type">
+                        <span class="text-ink-muted">{{ $transaction->type->label() }}</span>
+                        @if ($transaction->isCancelled())
+                            <x-ui.badge variant="danger">Cancelled</x-ui.badge>
+                        @endif
+                        @if ($transaction->reverses_transaction_id)
+                            <span class="ui-sub">Reverses #{{ $transaction->reverses_transaction_id }}</span>
+                        @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold {{ $transaction->type->sign() > 0 ? 'text-red-600' : 'text-emerald-600' }}">
+                    <x-ui.table-cell label="Amount" class="font-semibold {{ $transaction->type->sign() > 0 ? 'text-danger' : 'text-success' }}">
                         {{ $transaction->type->sign() > 0 ? '+' : '−' }} Rs {{ number_format($transaction->amount, 2) }}
                     </x-ui.table-cell>
-                    <x-ui.table-cell class="font-medium text-slate-900">
+                    <x-ui.table-cell label="Running Balance" class="font-medium text-ink">
                         Rs {{ number_format(abs($row['runningBalance']), 2) }}
                         {{ $row['runningBalance'] < 0 ? '(advance)' : '' }}
                     </x-ui.table-cell>
-                    <x-ui.table-cell>{{ $transaction->note ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $transaction->user?->name ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell align="right">
+                    <x-ui.table-cell label="Note" class="max-w-[14rem] truncate" title="{{ $transaction->note }}">{{ $transaction->note ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Entered By">{{ $transaction->user?->name ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell actions align="right">
                         @if ($transaction->isActionable())
-                            <div class="flex justify-end gap-2">
-                                <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $transaction->id }})">
-                                    Edit
-                                </x-ui.button>
-                                <x-ui.button
-                                    size="sm"
-                                    variant="ghost"
+                            <x-ui.row-actions label="Actions for the {{ $transaction->transaction_date->format('d M Y') }} entry">
+                                <x-ui.menu-item wire:click="openEdit({{ $transaction->id }})">Edit</x-ui.menu-item>
+                                <x-ui.menu-item
                                     wire:click="reverse({{ $transaction->id }})"
-                                    wire:confirm="Reverse this {{ strtolower($transaction->type->label()) }} of Rs {{ number_format($transaction->amount, 2) }}? This creates an offsetting entry — nothing is edited or deleted."
-                                >
-                                    Reverse
-                                </x-ui.button>
-                                <x-ui.button size="sm" variant="danger-ghost" wire:click="openCancel({{ $transaction->id }})">
-                                    Cancel
-                                </x-ui.button>
-                            </div>
+                                    confirm="Reverse this {{ strtolower($transaction->type->label()) }} of Rs {{ number_format($transaction->amount, 2) }}? This creates an offsetting entry — nothing is edited or deleted."
+                                    confirm-label="Reverse"
+                                >Reverse</x-ui.menu-item>
+                                <x-ui.menu-divider />
+                                <x-ui.menu-item danger wire:click="openCancel({{ $transaction->id }})">Cancel</x-ui.menu-item>
+                            </x-ui.row-actions>
                         @endif
                     </x-ui.table-cell>
                 </x-ui.table-row>
@@ -605,37 +612,35 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 
     @if ($dues->isNotEmpty())
         <div class="mt-8">
-            <x-ui.card
-                title="Other Amounts Owed"
-                description="Unsettled balances from Sales, Wallet Loads, Balance Loads, Bills, Repairs, NADRA Verifications, and SIM Sales — separate from the Udhaar loan balance above. Each item is its own transaction, settled on its own."
-            >
-                <x-ui.table :headers="['Source', 'Description', 'Date', 'Amount Due', '']">
-                    @foreach ($dues as $due)
-                        <x-ui.table-row wire:key="due-{{ $due['source'] }}-{{ $due['id'] }}">
-                            <x-ui.table-cell>
-                                <x-ui.badge variant="neutral">{{ $due['sourceLabel'] }}</x-ui.badge>
-                            </x-ui.table-cell>
-                            <x-ui.table-cell>{{ $due['description'] }}</x-ui.table-cell>
-                            <x-ui.table-cell>{{ $due['date']->format('d M Y') }}</x-ui.table-cell>
-                            <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($due['amountDue'], 2) }}</x-ui.table-cell>
-                            <x-ui.table-cell align="right">
-                                <x-ui.button size="sm" variant="ghost" wire:click="openSettleDue('{{ $due['source'] }}', {{ $due['id'] }})">
-                                    Record Payment
-                                </x-ui.button>
-                            </x-ui.table-cell>
-                        </x-ui.table-row>
-                    @endforeach
-                </x-ui.table>
-            </x-ui.card>
+            <h2 class="text-base font-bold tracking-tight text-ink">Other Amounts Owed</h2>
+            <p class="mb-3 mt-0.5 max-w-3xl text-sm text-ink-faint">Unsettled balances from Sales, Wallet Loads, Balance Loads, Bills, Repairs, NADRA Verifications, and SIM Sales — separate from the Udhaar loan balance above. Each item is its own transaction, settled on its own.</p>
+
+            <x-ui.table stack :headers="['Description', 'Source', 'Date', 'Amount Due', '']">
+                @foreach ($dues as $due)
+                    <x-ui.table-row wire:key="due-{{ $due['source'] }}-{{ $due['id'] }}">
+                        <x-ui.table-cell primary class="font-semibold text-ink">{{ $due['description'] }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Source">
+                            <x-ui.badge variant="neutral">{{ $due['sourceLabel'] }}</x-ui.badge>
+                        </x-ui.table-cell>
+                        <x-ui.table-cell label="Date">{{ $due['date']->format('d M Y') }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Amount Due" class="font-semibold text-ink">Rs {{ number_format($due['amountDue'], 2) }}</x-ui.table-cell>
+                        <x-ui.table-cell actions align="right">
+                            <x-ui.button size="sm" variant="secondary" wire:click="openSettleDue('{{ $due['source'] }}', {{ $due['id'] }})">
+                                Record Payment
+                            </x-ui.button>
+                        </x-ui.table-cell>
+                    </x-ui.table-row>
+                @endforeach
+            </x-ui.table>
         </div>
     @endif
 
     <x-ui.modal name="settle-due-form" max-width="sm">
         <form wire:submit="submitDueSettlement" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Record Payment</h2>
+            <h2 class="text-lg font-bold text-ink">Record Payment</h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Amount Paid Now" name="dueSettleAmount" for="dueSettleAmount">
+                <x-ui.field label="Amount Paid Now" name="dueSettleAmount" for="dueSettleAmount" required>
                     <x-ui.input wire:model="dueSettleAmount" id="dueSettleAmount" type="number" min="0.01" step="0.01" autofocus />
                 </x-ui.field>
 
@@ -658,26 +663,26 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 
     <x-ui.modal name="transaction-form" max-width="sm">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Add Transaction</h2>
+            <h2 class="text-lg font-bold text-ink">Add Transaction</h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Type" name="type" for="type">
+                <x-ui.field label="Type" name="type" for="type" required>
                     <x-ui.select wire:model="type" id="type">
                         <option value="given">Udhaar Given</option>
                         <option value="repayment">Repayment</option>
                     </x-ui.select>
                 </x-ui.field>
 
-                <x-ui.field label="Amount" name="amount" for="amount">
+                <x-ui.field label="Amount" name="amount" for="amount" required>
                     <x-ui.input wire:model="amount" id="amount" type="number" min="0.01" step="0.01" class="text-lg" autofocus />
                 </x-ui.field>
                 <x-ledger.paid-from :value="$paidFrom" label="Cash or Account" blank="Not recorded" />
 
-                <x-ui.field label="Date" name="transaction_date" for="transaction_date">
+                <x-ui.field label="Date" name="transaction_date" for="transaction_date" required>
                     <x-ui.input wire:model="transaction_date" id="transaction_date" type="date" />
                 </x-ui.field>
 
-                <x-ui.field label="Note" name="note" for="note" help="Optional">
+                <x-ui.field label="Note" name="note" for="note">
                     <x-ui.input wire:model="note" id="note" />
                 </x-ui.field>
             </div>
@@ -696,25 +701,25 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 
     <x-ui.modal name="edit-transaction-form" max-width="sm">
         <form wire:submit="saveEdit" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Edit Transaction</h2>
+            <h2 class="text-lg font-bold text-ink">Edit Transaction</h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Type" name="editType" for="editType">
+                <x-ui.field label="Type" name="editType" for="editType" required>
                     <x-ui.select wire:model="editType" id="editType">
                         <option value="given">Udhaar Given</option>
                         <option value="repayment">Repayment</option>
                     </x-ui.select>
                 </x-ui.field>
 
-                <x-ui.field label="Amount" name="editAmount" for="editAmount">
+                <x-ui.field label="Amount" name="editAmount" for="editAmount" required>
                     <x-ui.input wire:model="editAmount" id="editAmount" type="number" min="0.01" step="0.01" class="text-lg" />
                 </x-ui.field>
 
-                <x-ui.field label="Date" name="editTransactionDate" for="editTransactionDate">
+                <x-ui.field label="Date" name="editTransactionDate" for="editTransactionDate" required>
                     <x-ui.input wire:model="editTransactionDate" id="editTransactionDate" type="date" />
                 </x-ui.field>
 
-                <x-ui.field label="Note" name="editNote" for="editNote" help="Optional">
+                <x-ui.field label="Note" name="editNote" for="editNote">
                     <x-ui.input wire:model="editNote" id="editNote" />
                 </x-ui.field>
             </div>
@@ -733,13 +738,13 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
 
     <x-ui.modal name="cancel-transaction-form" max-width="sm">
         <form wire:submit="cancelTransaction" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Cancel This Transaction?</h2>
-            <p class="mt-2 text-sm text-slate-600">
+            <h2 class="text-lg font-bold text-ink">Cancel This Transaction?</h2>
+            <p class="mt-2 text-sm text-ink-muted">
                 This transaction will be marked <strong>Cancelled</strong>. It will no longer count toward this customer's balance, but stays visible in the ledger for the record. This cannot be undone.
             </p>
 
             <div class="mt-5">
-                <x-ui.field label="Reason" name="cancelReason" for="cancelReason" help="Optional">
+                <x-ui.field label="Reason" name="cancelReason" for="cancelReason">
                     <x-ui.input wire:model="cancelReason" id="cancelReason" />
                 </x-ui.field>
             </div>
@@ -749,7 +754,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
                     Keep Transaction
                 </x-ui.button>
 
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelTransaction" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                <x-ui.button type="submit" variant="danger" wire:loading.attr="disabled" wire:target="cancelTransaction">
                     Cancel Transaction
                 </x-ui.button>
             </div>

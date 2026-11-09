@@ -41,78 +41,86 @@ new #[Layout('layouts.app')] #[Title('Vendor Profile')] class extends Component
 
 <div>
     <x-slot name="header">
-        <x-ui.page-header back="{{ route('vendors.index') }}" back-label="Vendors">{{ $vendor->name }}</x-ui.page-header>
+        <x-ui.page-header
+            back="{{ route('vendors.index') }}"
+            back-label="Vendors"
+            :subtitle="collect([$vendor->company_name, $vendor->phone])->filter()->implode(' · ') ?: null"
+        >{{ $vendor->name }}</x-ui.page-header>
     </x-slot>
 
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <x-party.tabs type="vendor" :party="$vendor" active="profile" />
+
+    <x-ui.stat-row>
+        <x-ui.stat label="Total Owed to Vendor" value="Rs {{ number_format($totalOwed, 2) }}" />
+        <x-ui.stat label="Total Purchase Cost" value="Rs {{ number_format($totalCost, 2) }}" />
         <x-ui.stat label="Stock Entries" :value="number_format($stockIns->count())" />
         <x-ui.stat label="Total Units Purchased" :value="number_format($totalUnits)" />
         @if ($measuredTotals !== '')
             <x-ui.stat label="Weight, Volume & Length" :value="$measuredTotals" />
         @endif
-        <x-ui.stat label="Total Purchase Cost" value="Rs {{ number_format($totalCost, 2) }}" />
-        <x-ui.stat label="Total Owed to Vendor" value="Rs {{ number_format($totalOwed, 2) }}" />
-    </div>
+    </x-ui.stat-row>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <x-ui.card title="Vendor Info" class="lg:col-span-1">
-            <dl class="space-y-4 text-sm">
-                <div>
-                    <dt class="text-slate-500">Phone</dt>
-                    <dd class="mt-0.5 font-medium text-slate-900">{{ $vendor->phone ?? '—' }}</dd>
-                </div>
-                <div>
-                    <dt class="text-slate-500">Company / Shop Name</dt>
-                    <dd class="mt-0.5 font-medium text-slate-900">{{ $vendor->company_name ?? '—' }}</dd>
-                </div>
-                <div>
-                    <dt class="text-slate-500">Address</dt>
-                    <dd class="mt-0.5 font-medium text-slate-900">{{ $vendor->address ?? '—' }}</dd>
-                </div>
-                <div>
-                    <dt class="text-slate-500">Notes</dt>
-                    <dd class="mt-0.5 font-medium text-slate-900">{{ $vendor->notes ?? '—' }}</dd>
-                </div>
-            </dl>
-        </x-ui.card>
-
-        <x-ui.card title="Stock Entries" description="Every stock-in entry recorded from this vendor." class="lg:col-span-2">
-            @if ($stockIns->isEmpty())
-                <x-ui.empty-state
-                    title="No stock entries yet"
-                    description="Stock logged from this vendor on the Stock In screen will show up here."
-                />
-            @else
-                <x-ui.table :headers="['Date', 'Product', 'Quantity', 'Cost', 'Payment', 'Owed', 'Note']">
-                    @foreach ($stockIns as $entry)
-                        <x-ui.table-row wire:key="vendor-stock-in-{{ $entry->id }}">
-                            <x-ui.table-cell>{{ $entry->stock_date->format('d M Y') }}</x-ui.table-cell>
-                            <x-ui.table-cell class="font-medium text-slate-900">{{ $entry->product_name }}</x-ui.table-cell>
-                            <x-ui.table-cell class="font-semibold text-emerald-600">+{{ $entry->unit->groupedAmount($entry->quantity) }}</x-ui.table-cell>
-                            <x-ui.table-cell>{{ $entry->total_cost !== null ? 'Rs '.number_format($entry->total_cost, 2) : '—' }}</x-ui.table-cell>
-                            <x-ui.table-cell>
-                                @if ($entry->payment_status->value === 'paid')
-                                    <x-ui.badge variant="success">Paid</x-ui.badge>
-                                @elseif ($entry->payment_status->value === 'partial')
-                                    <x-ui.badge variant="warning">Partial</x-ui.badge>
-                                @else
-                                    <x-ui.badge variant="danger">Unpaid</x-ui.badge>
-                                @endif
-                            </x-ui.table-cell>
-                            <x-ui.table-cell class="font-semibold text-slate-900">
-                                {{ $entry->amountOwed() > 0 ? 'Rs '.number_format($entry->amountOwed(), 2) : '—' }}
-                            </x-ui.table-cell>
-                            <x-ui.table-cell>{{ $entry->note ?? '—' }}</x-ui.table-cell>
-                        </x-ui.table-row>
-                    @endforeach
-                </x-ui.table>
-            @endif
-
-            <div class="mt-4">
-                <x-ui.button href="{{ route('stock-ins.history', ['vendorFilter' => $vendor->id]) }}" wire:navigate variant="secondary" class="w-full justify-center">
-                    View in Stock In History (Mark as Paid / Add Payment)
-                </x-ui.button>
+    <x-ui.card class="mb-6">
+        <dl class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+                <dt class="text-ink-faint">Phone</dt>
+                <dd class="mt-0.5 font-medium text-ink">{{ $vendor->phone ?? '—' }}</dd>
             </div>
-        </x-ui.card>
+            <div>
+                <dt class="text-ink-faint">Company / Shop Name</dt>
+                <dd class="mt-0.5 font-medium text-ink">{{ $vendor->company_name ?? '—' }}</dd>
+            </div>
+            <div>
+                <dt class="text-ink-faint">Address</dt>
+                <dd class="mt-0.5 font-medium text-ink">{{ $vendor->address ?? '—' }}</dd>
+            </div>
+            <div>
+                <dt class="text-ink-faint">Notes</dt>
+                <dd class="mt-0.5 font-medium text-ink">{{ $vendor->notes ?? '—' }}</dd>
+            </div>
+        </dl>
+    </x-ui.card>
+
+    <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h2 class="text-base font-bold tracking-tight text-ink">Stock Entries</h2>
+            <p class="text-sm text-ink-faint">Every stock-in entry recorded from this vendor.</p>
+        </div>
+        @if (auth()->user()->hasAccessTo('stock-ins'))
+            <x-ui.button href="{{ route('stock-ins.history', ['vendorFilter' => $vendor->id]) }}" wire:navigate variant="secondary" size="sm">
+                Record payments in Stock In
+            </x-ui.button>
+        @endif
     </div>
+
+    @if ($stockIns->isEmpty())
+        <x-ui.empty-state
+            title="No stock entries yet"
+            description="Stock logged from this vendor on the Stock In screen will show up here."
+        />
+    @else
+        <x-ui.table stack :headers="['Product', 'Date', 'Quantity', 'Cost', 'Payment', 'Owed', 'Note']">
+            @foreach ($stockIns as $entry)
+                <x-ui.table-row wire:key="vendor-stock-in-{{ $entry->id }}">
+                    <x-ui.table-cell primary class="font-semibold text-ink">{{ $entry->product_name }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Date">{{ $entry->stock_date->format('d M Y') }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Quantity" class="font-semibold text-success">+{{ $entry->unit->groupedAmount($entry->quantity) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Cost">{{ $entry->total_cost !== null ? 'Rs '.number_format($entry->total_cost, 2) : '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Payment">
+                        @if ($entry->payment_status->value === 'paid')
+                            <x-ui.badge variant="success">Paid</x-ui.badge>
+                        @elseif ($entry->payment_status->value === 'partial')
+                            <x-ui.badge variant="warning">Partial</x-ui.badge>
+                        @else
+                            <x-ui.badge variant="danger">Unpaid</x-ui.badge>
+                        @endif
+                    </x-ui.table-cell>
+                    <x-ui.table-cell label="Owed" class="font-semibold text-ink">
+                        {{ $entry->amountOwed() > 0 ? 'Rs '.number_format($entry->amountOwed(), 2) : '—' }}
+                    </x-ui.table-cell>
+                    <x-ui.table-cell label="Note" class="max-w-[14rem] truncate" title="{{ $entry->note }}">{{ $entry->note ?? '—' }}</x-ui.table-cell>
+                </x-ui.table-row>
+            @endforeach
+        </x-ui.table>
+    @endif
 </div>

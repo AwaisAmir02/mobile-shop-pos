@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Customer;
+use App\ReportQueries\UdhaarReport;
 use App\Support\BranchContext;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -35,21 +36,31 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
             'salesOutstanding' => $this->customer->salesOutstandingBalance(),
             'udhaarBalance' => $this->customer->udhaarBalance(),
             'udhaarStatus' => $this->customer->udhaarStatus(),
+            // Everything they owe, exactly as the Udhaar list and the Customers
+            // list's Balance column show it (loans plus unpaid sales and counter
+            // services). Read from the same report, so the screens can't disagree.
+            'totalOwed' => (new UdhaarReport)->rows()->first(fn (array $row) => $row['customer']->id === $this->customer->id)['balance'] ?? 0.0,
         ];
     }
 }; ?>
 
 <div>
     <x-slot name="header">
-        <x-ui.page-header back="{{ route('customers.index') }}" back-label="Customers">{{ $customer->name }}</x-ui.page-header>
+        <x-ui.page-header
+            back="{{ route('customers.index') }}"
+            back-label="Customers"
+            :subtitle="collect([$customer->phone, $customer->address])->filter()->implode(' · ') ?: null"
+        >{{ $customer->name }}</x-ui.page-header>
     </x-slot>
 
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <x-ui.stat label="Phone" :value="$customer->phone ?? '—'" />
-        <x-ui.stat label="Address / Notes" :value="$customer->address ?? '—'" />
+    <x-party.tabs type="customer" :party="$customer" active="profile" />
+
+    <x-ui.stat-row>
+        <x-ui.stat label="Total Owed" value="Rs {{ number_format(abs($totalOwed), 2) }}" :sub="$totalOwed < 0 ? 'In advance · as on the Udhaar list' : 'Udhaar, sales and services · as on the Udhaar list'" />
+        <x-ui.stat label="Sales Outstanding" value="Rs {{ number_format($salesOutstanding, 2) }}" sub="Unpaid part of their sales" />
+        <x-ui.stat label="Udhaar Loans" value="Rs {{ number_format(abs($udhaarBalance), 2) }}" :sub="match ($udhaarStatus) { 'due' => 'Due · given as udhaar', 'advance' => 'Advance · paid ahead', default => 'Settled' }" />
         <x-ui.stat label="Total Sales" value="Rs {{ number_format($totalSalesRevenue, 2) }}" :sub="$sales->count().' sale(s)'" />
-        <x-ui.stat label="Sales Outstanding" value="Rs {{ number_format($salesOutstanding, 2) }}" sub="Separate from Udhaar" />
-    </div>
+    </x-ui.stat-row>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <x-ui.card title="Sales History" description="Every sale linked to this customer.">
@@ -59,25 +70,25 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
                     description="Sales linked to this customer from the POS screen will show up here."
                 />
             @else
-                <div class="divide-y divide-slate-100">
+                <div class="-mx-2 divide-y divide-line">
                     @foreach ($sales as $sale)
-                        <a href="{{ route('sales.show', $sale) }}" wire:navigate class="flex items-center justify-between py-3 hover:bg-slate-50">
+                        <a href="{{ route('sales.show', $sale) }}" wire:navigate class="flex items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-surface-sunken">
                             <div>
-                                <p class="text-sm font-medium text-slate-900">{{ $sale->invoiceNumber() }}</p>
-                                <p class="text-xs text-slate-400">{{ $sale->created_at->format('d M Y, h:i A') }}</p>
+                                <p class="text-sm font-semibold text-ink">{{ $sale->invoiceNumber() }}</p>
+                                <p class="text-xs text-ink-faint">{{ $sale->created_at->format('d M Y, h:i A') }}</p>
                             </div>
-                            <span class="text-sm font-semibold text-slate-900">Rs {{ number_format($sale->total, 2) }}</span>
+                            <span class="text-sm font-semibold tabular-nums text-ink">Rs {{ number_format($sale->total, 2) }}</span>
                         </a>
                     @endforeach
                 </div>
             @endif
         </x-ui.card>
 
-        <x-ui.card title="Udhaar" description="This customer's credit balance — kept separate from sales.">
-            <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-4">
+        <x-ui.card title="Udhaar Loans" description="Money given or received as udhaar, kept separate from sales.">
+            <div class="flex items-center justify-between rounded-xl border border-line px-4 py-4">
                 <div>
-                    <p class="text-sm text-slate-500">Current Balance</p>
-                    <p class="text-display-sm text-slate-900">Rs {{ number_format(abs($udhaarBalance), 2) }}</p>
+                    <p class="text-sm text-ink-faint">Loans balance</p>
+                    <p class="text-display-sm tabular-nums text-ink">Rs {{ number_format(abs($udhaarBalance), 2) }}</p>
                 </div>
                 @if ($udhaarStatus === 'due')
                     <x-ui.badge variant="warning">Due</x-ui.badge>
@@ -88,11 +99,13 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
                 @endif
             </div>
 
-            <div class="mt-4">
-                <x-ui.button href="{{ route('udhaar.show', $customer) }}" wire:navigate variant="secondary" class="w-full justify-center">
-                        View Full Udhaar History
+            @if (auth()->user()->hasAccessTo('udhaar'))
+                <div class="mt-4">
+                    <x-ui.button href="{{ route('udhaar.show', $customer) }}" wire:navigate variant="secondary" class="w-full justify-center">
+                        Open their Udhaar
                     </x-ui.button>
-            </div>
+                </div>
+            @endif
         </x-ui.card>
     </div>
 </div>

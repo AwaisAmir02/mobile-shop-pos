@@ -3,6 +3,7 @@
 use App\Actions\CreateCustomer;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
+use App\ReportQueries\UdhaarReport;
 use App\Support\BranchContext;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -45,6 +46,9 @@ new #[Layout('layouts.app')] #[Title('Customers')] class extends Component
                     ->orWhere('phone', 'like', "%{$this->search}%")))
                 ->orderBy('name')
                 ->paginate(10),
+            // The Udhaar list's own figures (loans plus unpaid sales and counter
+            // services), keyed by customer, so both screens always agree.
+            'balances' => (new UdhaarReport)->rows()->keyBy(fn (array $row) => $row['customer']->id),
         ];
     }
 
@@ -115,56 +119,56 @@ new #[Layout('layouts.app')] #[Title('Customers')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Customers</h1>
+        <x-ui.page-header>Customers</x-ui.page-header>
     </x-slot>
 
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <x-ui.input wire:model.live.debounce.400ms="search" type="search" placeholder="Search by name or phone…" class="sm:max-w-xs" />
+    <x-ui.filter-bar :active="$search !== '' ? 1 : 0">
+        <x-ui.field label="Search" for="customer-search" class="w-full sm:w-72">
+            <x-ui.input wire:model.live.debounce.400ms="search" id="customer-search" type="search" placeholder="Name or phone…" />
+        </x-ui.field>
 
-        <x-ui.button wire:click="openCreate" class="shrink-0">
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Add Customer
-        </x-ui.button>
-    </div>
+        <x-slot:actions>
+            <x-ui.button wire:click="openCreate" class="shrink-0">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Add Customer
+            </x-ui.button>
+        </x-slot:actions>
+    </x-ui.filter-bar>
 
     @if ($customers->isEmpty())
         <x-ui.empty-state
-            title="No customers yet"
-            description="Add your first customer to start tracking their sales and history."
-        >
-            <x-slot name="action">
-                <x-ui.button wire:click="openCreate">Add Customer</x-ui.button>
-            </x-slot>
-        </x-ui.empty-state>
+            :title="$search !== '' ? 'No customers match' : 'No customers yet'"
+            :description="$search !== '' ? 'Try another name or phone number.' : 'Add your first customer to start tracking their sales and history.'"
+        />
     @else
-        <x-ui.table :headers="['Name', 'Phone', 'Address', '']">
+        <x-ui.table stack :headers="['Name', 'Phone', 'Address', 'Balance', '']">
             @foreach ($customers as $customer)
+                @php
+                    $balance = $balances->get($customer->id)['balance'] ?? 0.0;
+                @endphp
                 <x-ui.table-row wire:key="customer-{{ $customer->id }}">
-                    <x-ui.table-cell class="font-medium text-slate-900">
-                        <a href="{{ route('customers.show', $customer) }}" wire:navigate class="hover:text-brand-700">
-                            {{ $customer->name }}
-                        </a>
+                    <x-ui.table-cell primary class="font-semibold text-ink">
+                        <a href="{{ route('customers.show', $customer) }}" wire:navigate class="hover:text-link hover:underline">{{ $customer->name }}</a>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>{{ $customer->phone ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $customer->address ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell align="right">
-                        <div class="flex justify-end gap-2">
-                            <x-ui.button href="{{ route('customers.show', $customer) }}" wire:navigate size="sm" variant="ghost">View</x-ui.button>
-                            <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $customer->id }})">
-                                Edit
-                            </x-ui.button>
-                            <x-ui.button
-                                size="sm"
-                                variant="danger-ghost"
+                    <x-ui.table-cell label="Phone">{{ $customer->phone ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Address" class="max-w-[16rem] truncate">{{ $customer->address ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Balance" data-balance>
+                        <x-party.balance :amount="$balance" />
+                    </x-ui.table-cell>
+                    <x-ui.table-cell actions align="right">
+                        <x-ui.row-actions label="Actions for {{ $customer->name }}">
+                            <x-ui.menu-item href="{{ route('customers.show', $customer) }}" wire:navigate>View</x-ui.menu-item>
+                            <x-ui.menu-item wire:click="openEdit({{ $customer->id }})">Edit</x-ui.menu-item>
+                            <x-ui.menu-divider />
+                            <x-ui.menu-item
+                                danger
                                 wire:click="delete({{ $customer->id }})"
-                                wire:confirm="Delete {{ $customer->name }}? This cannot be undone."
-                               
-                            >
-                                Delete
-                            </x-ui.button>
-                        </div>
+                                confirm="Delete {{ $customer->name }}? This cannot be undone."
+                                confirm-label="Delete"
+                            >Delete</x-ui.menu-item>
+                        </x-ui.row-actions>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
@@ -177,21 +181,21 @@ new #[Layout('layouts.app')] #[Title('Customers')] class extends Component
 
     <x-ui.modal name="customer-form" max-width="md">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-bold text-ink">
                 {{ $editingId ? 'Edit Customer' : 'Add Customer' }}
             </h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Name" name="name" for="name">
+                <x-ui.field label="Name" name="name" for="name" required>
                     <x-ui.input wire:model="name" id="name" autofocus />
                 </x-ui.field>
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <x-ui.field label="Phone" name="phone" for="phone" help="Optional">
+                    <x-ui.field label="Phone" name="phone" for="phone">
                         <x-ui.input wire:model="phone" id="phone" type="tel" placeholder="03xx-xxxxxxx" />
                     </x-ui.field>
 
-                    <x-ui.field label="Address / Notes" name="address" for="address" help="Optional">
+                    <x-ui.field label="Address / Notes" name="address" for="address">
                         <x-ui.input wire:model="address" id="address" />
                     </x-ui.field>
                 </div>

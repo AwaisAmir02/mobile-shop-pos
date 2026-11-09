@@ -39,14 +39,14 @@ new class extends Component
 <div>
     <x-ui.modal name="quick-create-vendor" max-width="sm">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">New Vendor</h2>
+            <h2 class="text-lg font-semibold text-ink">New Vendor</h2>
 
             <div class="mt-5 space-y-5">
                 <x-ui.field label="Name" name="name" for="quickVendorName">
                     <x-ui.input wire:model="name" id="quickVendorName" autofocus />
                 </x-ui.field>
 
-                <x-ui.field label="Phone" name="phone" for="quickVendorPhone" help="Optional">
+                <x-ui.field label="Phone" name="phone" for="quickVendorPhone">
                     <x-ui.input wire:model="phone" id="quickVendorPhone" type="tel" placeholder="03xx-xxxxxxx" />
                 </x-ui.field>
             </div>

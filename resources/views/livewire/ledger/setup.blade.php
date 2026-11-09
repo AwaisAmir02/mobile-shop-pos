@@ -85,22 +85,22 @@ new #[Layout('layouts.app')] #[Title('Set Up the Ledger')] class extends Compone
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Set Up the Ledger</h1>
+        <x-ui.page-header>Set Up the Ledger</x-ui.page-header>
     </x-slot>
 
     <x-ui.error :messages="$errors->get('ledger')" class="mb-4" />
 
     @if ($shop->ledger_frozen_at)
-        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div class="mb-4 rounded-xl border border-warning/20 bg-warning-soft px-4 py-3 text-sm text-warning">
             This starts a new ledger from today's figures. The frozen one is kept but stays out of these reports.
         </div>
     @elseif ($interrupted)
-        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div class="mb-4 rounded-xl border border-warning/20 bg-warning-soft px-4 py-3 text-sm text-warning">
             An earlier setup didn't finish. Nothing was posted, so you can safely run it again.
         </div>
     @endif
 
-    <p class="mb-4 text-sm text-slate-600">From here on, new records post to the ledger automatically. Your other screens, dues and reports don't change. Past sales and expenses aren't replayed: the ledger starts from these balances today.</p>
+    <p class="mb-4 text-sm text-ink-muted">From here on, new records post to the ledger automatically. Your other screens, dues and reports don't change. Past sales and expenses aren't replayed: the ledger starts from these balances today.</p>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <x-ui.card title="What you have today" description="Only you know these. The records can't tell.">
@@ -118,17 +118,17 @@ new #[Layout('layouts.app')] #[Title('Set Up the Ledger')] class extends Compone
 
         <x-ui.card title="Opening balances">
             <dl class="space-y-2 text-sm">
-                <div class="flex justify-between"><dt class="text-slate-500">Inventory at cost</dt><dd>Rs {{ number_format($inventory, 2) }}</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-faint">Inventory at cost</dt><dd>Rs {{ number_format($inventory, 2) }}</dd></div>
                 @foreach ($lines as $line)
-                    <div class="flex justify-between"><dt class="text-slate-500">{{ $line['name'] }}</dt><dd>Rs {{ number_format(abs($line['paise']) / 100, 2) }} {{ $line['paise'] < 0 ? 'Cr' : 'Dr' }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-ink-faint">{{ $line['name'] }}</dt><dd>Rs {{ number_format(abs($line['paise']) / 100, 2) }} {{ $line['paise'] < 0 ? 'Cr' : 'Dr' }}</dd></div>
                 @endforeach
-                <div class="flex justify-between border-t border-slate-200 pt-2 font-semibold text-slate-900"><dt>Opening Balances (the difference)</dt><dd>Rs {{ number_format(abs($openingBalance), 2) }} {{ $openingBalance < 0 ? 'Cr' : 'Dr' }}</dd></div>
+                <div class="flex justify-between border-t border-line pt-2 font-semibold text-ink"><dt>Opening Balances (the difference)</dt><dd>Rs {{ number_format(abs($openingBalance), 2) }} {{ $openingBalance < 0 ? 'Cr' : 'Dr' }}</dd></div>
             </dl>
-            <p class="mt-3 text-xs text-slate-500">Inventory uses each batch's cost. Stock no batch covers uses the product's current cost.</p>
+            <p class="mt-3 text-xs text-ink-faint">Inventory uses each batch's cost. Stock no batch covers uses the product's current cost.</p>
             @if ($noCost > 0)
-                <p class="mt-2 text-sm text-amber-700">{{ number_format($noCost) }} {{ str('product')->plural($noCost) }} in stock {{ $noCost === 1 ? 'has' : 'have' }} no cost, so {{ $noCost === 1 ? 'it counts' : 'they count' }} as Rs 0 here. Add a cost first if you can.</p>
+                <p class="mt-2 text-sm text-warning">{{ number_format($noCost) }} {{ str('product')->plural($noCost) }} in stock {{ $noCost === 1 ? 'has' : 'have' }} no cost, so {{ $noCost === 1 ? 'it counts' : 'they count' }} as Rs 0 here. Add a cost first if you can.</p>
             @endif
-            <x-ui.button type="button" class="mt-5" wire:click="start" wire:confirm="Start the ledger with these balances?" wire:loading.attr="disabled" wire:target="start">Start Ledger</x-ui.button>
+            <x-ui.button type="button" class="mt-5" wire:click="start" confirm="Start the ledger with these balances?" wire:loading.attr="disabled" wire:target="start">Start Ledger</x-ui.button>
         </x-ui.card>
     </div>
 </div>

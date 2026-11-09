@@ -76,20 +76,19 @@ new #[Layout('layouts.app')] #[Title('Payroll History')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Payroll History</h1>
+        <x-ui.page-header>Payroll History</x-ui.page-header>
     </x-slot>
 
     <x-payroll.nav active="payroll.history" />
 
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-            <x-ui.field label="From" name="fromMonth" for="fromMonth" class="sm:max-w-[11rem]">
+    <x-ui.filter-bar :active="(int) filled($employeeId) + (int) filled($statusFilter)">
+            <x-ui.field label="From" name="fromMonth" for="fromMonth" class="w-[calc(50%-0.375rem)] sm:w-44">
                 <x-ui.input wire:model.live="fromMonth" id="fromMonth" type="month" />
             </x-ui.field>
-            <x-ui.field label="To" name="toMonth" for="toMonth" class="sm:max-w-[11rem]">
+            <x-ui.field label="To" name="toMonth" for="toMonth" class="w-[calc(50%-0.375rem)] sm:w-44">
                 <x-ui.input wire:model.live="toMonth" id="toMonth" type="month" />
             </x-ui.field>
-            <x-ui.field label="Employee" name="employeeId" for="historyEmployee" class="sm:max-w-[14rem]">
+            <x-ui.field label="Employee" name="employeeId" for="historyEmployee" class="w-full sm:w-52">
                 <x-ui.select wire:model.live="employeeId" id="historyEmployee">
                     <option value="">Everyone</option>
                     @foreach ($employees as $person)
@@ -97,7 +96,7 @@ new #[Layout('layouts.app')] #[Title('Payroll History')] class extends Component
                     @endforeach
                 </x-ui.select>
             </x-ui.field>
-            <x-ui.field label="Status" name="statusFilter" for="historyStatus" class="sm:max-w-[10rem]">
+            <x-ui.field label="Status" name="statusFilter" for="historyStatus" class="w-full sm:w-40">
                 <x-ui.select wire:model.live="statusFilter" id="historyStatus">
                     <option value="">All</option>
                     @foreach (PayslipStatus::cases() as $option)
@@ -105,11 +104,13 @@ new #[Layout('layouts.app')] #[Title('Payroll History')] class extends Component
                     @endforeach
                 </x-ui.select>
             </x-ui.field>
-        </div>
-        <x-ui.export-dropdown />
-    </div>
 
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <x-slot:actions>
+            <x-ui.export-dropdown />
+        </x-slot:actions>
+    </x-ui.filter-bar>
+
+    <div class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         @foreach ($cards as $card)
             <x-ui.stat :label="$card['label']" :value="$card['value']" :sub="$card['sub'] ?? null" />
         @endforeach
@@ -118,17 +119,17 @@ new #[Layout('layouts.app')] #[Title('Payroll History')] class extends Component
     @if ($payslips->isEmpty())
         <x-ui.empty-state title="No payslips" description="Payslips from Run Payroll show up here." />
     @else
-        <x-ui.table :headers="['Payslip', 'Month', 'Employee', 'Earnings', 'Net Pay', 'Paid On', 'Status', '']">
+        <x-ui.table stack :headers="['Payslip', 'Month', 'Employee', 'Earnings', 'Net Pay', 'Paid On', 'Status', '']">
             @foreach ($payslips as $payslip)
                 <x-ui.table-row wire:key="history-{{ $payslip->id }}" @class(['opacity-50' => $payslip->isCancelled()])>
-                    <x-ui.table-cell class="font-medium text-slate-900">{{ $payslip->number() }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $payslip->period->format('M Y') }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $payslip->employee_name }}</x-ui.table-cell>
-                    <x-ui.table-cell>Rs {{ number_format($payslip->grossEarnings(), 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format($payslip->net_pay, 2) }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $payslip->paid_on?->format('d M Y') ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell><x-ui.badge :variant="$payslip->status->badge()">{{ $payslip->status->label() }}</x-ui.badge></x-ui.table-cell>
-                    <x-ui.table-cell align="right">
+                    <x-ui.table-cell primary class="font-medium text-ink">{{ $payslip->number() }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Month">{{ $payslip->period->format('M Y') }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Employee">{{ $payslip->employee_name }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Earnings">Rs {{ number_format($payslip->grossEarnings(), 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Net Pay" class="font-semibold text-ink">Rs {{ number_format($payslip->net_pay, 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Paid On">{{ $payslip->paid_on?->format('d M Y') ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Status"><x-ui.badge :variant="$payslip->status->badge()">{{ $payslip->status->label() }}</x-ui.badge></x-ui.table-cell>
+                    <x-ui.table-cell actions align="right">
                         <x-ui.button size="sm" variant="ghost" wire:click="downloadPdf({{ $payslip->id }})">PDF</x-ui.button>
                     </x-ui.table-cell>
                 </x-ui.table-row>

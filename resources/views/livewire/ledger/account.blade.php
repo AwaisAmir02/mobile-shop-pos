@@ -69,16 +69,11 @@ new #[Layout('layouts.app')] #[Title('Account Ledger')] class extends Component
         <x-ui.page-header back="{{ route('ledger.trial-balance') }}" back-label="Trial Balance">{{ $account->name }}</x-ui.page-header>
     </x-slot>
 
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-        <x-ui.field label="From" name="from" for="accountFrom" class="sm:max-w-[10rem]">
-            <x-ui.input wire:model.live="from" id="accountFrom" type="date" />
-        </x-ui.field>
-        <x-ui.field label="To" name="to" for="accountTo" class="sm:max-w-[10rem]">
-            <x-ui.input wire:model.live="to" id="accountTo" type="date" />
-        </x-ui.field>
-    </div>
+    <x-ui.filter-bar :active="(int) filled($from) + (int) filled($to)">
+        <x-ui.date-range />
+    </x-ui.filter-bar>
 
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div class="mb-5 grid grid-cols-2 gap-3 sm:gap-4">
         <x-ui.stat label="Opening" :value="'Rs '.number_format(abs($opening), 2).($opening < 0 ? ' Cr' : ' Dr')" />
         <x-ui.stat label="Closing" :value="'Rs '.number_format(abs($closing), 2).($closing < 0 ? ' Cr' : ' Dr')" />
     </div>
@@ -86,13 +81,13 @@ new #[Layout('layouts.app')] #[Title('Account Ledger')] class extends Component
     @if ($lines->isEmpty())
         <x-ui.empty-state title="No entries" description="Nothing posted to this account in this period." />
     @else
-        <x-ui.table :headers="['Date', 'Description', 'Debit', 'Credit']">
+        <x-ui.table stack :headers="['Date', 'Description', 'Debit', 'Credit']">
             @foreach ($lines as $line)
                 <x-ui.table-row wire:key="line-{{ $line->id }}">
-                    <x-ui.table-cell>{{ \Carbon\Carbon::parse($line->entry_date)->format('d M Y') }}</x-ui.table-cell>
-                    <x-ui.table-cell class="whitespace-normal">{{ $line->description }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $line->amount_paise > 0 ? 'Rs '.number_format($line->amount_paise / 100, 2) : '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $line->amount_paise < 0 ? 'Rs '.number_format(-$line->amount_paise / 100, 2) : '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell primary>{{ \Carbon\Carbon::parse($line->entry_date)->format('d M Y') }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Description" class="whitespace-normal">{{ $line->description }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Debit">{{ $line->amount_paise > 0 ? 'Rs '.number_format($line->amount_paise / 100, 2) : '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Credit">{{ $line->amount_paise < 0 ? 'Rs '.number_format(-$line->amount_paise / 100, 2) : '—' }}</x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
         </x-ui.table>

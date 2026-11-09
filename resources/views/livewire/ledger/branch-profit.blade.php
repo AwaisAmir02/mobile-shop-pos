@@ -60,7 +60,7 @@ new #[Layout('layouts.app')] #[Title('Branch Profit')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Branch Profit</h1>
+        <x-ui.page-header>Branch Profit</x-ui.page-header>
     </x-slot>
 
     <x-ledger.nav active="ledger.branch-profit" />
@@ -82,14 +82,14 @@ new #[Layout('layouts.app')] #[Title('Branch Profit')] class extends Component
 
         <x-ledger.warnings :failed="$failed" />
 
-        <p class="mb-4 text-sm text-slate-600">Stock and bank accounts are shared across branches, so this shows profit only. Costs with no branch stay in their own column rather than being shared out by a guess.</p>
+        <p class="mb-4 text-sm text-ink-muted">Stock and bank accounts are shared across branches, so this shows profit only. Costs with no branch stay in their own column rather than being shared out by a guess.</p>
 
         <x-ui.table :headers="['Account', ...$report['columns']]">
             @foreach ($report['rows'] as $row)
-                <x-ui.table-row wire:key="branch-row-{{ $loop->index }}" @class(['bg-slate-50' => $row['emphasis']])>
-                    <x-ui.table-cell @class(['font-semibold text-slate-900' => $row['emphasis']])>{{ $row['name'] }}</x-ui.table-cell>
+                <x-ui.table-row wire:key="branch-row-{{ $loop->index }}" @class(['bg-surface-sunken' => $row['emphasis']])>
+                    <x-ui.table-cell @class(['font-semibold text-ink' => $row['emphasis']])>{{ $row['name'] }}</x-ui.table-cell>
                     @foreach ($row['amounts'] as $amount)
-                        <x-ui.table-cell @class(['font-semibold text-slate-900' => $row['emphasis']])>Rs {{ number_format($amount, 2) }}</x-ui.table-cell>
+                        <x-ui.table-cell @class(['font-semibold text-ink' => $row['emphasis']])>Rs {{ number_format($amount, 2) }}</x-ui.table-cell>
                     @endforeach
                 </x-ui.table-row>
             @endforeach

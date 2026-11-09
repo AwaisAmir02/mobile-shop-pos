@@ -103,17 +103,17 @@ new #[Layout('layouts.app')] #[Title('Salary Advances')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Salary Advances</h1>
+        <x-ui.page-header>Salary Advances</x-ui.page-header>
     </x-slot>
 
     <x-payroll.nav active="payroll.advances" />
 
-    <p class="mb-4 text-sm text-slate-600">An advance is money owed back to the shop, so it doesn't appear in Expenses. When someone leaves owing an advance you won't recover, add it to Expenses yourself.</p>
+    <x-ui.note>An advance is money owed back to the shop, so it doesn't appear in Expenses. When someone leaves owing an advance you won't recover, add it to Expenses yourself.</x-ui.note>
 
     <x-ui.error :messages="$errors->get('advance')" class="mb-4" />
 
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <x-ui.field label="Employee" name="employee" for="advanceEmployee" class="sm:max-w-xs sm:grow">
+    <x-ui.filter-bar :active="(int) filled($employee)">
+        <x-ui.field label="Employee" name="employee" for="advanceEmployee" class="w-full sm:w-64">
             <x-ui.select wire:model.live="employee" id="advanceEmployee">
                 <option value="">Everyone owing</option>
                 @foreach ($employees as $person)
@@ -123,15 +123,15 @@ new #[Layout('layouts.app')] #[Title('Salary Advances')] class extends Component
         </x-ui.field>
 
         @if ($selected)
-            <div class="flex gap-2">
+            <x-slot:actions>
                 <x-ui.button size="sm" wire:click="openForm('given')">Give Advance</x-ui.button>
                 <x-ui.button size="sm" variant="secondary" wire:click="openForm('repaid')">Record Repayment</x-ui.button>
                 @if (auth()->user()->shop?->ledger_ready_at && ! auth()->user()->shop?->ledger_frozen_at && $balance > 0)
                     <x-ui.button size="sm" variant="ghost" wire:click="openForm('written_off')">Write Off</x-ui.button>
                 @endif
-            </div>
+            </x-slot:actions>
         @endif
-    </div>
+    </x-ui.filter-bar>
 
     @if ($selected)
         <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -141,19 +141,19 @@ new #[Layout('layouts.app')] #[Title('Salary Advances')] class extends Component
         @if ($rows->isEmpty())
             <x-ui.empty-state title="No advances" description="Advances given to {{ $selected->name }} show up here." />
         @else
-            <x-ui.table :headers="['Date', 'Entry', 'Amount', 'Note', 'By', '']">
+            <x-ui.table stack :headers="['Date', 'Entry', 'Amount', 'Note', 'By', '']">
                 @foreach ($rows as $row)
                     <x-ui.table-row wire:key="advance-{{ $row->id }}" @class(['opacity-50' => $row->isCancelled()])>
-                        <x-ui.table-cell>{{ $row->transaction_date->format('d M Y') }}</x-ui.table-cell>
-                        <x-ui.table-cell>{{ $row->type->label() }}</x-ui.table-cell>
-                        <x-ui.table-cell class="font-medium text-slate-900">{{ $row->type->sign() > 0 ? '+' : '−' }}Rs {{ number_format($row->amount, 2) }}</x-ui.table-cell>
-                        <x-ui.table-cell>{{ $row->note ?? '—' }}</x-ui.table-cell>
-                        <x-ui.table-cell>{{ $row->user?->name ?? '—' }}</x-ui.table-cell>
-                        <x-ui.table-cell align="right">
+                        <x-ui.table-cell primary>{{ $row->transaction_date->format('d M Y') }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Entry">{{ $row->type->label() }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Amount" class="font-medium text-ink">{{ $row->type->sign() > 0 ? '+' : '−' }}Rs {{ number_format($row->amount, 2) }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Note">{{ $row->note ?? '—' }}</x-ui.table-cell>
+                        <x-ui.table-cell label="By">{{ $row->user?->name ?? '—' }}</x-ui.table-cell>
+                        <x-ui.table-cell actions align="right">
                             @if ($row->isCancelled())
                                 <x-ui.badge variant="danger">Cancelled</x-ui.badge>
                             @elseif ($row->payslip_id === null)
-                                <x-ui.button size="sm" variant="danger-ghost" wire:click="cancelRow({{ $row->id }})" wire:confirm="Cancel this entry?">Cancel</x-ui.button>
+                                <x-ui.button size="sm" variant="danger-ghost" wire:click="cancelRow({{ $row->id }})" confirm="Cancel this entry?">Cancel</x-ui.button>
                             @endif
                         </x-ui.table-cell>
                     </x-ui.table-row>
@@ -163,11 +163,11 @@ new #[Layout('layouts.app')] #[Title('Salary Advances')] class extends Component
     @elseif ($owing->isEmpty())
         <x-ui.empty-state title="Nobody owes an advance" description="Pick an employee above to give one." />
     @else
-        <x-ui.table :headers="['Employee', 'Owes']">
+        <x-ui.table stack :headers="['Employee', 'Owes']">
             @foreach ($owing as $row)
                 <x-ui.table-row wire:key="owing-{{ $row['employee']->id }}">
-                    <x-ui.table-cell class="font-medium text-slate-900">{{ $row['employee']->name }}</x-ui.table-cell>
-                    <x-ui.table-cell>Rs {{ number_format($row['balance'], 2) }}</x-ui.table-cell>
+                    <x-ui.table-cell primary class="font-medium text-ink">{{ $row['employee']->name }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Owes">Rs {{ number_format($row['balance'], 2) }}</x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
         </x-ui.table>
@@ -175,8 +175,8 @@ new #[Layout('layouts.app')] #[Title('Salary Advances')] class extends Component
 
     <x-ui.modal name="advance-form" max-width="sm">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">{{ ['given' => 'Give Advance', 'repaid' => 'Record Repayment', 'written_off' => 'Write Off Advance'][$advanceType] }}</h2>
-            <p class="mt-1 text-sm text-slate-500">{{ $selected?->name }}</p>
+            <h2 class="text-lg font-semibold text-ink">{{ ['given' => 'Give Advance', 'repaid' => 'Record Repayment', 'written_off' => 'Write Off Advance'][$advanceType] }}</h2>
+            <p class="mt-1 text-sm text-ink-faint">{{ $selected?->name }}</p>
 
             <div class="mt-5 space-y-4">
                 <x-ui.field label="Amount" name="advanceAmount" for="advanceAmount">
@@ -186,9 +186,9 @@ new #[Layout('layouts.app')] #[Title('Salary Advances')] class extends Component
                     <x-ui.input wire:model="advanceDate" id="advanceDate" type="date" />
                 </x-ui.field>
                 @if ($advanceType === 'written_off')
-                    <p class="text-sm text-slate-600">You no longer expect this back. It's added to Expenses as a cost, and no cash moves.</p>
+                    <p class="text-sm text-ink-muted">You no longer expect this back. It's added to Expenses as a cost, and no cash moves.</p>
                 @elseif ($accounts->isNotEmpty())
-                    <x-ui.field :label="$advanceType === 'given' ? 'Paid From' : 'Received Into'" name="advanceAccountId" for="advanceAccountId" help="Optional">
+                    <x-ui.field :label="$advanceType === 'given' ? 'Paid From' : 'Received Into'" name="advanceAccountId" for="advanceAccountId">
                         <x-ui.select wire:model="advanceAccountId" id="advanceAccountId">
                             <option value="">Cash</option>
                             @foreach ($accounts as $account)
@@ -197,7 +197,7 @@ new #[Layout('layouts.app')] #[Title('Salary Advances')] class extends Component
                         </x-ui.select>
                     </x-ui.field>
                 @endif
-                <x-ui.field label="Note" name="advanceNote" for="advanceNote" help="Optional">
+                <x-ui.field label="Note" name="advanceNote" for="advanceNote">
                     <x-ui.input wire:model="advanceNote" id="advanceNote" />
                 </x-ui.field>
             </div>

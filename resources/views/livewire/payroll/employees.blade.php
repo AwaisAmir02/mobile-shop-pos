@@ -168,40 +168,41 @@ new #[Layout('layouts.app')] #[Title('Employees')] class extends Component
         <x-payroll.first-use-notice />
     @endif
 
-    <label class="mb-4 flex items-center gap-2 text-sm text-slate-600">
-        <input type="checkbox" wire:model.live="showInactive" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+    <label class="mb-4 flex items-center gap-2 text-sm text-ink-muted">
+        <input type="checkbox" wire:model.live="showInactive" class="h-4 w-4 rounded border-line-strong text-link focus:ring-link">
         Show deactivated
     </label>
 
     @if ($employees->isEmpty())
         <x-ui.empty-state title="No employees yet" description="Add everyone you pay, including people with no login, like a helper or delivery rider." />
     @else
-        <x-ui.table :headers="['Name', 'Designation', 'Pay', ...($showBranch ? ['Branch'] : []), 'Login', 'Advance Owed', '']">
+        <x-ui.table stack :headers="['Name', 'Pay', ...($showBranch ? ['Branch'] : []), 'Login', 'Advance Owed', '']">
             @foreach ($employees as $employee)
                 <x-ui.table-row wire:key="employee-{{ $employee->id }}" @class(['opacity-50' => ! $employee->is_active])>
-                    <x-ui.table-cell class="font-medium text-slate-900">
+                    <x-ui.table-cell primary class="font-semibold text-ink">
                         {{ $employee->name }}
                         @unless ($employee->is_active)
                             <x-ui.badge>Deactivated</x-ui.badge>
                         @endunless
+                        <span class="ui-sub">{{ $employee->designation ?? '—' }}</span>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>{{ $employee->designation ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>Rs {{ number_format($employee->rate, 2) }} <span class="text-xs text-slate-400">{{ $employee->salary_type === \App\Enums\SalaryType::Daily ? 'a day' : 'a month' }}</span></x-ui.table-cell>
+                    <x-ui.table-cell label="Pay">Rs {{ number_format($employee->rate, 2) }} <span class="text-xs text-ink-faint">{{ $employee->salary_type === \App\Enums\SalaryType::Daily ? 'a day' : 'a month' }}</span></x-ui.table-cell>
                     @if ($showBranch)
-                        <x-ui.table-cell>{{ $employee->branch?->name ?? 'Whole shop' }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Branch">{{ $employee->branch?->name ?? 'Whole shop' }}</x-ui.table-cell>
                     @endif
-                    <x-ui.table-cell>{{ $employee->user?->name ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>
-                        <a href="{{ route('payroll.advances', ['employee' => $employee->id]) }}" wire:navigate class="text-brand-700 hover:text-brand-800">Rs {{ number_format($employee->advanceBalance(), 2) }}</a>
+                    <x-ui.table-cell label="Login">{{ $employee->user?->name ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Advance Owed">
+                        <a href="{{ route('payroll.advances', ['employee' => $employee->id]) }}" wire:navigate class="text-link hover:underline">Rs {{ number_format($employee->advanceBalance(), 2) }}</a>
                     </x-ui.table-cell>
-                    <x-ui.table-cell align="right">
-                        <div class="flex justify-end gap-2">
-                            <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $employee->id }})">Edit</x-ui.button>
-                            <x-ui.button size="sm" variant="ghost" wire:click="toggleActive({{ $employee->id }})">{{ $employee->is_active ? 'Deactivate' : 'Reactivate' }}</x-ui.button>
+                    <x-ui.table-cell actions align="right">
+                        <x-ui.row-actions label="Actions for {{ $employee->name }}">
+                            <x-ui.menu-item wire:click="openEdit({{ $employee->id }})">Edit</x-ui.menu-item>
+                            <x-ui.menu-item wire:click="toggleActive({{ $employee->id }})">{{ $employee->is_active ? 'Deactivate' : 'Reactivate' }}</x-ui.menu-item>
                             @unless ($employee->hasPayrollHistory())
-                                <x-ui.button size="sm" variant="danger-ghost" wire:click="delete({{ $employee->id }})" wire:confirm="Remove {{ $employee->name }}?">Remove</x-ui.button>
+                                <x-ui.menu-divider />
+                                <x-ui.menu-item danger wire:click="delete({{ $employee->id }})" confirm="Remove {{ $employee->name }}?" confirm-label="Remove">Remove</x-ui.menu-item>
                             @endunless
-                        </div>
+                        </x-ui.row-actions>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
@@ -210,15 +211,15 @@ new #[Layout('layouts.app')] #[Title('Employees')] class extends Component
 
     <x-ui.modal name="employee-form" max-width="lg">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">{{ $editingId ? 'Edit Employee' : 'Add Employee' }}</h2>
-            <p class="mt-1 text-sm text-slate-500">Changing the rate affects new payslips only.</p>
+            <h2 class="text-lg font-semibold text-ink">{{ $editingId ? 'Edit Employee' : 'Add Employee' }}</h2>
+            <p class="mt-1 text-sm text-ink-faint">Changing the rate affects new payslips only.</p>
 
             <div class="mt-5 space-y-4" wire:key="employee-fields-{{ $formNonce }}">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <x-ui.field label="Name" name="name" for="employeeName">
                         <x-ui.input wire:model="name" id="employeeName" />
                     </x-ui.field>
-                    <x-ui.field label="Designation" name="designation" for="employeeDesignation" help="Optional">
+                    <x-ui.field label="Designation" name="designation" for="employeeDesignation">
                         <x-ui.input wire:model="designation" id="employeeDesignation" />
                     </x-ui.field>
                 </div>
@@ -247,7 +248,7 @@ new #[Layout('layouts.app')] #[Title('Employees')] class extends Component
                             </x-ui.select>
                         </x-ui.field>
                     @endif
-                    <x-ui.field label="Login" name="userId" for="employeeLogin" help="Optional. Only if they also use the app">
+                    <x-ui.field label="Login" name="userId" for="employeeLogin" help="Only if they also use the app">
                         <x-ui.select wire:model="userId" id="employeeLogin">
                             <option value="">No login</option>
                             @foreach ($logins as $login)
@@ -258,15 +259,15 @@ new #[Layout('layouts.app')] #[Title('Employees')] class extends Component
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <x-ui.field label="Phone" name="phone" for="employeePhone" help="Optional">
+                    <x-ui.field label="Phone" name="phone" for="employeePhone">
                         <x-ui.input wire:model="phone" id="employeePhone" />
                     </x-ui.field>
-                    <x-ui.field label="Joined" name="joinedOn" for="employeeJoined" help="Optional">
+                    <x-ui.field label="Joined" name="joinedOn" for="employeeJoined">
                         <x-ui.input wire:model="joinedOn" id="employeeJoined" type="date" />
                     </x-ui.field>
                 </div>
 
-                <x-ui.field label="Notes" name="notes" for="employeeNotes" help="Optional">
+                <x-ui.field label="Notes" name="notes" for="employeeNotes">
                     <x-ui.input wire:model="notes" id="employeeNotes" />
                 </x-ui.field>
             </div>

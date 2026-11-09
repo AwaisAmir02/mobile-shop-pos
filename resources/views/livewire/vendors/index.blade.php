@@ -49,6 +49,9 @@ new #[Layout('layouts.app')] #[Title('Vendors')] class extends Component
                     ->where('name', 'like', "%{$this->search}%")
                     ->orWhere('phone', 'like', "%{$this->search}%")))
                 ->orderBy('name')
+                // Loaded once for the page so each row's Owed is Vendor::totalOwed(),
+                // the same figure as the vendor's own page, without a query per row.
+                ->with('stockIns')
                 ->paginate(10),
         ];
     }
@@ -139,56 +142,53 @@ new #[Layout('layouts.app')] #[Title('Vendors')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Vendors</h1>
+        <x-ui.page-header>Vendors</x-ui.page-header>
     </x-slot>
 
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <x-ui.input wire:model.live.debounce.400ms="search" type="search" placeholder="Search by name or phone…" class="sm:max-w-xs" />
+    <x-ui.filter-bar :active="$search !== '' ? 1 : 0">
+        <x-ui.field label="Search" for="vendor-search" class="w-full sm:w-72">
+            <x-ui.input wire:model.live.debounce.400ms="search" id="vendor-search" type="search" placeholder="Name or phone…" />
+        </x-ui.field>
 
-        <x-ui.button wire:click="openCreate" class="shrink-0">
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Add Vendor
-        </x-ui.button>
-    </div>
+        <x-slot:actions>
+            <x-ui.button wire:click="openCreate" class="shrink-0">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Add Vendor
+            </x-ui.button>
+        </x-slot:actions>
+    </x-ui.filter-bar>
 
     @if ($vendors->isEmpty())
         <x-ui.empty-state
-            title="No vendors yet"
-            description="Add your first vendor to start tracking which stock comes from where."
-        >
-            <x-slot name="action">
-                <x-ui.button wire:click="openCreate">Add Vendor</x-ui.button>
-            </x-slot>
-        </x-ui.empty-state>
+            :title="$search !== '' ? 'No vendors match' : 'No vendors yet'"
+            :description="$search !== '' ? 'Try another name or phone number.' : 'Add your first vendor to start tracking which stock comes from where.'"
+        />
     @else
-        <x-ui.table :headers="['Name', 'Phone', 'Company', '']">
+        <x-ui.table stack :headers="['Name', 'Phone', 'Company', 'Owed', '']">
             @foreach ($vendors as $vendor)
                 <x-ui.table-row wire:key="vendor-{{ $vendor->id }}">
-                    <x-ui.table-cell class="font-medium text-slate-900">
-                        <a href="{{ route('vendors.show', $vendor) }}" wire:navigate class="hover:text-brand-700">
-                            {{ $vendor->name }}
-                        </a>
+                    <x-ui.table-cell primary class="font-semibold text-ink">
+                        <a href="{{ route('vendors.show', $vendor) }}" wire:navigate class="hover:text-link hover:underline">{{ $vendor->name }}</a>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>{{ $vendor->phone ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $vendor->company_name ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell align="right">
-                        <div class="flex justify-end gap-2">
-                            <x-ui.button href="{{ route('vendors.show', $vendor) }}" wire:navigate size="sm" variant="ghost">View</x-ui.button>
-                            <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $vendor->id }})">
-                                Edit
-                            </x-ui.button>
-                            <x-ui.button
-                                size="sm"
-                                variant="danger-ghost"
+                    <x-ui.table-cell label="Phone">{{ $vendor->phone ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Company">{{ $vendor->company_name ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Owed" data-balance>
+                        <x-party.balance :amount="$vendor->totalOwed()" direction="vendor" />
+                    </x-ui.table-cell>
+                    <x-ui.table-cell actions align="right">
+                        <x-ui.row-actions label="Actions for {{ $vendor->name }}">
+                            <x-ui.menu-item href="{{ route('vendors.show', $vendor) }}" wire:navigate>View</x-ui.menu-item>
+                            <x-ui.menu-item wire:click="openEdit({{ $vendor->id }})">Edit</x-ui.menu-item>
+                            <x-ui.menu-divider />
+                            <x-ui.menu-item
+                                danger
                                 wire:click="delete({{ $vendor->id }})"
-                                wire:confirm="Delete {{ $vendor->name }}? This cannot be undone."
-                               
-                            >
-                                Delete
-                            </x-ui.button>
-                        </div>
+                                confirm="Delete {{ $vendor->name }}? This cannot be undone."
+                                confirm-label="Delete"
+                            >Delete</x-ui.menu-item>
+                        </x-ui.row-actions>
                     </x-ui.table-cell>
                 </x-ui.table-row>
             @endforeach
@@ -201,31 +201,31 @@ new #[Layout('layouts.app')] #[Title('Vendors')] class extends Component
 
     <x-ui.modal name="vendor-form" max-width="md">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-bold text-ink">
                 {{ $editingId ? 'Edit Vendor' : 'Add Vendor' }}
             </h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Name" name="name" for="name">
+                <x-ui.field label="Name" name="name" for="name" required>
                     <x-ui.input wire:model="name" id="name" autofocus />
                 </x-ui.field>
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <x-ui.field label="Phone" name="phone" for="phone" help="Optional">
+                    <x-ui.field label="Phone" name="phone" for="phone">
                         <x-ui.input wire:model="phone" id="phone" type="tel" placeholder="03xx-xxxxxxx" />
                     </x-ui.field>
 
-                    <x-ui.field label="Company / Shop Name" name="company_name" for="company_name" help="Optional">
+                    <x-ui.field label="Company / Shop Name" name="company_name" for="company_name">
                         <x-ui.input wire:model="company_name" id="company_name" />
                     </x-ui.field>
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <x-ui.field label="Address" name="address" for="address" help="Optional">
+                    <x-ui.field label="Address" name="address" for="address">
                         <x-ui.input wire:model="address" id="address" />
                     </x-ui.field>
 
-                    <x-ui.field label="Notes" name="notes" for="notes" help="Optional">
+                    <x-ui.field label="Notes" name="notes" for="notes">
                         <x-ui.input wire:model="notes" id="notes" />
                     </x-ui.field>
                 </div>
