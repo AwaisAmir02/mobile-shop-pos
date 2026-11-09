@@ -50,6 +50,20 @@
         --info-soft: 240 243 250;
         --scrim: 2 27 60;
         --shadow: 2 27 60;
+
+        /* Sidebar (D12): the original navy panel with its solid orange active item,
+           restored by the owner on 2026-11-09. Its own set, so the rest of the app's
+           tokens are untouched, and not redefined for dark, since it is dark already.
+           Values are the brand/accent palette the sidebar used before D1. */
+        --sidebar: 2 27 60; /* brand-950 */
+        --on-sidebar: 217 224 242; /* brand-100: link text */
+        --on-sidebar-strong: 255 255 255; /* white: wordmark, hover text, tints */
+        --on-sidebar-soft: 179 194 229; /* brand-200: Ctrl K, heading hover */
+        --on-sidebar-muted: 140 163 216; /* brand-300: icons, placeholder, shop name */
+        --on-sidebar-faint: 89 122 199; /* brand-400: group headings */
+        --sidebar-active: 214 80 2; /* accent-600 */
+        --on-sidebar-active: 255 255 255;
+        --sidebar-focus: 252 158 68; /* accent-400 */
     }
 
     [data-theme='dark'] {
@@ -92,6 +106,11 @@
     /* The app's own focus ring; the marketing site keeps the rule above. */
     [data-app] :focus-visible {
         @apply ring-link ring-offset-surface;
+    }
+
+    /* On the navy sidebar the navy link ring would vanish, so it rings in orange as it did before D1. */
+    [data-app] .sb-aside :focus-visible {
+        @apply ring-sidebar-focus ring-offset-sidebar;
     }
 
     [x-cloak] {
@@ -211,7 +230,7 @@
     }
 }
 
-/* Sidebar menu scrollbar: thin and ink-tinted, so it follows the theme.
+/* Sidebar menu scrollbar: thin, white-tinted on the navy background.
    Chromium/Safari use the ::-webkit pseudo-elements (setting the standard properties as
    well would make Chromium ignore them and draw its wider default), Firefox the standard
    properties. */
@@ -225,21 +244,21 @@
 
 .sb-scroll::-webkit-scrollbar-thumb {
     border-radius: 9999px;
-    background-color: rgb(var(--ink) / 0.14);
+    background-color: rgb(var(--on-sidebar-strong) / 0.16);
 }
 
 .sb-scroll:hover::-webkit-scrollbar-thumb {
-    background-color: rgb(var(--ink) / 0.24);
+    background-color: rgb(var(--on-sidebar-strong) / 0.28);
 }
 
 .sb-scroll::-webkit-scrollbar-thumb:active {
-    background-color: rgb(var(--ink) / 0.34);
+    background-color: rgb(var(--on-sidebar-strong) / 0.4);
 }
 
 @supports (-moz-appearance: none) {
     .sb-scroll {
         scrollbar-width: thin;
-        scrollbar-color: rgb(var(--ink) / 0.2) transparent;
+        scrollbar-color: rgb(var(--on-sidebar-strong) / 0.22) transparent;
     }
 }
 

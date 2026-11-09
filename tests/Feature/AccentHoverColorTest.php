@@ -5,13 +5,14 @@ namespace Tests\Feature;
 use Tests\TestCase;
 
 /**
- * Pins the design overhaul's colour decisions for the shell and pickers
- * (docs/design-system.md): a white sidebar with a soft navy active item, and
- * orange used only for New Sale and Complete Sale.
+ * Pins the shell and picker colours (docs/design-system.md): the navy sidebar
+ * with a solid orange active item, soft navy highlights in the select
+ * dropdowns, and the sale orange for New Sale.
  *
- * Rewritten in design overhaul D1. It used to pin the navy sidebar with a solid
- * orange active item and orange highlights in the select dropdowns, which the
- * owner replaced on 2026-11-08.
+ * Rewritten in design overhaul D1 for a white sidebar, then again in D12 when
+ * the owner brought back the original navy sidebar (2026-11-09). The sidebar
+ * now uses its own tokens (sidebar, sidebar-ink, sidebar-active) holding the
+ * pre-D1 brand-950 / accent-600 values; the dropdowns keep the D1 colours.
  */
 class AccentHoverColorTest extends TestCase
 {
@@ -22,24 +23,34 @@ class AccentHoverColorTest extends TestCase
             .file_get_contents(resource_path('views/components/layout/sidebar-link.blade.php'));
     }
 
-    public function test_the_sidebar_is_a_light_surface_not_the_old_navy_panel(): void
+    public function test_the_sidebar_is_the_navy_panel_not_a_light_surface(): void
     {
         $html = $this->sidebarSource();
 
-        $this->assertStringContainsString('bg-surface', $html);
-        $this->assertStringNotContainsString('bg-brand-950', $html);
-        $this->assertStringNotContainsString('hover:bg-white/10', $html);
+        $this->assertStringContainsString('bg-sidebar text-sidebar-ink', $html);
+        $this->assertStringContainsString('hover:bg-sidebar-ink-strong/10 hover:text-sidebar-ink-strong', $html);
+        $this->assertStringNotContainsString('bg-surface', $html);
+        $this->assertStringNotContainsString('text-ink', $html);
     }
 
-    public function test_the_active_nav_item_is_soft_navy_not_solid_orange(): void
+    public function test_the_sidebar_tokens_hold_the_original_navy_and_orange(): void
+    {
+        $css = file_get_contents(resource_path('css/app.css'));
+
+        $this->assertStringContainsString('--sidebar: 2 27 60;', $css); // brand-950 #021b3c
+        $this->assertStringContainsString('--on-sidebar: 217 224 242;', $css); // brand-100 #d9e0f2
+        $this->assertStringContainsString('--sidebar-active: 214 80 2;', $css); // accent-600 #d65002
+    }
+
+    public function test_the_active_nav_item_is_solid_orange_with_white_text(): void
     {
         $html = $this->sidebarSource();
 
-        $this->assertStringContainsString("'bg-primary-soft font-semibold text-on-primary-soft' => \$active", $html);
-        $this->assertStringNotContainsString('bg-accent-600 text-white', $html);
+        $this->assertStringContainsString("'bg-sidebar-active font-semibold text-sidebar-active-ink' => \$active", $html);
+        $this->assertStringNotContainsString('bg-primary-soft', $html);
     }
 
-    public function test_the_only_orange_left_in_the_sidebar_is_the_wordmark(): void
+    public function test_the_sidebar_never_uses_the_sale_orange(): void
     {
         preg_match_all('/(?<![\w-])(?:[a-z-]+:)*(?:bg|text|ring|border)-(?:accent-\d+|sale)\b/', $this->sidebarSource(), $matches);
 

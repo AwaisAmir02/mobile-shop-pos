@@ -37,6 +37,13 @@ export default {
                 danger: { DEFAULT: token('danger'), soft: token('danger-soft'), solid: token('danger-solid'), 'solid-ink': token('on-danger-solid') },
                 info: { DEFAULT: token('info'), soft: token('info-soft') },
                 scrim: token('scrim'),
+                // The navy sidebar's own set (D12); see resources/css/app.css.
+                sidebar: {
+                    DEFAULT: token('sidebar'),
+                    ink: { DEFAULT: token('on-sidebar'), strong: token('on-sidebar-strong'), soft: token('on-sidebar-soft'), muted: token('on-sidebar-muted'), faint: token('on-sidebar-faint') },
+                    active: { DEFAULT: token('sidebar-active'), ink: token('on-sidebar-active') },
+                    focus: token('sidebar-focus'),
+                },
                 brand: {
                     50: '#f0f3fa',
                     100: '#d9e0f2',

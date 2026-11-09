@@ -1,7 +1,7 @@
 # HisabOKitab design system
 
 The one visual and structural system for the app, built up across the design
-overhaul stages D0 to D10. It's for anyone changing a screen. If a screen needs
+overhaul stages D0 to D12. It's for anyone changing a screen. If a screen needs
 something this doesn't cover, add it here and to the shared kit rather than styling
 one page by hand.
 
@@ -51,7 +51,7 @@ text and control edges.
 | Token | Use | Light | Dark | Contrast L / D |
 |---|---|---|---|---|
 | `page` | App background | `#f8fafc` | `#0b1220` | |
-| `surface` | Cards, tables, sidebar | `#ffffff` | `#111a2b` | |
+| `surface` | Cards, tables | `#ffffff` | `#111a2b` | |
 | `surface-raised` | Menus, modals, drawers | `#ffffff` | `#172236` | |
 | `surface-sunken` | Table headers, wells, hover | `#f1f5f9` | `#0e1726` | |
 | `line` | Dividers, card borders | `#e2e8f0` | `#26334a` | decorative |
@@ -63,7 +63,7 @@ text and control edges.
 | `primary-hover` | Its hover | `#012d8e` | `#b3c2e5` | |
 | `on-primary` | Text on primary | `#ffffff` | `#021b3c` | 10.26 / 6.81 |
 | `link` | Links, focus rings | `#0033a9` | `#b3c2e5` | 10.26 / 9.75 |
-| `primary-soft` | Active sidebar item, highlighted option, avatar | `#f0f3fa` | `#1b2c52` | |
+| `primary-soft` | Highlighted option, avatar | `#f0f3fa` | `#1b2c52` | |
 | `on-primary-soft` | Text on it | `#012d8e` | `#d9e0f2` | 10.70 / 10.40 |
 | `emphasis`, `emphasis-ink`, `emphasis-muted` | The one navy headline stat | `#021b3c`, white, `#b3c2e5` | `#1b2c52`, white, `#b3c2e5` | 9.61 / 7.70 for muted |
 | `sale` | New Sale and Complete Sale only | `#cc4a02` | `#cc4a02` | 4.62 / 4.62 |
@@ -75,7 +75,8 @@ text and control edges.
 | `info`, `info-soft` | Neutral notices | `#012d8e` on `#f0f3fa` | `#b3c2e5` on `#16264a` | 10.70 / 8.34 |
 | `danger-solid`, `danger-solid-ink` | Destructive button | `#dc2626`, white text | `#fca5a5`, `#2f1616` text | 4.83 / 8.87 |
 
-Plus `scrim` (modal backdrop) and `shadow` (tints `shadow-soft` and `shadow-float`).
+Plus `scrim` (modal backdrop) and `shadow` (tints `shadow-soft` and `shadow-float`),
+and the sidebar's own set below.
 In Tailwind they're written `bg-surface`, `text-ink-muted`, `border-line-strong`,
 `bg-primary-soft`, `text-sale-ink` and so on.
 
@@ -442,6 +443,33 @@ long explanations the ledger needs stay but read as notes, not body text.
   previews it; Save stores it and only then deletes the old file; Remove asks
   first and goes back to the initial. Deleting an account deletes its photo.
   Needs `php artisan storage:link` on the server, as product images already do.
+
+## Navy sidebar (D12)
+
+The owner brought back the sidebar's original colours on 2026-11-09: the navy panel
+with a solid orange active item, as it was before D1. Only its colours changed. The
+structure, groups, search, collapse rail and the rest of the app stay as the
+overhaul left them. The sidebar has its own tokens, the same in light and dark
+(it's dark already), so nothing else reads them and the app's other tokens are
+unchanged:
+
+| Token (Tailwind) | Use | Value | Contrast on navy |
+|---|---|---|---|
+| `sidebar` | Panel background | `#021b3c` (brand-950) | |
+| `sidebar-ink` | Link text | `#d9e0f2` (brand-100) | 12.98 |
+| `sidebar-ink-strong` | Wordmark, hover text; `/10` and `/15` for hover, search field, dividers | white | 17.15 |
+| `sidebar-ink-soft` | Ctrl K, heading hover | `#b3c2e5` (brand-200) | 9.61 |
+| `sidebar-ink-muted` | Icons, placeholder, shop name, collapse button | `#8ca3d8` (brand-300) | 6.81 |
+| `sidebar-ink-faint` | Group headings | `#597ac7` (brand-400) | 4.11 |
+| `sidebar-active`, `sidebar-active-ink` | Active item, white text | `#d65002` (accent-600) | 4.19 white on it |
+| `sidebar-focus` | Focus ring, offset in navy | `#fc9e44` (accent-400) | 8.26 |
+
+Two pairs are under 4.5:1, exactly as before D1: group headings and white on the
+active item. That was the owner's choice to restore. If they ever need to pass AA,
+the sale orange `#cc4a02` (4.62) would fix the active item with almost no visible
+change, and `#6b8bd0` or lighter would fix the headings. The scrollbar is tinted
+white and every focus ring inside `.sb-aside` is the orange ring
+(`resources/css/app.css`). `AccentHoverColorTest` pins all of this.
 
 ## Checks for every stage
 
