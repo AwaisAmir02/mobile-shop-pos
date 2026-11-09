@@ -304,7 +304,12 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
 
 <div>
     <x-slot name="header">
-        <x-ui.page-header back="{{ route('admin.dashboard') }}" back-label="Shops">{{ $shop->name }}</x-ui.page-header>
+        <x-ui.page-header back="{{ route('admin.dashboard') }}" back-label="Shops">
+            {{ $shop->name }}
+            <x-slot name="actions">
+                <x-ui.button variant="secondary" size="sm" href="{{ route('admin.support', ['shop' => $shop->id, 'status' => 'all']) }}" wire:navigate>Support tickets</x-ui.button>
+            </x-slot>
+        </x-ui.page-header>
     </x-slot>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">

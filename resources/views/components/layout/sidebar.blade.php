@@ -8,6 +8,7 @@
             ['label' => 'Plans', 'route' => 'admin.plans', 'icon' => 'banknote', 'active' => ['admin.plans', 'admin.plans.*']],
             ['label' => 'Add-ons', 'route' => 'admin.addons', 'icon' => 'sparkles', 'active' => ['admin.addons', 'admin.addons.*']],
             ['label' => 'Payments', 'route' => 'admin.payments', 'icon' => 'wallet', 'active' => ['admin.payments', 'admin.payments.*']],
+            ['label' => 'Support', 'route' => 'admin.support', 'icon' => 'lifebuoy', 'active' => ['admin.support', 'admin.support.*'], 'badge' => \App\Models\SupportTicket::waitingOnAdmin()->count(), 'badgeKey' => 'data-support-waiting'],
             ['label' => 'Integrations', 'route' => 'admin.integrations', 'icon' => 'link', 'active' => ['admin.integrations', 'admin.integrations.*']],
             ['label' => 'Backups', 'route' => 'admin.backups', 'icon' => 'cog', 'active' => ['admin.backups', 'admin.backups.*']],
         ]
@@ -43,7 +44,11 @@
             ['label' => 'Branches', 'route' => 'branches.index', 'icon' => 'building', 'group' => 'manage', 'permission' => 'branches'],
             ['label' => 'Settings', 'route' => 'settings.index', 'icon' => 'cog', 'group' => 'manage', 'permission' => ['settings', 'users']],
             ['label' => 'Plan & Usage', 'route' => 'billing.index', 'icon' => 'receipt', 'group' => 'manage', 'owner' => true],
-        ])->filter(fn ($item) => $user && (($item['owner'] ?? false) ? $user->is_owner : collect((array) $item['permission'])->contains(fn ($p) => $user->hasAccessTo($p))))
+            // D13: open to every shop user, whatever their role. The link carries the
+            // screen they're on (see sidebar-link's captureScreen).
+            ['label' => 'Help & Support', 'route' => 'support.index', 'icon' => 'lifebuoy', 'group' => 'manage', 'everyone' => true, 'active' => ['support.*'], 'captureScreen' => true,
+                'badge' => $user?->shop_id ? \App\Models\SupportTicket::visibleTo($user)->unreadForShop()->count() : 0, 'badgeKey' => 'data-support-unread'],
+        ])->filter(fn ($item) => $user && (($item['everyone'] ?? false) || (($item['owner'] ?? false) ? $user->is_owner : collect((array) $item['permission'])->contains(fn ($p) => $user->hasAccessTo($p)))))
             ->reject(fn ($item) => $item['route'] === 'services.history' && ! $user?->shop?->services_enabled)
             ->reject(fn ($item) => $item['route'] === 'ledger.trial-balance' && ! $user?->shop?->ledger_enabled)
             ->reject(fn ($item) => $item['route'] === 'payroll.employees' && ! $user?->shop?->payroll_enabled)
@@ -93,6 +98,7 @@
         'clipboard' => 'M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z',
         'briefcase' => 'M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z',
         'scale' => 'M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.031.352 5.988 5.988 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 01-2.031.352 5.989 5.989 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971z',
+        'lifebuoy' => 'M16.712 4.33a9.027 9.027 0 011.652 1.306c.51.51.944 1.064 1.306 1.652M16.712 4.33l-3.448 4.138m3.448-4.138a9.014 9.014 0 00-9.424 0M19.67 7.288l-4.138 3.448m4.138-3.448a9.014 9.014 0 010 9.424m-4.138-5.976a3.736 3.736 0 00-.88-1.388 3.737 3.737 0 00-1.388-.88m2.268 2.268a3.765 3.765 0 010 2.528m-2.268-4.796a3.765 3.765 0 00-2.528 0m4.796 4.796c-.181.506-.475.982-.88 1.388a3.736 3.736 0 01-1.388.88m2.268-2.268l4.138 3.448m0 0a9.027 9.027 0 01-1.306 1.652c-.51.51-1.064.944-1.652 1.306m0 0l-3.448-4.138m3.448 4.138a9.014 9.014 0 01-9.424 0m5.976-4.138a3.765 3.765 0 01-2.528 0m0 0a3.736 3.736 0 01-1.388-.88 3.737 3.737 0 01-.88-1.388m2.268 2.268L7.288 19.67m0 0a9.024 9.024 0 01-1.652-1.306 9.027 9.027 0 01-1.306-1.652m0 0l4.138-3.448M4.33 16.712a9.014 9.014 0 010-9.424m4.138 5.976a3.765 3.765 0 010-2.528m0 0c.181-.506.475-.982.88-1.388a3.736 3.736 0 011.388-.88m-2.268 2.268L4.33 7.288m6.406 1.18L7.288 4.33m0 0a9.024 9.024 0 00-1.652 1.306A9.025 9.025 0 004.33 7.288',
         'search' => 'M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z',
     ];
 

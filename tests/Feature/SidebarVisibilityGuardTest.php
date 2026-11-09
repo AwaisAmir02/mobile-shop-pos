@@ -303,6 +303,7 @@ class SidebarVisibilityGuardTest extends TestCase
             'Plans' => '/admin/plans',
             'Add-ons' => '/admin/addons',
             'Payments' => '/admin/payments',
+            'Support' => '/admin/support',
             'Integrations' => '/admin/integrations',
             'Backups' => '/admin/backups',
         ], $this->linksFor($admin));
@@ -367,6 +368,13 @@ class SidebarVisibilityGuardTest extends TestCase
             $label = $link->getAttribute('title');
             $this->assertArrayNotHasKey($label, $links, "$label appears twice in the sidebar");
             $links[$label] = parse_url($link->getAttribute('href'), PHP_URL_PATH) ?? '/';
+        }
+
+        // D13: Help & Support is open to every shop user whatever their role, so it is
+        // checked once here and left out of the per-permission comparisons.
+        if (! $user->is_super_admin) {
+            $this->assertSame('/support', $links['Help & Support'] ?? null, 'Every shop user sees Help & Support');
+            unset($links['Help & Support']);
         }
 
         return $links;

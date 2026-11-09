@@ -290,6 +290,11 @@
         display: block;
     }
 
+    /* An unread count folds to a dot on the icon rail. */
+    html[data-sidebar='collapsed'] .sb-aside .sb-dot {
+        display: block;
+    }
+
     html[data-sidebar='collapsed'] .sb-aside .sb-group-items {
         display: block !important;
     }

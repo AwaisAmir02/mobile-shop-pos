@@ -199,4 +199,16 @@ $try('store order', function () use ($shop, $connection, $sellable) {
 
 $try('start ledger', fn () => StartLedger::handle($shop->fresh(), []));
 
+// D13: a support conversation (shop question, admin answer with the ticket in
+// progress) and a second unanswered ticket, so both inboxes have something to show.
+$try('support tickets', function () use ($owner) {
+    $ticket = app(\App\Actions\Support\OpenSupportTicket::class)->handle($owner, "When I press Complete Sale the receipt doesn't print. It worked yesterday.", [], '/sales/history', 'Sales History', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36');
+    $admin = User::where('is_super_admin', true)->firstOrFail();
+    Auth::login($admin);
+    app(\App\Actions\Support\ReplyToSupportTicket::class)->handle($ticket, $admin, 'Thanks for the details. Which printer are you using, and does a test page print from Windows?');
+    $ticket->update(['status' => \App\Enums\SupportTicketStatus::InProgress]);
+    Auth::login($owner);
+    app(\App\Actions\Support\OpenSupportTicket::class)->handle($owner, 'How do I add a second branch?', [], '/branches', 'Branches', 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36');
+});
+
 echo 'products='.Product::count().' sales='.Sale::count().' stockins='.StockIn::count().' failures='.$failures."\n";

@@ -48,6 +48,18 @@ Route::middleware(['auth'])->group(function () {
             return $pdf->download($invoice);
         })->name('billing.invoices.pdf');
 
+        // D13: Help & Support. Every shop user, no screen permission on purpose.
+        Volt::route('support', 'support.index')->name('support.index');
+        Volt::route('support/new', 'support.create')->name('support.create');
+        Volt::route('support/{ticket}', 'support.show')->name('support.show')->whereNumber('ticket');
+        Route::get('support/attachments/{attachment}', function (int $attachment) {
+            // The ticket comes back through the shop scope, so another shop's photo is a 404.
+            $file = \App\Models\SupportTicketAttachment::with('message.ticket')->findOrFail($attachment);
+            abort_unless($file->message?->ticket?->isVisibleTo(auth()->user()), 404);
+
+            return $file->response();
+        })->whereNumber('attachment')->name('support.attachment');
+
         Volt::route('dashboard', 'dashboard.index')->name('dashboard')->middleware('shop.access:dashboard');
 
         Volt::route('products', 'products.index')->name('products.index')->middleware('shop.access:products');
@@ -193,6 +205,10 @@ Route::middleware(['auth'])->group(function () {
             return redirect()->away(\Illuminate\Support\Facades\Storage::disk(config('backup.remote_disk'))->temporaryUrl($run->remote_path, now()->addMinutes(10)));
         })->name('backups.download');
         Volt::route('payments', 'admin.payments')->name('payments');
+        Volt::route('support', 'admin.support.index')->name('support');
+        Volt::route('support/{ticket}', 'admin.support.show')->name('support.show')->whereNumber('ticket');
+        Route::get('support/attachments/{attachment}', fn (\App\Models\SupportTicketAttachment $attachment) => $attachment->response())
+            ->whereNumber('attachment')->name('support.attachment');
         Route::get('payments/{payment}/proof', function (\App\Models\SubscriptionPayment $payment) {
             abort_unless($payment->proof_path && \Illuminate\Support\Facades\Storage::disk(\App\Services\Billing\SubscriptionPaymentService::PROOF_DISK)->exists($payment->proof_path), 404);
 

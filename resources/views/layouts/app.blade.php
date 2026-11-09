@@ -80,5 +80,6 @@
 
         <x-ui.toast-container />
         <x-ui.confirm-dialog />
+        <x-support.reply-notice />
     </body>
 </html>

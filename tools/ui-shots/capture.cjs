@@ -39,14 +39,15 @@ const PAGES = {
     marketing: '/marketing', 'marketing-posts': '/marketing/posts', 'marketing-reviews': '/marketing/reviews', 'marketing-ads': '/marketing/ads', 'marketing-qr': '/marketing/qr',
     team: '/users', branches: '/branches', settings: '/settings', billing: '/billing', profile: '/profile', welcome: '/welcome',
     'wa-order': '/whatsapp-orders/1', 'online-order': '/online-orders/1',
+    support: '/support', 'support-new': '/support/new?from=%2Fsales%2Fhistory&screen=Sales%20History', 'support-ticket': '/support/1',
     ...Object.fromEntries(['branding', 'shop-accounts', 'accessory-categories', 'brands', 'networks', 'percentage', 'bills', 'services', 'deduction-types', 'roles', 'modules', 'integrations', 'profile']
       .map((tab) => ['settings-' + tab, '/settings?tab=' + tab])),
   },
   cashier: {
-    'cashier-welcome': '/welcome', 'cashier-sales': '/sales', 'cashier-sales-history': '/sales/history', 'cashier-products': '/products', 'cashier-customers': '/customers', 'cashier-udhaar': '/udhaar', 'cashier-balance-load': '/balance-loads',
+    'cashier-welcome': '/welcome', 'cashier-sales': '/sales', 'cashier-sales-history': '/sales/history', 'cashier-products': '/products', 'cashier-customers': '/customers', 'cashier-udhaar': '/udhaar', 'cashier-balance-load': '/balance-loads', 'cashier-support': '/support',
   },
   admin: {
-    'admin-shops': '/admin', 'admin-shop': '/admin/shops/1', 'admin-plans': '/admin/plans', 'admin-addons': '/admin/addons', 'admin-payments': '/admin/payments', 'admin-integrations': '/admin/integrations', 'admin-backups': '/admin/backups',
+    'admin-shops': '/admin', 'admin-shop': '/admin/shops/1', 'admin-plans': '/admin/plans', 'admin-addons': '/admin/addons', 'admin-payments': '/admin/payments', 'admin-integrations': '/admin/integrations', 'admin-backups': '/admin/backups', 'admin-support': '/admin/support', 'admin-ticket': '/admin/support/1',
   },
 };
 
