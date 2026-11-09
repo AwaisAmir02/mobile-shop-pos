@@ -291,19 +291,19 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
                     : 'Rs '.number_format($columns[$label]($summary), 2);
             @endphp
 
-            <x-ui.table :headers="array_merge(['Branch'], array_keys($columns))">
+            <x-ui.table stack :headers="array_merge(['Branch'], array_keys($columns))">
                 @foreach ($branchComparison['branches'] as $row)
                     <x-ui.table-row wire:key="compare-{{ $row['branch']->id }}">
-                        <x-ui.table-cell class="font-medium text-slate-900">{{ $row['branch']->name }}</x-ui.table-cell>
+                        <x-ui.table-cell primary class="font-semibold text-ink">{{ $row['branch']->name }}</x-ui.table-cell>
                         @foreach (array_keys($columns) as $label)
-                            <x-ui.table-cell>{{ $cell($label, $row['summary']) }}</x-ui.table-cell>
+                            <x-ui.table-cell :label="$label">{{ $cell($label, $row['summary']) }}</x-ui.table-cell>
                         @endforeach
                     </x-ui.table-row>
                 @endforeach
-                <x-ui.table-row wire:key="compare-total">
-                    <x-ui.table-cell class="font-semibold text-slate-900">All branches</x-ui.table-cell>
+                <x-ui.table-row wire:key="compare-total" class="bg-surface-sunken/60">
+                    <x-ui.table-cell primary class="font-semibold text-ink">All branches</x-ui.table-cell>
                     @foreach (array_keys($columns) as $label)
-                        <x-ui.table-cell class="font-semibold text-slate-900">{{ $cell($label, $branchComparison['total']) }}</x-ui.table-cell>
+                        <x-ui.table-cell :label="$label" class="font-semibold text-ink">{{ $cell($label, $branchComparison['total']) }}</x-ui.table-cell>
                     @endforeach
                 </x-ui.table-row>
             </x-ui.table>
@@ -469,11 +469,12 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
                 description="Nothing matches the current filters."
             />
         @else
-            <x-ui.table :headers="$tableHeaders">
+            {{-- Columns differ by screen, so each cell takes its label from its own header. --}}
+            <x-ui.table stack :headers="$tableHeaders">
                 @foreach ($tableRows as $i => $row)
                     <x-ui.table-row wire:key="report-row-{{ $i }}">
-                        @foreach ($row as $cell)
-                            <x-ui.table-cell>{{ $cell }}</x-ui.table-cell>
+                        @foreach (array_values($row) as $c => $cell)
+                            <x-ui.table-cell :primary="$c === 0" :label="$c === 0 ? null : (($tableHeaders[$c] ?? '') ?: null)" @class(['font-semibold text-ink' => $c === 0])>{{ $cell }}</x-ui.table-cell>
                         @endforeach
                     </x-ui.table-row>
                 @endforeach

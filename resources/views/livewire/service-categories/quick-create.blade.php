@@ -34,7 +34,7 @@ new class extends Component
 <div>
     <x-ui.modal name="quick-create-service-category" max-width="sm">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">New Service Category</h2>
+            <h2 class="text-lg font-semibold text-ink">New Service Category</h2>
 
             <div class="mt-5">
                 <x-ui.field label="Category Name" name="name" for="quickServiceCategoryName" help="e.g. Services, Installations, Downloads">

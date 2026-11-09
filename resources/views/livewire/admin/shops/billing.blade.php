@@ -254,25 +254,25 @@ new class extends Component
                     description="Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact."
                 />
             @else
-                <x-ui.table :headers="['Invoice', 'Period', 'Total', 'Status', '']">
+                <x-ui.table stack :headers="['Invoice', 'Period', 'Total', 'Status', '']">
                     @foreach ($invoices as $invoice)
                         <x-ui.table-row wire:key="billing-{{ $invoice->id }}">
-                            <x-ui.table-cell class="font-medium text-slate-900">{{ $invoice->invoice_number }}</x-ui.table-cell>
-                            <x-ui.table-cell>
+                            <x-ui.table-cell primary class="font-medium text-ink">{{ $invoice->invoice_number }}</x-ui.table-cell>
+                            <x-ui.table-cell label="Period">
                                 <div class="whitespace-nowrap">{{ $invoice->period_start->format('d M Y') }} – {{ $invoice->period_end->format('d M Y') }}</div>
-                                <div class="text-xs text-slate-400">{{ $invoice->months }} {{ \Illuminate\Support\Str::plural('month', $invoice->months) }} · {{ $invoice->planLabel() }}</div>
+                                <div class="text-xs text-ink-faint">{{ $invoice->months }} {{ \Illuminate\Support\Str::plural('month', $invoice->months) }} · {{ $invoice->planLabel() }}</div>
                             </x-ui.table-cell>
-                            <x-ui.table-cell class="font-semibold text-slate-900">
+                            <x-ui.table-cell label="Total" class="font-semibold text-ink">
                                 Rs {{ number_format($invoice->total, 2) }}
                                 @if ((float) $invoice->discount > 0)
-                                    <div class="text-xs font-normal text-slate-400">after Rs {{ number_format($invoice->discount, 2) }} discount</div>
+                                    <div class="text-xs font-normal text-ink-faint">after Rs {{ number_format($invoice->discount, 2) }} discount</div>
                                 @endif
                             </x-ui.table-cell>
-                            <x-ui.table-cell>
+                            <x-ui.table-cell label="Status">
                                 @if ($invoice->status === SubscriptionInvoiceStatus::Paid)
                                     <x-ui.badge variant="success">Paid</x-ui.badge>
                                     @if ($invoice->paid_at)
-                                        <div class="mt-1 text-xs text-slate-400">{{ $invoice->paid_at->format('d M Y') }}</div>
+                                        <div class="mt-1 text-xs text-ink-faint">{{ $invoice->paid_at->format('d M Y') }}</div>
                                     @endif
                                 @elseif ($invoice->status === SubscriptionInvoiceStatus::Cancelled)
                                     <x-ui.badge variant="neutral">Cancelled</x-ui.badge>
@@ -280,7 +280,7 @@ new class extends Component
                                     <x-ui.badge variant="danger">Unpaid</x-ui.badge>
                                 @endif
                             </x-ui.table-cell>
-                            <x-ui.table-cell align="right">
+                            <x-ui.table-cell actions align="right">
                                 <div class="flex flex-wrap justify-end gap-2">
                                     @if (! $invoice->isCancelled())
                                         <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $invoice->id }})">Edit</x-ui.button>
@@ -307,7 +307,7 @@ new class extends Component
 
     <x-ui.modal name="billing-invoice-form" max-width="md">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">{{ $editingId ? 'Edit Billing Record' : 'Add Billing Record' }}</h2>
+            <h2 class="text-lg font-semibold text-ink">{{ $editingId ? 'Edit Billing Record' : 'Add Billing Record' }}</h2>
 
             <div class="mt-5 space-y-5">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -333,7 +333,7 @@ new class extends Component
                 </x-ui.field>
 
                 @if (! $editingId)
-                    <div class="space-y-3 rounded-lg border border-slate-200 p-4">
+                    <div class="space-y-3 rounded-lg border border-line p-4">
                         <x-ui.checkbox wire:model.live="markPaid" label="Mark as paid" />
 
                         @if ($markPaid)
@@ -356,8 +356,8 @@ new class extends Component
 
     <x-ui.modal name="billing-cancel-form" max-width="sm">
         <form wire:submit="cancelInvoice" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Cancel This Billing Record?</h2>
-            <p class="mt-2 text-sm text-slate-600">
+            <h2 class="text-lg font-semibold text-ink">Cancel This Billing Record?</h2>
+            <p class="mt-2 text-sm text-ink-muted">
                 It will be marked <strong>Cancelled</strong> and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted.
             </p>
 
@@ -369,7 +369,7 @@ new class extends Component
 
             <div class="mt-6 flex justify-end gap-3">
                 <x-ui.button type="button" variant="secondary" wire:click="closeCancelForm">Keep Record</x-ui.button>
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="cancelInvoice" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                <x-ui.button variant="danger" type="submit" wire:loading.attr="disabled" wire:target="cancelInvoice">
                     Cancel Record
                 </x-ui.button>
             </div>

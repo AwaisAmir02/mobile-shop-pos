@@ -33,7 +33,7 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
 <div>
     <x-slot name="header">
         <div class="flex items-center justify-between">
-            <h1 class="text-xl font-semibold text-slate-900">Shops</h1>
+            <x-ui.page-header>Shops</x-ui.page-header>
             <x-ui.button href="{{ route('admin.shops.create') }}" wire:navigate>
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -47,8 +47,8 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
     @php($backupStale = \App\Models\BackupRun::isStale())
     <a href="{{ route('admin.backups') }}" wire:navigate @class([
         'mb-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm',
-        'border-red-200 bg-red-50 text-red-800' => $backupStale,
-        'border-emerald-200 bg-emerald-50 text-emerald-800' => ! $backupStale,
+        'border-danger/20 bg-danger-soft text-danger' => $backupStale,
+        'border-success/20 bg-success-soft text-success' => ! $backupStale,
     ])>
         <span>
             <span class="font-semibold">{{ $backupStale ? 'Backups need attention.' : 'Backups OK.' }}</span>
@@ -71,21 +71,21 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
             </x-slot>
         </x-ui.empty-state>
     @else
-        <x-ui.table :headers="['Shop', 'Plan', 'Status', 'Start Date', 'Renewal', 'Products', 'Users', '']">
+        <x-ui.table stack :headers="['Shop', 'Plan', 'Status', 'Start Date', 'Renewal', 'Products', 'Users', '']">
             @foreach ($shops as $shop)
                 <x-ui.table-row wire:key="shop-{{ $shop->id }}">
-                    <x-ui.table-cell class="font-medium text-slate-900">
-                        <a href="{{ route('admin.shops.show', $shop) }}" wire:navigate class="hover:text-brand-700">
+                    <x-ui.table-cell primary class="font-medium text-ink">
+                        <a href="{{ route('admin.shops.show', $shop) }}" wire:navigate class="hover:underline">
                             {{ $shop->name }}
                         </a>
                     </x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell label="Plan">
                         {{ $shop->plan?->name ?? $shop->plan_type?->label() ?? '—' }}
                         @if ($shop->plan && $shop->plan_type)
-                            <span class="text-xs text-slate-500">· {{ $shop->plan_type->label() }}</span>
+                            <span class="text-xs text-ink-faint">· {{ $shop->plan_type->label() }}</span>
                         @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell label="Status">
                         @if ($shop->isSubscriptionActive())
                             <x-ui.badge variant="success">Active</x-ui.badge>
                         @else
@@ -96,11 +96,11 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
                             <x-ui.badge variant="warning" class="mt-1" title="{{ $limitAlerts->pluck('label')->implode(', ') }}">{{ $limitAlerts->contains('key', 'sales_per_month') ? 'Over sales limit' : 'At plan limit' }}</x-ui.badge>
                         @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell>{{ $shop->subscription_start_date?->format('d M Y') ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $shop->expectedRenewalDate()?->format('d M Y') ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $shop->products_count }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $shop->users_count }}</x-ui.table-cell>
-                    <x-ui.table-cell align="right">
+                    <x-ui.table-cell label="Start Date">{{ $shop->subscription_start_date?->format('d M Y') ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Renewal">{{ $shop->expectedRenewalDate()?->format('d M Y') ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Products">{{ $shop->products_count }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Users">{{ $shop->users_count }}</x-ui.table-cell>
+                    <x-ui.table-cell actions align="right">
                         <x-ui.button href="{{ route('admin.shops.show', $shop) }}" wire:navigate size="sm" variant="ghost">View</x-ui.button>
                     </x-ui.table-cell>
                 </x-ui.table-row>

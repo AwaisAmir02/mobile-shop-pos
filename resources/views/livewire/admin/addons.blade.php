@@ -174,7 +174,7 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Add-ons</h1>
+        <x-ui.page-header>Add-ons</x-ui.page-header>
     </x-slot>
 
     <x-ui.card title="Add-on catalogue" description="Shops on a plan can buy active add-ons from Plan & Usage. Payment goes through the same bank-transfer review as signups, and the add-on switches on when you confirm the payment.">
@@ -185,33 +185,34 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
         @if ($addons->isEmpty())
             <x-ui.empty-state title="No add-ons yet" description="Create one to offer extra allowance or a feature on top of a plan." />
         @else
-            <x-ui.table :headers="['Order', 'Add-on', 'Gives', 'Price', 'Shops', 'Status', '']">
+            <x-ui.table stack :headers="['Order', 'Add-on', 'Gives', 'Price', 'Shops', 'Status', '']">
                 @foreach ($addons as $addon)
                     <x-ui.table-row wire:key="addon-{{ $addon->id }}">
-                        <x-ui.table-cell>
+                        <x-ui.table-cell primary>
                             <div class="flex gap-1">
-                                <button type="button" wire:click="move({{ $addon->id }}, 'up')" @disabled($loop->first) class="rounded p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-30" aria-label="Move {{ $addon->name }} up">
+                                <button type="button" wire:click="move({{ $addon->id }}, 'up')" @disabled($loop->first) class="rounded p-1 text-ink-faint hover:bg-surface-sunken disabled:opacity-30" aria-label="Move {{ $addon->name }} up">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" /></svg>
                                 </button>
-                                <button type="button" wire:click="move({{ $addon->id }}, 'down')" @disabled($loop->last) class="rounded p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-30" aria-label="Move {{ $addon->name }} down">
+                                <button type="button" wire:click="move({{ $addon->id }}, 'down')" @disabled($loop->last) class="rounded p-1 text-ink-faint hover:bg-surface-sunken disabled:opacity-30" aria-label="Move {{ $addon->name }} down">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
                                 </button>
                             </div>
                         </x-ui.table-cell>
-                        <x-ui.table-cell>
-                            <p class="font-medium text-slate-900">{{ $addon->name }}</p>
-                            <p class="text-xs text-slate-500">{{ $addon->kind->label() }}</p>
+                        <x-ui.table-cell label="Add-on">
+                            <p class="font-medium text-ink">{{ $addon->name }}</p>
+                            <p class="text-xs text-ink-faint">{{ $addon->kind->label() }}</p>
                         </x-ui.table-cell>
-                        <x-ui.table-cell>{{ $addon->grants() }}</x-ui.table-cell>
-                        <x-ui.table-cell class="font-semibold text-slate-900">{{ $addon->priceLabel() }}</x-ui.table-cell>
-                        <x-ui.table-cell>{{ $addon->active_count }} active · {{ $addon->purchases_count }} total</x-ui.table-cell>
-                        <x-ui.table-cell><x-ui.badge :variant="$addon->is_active ? 'success' : 'neutral'">{{ $addon->is_active ? 'Offered' : 'Hidden' }}</x-ui.badge></x-ui.table-cell>
-                        <x-ui.table-cell>
-                            <div class="flex justify-end gap-1">
-                                <x-ui.button size="sm" variant="ghost" wire:click="openEdit({{ $addon->id }})">Edit</x-ui.button>
-                                <x-ui.button size="sm" variant="ghost" wire:click="toggleActive({{ $addon->id }})">{{ $addon->is_active ? 'Hide' : 'Offer' }}</x-ui.button>
-                                <x-ui.button size="sm" variant="ghost" wire:click="delete({{ $addon->id }})" wire:confirm="Delete the {{ $addon->name }} add-on permanently?">Delete</x-ui.button>
-                            </div>
+                        <x-ui.table-cell label="Gives" class="min-w-[10rem] whitespace-normal">{{ $addon->grants() }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Price" class="font-semibold text-ink">{{ $addon->priceLabel() }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Shops">{{ $addon->active_count }} active · {{ $addon->purchases_count }} total</x-ui.table-cell>
+                        <x-ui.table-cell label="Status"><x-ui.badge :variant="$addon->is_active ? 'success' : 'neutral'">{{ $addon->is_active ? 'Offered' : 'Hidden' }}</x-ui.badge></x-ui.table-cell>
+                        <x-ui.table-cell actions>
+                            <x-ui.row-actions label="Actions for {{ $addon->name }}">
+                                <x-ui.menu-item wire:click="openEdit({{ $addon->id }})">Edit</x-ui.menu-item>
+                                <x-ui.menu-item wire:click="toggleActive({{ $addon->id }})">{{ $addon->is_active ? 'Hide' : 'Offer' }}</x-ui.menu-item>
+                                <x-ui.menu-divider />
+                                <x-ui.menu-item danger wire:click="delete({{ $addon->id }})" confirm="Delete the {{ $addon->name }} add-on permanently?" confirm-label="Delete">Delete</x-ui.menu-item>
+                            </x-ui.row-actions>
                         </x-ui.table-cell>
                     </x-ui.table-row>
                 @endforeach
@@ -221,22 +222,22 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
 
     <x-ui.modal name="addon-form" max-width="lg">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">{{ $editingId ? 'Edit Add-on' : 'New Add-on' }}</h2>
+            <h2 class="text-lg font-semibold text-ink">{{ $editingId ? 'Edit Add-on' : 'New Add-on' }}</h2>
 
             <div class="mt-5 space-y-5">
                 <x-ui.field label="Name" name="name" for="addonName">
                     <x-ui.input wire:model="name" id="addonName" maxlength="80" placeholder="e.g. Extra 1,000 WhatsApp messages" />
                 </x-ui.field>
-                <x-ui.field label="Description" name="description" for="addonDescription" help="Optional — shown to the shop owner">
+                <x-ui.field label="Description" name="description" for="addonDescription" help="Shown to the shop owner">
                     <x-ui.input wire:model="description" id="addonDescription" maxlength="255" />
                 </x-ui.field>
 
                 <fieldset>
-                    <legend class="text-sm font-medium text-slate-700">Type</legend>
+                    <legend class="text-sm font-medium text-ink-muted">Type</legend>
                     <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                         @foreach (AddonKind::cases() as $option)
-                            <label @class(['flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm', 'border-brand-500 bg-brand-50' => $kind === $option->value, 'border-slate-200' => $kind !== $option->value])>
-                                <input type="radio" wire:model.live="kind" value="{{ $option->value }}" class="text-brand-600 focus:ring-brand-500"> {{ $option->label() }}
+                            <label @class(['flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm', 'border-link bg-primary-soft' => $kind === $option->value, 'border-line' => $kind !== $option->value])>
+                                <input type="radio" wire:model.live="kind" value="{{ $option->value }}" class="text-link focus:ring-link"> {{ $option->label() }}
                             </label>
                         @endforeach
                     </div>
@@ -264,9 +265,9 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
                                 </x-ui.select>
                             </x-ui.field>
                         </div>
-                        <p class="text-xs text-slate-500">Branch packs recur every month or year, so an extra branch never lapses when the plan renews. Buying it again renews it from the day it ends.</p>
+                        <p class="text-xs text-ink-faint">Branch packs recur every month or year, so an extra branch never lapses when the plan renews. Buying it again renews it from the day it ends.</p>
                     @else
-                        <p class="text-xs text-slate-500">Packs are one-off and last until the shop’s plan renews.</p>
+                        <p class="text-xs text-ink-faint">Packs are one-off and last until the shop’s plan renews.</p>
                     @endif
                 @else
                     <x-ui.field label="Switches on" name="featureKeys" help="Tick more than one to sell them together as a bundle.">

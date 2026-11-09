@@ -338,13 +338,13 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                         </x-ui.field>
                     </div>
 
-                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-sunken px-3 py-2 text-xs text-ink-muted">
                         <span>
                             Hidden by category / owner:
-                            <span class="font-medium text-slate-800">{{ $hiddenModules === [] ? 'nothing' : collect($hiddenModules)->map(fn ($key) => \App\Services\BusinessCategories::modules()[$key]['label'])->implode(', ') }}</span>
+                            <span class="font-medium text-ink">{{ $hiddenModules === [] ? 'nothing' : collect($hiddenModules)->map(fn ($key) => \App\Services\BusinessCategories::modules()[$key]['label'])->implode(', ') }}</span>
                         </span>
                         @if ($shop->business_category)
-                            <button type="button" wire:click="applyCategoryDefaults" wire:confirm="Apply the {{ $shop->business_category->label() }} defaults? Module visibility is reset to that category's defaults and any missing starter product categories are added. Nothing is deleted." class="font-semibold text-brand-700 hover:underline">Apply category defaults</button>
+                            <button type="button" wire:click="applyCategoryDefaults" wire:confirm="Apply the {{ $shop->business_category->label() }} defaults? Module visibility is reset to that category's defaults and any missing starter product categories are added. Nothing is deleted." class="font-semibold text-link hover:underline">Apply category defaults</button>
                         @endif
                     </div>
 
@@ -395,16 +395,16 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                         </x-ui.field>
 
                         <x-ui.field label="Expected Renewal">
-                            <p class="py-2.5 text-sm text-slate-600">
+                            <p class="py-2.5 text-sm text-ink-muted">
                                 {{ $expectedRenewalDate?->format('d M Y') ?? 'N/A' }}
                             </p>
                         </x-ui.field>
 
                     </div>
 
-                    <div class="rounded-lg border border-slate-200 p-4">
-                        <p class="text-sm font-medium text-slate-900">Usage limits</p>
-                        <p class="mt-0.5 text-xs text-slate-500">{{ $governed ? 'Leave blank to use the plan’s limit. A number here replaces it for this shop only.' : 'Not enforced — limits only apply to shops on a plan.' }}</p>
+                    <div class="rounded-lg border border-line p-4">
+                        <p class="text-sm font-medium text-ink">Usage limits</p>
+                        <p class="mt-0.5 text-xs text-ink-faint">{{ $governed ? 'Leave blank to use the plan’s limit. A number here replaces it for this shop only.' : 'Not enforced — limits only apply to shops on a plan.' }}</p>
                         <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
                             @foreach (LimitKey::cases() as $limitKey)
                                 <x-ui.field :label="$limitKey->label()" :name="'limitOverrides.'.$limitKey->value" :for="'limit-override-'.$limitKey->value" :help="$governed ? 'Plan: '.(array_key_exists($limitKey->value, $planLimits) && $planLimits[$limitKey->value] !== null ? number_format($planLimits[$limitKey->value]) : 'unlimited') : null">
@@ -426,12 +426,12 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                 <x-ui.card title="Usage this month" description="Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged.">
                     <x-billing.usage-meters :meters="$meters" />
                     @if ($shopAddons->isNotEmpty())
-                        <div class="mt-5 border-t border-slate-100 pt-4">
-                            <p class="text-sm font-medium text-slate-900">Add-ons</p>
+                        <div class="mt-5 border-t border-line pt-4">
+                            <p class="text-sm font-medium text-ink">Add-ons</p>
                             <ul class="mt-2 space-y-1.5 text-sm">
                                 @foreach ($shopAddons as $shopAddon)
                                     <li class="flex items-center justify-between gap-3">
-                                        <span>{{ $shopAddon->name }}@if ($shopAddon->ends_at) <span class="text-xs text-slate-500">· until {{ $shopAddon->ends_at->format('d M Y') }}</span>@endif</span>
+                                        <span>{{ $shopAddon->name }}@if ($shopAddon->ends_at) <span class="text-xs text-ink-faint">· until {{ $shopAddon->ends_at->format('d M Y') }}</span>@endif</span>
                                         <x-ui.badge :variant="$shopAddon->status->badge()">{{ $shopAddon->status->label() }}</x-ui.badge>
                                     </li>
                                 @endforeach
@@ -471,19 +471,19 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         </div>
     </div>
 
-    <h2 class="mb-3 mt-8 text-sm font-semibold text-slate-700">Shop Activity</h2>
+    <h2 class="mb-3 mt-8 text-sm font-semibold text-ink-muted">Shop Activity</h2>
 
     <div class="mb-6 flex flex-wrap items-end gap-4">
         <div>
             <x-ui.label value="Period" />
-            <div class="mt-1.5 inline-flex rounded-lg border border-slate-300 p-1">
+            <div class="mt-1.5 inline-flex rounded-lg border border-line-strong p-1">
                 <button
                     type="button"
                     wire:click="setPeriodType('day')"
                     @class([
                         'rounded-md px-3 py-1.5 text-sm font-medium transition',
-                        'bg-brand-600 text-white' => $periodType === 'day',
-                        'text-slate-600 hover:text-slate-900' => $periodType !== 'day',
+                        'bg-primary text-white' => $periodType === 'day',
+                        'text-ink-muted hover:text-ink' => $periodType !== 'day',
                     ])
                 >
                     Day
@@ -493,8 +493,8 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                     wire:click="setPeriodType('month')"
                     @class([
                         'rounded-md px-3 py-1.5 text-sm font-medium transition',
-                        'bg-brand-600 text-white' => $periodType === 'month',
-                        'text-slate-600 hover:text-slate-900' => $periodType !== 'month',
+                        'bg-primary text-white' => $periodType === 'month',
+                        'text-ink-muted hover:text-ink' => $periodType !== 'month',
                     ])
                 >
                     Month
@@ -524,37 +524,37 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         <x-ui.stat label="Stock-In Units" :value="trim(number_format($totalStockInUnits).' '.(filled($stockInMeasured = \App\Enums\QuantityUnit::summarize($stockInByUnit ?? [])) ? '· '.$stockInMeasured : ''))" />
     </div>
 
-    <div class="mt-4 rounded-xl border border-brand-200 bg-brand-50 px-5 py-4">
+    <div class="mt-4 rounded-xl border border-primary/15 bg-primary-soft px-5 py-4">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm font-medium text-brand-700">Net (Revenue − Expenses)</p>
-                <p class="text-xs text-brand-600">{{ $periodLabel }}</p>
+                <p class="text-sm font-medium text-link">Net (Revenue − Expenses)</p>
+                <p class="text-xs text-link">{{ $periodLabel }}</p>
             </div>
-            <p class="text-display text-brand-900">Rs {{ number_format($netSummary, 2) }}</p>
+            <p class="text-display text-on-primary-soft">Rs {{ number_format($netSummary, 2) }}</p>
         </div>
     </div>
 
     <x-ui.card title="Team" description="Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role." class="mt-8">
-        <x-ui.table :headers="['Name', 'Email', 'Role', 'Status', '']">
+        <x-ui.table stack :headers="['Name', 'Email', 'Role', 'Status', '']">
             @foreach ($users as $user)
                 <x-ui.table-row wire:key="shop-user-{{ $user->id }}">
-                    <x-ui.table-cell class="font-medium text-slate-900">{{ $user->name }}</x-ui.table-cell>
-                    <x-ui.table-cell>{{ $user->loginLabel() }}</x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell primary class="font-medium text-ink">{{ $user->name }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Email">{{ $user->loginLabel() }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Role">
                         @if ($user->is_owner)
                             <x-ui.badge variant="brand">Owner</x-ui.badge>
                         @else
                             {{ $user->role?->name ?? 'No role' }}
                         @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell>
+                    <x-ui.table-cell label="Status">
                         @if ($user->is_active)
                             <x-ui.badge variant="success">Active</x-ui.badge>
                         @else
                             <x-ui.badge variant="danger">Deactivated</x-ui.badge>
                         @endif
                     </x-ui.table-cell>
-                    <x-ui.table-cell align="right">
+                    <x-ui.table-cell actions align="right">
                         <x-ui.button
                             size="sm"
                             :variant="$user->is_active ? 'danger-ghost' : 'ghost'"
@@ -572,7 +572,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
     @php $importSwitch = FeatureKey::Import->adminSwitch(); @endphp
     <x-ui.card :title="$importSwitch['label']" :description="$importSwitch['description']" class="mt-8">
         <div class="flex items-center justify-between gap-3">
-            <span class="text-sm font-medium text-slate-900">
+            <span class="text-sm font-medium text-ink">
                 {{ $shop->import_enabled ? 'Enabled for this shop' : 'Disabled for this shop' }}
             </span>
             <button
@@ -584,13 +584,13 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                 wire:confirm="{{ $shop->import_enabled ? 'Disable' : 'Enable' }} {{ $importSwitch['label'] }} for this shop?"
                 @class([
                     'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
-                    'bg-emerald-500' => $shop->import_enabled,
-                    'bg-slate-300' => ! $shop->import_enabled,
+                    'bg-success' => $shop->import_enabled,
+                    'bg-line-strong' => ! $shop->import_enabled,
                 ])
             >
                 <span
                     @class([
-                        'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                        'inline-block h-4 w-4 transform rounded-full bg-surface shadow transition-transform',
                         'translate-x-6' => $shop->import_enabled,
                         'translate-x-1' => ! $shop->import_enabled,
                     ])
@@ -603,12 +603,12 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
             @foreach ($groupedScreens as $groupLabel => $groupScreens)
                 <div>
-                    <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{{ $groupLabel }}</h3>
-                    <div class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                    <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-faint">{{ $groupLabel }}</h3>
+                    <div class="divide-y divide-line rounded-lg border border-line">
                         @foreach ($groupScreens as $screen)
                             @php $enabled = ! $shop->isScreenDisabled($screen); @endphp
                             <div class="flex items-center justify-between gap-3 px-4 py-2.5">
-                                <span class="text-sm font-medium text-slate-900">{{ $screen->label() }}</span>
+                                <span class="text-sm font-medium text-ink">{{ $screen->label() }}</span>
                                 <button
                                     type="button"
                                     role="switch"
@@ -618,13 +618,13 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                                     wire:confirm="{{ $enabled ? 'Disable' : 'Enable' }} {{ $screen->label() }} for this shop?"
                                     @class([
                                         'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
-                                        'bg-emerald-500' => $enabled,
-                                        'bg-slate-300' => ! $enabled,
+                                        'bg-success' => $enabled,
+                                        'bg-line-strong' => ! $enabled,
                                     ])
                                 >
                                     <span
                                         @class([
-                                            'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                                            'inline-block h-4 w-4 transform rounded-full bg-surface shadow transition-transform',
                                             'translate-x-6' => $enabled,
                                             'translate-x-1' => ! $enabled,
                                         ])
@@ -637,15 +637,15 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             @endforeach
 
             <div>
-                <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Shop Features</h3>
-                <div class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-faint">Shop Features</h3>
+                <div class="divide-y divide-line rounded-lg border border-line">
                     @if ($governed)
-                        <div class="bg-brand-50/60 px-4 py-2.5 text-xs text-slate-600">
+                        <div class="bg-primary-soft/60 px-4 py-2.5 text-xs text-ink-muted">
                             These switches follow the <span class="font-semibold">{{ $shop->plan?->name }}</span> plan. Flipping one here overrides the plan for this shop only.
                             @foreach ($featureOverrides as $override)
                                 <span class="mt-1 flex items-center justify-between gap-2">
                                     <span>{{ $override['label'] }}: <span class="font-semibold">{{ $override['value'] ? 'on' : 'off' }}</span> here, plan says {{ $override['plan'] === null ? 'nothing' : ($override['plan'] ? 'on' : 'off') }}</span>
-                                    <button type="button" wire:click="usePlanDefault('{{ $override['key'] }}')" class="font-semibold text-brand-700 hover:underline">Use plan default</button>
+                                    <button type="button" wire:click="usePlanDefault('{{ $override['key'] }}')" class="font-semibold text-link hover:underline">Use plan default</button>
                                 </span>
                             @endforeach
                         </div>
@@ -657,8 +657,8 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                         @endphp
                         <div class="flex items-center justify-between gap-3 px-4 py-2.5" wire:key="feature-switch-{{ $feature->value }}">
                             <div>
-                                <span class="text-sm font-medium text-slate-900">{{ $switch['label'] }}</span>
-                                <p class="text-xs text-slate-500">{{ $switch['description'] }}</p>
+                                <span class="text-sm font-medium text-ink">{{ $switch['label'] }}</span>
+                                <p class="text-xs text-ink-faint">{{ $switch['description'] }}</p>
                             </div>
                             <button
                                 type="button"
@@ -669,13 +669,13 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                                 wire:confirm="{{ $on ? 'Disable' : 'Enable' }} {{ $switch['label'] }} for this shop?"
                                 @class([
                                     'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
-                                    'bg-emerald-500' => $on,
-                                    'bg-slate-300' => ! $on,
+                                    'bg-success' => $on,
+                                    'bg-line-strong' => ! $on,
                                 ])
                             >
                                 <span
                                     @class([
-                                        'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                                        'inline-block h-4 w-4 transform rounded-full bg-surface shadow transition-transform',
                                         'translate-x-6' => $on,
                                         'translate-x-1' => ! $on,
                                     ])

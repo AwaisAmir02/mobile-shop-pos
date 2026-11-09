@@ -1530,7 +1530,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                         </x-ui.field>
 
                         @if ($barcodePreview)
-                            <div class="rounded-xl border border-line bg-white p-3">
+                            <div class="rounded-xl border border-line bg-surface p-3">
                                 <img src="{{ $barcodePreview }}" alt="Barcode {{ $barcode }}" class="h-16 max-w-full" />
                             </div>
                         @endif
@@ -1564,12 +1564,12 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     @if ($variantsEnabled)
     <x-ui.modal name="variant-group-form" max-width="2xl">
         <form wire:submit="saveGroup" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">
+            <h2 class="text-lg font-semibold text-ink">
                 {{ ['create' => 'Add Variant Group', 'add' => 'Add Variants', 'edit' => 'Edit Group'][$groupFormMode] ?? 'Variant Group' }}
             </h2>
-            <p class="mt-1 text-sm text-slate-500">
+            <p class="mt-1 text-sm text-ink-faint">
                 @if ($groupFormMode === 'add')
-                    Adding to <span class="font-medium text-slate-700">{{ $groupName }}</span>.
+                    Adding to <span class="font-medium text-ink-muted">{{ $groupName }}</span>.
                 @elseif ($groupFormMode === 'edit')
                     Changes apply to every variant. Past sales keep the name they were sold under.
                 @else
@@ -1609,8 +1609,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
                     @if ($measuredEnabled)
                         @if ($groupUnitLocked)
-                            <p class="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                                Sold by <span class="font-medium text-slate-700">{{ \App\Enums\QuantityUnit::fromValue($groupUnit)->label() }}</span>. Locked because a variant already has stock-in or sales records.
+                            <p class="rounded-lg bg-surface-sunken px-3 py-2 text-xs text-ink-faint">
+                                Sold by <span class="font-medium text-ink-muted">{{ \App\Enums\QuantityUnit::fromValue($groupUnit)->label() }}</span>. Locked because a variant already has stock-in or sales records.
                             </p>
                         @else
                             <x-ui.field label="Sold By" name="groupUnit" for="groupUnit" help="Every variant in a group shares one unit">
@@ -1631,8 +1631,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 @endif
 
                 @if ($groupFormMode !== 'edit')
-                    <div class="rounded-lg border border-slate-200 p-4">
-                        <p class="text-sm font-medium text-slate-700">Generate variants</p>
+                    <div class="rounded-lg border border-line p-4">
+                        <p class="text-sm font-medium text-ink-muted">Generate variants</p>
                         <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <x-ui.field label="Sizes" name="groupSizes" for="groupSizes" help="Comma-separated, e.g. S, M, L">
                                 <x-ui.input wire:model.live.debounce.300ms="groupSizes" id="groupSizes" />
@@ -1649,7 +1649,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                         </div>
 
                         @if ($generatedLabels !== [])
-                            <p class="mt-3 text-xs font-medium text-slate-500">{{ count($generatedLabels) }} {{ \Illuminate\Support\Str::plural('variant', count($generatedLabels)) }} to add, with no stock yet. Add stock through Stock In.</p>
+                            <p class="mt-3 text-xs font-medium text-ink-faint">{{ count($generatedLabels) }} {{ \Illuminate\Support\Str::plural('variant', count($generatedLabels)) }} to add, with no stock yet. Add stock through Stock In.</p>
                             <div class="mt-2 flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
                                 @foreach ($generatedLabels as $label)
                                     <x-ui.badge wire:key="generated-{{ $loop->index }}">{{ $label }}</x-ui.badge>
@@ -1658,20 +1658,20 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                         @endif
                     </div>
 
-                    <div class="rounded-lg border border-slate-200 p-4">
-                        <p class="text-sm font-medium text-slate-700">Attach existing products</p>
-                        <p class="mt-1 text-xs text-slate-500">They keep their stock, batches, barcode and price, and are renamed to the group name plus the label below.</p>
+                    <div class="rounded-lg border border-line p-4">
+                        <p class="text-sm font-medium text-ink-muted">Attach existing products</p>
+                        <p class="mt-1 text-xs text-ink-faint">They keep their stock, batches, barcode and price, and are renamed to the group name plus the label below.</p>
 
                         <div class="mt-3">
                             <x-ui.input wire:model.live.debounce.300ms="attachSearch" type="search" placeholder="Search your products…" aria-label="Search products to attach" autocomplete="off" />
                         </div>
 
                         @if ($attachCandidates->isNotEmpty())
-                            <div class="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
+                            <div class="mt-2 divide-y divide-line rounded-lg border border-line">
                                 @foreach ($attachCandidates as $candidate)
-                                    <button type="button" wire:key="attach-candidate-{{ $candidate->id }}" wire:click="addAttach({{ $candidate->id }})" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-slate-50">
-                                        <span class="font-medium text-slate-900">{{ $candidate->name }}</span>
-                                        <span class="text-xs text-slate-400">{{ $candidate->stockLabel() }} in stock</span>
+                                    <button type="button" wire:key="attach-candidate-{{ $candidate->id }}" wire:click="addAttach({{ $candidate->id }})" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-surface-sunken">
+                                        <span class="font-medium text-ink">{{ $candidate->name }}</span>
+                                        <span class="text-xs text-ink-faint">{{ $candidate->stockLabel() }} in stock</span>
                                     </button>
                                 @endforeach
                             </div>
@@ -1704,13 +1704,13 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
     <x-ui.modal name="print-label-form" max-width="sm">
         <form wire:submit="printLabels" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Print Label</h2>
+            <h2 class="text-lg font-semibold text-ink">Print Label</h2>
 
             @if ($printingProduct)
-                <p class="mt-1 text-sm text-slate-500">{{ $printingProduct->name }}</p>
+                <p class="mt-1 text-sm text-ink-faint">{{ $printingProduct->name }}</p>
 
                 @if (! $printingProduct->barcode)
-                    <div class="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <div class="mt-5 rounded-lg border border-warning/20 bg-warning-soft px-4 py-3 text-sm text-warning">
                         This product has no barcode yet.
                         <div class="mt-3">
                             <x-ui.button type="button" variant="secondary" size="sm" wire:click="generateBarcodeFor({{ $printingProduct->id }})">
@@ -1754,31 +1754,31 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
     <x-ui.modal name="label-sheet-form" max-width="lg">
         <form wire:submit="printLabelSheet" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Print label sheet</h2>
-            <p class="mt-1 text-sm text-slate-500">One A4 sheet (3 × 8 labels per page) with each product’s label repeated by its copies.</p>
+            <h2 class="text-lg font-semibold text-ink">Print label sheet</h2>
+            <p class="mt-1 text-sm text-ink-faint">One A4 sheet (3 × 8 labels per page) with each product’s label repeated by its copies.</p>
 
             @php($missing = $sheetProducts->filter(fn ($p) => $p->barcode === null || $p->barcode === ''))
 
             @if ($missing->isNotEmpty())
-                <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/20 bg-warning-soft px-3 py-2 text-sm text-warning">
                     <span>{{ $missing->count() }} selected {{ \Illuminate\Support\Str::plural('product', $missing->count()) }} {{ $missing->count() === 1 ? 'has' : 'have' }} no barcode and will be skipped.</span>
                     <button type="button" wire:click="generateBarcodesForSelection" class="font-semibold underline">Generate barcodes for {{ $missing->count() === 1 ? 'it' : 'them' }}</button>
                 </div>
             @endif
 
-            <ul class="mt-4 max-h-80 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200">
+            <ul class="mt-4 max-h-80 divide-y divide-line overflow-y-auto rounded-lg border border-line">
                 @foreach ($sheetProducts as $sheetProduct)
                     <li class="flex items-center justify-between gap-3 px-3 py-2" wire:key="sheet-{{ $sheetProduct->id }}">
                         <div class="min-w-0">
-                            <p class="truncate text-sm font-medium text-slate-900">{{ $sheetProduct->name }}</p>
-                            <p class="font-mono text-xs text-slate-500">{{ $sheetProduct->barcode ?: 'No barcode — skipped' }}</p>
+                            <p class="truncate text-sm font-medium text-ink">{{ $sheetProduct->name }}</p>
+                            <p class="font-mono text-xs text-ink-faint">{{ $sheetProduct->barcode ?: 'No barcode — skipped' }}</p>
                         </div>
                         <div class="flex shrink-0 items-center gap-2">
                             @if ($sheetProduct->barcode)
                                 <label class="sr-only" for="sheet-copies-{{ $sheetProduct->id }}">Copies of {{ $sheetProduct->name }}</label>
                                 <x-ui.input wire:model="sheetCopies.{{ $sheetProduct->id }}" id="sheet-copies-{{ $sheetProduct->id }}" type="number" min="1" max="{{ \App\Services\BarcodeService::MAX_LABEL_COPIES }}" class="w-20 py-1.5 text-sm" />
                             @endif
-                            <button type="button" wire:click="removeFromLabelSelection({{ $sheetProduct->id }})" class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600" aria-label="Remove {{ $sheetProduct->name }}">
+                            <button type="button" wire:click="removeFromLabelSelection({{ $sheetProduct->id }})" class="rounded p-1 text-ink-faint hover:bg-surface-sunken hover:text-danger" aria-label="Remove {{ $sheetProduct->name }}">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
                             </button>
                         </div>

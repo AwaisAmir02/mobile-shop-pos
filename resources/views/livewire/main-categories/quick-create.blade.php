@@ -40,7 +40,7 @@ new class extends Component
 <div>
     <x-ui.modal name="quick-create-main-category" max-width="sm">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">New Main Category</h2>
+            <h2 class="text-lg font-semibold text-ink">New Main Category</h2>
 
             <div class="mt-5 space-y-5">
                 <x-ui.field label="Main Category Name" name="name" for="quickMainCategoryName">

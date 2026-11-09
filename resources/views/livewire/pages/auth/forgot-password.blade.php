@@ -120,7 +120,7 @@ new #[Layout('layouts.guest')] class extends Component
 
 <div>
     @if ($phoneStep)
-        <div class="mb-4 text-sm text-slate-600">
+        <div class="mb-4 text-sm text-ink-muted">
             If an account uses {{ PhoneNumber::display($phoneStep) }}, we’ve sent it a 6-digit code by WhatsApp or SMS. Enter it below with your new password.
         </div>
 
@@ -141,17 +141,17 @@ new #[Layout('layouts.guest')] class extends Component
 
             <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
                 <div class="flex flex-wrap gap-3">
-                    <button type="button" wire:click="resendCode" class="font-semibold text-brand-700 hover:underline">Resend code</button>
+                    <button type="button" wire:click="resendCode" class="font-semibold text-link hover:underline">Resend code</button>
                     @if ($smsAvailable)
-                        <button type="button" wire:click="resendCode(true)" class="font-semibold text-brand-700 hover:underline">Send by SMS</button>
+                        <button type="button" wire:click="resendCode(true)" class="font-semibold text-link hover:underline">Send by SMS</button>
                     @endif
-                    <button type="button" wire:click="startOver" class="text-slate-500 hover:text-slate-800">Start over</button>
+                    <button type="button" wire:click="startOver" class="text-ink-faint hover:text-ink">Start over</button>
                 </div>
                 <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="resetWithCode">Reset password</x-ui.button>
             </div>
         </form>
     @else
-        <div class="mb-4 text-sm text-slate-600">
+        <div class="mb-4 text-sm text-ink-muted">
             {{ $phoneAvailable ? 'Forgot your password? Enter your email address and we’ll email you a reset link — or enter your mobile number and we’ll send you a code.' : __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
         </div>
 

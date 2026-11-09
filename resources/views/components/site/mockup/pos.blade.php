@@ -33,7 +33,7 @@
                 <span class="flex-1 rounded-md border border-slate-200 py-1.5 text-center text-slate-600">Partial</span>
                 <span class="flex-1 rounded-md border border-slate-200 py-1.5 text-center text-slate-600">Udhaar</span>
             </div>
-            <span class="rounded-md bg-accent-500 py-2 text-center text-[11px] font-semibold text-white shadow-sm shadow-accent-500/30">Complete sale &amp; print invoice</span>
+            <span class="rounded-md bg-accent-500 py-2 text-center text-[11px] font-semibold text-white shadow-sm shadow-accent-500/30">Complete sale</span>
         </div>
     </div>
 </div>

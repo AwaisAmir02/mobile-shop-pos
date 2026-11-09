@@ -441,7 +441,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     <x-ui.modal name="add-payment-form" max-width="sm">
         <form wire:submit="submitPayment" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Add Payment</h2>
+            <h2 class="text-lg font-semibold text-ink">Add Payment</h2>
 
             <div class="mt-5 space-y-5">
                 <x-ui.field label="Amount Paid Now" name="paymentAmount" for="paymentAmount">
@@ -464,8 +464,8 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     <x-ui.modal name="edit-stock-in-form" max-width="sm">
         <form wire:submit="saveEdit" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Edit Stock-In Entry</h2>
-            <p class="mt-2 text-sm text-slate-600">The product on this entry cannot be changed. Changing the quantity adjusts the product's current stock by the difference.</p>
+            <h2 class="text-lg font-semibold text-ink">Edit Stock-In Entry</h2>
+            <p class="mt-2 text-sm text-ink-muted">The product on this entry cannot be changed. Changing the quantity adjusts the product's current stock by the difference.</p>
 
             <div class="mt-5 space-y-5">
                 @php($editUnitCase = QuantityUnit::fromValue($editUnit))
@@ -475,7 +475,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                 </x-ui.field>
 
                 @if ($editFromGrn)
-                    <p class="text-sm text-slate-500">This stock came from a goods receipt, so its quantity and vendor can't be changed here. Cancel the receipt and record it again.</p>
+                    <p class="text-sm text-ink-faint">This stock came from a goods receipt, so its quantity and vendor can't be changed here. Cancel the receipt and record it again.</p>
                 @endif
 
                 @if ($editFromGrn && auth()->user()->hasAccessTo('vendors'))
@@ -530,8 +530,8 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
     <x-ui.modal name="cancel-stock-in-form" max-width="sm">
         <form wire:submit="cancelEntry" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Cancel This Stock-In Entry?</h2>
-            <p class="mt-2 text-sm text-slate-600">
+            <h2 class="text-lg font-semibold text-ink">Cancel This Stock-In Entry?</h2>
+            <p class="mt-2 text-sm text-ink-muted">
                 This entry will be marked <strong>Cancelled</strong> and its quantity will be removed from the product's current stock. It will no longer count toward any total, report, or outstanding balance. This cannot be undone.
             </p>
 

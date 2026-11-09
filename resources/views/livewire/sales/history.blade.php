@@ -251,7 +251,7 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
 
     <x-ui.modal name="record-payment-form" max-width="sm">
         <form wire:submit="submitPayment" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Record Payment</h2>
+            <h2 class="text-lg font-semibold text-ink">Record Payment</h2>
 
             <div class="mt-5 space-y-5">
                 <x-ui.field label="Amount Paid Now" name="paymentAmount" for="paymentAmount">
@@ -275,8 +275,8 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
 
     <x-ui.modal name="cancel-sale-form" max-width="sm">
         <form wire:submit="cancelSale" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Cancel This Sale?</h2>
-            <p class="mt-2 text-sm text-slate-600">
+            <h2 class="text-lg font-semibold text-ink">Cancel This Sale?</h2>
+            <p class="mt-2 text-sm text-ink-muted">
                 This sale will be marked <strong>Cancelled</strong> and its stock will be restored. It will no longer count toward any total, report, or outstanding balance. This cannot be undone.
             </p>
 

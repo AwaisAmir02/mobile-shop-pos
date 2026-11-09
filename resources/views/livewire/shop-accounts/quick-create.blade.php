@@ -35,7 +35,7 @@ new class extends Component
 <div>
     <x-ui.modal name="quick-create-shop-account" max-width="md">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">New Shop Account</h2>
+            <h2 class="text-lg font-semibold text-ink">New Shop Account</h2>
 
             <div class="mt-5 space-y-5">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

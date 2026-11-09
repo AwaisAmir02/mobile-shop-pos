@@ -409,6 +409,23 @@ long explanations the ledger needs stay but read as notes, not body text.
   second row.
 - Chart colours come from the tokens (`fill-primary`, `stroke-line`), not hex.
 
+## Admin, sign-in and the last screens (built in D10)
+
+- **Admin shop page: styling only.** `FeatureCatalogueSnapshotTest` records that
+  page's visible text and its `aria-label`, `role`, `placeholder` and
+  `wire:confirm` attributes (billing panel included). So its confirms stay
+  `wire:confirm`, its wording stays, and only classes and phone cards changed; the
+  snapshot passes unchanged. Change its wording or confirms only together with a
+  deliberate re-record of the fixture.
+- **Login** has a heading and a "Create your shop" link to signup.
+- **Generic tables** (the Reports screen builder, branch comparison) label each
+  cell from its own header, so they stack on phones like every other table.
+- **Where raw colours remain, on purpose:** signup and its components follow the
+  marketing site's own palette; `x-billing.usage-meters` keeps the bar colours
+  `LimitWordingAndSeverityTest` pins; the site, PDFs and emails aren't counted.
+- **Site mockup:** the POS mockup's button reads "Complete sale". Nothing prints
+  on its own; the cashier chooses to print (owner decision 10).
+
 ## Checks for every stage
 
 1. Full "before" baseline, finished before the first edit.

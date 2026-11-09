@@ -93,7 +93,7 @@ new #[Layout('layouts.app')] #[Title('Payments')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Payments</h1>
+        <x-ui.page-header>Payments</x-ui.page-header>
     </x-slot>
 
     <x-ui.card title="Signup payments" description="Bank transfers from self-serve signups. Confirming marks the invoice paid and activates the shop — or the add-on, for add-on payments.">
@@ -109,49 +109,49 @@ new #[Layout('layouts.app')] #[Title('Payments')] class extends Component
         @if ($payments->isEmpty())
             <x-ui.empty-state title="Nothing here" description="Payments appear when a shop signs up from the website." />
         @else
-            <x-ui.table :headers="['Shop', 'For', 'Invoice', 'Amount', 'Reference', 'Status', '']">
+            <x-ui.table stack :headers="['Shop', 'For', 'Invoice', 'Amount', 'Reference', 'Status', '']">
                 @foreach ($payments as $payment)
                     <x-ui.table-row wire:key="payment-{{ $payment->id }}">
-                        <x-ui.table-cell>
-                            <a href="{{ route('admin.shops.show', $payment->shop) }}" wire:navigate class="font-medium text-brand-700 hover:underline">{{ $payment->shop->name }}</a>
-                            <p class="text-xs text-slate-500">{{ $payment->shop->email }} · {{ $payment->shop->phone }}</p>
+                        <x-ui.table-cell primary>
+                            <a href="{{ route('admin.shops.show', $payment->shop) }}" wire:navigate class="font-medium text-link hover:underline">{{ $payment->shop->name }}</a>
+                            <p class="text-xs text-ink-faint">{{ $payment->shop->email }} · {{ $payment->shop->phone }}</p>
                         </x-ui.table-cell>
-                        <x-ui.table-cell>
+                        <x-ui.table-cell label="For">
                             @if ($payment->shopAddon)
-                                <span class="font-medium text-slate-900">{{ $payment->shopAddon->name }}</span>
-                                <p class="text-xs text-slate-500">Add-on</p>
+                                <span class="font-medium text-ink">{{ $payment->shopAddon->name }}</span>
+                                <p class="text-xs text-ink-faint">Add-on</p>
                             @else
                                 {{ $payment->shop->plan?->name ?? '—' }}
-                                <p class="text-xs text-slate-500">Plan</p>
+                                <p class="text-xs text-ink-faint">Plan</p>
                             @endif
                         </x-ui.table-cell>
-                        <x-ui.table-cell>{{ $payment->invoice->invoice_number }}</x-ui.table-cell>
-                        <x-ui.table-cell class="font-semibold text-slate-900">Rs {{ number_format((float) $payment->amount, 2) }}</x-ui.table-cell>
-                        <x-ui.table-cell>
+                        <x-ui.table-cell label="Invoice">{{ $payment->invoice->invoice_number }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Amount" class="font-semibold text-ink">Rs {{ number_format((float) $payment->amount, 2) }}</x-ui.table-cell>
+                        <x-ui.table-cell label="Reference">
                             @if ($payment->reference)
                                 <span class="font-mono text-xs">{{ $payment->reference }}</span>
-                                <p class="text-xs text-slate-500">{{ $payment->submitted_at?->diffForHumans() }}</p>
+                                <p class="text-xs text-ink-faint">{{ $payment->submitted_at?->diffForHumans() }}</p>
                                 @if ($payment->proof_path)
-                                    <a href="{{ route('admin.payments.proof', $payment) }}" target="_blank" rel="noopener" class="text-xs font-semibold text-brand-700 hover:underline">View screenshot</a>
+                                    <a href="{{ route('admin.payments.proof', $payment) }}" target="_blank" rel="noopener" class="text-xs font-semibold text-link hover:underline">View screenshot</a>
                                 @endif
                             @else
-                                <span class="text-xs text-slate-400">Not submitted yet</span>
+                                <span class="text-xs text-ink-faint">Not submitted yet</span>
                             @endif
                         </x-ui.table-cell>
-                        <x-ui.table-cell>
+                        <x-ui.table-cell label="Status">
                             <x-ui.badge :variant="$payment->status->badge()">{{ $payment->status->label() }}</x-ui.badge>
                             @if ($payment->rejection_reason)
-                                <p class="mt-1 max-w-[14rem] text-xs text-slate-500">{{ $payment->rejection_reason }}</p>
+                                <p class="mt-1 max-w-[14rem] text-xs text-ink-faint">{{ $payment->rejection_reason }}</p>
                             @endif
                         </x-ui.table-cell>
-                        <x-ui.table-cell>
+                        <x-ui.table-cell actions>
                             @if ($payment->status === SubscriptionPaymentStatus::Pending)
                                 <div class="flex justify-end gap-1">
-                                    <x-ui.button size="sm" wire:click="confirm({{ $payment->id }})" wire:confirm="Confirm Rs {{ number_format((float) $payment->amount, 2) }} received from {{ $payment->shop->name }}? This marks the invoice paid and activates the shop.">Confirm</x-ui.button>
+                                    <x-ui.button size="sm" wire:click="confirm({{ $payment->id }})" confirm="Confirm Rs {{ number_format((float) $payment->amount, 2) }} received from {{ $payment->shop->name }}? This marks the invoice paid and activates the shop.">Confirm</x-ui.button>
                                     <x-ui.button size="sm" variant="ghost" wire:click="openReject({{ $payment->id }})">Reject</x-ui.button>
                                 </div>
                             @elseif ($payment->reviewer)
-                                <p class="text-right text-xs text-slate-500">by {{ $payment->reviewer->name }}<br>{{ $payment->reviewed_at?->format('d M Y') }}</p>
+                                <p class="text-right text-xs text-ink-faint">by {{ $payment->reviewer->name }}<br>{{ $payment->reviewed_at?->format('d M Y') }}</p>
                             @endif
                         </x-ui.table-cell>
                     </x-ui.table-row>
@@ -164,8 +164,8 @@ new #[Layout('layouts.app')] #[Title('Payments')] class extends Component
 
     <x-ui.modal name="reject-payment" max-width="md">
         <form wire:submit="reject" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">Reject payment</h2>
-            <p class="mt-1 text-sm text-slate-500">The shop owner sees this reason and can submit again.</p>
+            <h2 class="text-lg font-semibold text-ink">Reject payment</h2>
+            <p class="mt-1 text-sm text-ink-faint">The shop owner sees this reason and can submit again.</p>
             <x-ui.field label="Reason" name="rejectReason" for="rejectReason" class="mt-5">
                 <x-ui.input wire:model="rejectReason" id="rejectReason" maxlength="500" placeholder="e.g. No transfer found with this reference" />
             </x-ui.field>

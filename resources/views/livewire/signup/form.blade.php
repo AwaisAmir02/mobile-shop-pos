@@ -336,7 +336,7 @@ new class extends Component
                         <x-ui.input wire:model="email" id="email" type="email" autocomplete="email" maxlength="255" required />
                     </x-ui.field>
                 @else
-                    <x-ui.field label="Email" name="email" for="email" help="Optional">
+                    <x-ui.field label="Email" name="email" for="email">
                         <x-ui.input wire:model="email" id="email" type="email" autocomplete="email" maxlength="255" />
                     </x-ui.field>
                 @endif

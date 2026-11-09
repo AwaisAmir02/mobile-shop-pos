@@ -110,10 +110,10 @@ new #[Layout('layouts.app')] #[Title('Integrations')] class extends Component
 
 <div class="space-y-6">
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Integrations</h1>
+        <x-ui.page-header>Integrations</x-ui.page-header>
     </x-slot>
 
-    <p class="text-sm text-slate-500">Platform-wide Meta credentials. Shops never see these values — each shop connects its own WhatsApp number or Facebook Page through these apps.</p>
+    <p class="text-sm text-ink-faint">Platform-wide Meta credentials. Shops never see these values — each shop connects its own WhatsApp number or Facebook Page through these apps.</p>
 
     @foreach (IntegrationProvider::cases() as $provider)
         @php($integration = $integrations[$provider->value])
@@ -152,8 +152,8 @@ new #[Layout('layouts.app')] #[Title('Integrations')] class extends Component
                     </x-ui.field>
                 @endif
 
-                <label class="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2">
-                    <input type="checkbox" wire:model="forms.{{ $provider->value }}.enabled" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                <label class="flex items-center gap-2 text-sm text-ink-muted sm:col-span-2">
+                    <input type="checkbox" wire:model="forms.{{ $provider->value }}.enabled" class="rounded border-line-strong text-link focus:ring-link">
                     Enabled
                 </label>
 
@@ -163,19 +163,19 @@ new #[Layout('layouts.app')] #[Title('Integrations')] class extends Component
             </form>
 
             @if ($integration && $webhookUrls[$provider->value])
-                <div class="mt-6 space-y-2 border-t border-slate-100 pt-5 text-sm">
-                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Webhook (paste into the Meta app dashboard)</p>
-                    <div class="flex flex-col gap-1 sm:flex-row sm:gap-3"><span class="w-28 shrink-0 text-slate-500">Callback URL</span><code class="break-all text-slate-900">{{ $webhookUrls[$provider->value] }}</code></div>
+                <div class="mt-6 space-y-2 border-t border-line pt-5 text-sm">
+                    <p class="text-xs font-medium uppercase tracking-wide text-ink-faint">Webhook (paste into the Meta app dashboard)</p>
+                    <div class="flex flex-col gap-1 sm:flex-row sm:gap-3"><span class="w-28 shrink-0 text-ink-faint">Callback URL</span><code class="break-all text-ink">{{ $webhookUrls[$provider->value] }}</code></div>
                     <div class="flex flex-col gap-1 sm:flex-row sm:gap-3">
-                        <span class="w-28 shrink-0 text-slate-500">Verify token</span>
-                        <code x-data="{ shown: false }" class="break-all text-slate-900">
+                        <span class="w-28 shrink-0 text-ink-faint">Verify token</span>
+                        <code x-data="{ shown: false }" class="break-all text-ink">
                             <span x-show="shown" x-cloak>{{ $integration->webhook_verify_token }}</span>
-                            <button type="button" x-show="! shown" x-on:click="shown = true" class="text-brand-700 hover:text-brand-800">Reveal</button>
+                            <button type="button" x-show="! shown" x-on:click="shown = true" class="text-link hover:underline">Reveal</button>
                         </code>
-                        <button type="button" wire:click="regenerateVerifyToken('{{ $provider->value }}')" wire:confirm="Regenerate the verify token? Meta must be updated with the new value." class="text-xs text-slate-500 hover:text-slate-700">Regenerate</button>
+                        <button type="button" wire:click="regenerateVerifyToken('{{ $provider->value }}')" wire:confirm="Regenerate the verify token? Meta must be updated with the new value." class="text-xs text-ink-faint hover:text-ink-muted">Regenerate</button>
                     </div>
-                    <div class="flex flex-col gap-1 sm:flex-row sm:gap-3"><span class="w-28 shrink-0 text-slate-500">Subscribe to</span><span class="text-slate-900">messages, smb_message_echoes</span></div>
-                    <div class="flex flex-col gap-1 sm:flex-row sm:gap-3"><span class="w-28 shrink-0 text-slate-500">Last event</span><span class="text-slate-900">{{ $lastEvents[$provider->value]?->received_at?->diffForHumans() ?? 'None received yet' }}</span></div>
+                    <div class="flex flex-col gap-1 sm:flex-row sm:gap-3"><span class="w-28 shrink-0 text-ink-faint">Subscribe to</span><span class="text-ink">messages, smb_message_echoes</span></div>
+                    <div class="flex flex-col gap-1 sm:flex-row sm:gap-3"><span class="w-28 shrink-0 text-ink-faint">Last event</span><span class="text-ink">{{ $lastEvents[$provider->value]?->received_at?->diffForHumans() ?? 'None received yet' }}</span></div>
                 </div>
             @endif
         </x-ui.card>
@@ -183,11 +183,11 @@ new #[Layout('layouts.app')] #[Title('Integrations')] class extends Component
 
     @if ($failedEvents->isNotEmpty())
         <x-ui.card title="Recent webhook errors" :padding="false">
-            <div class="divide-y divide-slate-100">
+            <div class="divide-y divide-line">
                 @foreach ($failedEvents as $event)
                     <div class="px-5 py-3 text-sm">
-                        <div class="flex justify-between gap-3"><span class="font-medium text-slate-900">{{ $event->event_key }}</span><span class="text-xs text-slate-500">{{ $event->received_at?->diffForHumans() }} · {{ $event->attempts }} attempt(s)</span></div>
-                        <p class="mt-1 break-all text-xs text-red-700">{{ $event->error }}</p>
+                        <div class="flex justify-between gap-3"><span class="font-medium text-ink">{{ $event->event_key }}</span><span class="text-xs text-ink-faint">{{ $event->received_at?->diffForHumans() }} · {{ $event->attempts }} attempt(s)</span></div>
+                        <p class="mt-1 break-all text-xs text-danger">{{ $event->error }}</p>
                     </div>
                 @endforeach
             </div>

@@ -18,25 +18,25 @@ new #[Layout('layouts.app')] #[Title('Welcome')] class extends Component
 
 <div>
     <x-slot name="header">
-        <h1 class="text-xl font-semibold text-slate-900">Welcome</h1>
+        <h1 class="text-xl font-semibold text-ink">Welcome</h1>
     </x-slot>
 
     <div class="mx-auto max-w-lg">
         <x-ui.card>
             <div class="flex flex-col items-center py-6 text-center">
-                <div class="flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 text-lg font-semibold text-brand-700">
+                <div class="flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-lg font-semibold text-link">
                     {{ mb_strtoupper(mb_substr(Auth::user()->name, 0, 1)) }}
                 </div>
 
-                <h2 class="mt-4 text-lg font-semibold text-slate-900">
+                <h2 class="mt-4 text-lg font-semibold text-ink">
                     Welcome, {{ Auth::user()->name }}
                 </h2>
 
-                <p class="mt-1 text-sm text-slate-500">
+                <p class="mt-1 text-sm text-ink-faint">
                     {{ Auth::user()->is_owner ? 'Owner' : (Auth::user()->role?->name ?? 'No role assigned') }}
                 </p>
 
-                <p class="mt-4 max-w-sm text-sm text-slate-500">
+                <p class="mt-4 max-w-sm text-sm text-ink-faint">
                     You don't currently have access to a Dashboard. Use the sidebar to reach the screens available to you, or contact your shop owner if you think this is a mistake.
                 </p>
             </div>

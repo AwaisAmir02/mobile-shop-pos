@@ -229,8 +229,8 @@ new class extends Component
     <x-ui.modal name="product-import" max-width="xl">
         <div class="p-6">
             <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold text-slate-900">Import Products</h2>
-                <button type="button" wire:click="cancelImport" class="text-slate-400 hover:text-slate-600">
+                <h2 class="text-lg font-semibold text-ink">Import Products</h2>
+                <button type="button" wire:click="cancelImport" class="text-ink-faint hover:text-ink-muted">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -240,8 +240,8 @@ new class extends Component
             @if ($step === 'upload')
                 <div class="mt-5 space-y-5">
                     <x-billing.limit-notice limit="products" />
-                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                        <p class="mb-2 font-medium text-slate-900">Required columns: Name, Main Category, Selling Price.</p>
+                    <div class="rounded-lg border border-line bg-surface-sunken p-4 text-sm text-ink-muted">
+                        <p class="mb-2 font-medium text-ink">Required columns: Name, Main Category, Selling Price.</p>
                         <p class="mb-2">Optional: Cost Price, Stock Qty, Barcode (when barcode support is on for your shop — must be unique). Sub-Category is required only when Main Category is Accessory. Brand is required only when Main Category is Mobile Phone (Model and IMEI/Serial are optional and only apply to Mobile Phone).</p>
                         <p>A Main Category, Sub-Category, or Brand name that doesn't exist yet is created automatically. Images cannot be imported — add photos afterwards from the Products screen.</p>
                         @if (auth()->user()->shop?->measured_units_enabled)
@@ -262,16 +262,16 @@ new class extends Component
                             wire:model="importFile"
                             id="importFile"
                             accept=".xlsx,.xls,.csv"
-                            class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100"
+                            class="block w-full text-sm text-ink-muted file:mr-4 file:rounded-lg file:border-0 file:bg-primary-soft file:px-4 file:py-2 file:text-sm file:font-medium file:text-link hover:file:bg-primary-soft"
                         >
                     </x-ui.field>
 
-                    <div wire:loading wire:target="importFile" class="text-sm text-slate-500">
+                    <div wire:loading wire:target="importFile" class="text-sm text-ink-faint">
                         Uploading and checking your file…
                     </div>
 
                     @if (! empty($notices))
-                        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                        <div class="rounded-lg border border-warning/20 bg-warning-soft p-4 text-sm text-warning">
                             @foreach ($notices as $notice)
                                 <p>{{ $notice }}</p>
                             @endforeach
@@ -279,9 +279,9 @@ new class extends Component
                     @endif
 
                     @if (! empty($fileErrors) || ! empty($rowErrors))
-                        <div class="rounded-lg border border-red-200 bg-red-50 p-4">
-                            <p class="mb-2 text-sm font-semibold text-red-800">This file can't be imported yet — nothing was saved. Fix these and re-upload:</p>
-                            <ul class="max-h-64 space-y-1 overflow-y-auto text-sm text-red-700">
+                        <div class="rounded-lg border border-danger/20 bg-danger-soft p-4">
+                            <p class="mb-2 text-sm font-semibold text-danger">This file can't be imported yet — nothing was saved. Fix these and re-upload:</p>
+                            <ul class="max-h-64 space-y-1 overflow-y-auto text-sm text-danger">
                                 @foreach ($fileErrors as $error)
                                     <li>• {{ $error }}</li>
                                 @endforeach
@@ -305,7 +305,7 @@ new class extends Component
             @elseif ($step === 'preview')
                 <div class="mt-5 space-y-5">
                     @foreach ($notices as $notice)
-                        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{{ $notice }}</div>
+                        <div class="rounded-lg border border-warning/20 bg-warning-soft p-4 text-sm text-warning">{{ $notice }}</div>
                     @endforeach
 
                     <div class="grid grid-cols-2 gap-4">
@@ -314,9 +314,9 @@ new class extends Component
                     </div>
 
                     @if (! empty($newMainCategoryNames) || ! empty($newSubCategoryNames) || ! empty($newBrandNames) || ! empty($newGroupNames))
-                        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                            <p class="mb-2 text-sm font-semibold text-amber-900">These are new and will be created — check carefully for typos before confirming:</p>
-                            <div class="space-y-2 text-sm text-amber-800">
+                        <div class="rounded-lg border border-warning/20 bg-warning-soft p-4">
+                            <p class="mb-2 text-sm font-semibold text-warning">These are new and will be created — check carefully for typos before confirming:</p>
+                            <div class="space-y-2 text-sm text-warning">
                                 @if (! empty($newMainCategoryNames))
                                     <p><span class="font-semibold">New Main Categories:</span> {{ implode(', ', $newMainCategoryNames) }}</p>
                                 @endif
@@ -345,9 +345,9 @@ new class extends Component
                     @endif
 
                     @if (! empty($skippedLines))
-                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                            <p class="mb-2 text-sm font-semibold text-slate-700">Rows that will be skipped:</p>
-                            <ul class="max-h-40 space-y-1 overflow-y-auto text-sm text-slate-600">
+                        <div class="rounded-lg border border-line bg-surface-sunken p-4">
+                            <p class="mb-2 text-sm font-semibold text-ink-muted">Rows that will be skipped:</p>
+                            <ul class="max-h-40 space-y-1 overflow-y-auto text-sm text-ink-muted">
                                 @foreach ($skippedLines as $line)
                                     <li>• {{ $line }}</li>
                                 @endforeach
@@ -375,7 +375,7 @@ new class extends Component
                 </div>
             @elseif ($step === 'done')
                 <div class="mt-5 space-y-4">
-                    <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                    <div class="rounded-lg border border-success/20 bg-success-soft p-4 text-sm text-success">
                         <p class="font-semibold">Import complete.</p>
                     </div>
 
@@ -391,7 +391,7 @@ new class extends Component
                     </div>
 
                     @if ($limitSkippedCount > 0)
-                        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                        <div class="rounded-lg border border-warning/20 bg-warning-soft p-4 text-sm text-warning">
                             <p class="font-semibold">{{ number_format($limitSkippedCount) }} row(s) were not imported because your plan’s product limit was reached:</p>
                             <ul class="mt-2 list-disc space-y-0.5 pl-5">
                                 @foreach ($limitSkippedLines as $line)

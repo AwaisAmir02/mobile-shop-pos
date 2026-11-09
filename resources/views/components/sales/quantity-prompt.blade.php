@@ -3,8 +3,8 @@
 <x-ui.modal name="sale-quantity-prompt" max-width="sm" focusable>
     <form wire:submit="confirmQuantityPrompt" class="p-6">
         @if ($product)
-            <h2 class="text-lg font-semibold text-slate-900">How much {{ $product->name }}?</h2>
-            <p class="mt-1 text-sm text-slate-500">Rs {{ number_format($product->currentSellingPrice(), 2) }}{{ $product->unit->perSuffix() }} · {{ $product->unit->amount($limit) }} available</p>
+            <h2 class="text-lg font-semibold text-ink">How much {{ $product->name }}?</h2>
+            <p class="mt-1 text-sm text-ink-faint">Rs {{ number_format($product->currentSellingPrice(), 2) }}{{ $product->unit->perSuffix() }} · {{ $product->unit->amount($limit) }} available</p>
 
             <div class="mt-5">
                 <x-ui.field :label="'Quantity ('.$product->unit->symbol().')'" name="quantityPromptValue" for="quantityPromptValue">

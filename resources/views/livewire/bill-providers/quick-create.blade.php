@@ -66,7 +66,7 @@ new class extends Component
 <div>
     <x-ui.modal name="quick-create-bill-provider" max-width="md">
         <form wire:submit="save" class="p-6">
-            <h2 class="text-lg font-semibold text-slate-900">New Bill Provider</h2>
+            <h2 class="text-lg font-semibold text-ink">New Bill Provider</h2>
 
             <div class="mt-5 space-y-5">
                 <x-ui.field label="Category" name="billCategoryId" for="quickBillProviderCategory">

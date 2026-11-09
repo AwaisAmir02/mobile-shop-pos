@@ -42,11 +42,11 @@ new class extends Component
 
 <section>
     <header>
-        <h2 class="text-lg font-semibold text-slate-900">
+        <h2 class="text-lg font-semibold text-ink">
             {{ __('Update Password') }}
         </h2>
 
-        <p class="mt-1 text-sm text-slate-500">
+        <p class="mt-1 text-sm text-ink-faint">
             {{ __('Ensure your account is using a long, random password to stay secure.') }}
         </p>
     </header>
@@ -57,7 +57,7 @@ new class extends Component
                 <x-ui.input wire:model="current_password" id="update_password_current_password" name="current_password" type="password" autocomplete="current-password" />
             </x-ui.field>
         @else
-            <p class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">You sign in with Google or Microsoft. Set a password to also log in with your email.</p>
+            <p class="rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink-muted">You sign in with Google or Microsoft. Set a password to also log in with your email.</p>
         @endif
 
         <x-ui.field label="New Password" name="password">

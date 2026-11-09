@@ -38,11 +38,11 @@ new class extends Component
 
 <section>
     <header>
-        <h2 class="text-lg font-semibold text-slate-900">
+        <h2 class="text-lg font-semibold text-ink">
             {{ __('Profile Information') }}
         </h2>
 
-        <p class="mt-1 text-sm text-slate-500">
+        <p class="mt-1 text-sm text-ink-faint">
             {{ __("Update your account's profile information and email address.") }}
         </p>
     </header>
@@ -52,13 +52,13 @@ new class extends Component
             <x-ui.input wire:model="name" id="name" name="name" type="text" required autofocus autocomplete="name" />
         </x-ui.field>
 
-        <x-ui.field label="Email" name="email" :help="Auth::user()->phone ? 'Optional — you log in with your mobile number' : null">
+        <x-ui.field label="Email" name="email" :help="Auth::user()->phone ? 'Not needed: you log in with your mobile number' : null">
             <x-ui.input wire:model="email" id="email" name="email" type="email" :required="! Auth::user()->phone" autocomplete="username" />
         </x-ui.field>
 
         @if (Auth::user()->phone)
             <x-ui.field label="Mobile number">
-                <p class="py-2.5 text-sm text-slate-700">{{ \App\Support\PhoneNumber::display(Auth::user()->phone) }}{{ Auth::user()->phone_verified_at ? ' · verified' : '' }}</p>
+                <p class="py-2.5 text-sm text-ink-muted">{{ \App\Support\PhoneNumber::display(Auth::user()->phone) }}{{ Auth::user()->phone_verified_at ? ' · verified' : '' }}</p>
             </x-ui.field>
         @endif
 

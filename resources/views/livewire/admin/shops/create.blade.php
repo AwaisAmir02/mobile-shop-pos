@@ -87,15 +87,15 @@ new #[Layout('layouts.app')] #[Title('Create Shop')] class extends Component
                     <x-ui.input wire:model="shopName" id="shopName" autofocus />
                 </x-ui.field>
 
-                <x-ui.field label="Phone" name="shopPhone" for="shopPhone" help="Optional">
+                <x-ui.field label="Phone" name="shopPhone" for="shopPhone">
                     <x-ui.input wire:model="shopPhone" id="shopPhone" type="tel" />
                 </x-ui.field>
 
-                <x-ui.field label="Email" name="shopEmail" for="shopEmail" help="Optional">
+                <x-ui.field label="Email" name="shopEmail" for="shopEmail">
                     <x-ui.input wire:model="shopEmail" id="shopEmail" type="email" />
                 </x-ui.field>
 
-                <x-ui.field label="Address" name="shopAddress" for="shopAddress" class="sm:col-span-2" help="Optional">
+                <x-ui.field label="Address" name="shopAddress" for="shopAddress" class="sm:col-span-2">
                     <x-ui.input wire:model="shopAddress" id="shopAddress" />
                 </x-ui.field>
 
