@@ -41,17 +41,8 @@ new class extends Component
 }; ?>
 
 <section>
-    <header>
-        <h2 class="text-lg font-semibold text-ink">
-            {{ __('Update Password') }}
-        </h2>
 
-        <p class="mt-1 text-sm text-ink-faint">
-            {{ __('Ensure your account is using a long, random password to stay secure.') }}
-        </p>
-    </header>
-
-    <form wire:submit="updatePassword" class="mt-6 space-y-6">
+    <form wire:submit="updatePassword" class="space-y-5">
         @if (Auth::user()->hasPassword())
             <x-ui.field label="Current Password" name="current_password">
                 <x-ui.input wire:model="current_password" id="update_password_current_password" name="current_password" type="password" autocomplete="current-password" />

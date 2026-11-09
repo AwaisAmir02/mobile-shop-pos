@@ -426,6 +426,23 @@ long explanations the ledger needs stay but read as notes, not body text.
 - **Site mockup:** the POS mockup's button reads "Complete sale". Nothing prints
   on its own; the cashier chooses to print (owner decision 10).
 
+## Profile and profile photo (built in D11)
+
+- **`x-profile.sections`** is the user's own account, in one order wherever it
+  appears (`/profile` and the Settings "Profile" tab): Profile photo, Profile
+  Information, Update Password, Connected accounts (when sign-in providers are
+  set up) and Delete Account. Each is an `x-profile.section`: title and a line of
+  explanation on the left, the form in a card on the right; Delete Account is set
+  apart in red. The forms carry no headings of their own.
+- **`x-ui.avatar :user`** shows the user's photo, or their initial when there is
+  none. The header uses it, and re-renders on the `avatar-updated` event, so a new
+  or removed photo shows at once.
+- **Profile photo** (`users.avatar_path`, migration `2026_11_27_090000`): JPG, PNG
+  or WebP up to 2 MB, stored on the public disk under `avatars/`. Choosing a file
+  previews it; Save stores it and only then deletes the old file; Remove asks
+  first and goes back to the initial. Deleting an account deletes its photo.
+  Needs `php artisan storage:link` on the server, as product images already do.
+
 ## Checks for every stage
 
 1. Full "before" baseline, finished before the first edit.

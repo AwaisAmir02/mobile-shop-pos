@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
@@ -27,12 +29,37 @@ class User extends Authenticatable
         'is_super_admin',
         'is_owner',
         'is_active',
+        'avatar_path',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
     ];
+
+    /**
+     * A removed account takes its profile photo with it.
+     */
+    protected static function booted(): void
+    {
+        static::deleted(function (User $user) {
+            if ($user->avatar_path) {
+                Storage::disk('public')->delete($user->avatar_path);
+            }
+        });
+    }
+
+    /** The profile photo's URL, or null for the initial-letter avatar. */
+    public function avatarUrl(): ?string
+    {
+        return $this->avatar_path ? Storage::disk('public')->url($this->avatar_path) : null;
+    }
+
+    /** The letter shown when there's no photo. */
+    public function initial(): string
+    {
+        return Str::upper(Str::substr((string) $this->name, 0, 1)) ?: '?';
+    }
 
     public function shop(): BelongsTo
     {

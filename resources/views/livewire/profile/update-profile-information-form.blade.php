@@ -37,18 +37,9 @@ new class extends Component
 }; ?>
 
 <section>
-    <header>
-        <h2 class="text-lg font-semibold text-ink">
-            {{ __('Profile Information') }}
-        </h2>
 
-        <p class="mt-1 text-sm text-ink-faint">
-            {{ __("Update your account's profile information and email address.") }}
-        </p>
-    </header>
-
-    <form wire:submit="updateProfileInformation" class="mt-6 space-y-6">
-        <x-ui.field label="Name" name="name">
+    <form wire:submit="updateProfileInformation" class="space-y-5">
+        <x-ui.field label="Name" name="name" required>
             <x-ui.input wire:model="name" id="name" name="name" type="text" required autofocus autocomplete="name" />
         </x-ui.field>
 

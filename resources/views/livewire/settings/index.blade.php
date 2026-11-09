@@ -1681,19 +1681,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             <livewire:settings.integrations />
         </div>
     @elseif ($tab === 'profile')
-        <div class="max-w-2xl space-y-6">
-            <x-ui.card>
-                <livewire:profile.update-profile-information-form />
-            </x-ui.card>
-
-            <x-ui.card>
-                <livewire:profile.update-password-form />
-            </x-ui.card>
-
-            <x-ui.card>
-                <livewire:profile.delete-user-form />
-            </x-ui.card>
-        </div>
+        <x-profile.sections class="max-w-5xl" />
     @elseif ($tab === 'roles')
         <x-ui.card title="Roles" description="Control which screens each role can access.">
             <x-slot name="actions">

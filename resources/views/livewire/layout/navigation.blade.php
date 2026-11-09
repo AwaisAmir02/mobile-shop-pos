@@ -1,10 +1,17 @@
 <?php
 
 use App\Livewire\Actions\Logout;
+use Livewire\Attributes\On;
 use Livewire\Volt\Component;
 
 new class extends Component
 {
+    /** A new or removed profile photo shows straight away; re-rendering is enough. */
+    #[On('avatar-updated')]
+    public function refreshAvatar(): void
+    {
+    }
+
     public function logout(Logout $logout): void
     {
         $logout();
@@ -44,9 +51,7 @@ new class extends Component
             type="button"
             class="flex items-center gap-2 rounded-full py-1 pl-1 pr-2.5 text-sm font-medium text-ink-muted hover:bg-surface-sunken hover:text-ink"
         >
-            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-primary-soft text-sm font-bold text-on-primary-soft">
-                {{ Str::upper(Str::substr($user->name, 0, 1)) }}
-            </span>
+            <x-ui.avatar :user="$user" size="h-8 w-8 text-sm" />
             <span class="hidden max-w-[10rem] truncate md:block" x-data="{{ json_encode(['name' => $user->name]) }}" x-text="name" x-on:profile-updated.window="name = $event.detail.name"></span>
             <svg class="hidden h-4 w-4 text-ink-faint md:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
