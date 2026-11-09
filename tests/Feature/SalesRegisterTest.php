@@ -163,6 +163,8 @@ class SalesRegisterTest extends TestCase
             ->assertDontSee('Sale complete')
             ->assertDontSeeHtml('data-next-sale');
 
-        $this->get(route('sales.show', $sale))->assertOk()->assertDontSee('Sale complete');
+        // The full page also carries the screen guide (D14), which names the "Sale complete"
+        // box in its text, so check for the box itself rather than its words.
+        $this->get(route('sales.show', $sale))->assertOk()->assertDontSeeHtml('data-sale-complete');
     }
 }

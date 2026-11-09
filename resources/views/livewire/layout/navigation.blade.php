@@ -6,6 +6,9 @@ use Livewire\Volt\Component;
 
 new class extends Component
 {
+    /** D14: whether this screen has a guide. Worked out by the layout on page load and kept across re-renders. */
+    public bool $hasGuide = false;
+
     /** A new or removed profile photo shows straight away; re-rendering is enough. */
     #[On('avatar-updated')]
     public function refreshAvatar(): void
@@ -42,6 +45,22 @@ new class extends Component
         </a>
 
         <span class="mx-1 hidden h-6 w-px bg-line sm:block"></span>
+    @endif
+
+    @if ($hasGuide)
+        <button
+            type="button"
+            x-data
+            x-on:click="$dispatch('open-guide')"
+            aria-label="Guide for this screen"
+            title="Guide for this screen"
+            data-guide-button
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-ink-muted shadow-soft transition-colors hover:border-line-strong hover:text-ink focus-visible:ring-2 focus-visible:ring-link"
+        >
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 17.25h.008v.008H12v-.008z" />
+            </svg>
+        </button>
     @endif
 
     <div x-data="{ open: false }" class="relative shrink-0">

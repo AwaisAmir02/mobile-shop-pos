@@ -1324,9 +1324,13 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         @php($showSelling = ! $wizard || ($formStep === 2 && ! $withVariants))
         <form wire:submit="{{ $wizard ? ($formStep === 1 ? 'nextStep' : ($withVariants ? 'saveWithVariants' : 'save')) : 'save' }}" class="p-6">
             <div class="flex items-start justify-between gap-4">
-                <h2 class="text-lg font-bold tracking-tight text-ink">
-                    {{ $editingId ? 'Edit Product' : 'Add Product' }}
-                </h2>
+                <div>
+                    <h2 class="text-lg font-bold tracking-tight text-ink">
+                        {{ $editingId ? 'Edit Product' : 'Add Product' }}
+                    </h2>
+                    {{-- D14: opens the screen guide over this form, at the part about adding a product. --}}
+                    <button type="button" x-on:click="$dispatch('open-guide', { section: 'add-product' })" data-guide-link class="mt-0.5 text-xs font-semibold text-link hover:underline">How this works</button>
+                </div>
                 @if ($wizard)
                     <ol class="flex items-center gap-2 text-xs font-semibold" aria-label="Steps" data-wizard-steps>
                         <li @class(['flex items-center gap-1.5', 'text-on-primary-soft' => $formStep === 1, 'text-ink-faint' => $formStep !== 1])>

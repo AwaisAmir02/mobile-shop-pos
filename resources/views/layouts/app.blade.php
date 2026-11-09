@@ -25,6 +25,8 @@
         </script>
     </head>
     <body data-app class="bg-page font-sans text-ink antialiased">
+        {{-- D14: the guide for this screen, if it has one (shop users only). --}}
+        @php($screenGuide = \App\Support\Guide::forUser(request()->route()?->getName(), auth()->user()))
         {{-- wire:navigate copies the new page's <html> attributes over the old ones, dropping
              data-sidebar. Livewire re-runs body scripts during the swap (before Alpine and before
              paint), so re-apply it here too. --}}
@@ -65,7 +67,7 @@
 
                         <livewire:layout.branch-switcher />
 
-                        <livewire:layout.navigation />
+                        <livewire:layout.navigation :has-guide="$screenGuide !== null" />
                     </div>
                 </header>
 
@@ -81,5 +83,8 @@
         <x-ui.toast-container />
         <x-ui.confirm-dialog />
         <x-support.reply-notice />
+        @if ($screenGuide)
+            <x-guide.panel :guide="$screenGuide" />
+        @endif
     </body>
 </html>
