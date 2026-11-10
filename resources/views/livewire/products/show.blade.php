@@ -10,7 +10,7 @@ use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
 /**
- * One product on its own page (design overhaul D5): what it is, its variants,
+ * One product on its own page: what it is, its variants,
  * its stock batches and its recent sales, together. Read-only; editing goes
  * back to the Products screen's form. Every query goes through the shop- and
  * branch-scoped models, and each section shows only to someone who can open

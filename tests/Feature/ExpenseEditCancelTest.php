@@ -138,7 +138,7 @@ class ExpenseEditCancelTest extends TestCase
     }
 
     /**
-     * Pre-existing Roles simply have a permissions array that never
+     * Pre-existing Roles have a permissions array that never
      * mentions 'expenses-edit-cancel' — there is no backfill step, matching
      * the same precedent established for Vendors and Sales.
      */

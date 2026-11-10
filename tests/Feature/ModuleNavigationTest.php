@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Design overhaul D2: the Reports hub, module tabs and breadcrumbs that replaced
+ * The Reports hub, module tabs and breadcrumbs that replaced
  * the arrow links at the top of screens (docs/design-system.md). Every card and
  * tab must follow the visibility rule of the link it replaced, and must open.
  */

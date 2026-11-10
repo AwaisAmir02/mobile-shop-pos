@@ -20,7 +20,7 @@ use RuntimeException;
 use Tests\TestCase;
 
 /**
- * D13: support tickets. Any shop user opens one (no screen permission), with
+ * Support tickets. Any shop user opens one (no screen permission), with
  * photos and the screen they were on; the platform admin answers in the same
  * thread. Shops never see each other's tickets; staff see only their own.
  */

@@ -17,7 +17,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Design overhaul D8: the Customers and Vendors lists show a balance, and the
+ * The Customers and Vendors lists show a balance, and the
  * customer and Udhaar pages show how their figures add up. Every figure is one
  * an existing screen already calculates; these pin that they are reused, not
  * recalculated.

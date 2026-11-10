@@ -13,9 +13,6 @@ use SocialiteProviders\Microsoft\MicrosoftExtendSocialite;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         $this->app->scoped(\App\Ledger\LedgerGate::class);
@@ -25,9 +22,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(\App\Services\Billing\LimitNotices::class);
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         foreach (\App\Ledger\LedgerSources::observed() as $model) {

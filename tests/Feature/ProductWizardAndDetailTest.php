@@ -14,7 +14,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Design overhaul D5: the Add Product wizard (Details, then how it's sold, saved
+ * The Add Product wizard (Details, then how it's sold, saved
  * together; owner decision V2, no renaming) and the product detail page.
  */
 class ProductWizardAndDetailTest extends TestCase

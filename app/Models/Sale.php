@@ -85,7 +85,7 @@ class Sale extends Model
      * Route-model binding must still find a cancelled sale (the show page
      * and invoice download both need to render it, with a CANCELLED stamp)
      * — only the tenant ShopScope stays enforced here. Each route decides
-     * for itself whether a cancelled sale is actually allowed past that
+     * for itself whether a cancelled sale is allowed past that
      * point (e.g. the edit screen explicitly rejects it after loading).
      */
     public function resolveRouteBinding($value, $field = null): ?self

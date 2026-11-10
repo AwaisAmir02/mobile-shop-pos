@@ -104,7 +104,7 @@ class ProductImportAccessTest extends TestCase
         $this->actingAs($owner);
 
         // downloadTemplate() calls abort_if(...) as its first line — same
-        // absorption caveat as above; simply not erroring here (a genuine
+        // absorption caveat as above; not erroring here (a genuine
         // file streamDownload would instead be visible as a 'download'
         // effect, which ExportDropdownInsideComponentBoundaryTest-style
         // tests check for the working case) is the evidence the guard fired.
@@ -121,7 +121,7 @@ class ProductImportAccessTest extends TestCase
 
         // There is no owner-reachable method that touches import_enabled at
         // all — Settings, Products, and the shop's own admin surface never
-        // expose it. Confirm the flag is simply never flippable from here.
+        // expose it. Confirm the flag is never flippable from here.
         $this->assertFalse($owner->fresh()->shop->import_enabled);
 
         Livewire::test('products.index'); // renders fine either way

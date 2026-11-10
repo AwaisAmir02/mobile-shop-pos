@@ -17,8 +17,8 @@ use Tests\TestCase;
  * Drives the actual products.import Livewire component through all three
  * steps with a real uploaded file, rather than calling ProductImportService
  * directly (that's ProductImportServiceTest's job) — this is the glue: does
- * a real Livewire file upload actually reach the service, does the preview
- * step correctly stage state without writing, does Confirm actually create
+ * a real Livewire file upload reach the service, does the preview
+ * step correctly stage state without writing, does Confirm create
  * the products end to end, and does the "expired upload" path degrade
  * gracefully.
  */
@@ -167,7 +167,7 @@ class ProductImportFlowTest extends TestCase
      * to reset its pagination and pick up newly imported products on its
      * next render — separate Livewire component instances can't be driven
      * together in one test, so this confirms the event the parent relies
-     * on is actually dispatched on success.
+     * on is dispatched on success.
      */
     public function test_a_successful_import_dispatches_the_event_the_products_screen_listens_for(): void
     {

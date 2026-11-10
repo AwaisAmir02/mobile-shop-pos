@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 /**
- * A support conversation between a shop and the platform admin (D13).
+ * A support conversation between a shop and the platform admin.
  *
  * Who can see a ticket:
  *  - the shop scope (BelongsToShop) keeps every shop to its own tickets;

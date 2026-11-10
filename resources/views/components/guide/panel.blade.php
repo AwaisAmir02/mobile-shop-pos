@@ -1,6 +1,6 @@
 @props(['guide'])
 
-{{-- D14: the guide for the screen the user is on, opened by the header "?" button
+{{-- The guide for the screen the user is on, opened by the header "?" button
      (or anything that dispatches open-guide, optionally with a section id).
      Every language is rendered and the toggle only shows one; the choice is
      remembered on this device. Plain Alpine, so it works from a modal too. --}}

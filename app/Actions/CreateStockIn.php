@@ -76,7 +76,7 @@ class CreateStockIn
                     'expiry_date' => $product->sellsByExpiry() ? ($line['expiry_date'] ?? null) : null,
                     'note' => $note !== null && $note !== '' ? $note : null,
                     'grn_line_id' => $line['grn_line_id'] ?? null,
-                    // Otherwise the branch the person is working in, as always.
+                    // Otherwise the branch the person is working in.
                     ...($branchId !== null ? ['branch_id' => $branchId] : []),
                 ]);
 

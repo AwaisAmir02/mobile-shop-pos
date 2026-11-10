@@ -203,7 +203,7 @@ class Product extends Model
         return (bool) Shop::whereKey($this->shop_id)->value('expiry_tracking_enabled');
     }
 
-    /** Stock that can actually be sold: everything except what sits in expired batches. */
+    /** Stock that can be sold: everything except what sits in expired batches. */
     public function sellableStock(): int|float
     {
         if (! $this->sellsByExpiry()) {

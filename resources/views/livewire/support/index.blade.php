@@ -9,7 +9,7 @@ use Livewire\Volt\Component;
 use Livewire\WithPagination;
 
 /**
- * D13: Help & Support. Every shop user can reach it from the sidebar, with no
+ * Help & Support. Every shop user can reach it from the sidebar, with no
  * screen permission. The owner sees all of the shop's tickets; staff see the
  * ones they opened themselves.
  */

@@ -18,7 +18,7 @@ use Tests\TestCase;
  * Into") instead of two, and WalletLoad.provider is auto-derived from the
  * selected account's provider_type rather than separately picked. These
  * tests confirm the derivation itself, that the old dropdown/tab/model are
- * genuinely gone, and that everything downstream that reads `provider`
+ * gone, and that everything downstream that reads `provider`
  * (receipts, history, the provider-breakdown stat cards) still works
  * unmodified for both newly-created and pre-existing historical rows.
  */

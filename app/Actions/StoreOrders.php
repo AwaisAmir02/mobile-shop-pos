@@ -88,7 +88,7 @@ class StoreOrders
     }
 
     /**
-     * Before a decision it simply closes. After one a sale exists, with stock and
+     * Before a decision it closes. After one a sale exists, with stock and
      * money behind it, so a person decides: this only raises a flag.
      */
     public static function cancelFromStore(StoreOrder $order, ?string $reason): StoreOrder
@@ -155,7 +155,7 @@ class StoreOrders
                 'product_id' => $item->product_id,
                 'quantity' => $item->quantity,
                 'discount' => 0.0,
-                // What the customer was actually charged, whatever the shop's list price is.
+                // What the customer was charged, whatever the shop's list price is.
                 'custom_price' => (float) $item->unit_price,
             ])->values()->all();
 

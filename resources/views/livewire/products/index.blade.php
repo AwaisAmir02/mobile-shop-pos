@@ -96,7 +96,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public string $groupCost = '';
     public string $attachSearch = '';
 
-    // Add Product wizard (design overhaul D5): step 1 Details, step 2 how it's sold,
+    // Add Product wizard: step 1 Details, step 2 how it's sold,
     // either as one product or in sizes/colours. Both are saved in one go at the end.
     public int $formStep = 1;
     public bool $withVariants = false;
@@ -266,7 +266,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
     /**
      * The unit this form is working in. The chosen one only counts when it's
-     * actually open to change, so a crafted request can't set it otherwise.
+     * open to change, so a crafted request can't set it otherwise.
      */
     protected function formUnit(): QuantityUnit
     {
@@ -651,7 +651,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         try {
             $saved = $this->saveGroupVariants($groups);
         } catch (ValidationException $e) {
-            // Point any problem at the field the user actually filled in.
+            // Point any problem at the field the user filled in.
             $fields = ['groupName' => 'name', 'groupType' => 'type', 'groupCategory' => 'category', 'groupImage' => 'image', 'groupPrice' => 'price', 'groupCost' => 'cost_price'];
             $errors = [];
 
@@ -1328,7 +1328,6 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     <h2 class="text-lg font-bold tracking-tight text-ink">
                         {{ $editingId ? 'Edit Product' : 'Add Product' }}
                     </h2>
-                    {{-- D14: opens the screen guide over this form, at the part about adding a product. --}}
                     <button type="button" x-on:click="$dispatch('open-guide', { section: 'add-product' })" data-guide-link class="mt-0.5 text-xs font-semibold text-link hover:underline">How this works</button>
                 </div>
                 @if ($wizard)

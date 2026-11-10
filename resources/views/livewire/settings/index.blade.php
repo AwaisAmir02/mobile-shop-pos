@@ -1107,7 +1107,6 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
 
     <div class="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8">
-        {{-- Phones/tablets: one scrollable row of tabs, in the same group order. --}}
         <nav class="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 lg:hidden" aria-label="Settings sections">
             @foreach ($tabGroups->flatten() as $key)
                 <button
@@ -1125,7 +1124,6 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             @endforeach
         </nav>
 
-        {{-- Desktop: grouped side menu. --}}
         <nav class="hidden lg:block" aria-label="Settings sections">
             <div class="sticky top-20 space-y-5">
                 @foreach ($tabGroups as $group => $keys)

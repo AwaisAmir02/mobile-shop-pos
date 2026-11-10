@@ -19,7 +19,7 @@ class LimitNoticeTest extends TestCase
     use RefreshDatabase;
 
     // Exact box classes of <x-ui.alert> per variant.
-    // Design overhaul D1: x-ui.alert moved to colour tokens, so red is 'danger'
+    // x-ui.alert moved to colour tokens, so red is 'danger'
     // and amber is 'warning'. Same severities, new class strings.
     private const RED = 'border-danger/20 bg-danger-soft text-ink';
 

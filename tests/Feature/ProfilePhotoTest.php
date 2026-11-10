@@ -11,7 +11,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Design overhaul D11: a user's own profile photo. Upload, replace and remove
+ * A user's own profile photo. Upload, replace and remove
  * from Profile; shown in the header's avatar instead of the initial.
  */
 class ProfilePhotoTest extends TestCase

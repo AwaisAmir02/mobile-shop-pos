@@ -6,7 +6,7 @@ use Livewire\Volt\Component;
 
 new class extends Component
 {
-    /** D14: whether this screen has a guide. Worked out by the layout on page load and kept across re-renders. */
+    /** Whether this screen has a guide. Worked out by the layout on page load and kept across re-renders. */
     public bool $hasGuide = false;
 
     /** A new or removed profile photo shows straight away; re-rendering is enough. */

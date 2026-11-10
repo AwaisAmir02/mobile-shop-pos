@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * The exact SQL run in production (phpMyAdmin) for multi-branch Phase 1.
+ * The exact SQL run in production (phpMyAdmin) for multi-branch.
  * The migration and the tests use these same strings, so what is tested is
  * what gets pasted. Every statement is safe to run more than once.
  */

@@ -88,7 +88,7 @@ class ProductReport implements ScreenReport
         return $this->batchAwareValuation()['selling'];
     }
 
-    /** Current stock valued at cost price — what the shop actually has tied up in on-hand inventory. */
+    /** Current stock valued at cost price — what the shop has tied up in on-hand inventory. */
     public function totalCostValue(): float
     {
         return $this->batchAwareValuation()['cost'];

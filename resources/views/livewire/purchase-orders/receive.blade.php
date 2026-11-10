@@ -94,7 +94,7 @@ new #[Layout('layouts.app')] #[Title('Receive Goods')] class extends Component
         $order = PurchaseOrder::inCurrentBranch()->with('lines')->findOrFail($this->orderId);
         $poLines = $order->lines->keyBy('id');
 
-        // A row with no quantity simply didn't arrive in this delivery.
+        // A row with no quantity didn't arrive in this delivery.
         $filled = array_filter($this->rows, fn (array $row) => trim((string) $row['quantity']) !== '');
 
         $rules = [
@@ -174,7 +174,6 @@ new #[Layout('layouts.app')] #[Title('Receive Goods')] class extends Component
             @enderror
 
             <div class="space-y-4">
-                {{-- An extra batch sits under its own product. --}}
                 @foreach (collect($rows)->sortBy('po_line_id') as $key => $row)
                     @php($line = $poLines->get($row['po_line_id']))
                     <div class="border-b border-line pb-4" wire:key="grn-row-{{ $key }}">

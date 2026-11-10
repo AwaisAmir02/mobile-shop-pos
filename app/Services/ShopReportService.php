@@ -61,9 +61,7 @@ class ShopReportService
                 'units' => (int) ($categoryRows->get($category->slug)->units ?? 0),
             ]);
 
-        // SIM stopped being a product type (and predates Main Categories
-        // entirely) but historical sales that included one must stay
-        // visible here rather than silently dropping out of the breakdown.
+        // SIM is no longer a product type, but old sales of one still belong in the breakdown.
         if ($categoryRows->has('sim')) {
             $categories->push([
                 'slug' => 'sim',
@@ -86,10 +84,7 @@ class ShopReportService
         $totalWalletCashOutAmount = (float) $walletCashOutQuery()->sum('amount');
         $totalWalletCashOutFees = (float) $walletCashOutQuery()->sum('fee') - (float) $walletCashOutQuery()->sum('discount');
 
-        // Fees are commission revenue regardless of direction, so — unlike
-        // the amount figures above, which represent opposite-direction cash
-        // flows and must stay separate — this combined total is safe to
-        // sum for the Party Ledger's overall commission figure.
+        // Fees are commission in either direction, so unlike the amounts above they can be summed.
         $totalWalletLoadFees = $totalWalletCashInFees + $totalWalletCashOutFees;
 
         $totalExpenses = (float) Expense::where('shop_id', $shop->id)

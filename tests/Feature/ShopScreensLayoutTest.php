@@ -13,7 +13,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Design overhaul D9: layout pins for the shop and account screens. Wording and
+ * Layout pins for the shop and account screens. Wording and
  * figures are covered by each screen's own tests.
  */
 class ShopScreensLayoutTest extends TestCase

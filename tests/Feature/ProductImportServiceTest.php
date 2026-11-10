@@ -20,7 +20,7 @@ use Tests\TestCase;
  * files (built with PhpSpreadsheet, the same library the importer itself
  * reads with) — this is the single place every rule from the approved plan
  * (required/optional columns, find-or-create matching, duplicate handling,
- * all-or-nothing validation, Excel quirks) actually lives, shared by both
+ * all-or-nothing validation, Excel quirks) lives, shared by both
  * the preview and confirm steps.
  */
 class ProductImportServiceTest extends TestCase
@@ -91,7 +91,7 @@ class ProductImportServiceTest extends TestCase
         // Not a fully blank row (Cost Price is filled) — a completely blank
         // row is deliberately ignored rather than validated (see the
         // "completely blank rows are skipped" test below), so this row
-        // needs at least one non-blank cell to actually be checked.
+        // needs at least one non-blank cell to be checked.
         $path = $this->buildSheet([['', '', '', '', '', '', '', '100', '']]);
 
         $preview = $this->service->preview($path, $shop->id);

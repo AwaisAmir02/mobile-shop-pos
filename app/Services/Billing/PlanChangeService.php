@@ -105,7 +105,7 @@ class PlanChangeService
     /**
      * Runs inside SubscriptionPaymentService::confirm(). The owner has paid,
      * so the switch always happens — even if usage grew past the new plan's
-     * limits while the payment waited; the shop then simply shows as over,
+     * limits while the payment waited; the shop then shows as over,
      * like any shop whose limits were lowered. The period starts today.
      */
     public function apply(SubscriptionInvoice $invoice): void

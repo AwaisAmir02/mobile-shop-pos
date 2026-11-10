@@ -48,7 +48,7 @@ Route::middleware(['auth'])->group(function () {
             return $pdf->download($invoice);
         })->name('billing.invoices.pdf');
 
-        // D13: Help & Support. Every shop user, no screen permission on purpose.
+        // No shop.access middleware on purpose: every shop user can ask for help.
         Volt::route('support', 'support.index')->name('support.index');
         Volt::route('support/new', 'support.create')->name('support.create');
         Volt::route('support/{ticket}', 'support.show')->name('support.show')->whereNumber('ticket');
@@ -173,14 +173,11 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('expenses', 'expenses.index')->name('expenses.index')->middleware('shop.access:expenses');
 
-        // /reports is the hub of every report; the screen-by-screen builder that used
-        // to live there moved to /reports/screens with its component unchanged.
         Volt::route('reports', 'reports.hub')->name('reports.index')->middleware('shop.access:reports');
         Volt::route('reports/screens', 'reports.index')->name('reports.screens')->middleware('shop.access:reports');
         Volt::route('gross-profit', 'reports.profit')->name('profit.index')->middleware('shop.access:reports');
 
         Volt::route('party-ledger', 'party-ledger.index')->name('party-ledger.index')->middleware('shop.access:party-ledger');
-        // Cash & Balances: cash in hand and every shop account, balances and the daily flow.
         Volt::route('cash-balances', 'cash-balances.index')->name('cash-balances.index')->middleware('shop.access:cash-balances');
 
         Volt::route('settings', 'settings.index')->name('settings.index')->middleware('shop.access:settings,users,shop-accounts,settings-categories,settings-networks,settings-bill-config,settings-percentage,settings-brands,settings-branding,settings-services,settings-integrations');

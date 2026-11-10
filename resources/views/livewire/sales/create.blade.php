@@ -605,7 +605,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                         },
                     }"
                 >
-                    {{-- Sets the same amountPaidNow as before: blank = paid in full, 0 = all on udhaar. --}}
+                    {{-- amountPaidNow: blank = paid in full, 0 = all on udhaar. --}}
                     <div>
                         <p class="mb-1.5 text-sm font-medium text-ink-muted">Payment</p>
                         <div class="grid grid-cols-3 gap-1 rounded-full border border-line bg-surface-sunken/60 p-1" role="group" aria-label="Payment">
@@ -701,7 +701,6 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         </div>
     </div>
 
-    {{-- Phone: the total and a way to checkout stay in reach while scrolling the cart. --}}
     @if (! empty($cart))
         <div class="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 px-4 pt-3 backdrop-blur lg:hidden" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))" data-checkout-bar>
             <div class="flex items-center justify-between gap-3">

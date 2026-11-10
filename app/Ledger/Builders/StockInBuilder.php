@@ -27,7 +27,7 @@ class StockInBuilder implements EntryBuilder
         $lines = [];
         $payments = StockInPayment::withoutGlobalScopes()->where('stock_in_id', $document->id)->get();
 
-        // No record of a refund, so a payment on a cancelled batch is the one genuinely unclear case: it's parked.
+        // No record of a refund, so a payment on a cancelled batch is the one unclear case: it's parked.
         if ($document->status === RecordStatus::Cancelled) {
             foreach ($payments as $payment) {
                 $lines[] = Line::debit(Chart::CANCELLED_UNCONFIRMED, $payment->amount, $payment->payment_date, $branch, 'vendor', $vendor);

@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use RuntimeException;
 
 /**
- * D13: a shop user opens a support ticket. Any active shop user may; there is
+ * A shop user opens a support ticket. Any active shop user may; there is
  * no screen permission for it on purpose.
  */
 class OpenSupportTicket

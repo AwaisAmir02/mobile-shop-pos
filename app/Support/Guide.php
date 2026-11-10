@@ -6,7 +6,7 @@ use App\Enums\FeatureKey;
 use App\Models\User;
 
 /**
- * D14: the per-screen guide behind the header "?" button.
+ * The per-screen guide behind the header "?" button.
  *
  * One PHP file per screen, named after the route, in each language folder:
  * resources/guides/en/sales.index.php and resources/guides/ur/sales.index.php

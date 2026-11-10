@@ -104,7 +104,7 @@ class ConsumeStockFifo
      * Same as preview(), but for an in-progress edit where this sale's own
      * existing items already hold some quantity against specific batches —
      * those batches are treated as if that quantity were already restored,
-     * so the preview matches what UpdateSale will actually do (restore the
+     * so the preview matches what UpdateSale will do (restore the
      * old consumption in full, then re-run FIFO fresh).
      *
      * @param  array<int, int|float>  $originalHoldingsByBatchId  stock_in_id => quantity this sale's own items currently hold against it

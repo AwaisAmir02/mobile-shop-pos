@@ -47,7 +47,7 @@ class StockIn extends Model
     protected $attributes = ['unit' => 'piece'];
 
     /**
-     * Stock is one shared pool across branches in Phase 1, and these rows
+     * Stock is one shared pool across branches, and these rows
      * are also the FIFO batches every branch sells from, so they must never
      * be hidden by branch. Stock-In lists use inCurrentBranch() instead.
      */

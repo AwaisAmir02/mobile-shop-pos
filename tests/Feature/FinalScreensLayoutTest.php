@@ -10,7 +10,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Design overhaul D10: layout pins for the last screens and two shared fixes.
+ * Layout pins for the last screens and two shared fixes.
  */
 class FinalScreensLayoutTest extends TestCase
 {

@@ -152,8 +152,7 @@ new #[Layout('layouts.app')] #[Title('Employees')] class extends Component
 }; ?>
 
 <div>
-    {{-- Add Employee used to sit in this header slot, which renders outside the
-         component, so its wire:click never reached openCreate. It now lives below. --}}
+    {{-- This slot renders outside the component, so a wire:click here never reaches it. Add Employee lives below. --}}
     <x-slot name="header">
         <x-ui.page-header>Employees</x-ui.page-header>
     </x-slot>

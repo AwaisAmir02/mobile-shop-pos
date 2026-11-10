@@ -21,7 +21,7 @@ use Tests\TestCase;
  * data the click handler depends on is wired correctly: each special
  * option carries the exact modal name the click handler now dispatches
  * client-side (bypassing the server round-trip entirely), and that a
- * modal with that exact name actually exists in the rendered page for
+ * modal with that exact name exists in the rendered page for
  * the dispatched event to land on.
  */
 class ImageSelectCreateOptionClickPathTest extends TestCase
@@ -74,7 +74,7 @@ class ImageSelectCreateOptionClickPathTest extends TestCase
         // The bug's visible symptom was the sentinel's own label ("New
         // Provider") sticking as the selected value. The fixed click
         // handler returns before touching $wire for a special option, so
-        // this asserts the source of that fix is actually in place —
+        // this asserts the source of that fix is in place —
         // a regression here would silently reintroduce the bug even
         // though every property-level test above would still pass.
         $source = file_get_contents(resource_path('views/components/ui/image-select.blade.php'));

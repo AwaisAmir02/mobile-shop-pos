@@ -234,8 +234,6 @@ class MoneyFlow
         return CarbonImmutable::now(Entitlements::TIMEZONE)->toDateString();
     }
 
-    // ---------------------------------------------------------------- sources
-
     private function sales(?string $from, ?string $to): array
     {
         return DB::table('sale_payments')
@@ -514,8 +512,6 @@ class MoneyFlow
 
         return $rows;
     }
-
-    // ---------------------------------------------------------------- helpers
 
     private function byCreatedDay($query, string $table, ?string $from, ?string $to): Collection
     {

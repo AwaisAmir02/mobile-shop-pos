@@ -47,8 +47,7 @@ class TableExportSheet implements FromArray, WithColumnWidths, WithEvents, WithT
 
     public function title(): string
     {
-        // Excel sheet titles are capped at 31 characters and can't contain
-        // certain characters — keep this defensively short and plain.
+        // Excel caps sheet titles at 31 characters and rejects some symbols.
         return substr(preg_replace('/[\[\]\*\/\\\\\?:]/', '', $this->sheetTitle), 0, 31) ?: 'Sheet';
     }
 }

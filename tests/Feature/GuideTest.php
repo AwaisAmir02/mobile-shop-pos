@@ -15,7 +15,7 @@ use ReflectionFunction;
 use Tests\TestCase;
 
 /**
- * D14: the per-screen guide behind the header "?" button. Files live in
+ * The per-screen guide behind the header "?" button. Files live in
  * resources/guides/{en,ur}/{route}.php; the two languages must describe the
  * same screen in the same shape, and each section or item can be limited to
  * the people it applies to.

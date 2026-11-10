@@ -1,5 +1,5 @@
 @php
-    // D13: one toast per new support reply, on the opener's next page load.
+    // One toast per new support reply, on the opener's next page load.
     // Not on the support pages themselves, where the reply is already in view.
     $user = auth()->user();
     $replied = collect();

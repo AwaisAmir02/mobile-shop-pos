@@ -23,7 +23,7 @@ class TableExportServiceRowLimitTest extends TestCase
         return array_fill(0, $count, ['A', 'B', 'C']);
     }
 
-    /** Invokes the protected limit check directly — avoids actually rendering thousands of PDF rows through dompdf just to prove the boundary is exact. */
+    /** Invokes the protected limit check directly — avoids rendering thousands of PDF rows through dompdf just to prove the boundary is exact. */
     protected function assertWithinLimit(TableExportService $service, int $rowCount): void
     {
         $reflection = new \ReflectionMethod($service, 'assertWithinLimit');

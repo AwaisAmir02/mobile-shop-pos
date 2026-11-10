@@ -21,7 +21,7 @@ class LimitWordingAndSeverityTest extends TestCase
 
     // The usage banner's and meter bar's own class strings, so other red or
     // amber elements on the page can't satisfy or break the assertions.
-    // Design overhaul D1: x-ui.alert moved to colour tokens, so red is 'danger'
+    // x-ui.alert moved to colour tokens, so red is 'danger'
     // and amber is 'warning'. Same severities, new class strings.
     private const RED_BANNER = 'border-danger/20 bg-danger-soft text-ink';
 

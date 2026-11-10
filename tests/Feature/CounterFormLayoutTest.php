@@ -10,7 +10,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * The seven counter-service forms share one layout (design overhaul D7). These
+ * The seven counter-service forms share one layout. These
  * pin the layout's parts, not the forms' rules, which their own tests cover.
  */
 class CounterFormLayoutTest extends TestCase

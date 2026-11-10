@@ -15,8 +15,7 @@ class Vendor extends Model
 
     public function stockIns(): HasMany
     {
-        // Stock-In isn't branch-scoped in Phase 1 (shared FIFO pool); kept
-        // explicit so a vendor's balance stays shop-wide if that changes.
+        // Explicitly shop-wide, so a vendor's balance stays whole if Stock In becomes branch-scoped.
         return $this->hasMany(StockIn::class)->withoutGlobalScope(BranchScope::class)->latest('stock_date');
     }
 

@@ -14,7 +14,7 @@
         ]
         : collect([
             // Order is the order shown. Counter services and Stock In land on their list;
-            // each list holds its New button (design overhaul D2).
+            // each list holds its New button.
             ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home', 'group' => null, 'permission' => 'dashboard'],
             ['label' => 'Sales', 'route' => 'sales.index', 'icon' => 'cart', 'group' => 'sell', 'permission' => 'sales'],
             ['label' => 'Customers', 'route' => 'customers.index', 'icon' => 'customers', 'group' => 'sell', 'permission' => 'customers'],
@@ -45,7 +45,7 @@
             ['label' => 'Branches', 'route' => 'branches.index', 'icon' => 'building', 'group' => 'manage', 'permission' => 'branches'],
             ['label' => 'Settings', 'route' => 'settings.index', 'icon' => 'cog', 'group' => 'manage', 'permission' => ['settings', 'users']],
             ['label' => 'Plan & Usage', 'route' => 'billing.index', 'icon' => 'receipt', 'group' => 'manage', 'owner' => true],
-            // D13: open to every shop user, whatever their role. The link carries the
+            // Open to every shop user, whatever their role. The link carries the
             // screen they're on (see sidebar-link's captureScreen).
             ['label' => 'Help & Support', 'route' => 'support.index', 'icon' => 'lifebuoy', 'group' => 'manage', 'everyone' => true, 'active' => ['support.*'], 'captureScreen' => true,
                 'badge' => $user?->shop_id ? \App\Models\SupportTicket::visibleTo($user)->unreadForShop()->count() : 0, 'badgeKey' => 'data-support-unread'],
@@ -114,7 +114,7 @@
 
     // Grouping and highlighting are presentation only: every item has already
     // passed the permission and feature filters above, so a group whose items
-    // were all filtered out is simply not rendered.
+    // were all filtered out is not rendered.
     // Items may name their own highlight patterns (Reports also covers Gross Profit);
     // the rest highlight on their route's prefix, so a list's form highlights it too.
     $navItems = collect($navItems)->map(fn ($item) => $item + [

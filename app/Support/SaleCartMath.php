@@ -28,7 +28,7 @@ class SaleCartMath
     /**
      * Splits one cart line across the batches FIFO drew it from. With no
      * override, each sub-line is charged at its own batch's selling price
-     * (a line spanning two batches is genuinely split, never blended). With
+     * (a line spanning two batches is split, never blended). With
      * an override, that single price applies uniformly across every
      * sub-line, and the discount is prorated by quantity so the sub-lines'
      * totals sum exactly to what one blended line would have totalled.

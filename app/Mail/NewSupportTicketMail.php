@@ -11,7 +11,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * D13: tells the platform inbox a shop opened a ticket. Queued, so a slow or
+ * Tells the platform inbox a shop opened a ticket. Queued, so a slow or
  * broken mail server never holds up the shop's submit; the scheduler's
  * queue:work picks it up within a minute.
  */

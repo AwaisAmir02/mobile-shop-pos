@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use RuntimeException;
 
 /**
- * D13: a reply in a support thread, from either side.
+ * A reply in a support thread, from either side.
  *
  * A shop reply on a resolved ticket reopens it (owner decision 5). An admin
  * reply never changes the status; the admin sets that by hand.

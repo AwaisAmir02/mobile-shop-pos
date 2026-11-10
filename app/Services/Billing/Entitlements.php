@@ -142,8 +142,7 @@ class Entitlements
 
         $build = fn () => collect(LimitKey::cases())
             ->map(fn (LimitKey $key) => $this->meter($shop, $key))
-            // A single-branch shop must look exactly as it did before
-            // branches existed: no meter, no banner, no admin alert.
+            // A single-branch shop gets no branch meter, banner or admin alert.
             ->reject(fn (array $meter) => $meter['key'] === LimitKey::Branches->value && $meter['used'] <= 1 && ! $everyLimit)
             ->values()
             ->all();

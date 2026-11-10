@@ -1,4 +1,4 @@
-{{-- Shown until dismissed. Kept compact so it informs without taking over the screen. --}}
+{{-- Shown until dismissed. --}}
 <div class="mb-5 flex flex-col gap-3 rounded-xl border border-warning/20 bg-warning-soft px-4 py-3 text-sm sm:flex-row sm:items-start">
     <svg class="mt-0.5 hidden h-4 w-4 shrink-0 text-warning sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />

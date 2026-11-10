@@ -188,7 +188,6 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
         @endif
     </div>
 
-    {{-- Headline figures. --}}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-ui.stat tone="brand" label="Net (Revenue − Expenses)" value="Rs {{ number_format($netSummary, 2) }}" :sub="$periodLabel" />
         <x-ui.stat label="Sales Revenue" value="Rs {{ number_format($totalRevenue, 2) }}" :sub="$periodLabel" />

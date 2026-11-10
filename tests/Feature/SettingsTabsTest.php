@@ -15,7 +15,7 @@ class SettingsTabsTest extends TestCase
 
     public function test_the_owner_lands_on_the_shops_own_settings_not_their_profile(): void
     {
-        // Design overhaul D2: Settings used to open on Profile for everyone.
+        // Settings used to open on Profile for everyone.
         $shop = Shop::create(['name' => 'Shop A']);
         $owner = User::factory()->create(['shop_id' => $shop->id]);
 

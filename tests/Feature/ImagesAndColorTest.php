@@ -176,7 +176,7 @@ class ImagesAndColorTest extends TestCase
         Livewire::test('settings.index')
             ->assertDontSee('Shop A Network');
 
-        // Shop B genuinely cannot query into shop A's tenant-scoped record.
+        // Shop B cannot query into shop A's tenant-scoped record.
         $this->assertNull(Network::find($networkA->id));
         $this->assertStringStartsWith('shop-'.$shopA->id.'/', $networkA->image_path);
     }

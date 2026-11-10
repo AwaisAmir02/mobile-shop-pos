@@ -114,7 +114,7 @@ class SubscriptionBillingService
      * A counter row per calendar year, incremented under a row lock inside
      * the caller's transaction. Numbers are only ever moved forward, so a
      * cancelled invoice keeps its number and a rolled-back create leaves no gap
-     * behind a number that was actually issued.
+     * behind a number that was issued.
      */
     protected function nextInvoiceNumber(): string
     {

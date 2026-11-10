@@ -101,7 +101,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
 
     /**
      * Party lookups go through the tenant ShopScope, so an id from another
-     * shop simply resolves to nothing.
+     * shop resolves to nothing.
      */
     protected function party(): Customer|Vendor|null
     {

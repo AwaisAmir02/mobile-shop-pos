@@ -224,7 +224,7 @@ class SidebarVisibilityGuardTest extends TestCase
 
     public function test_gross_profit_lives_on_the_reports_hub_not_the_sidebar(): void
     {
-        // Design overhaul D2: it used to be its own sidebar item for this user.
+        // It used to be its own sidebar item for this user.
         $links = $this->linksFor($this->staff(['reports', 'sales-view-cost-price'], self::FLAGS));
 
         $this->assertSameLinks(['Reports' => '/reports'], $links);
@@ -372,7 +372,7 @@ class SidebarVisibilityGuardTest extends TestCase
             $links[$label] = parse_url($link->getAttribute('href'), PHP_URL_PATH) ?? '/';
         }
 
-        // D13: Help & Support is open to every shop user whatever their role, so it is
+        // Help & Support is open to every shop user whatever their role, so it is
         // checked once here and left out of the per-permission comparisons.
         if (! $user->is_super_admin) {
             $this->assertSame('/support', $links['Help & Support'] ?? null, 'Every shop user sees Help & Support');

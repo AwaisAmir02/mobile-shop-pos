@@ -331,7 +331,6 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
         <x-ui.page-header back="{{ route('stock-ins.history') }}" back-label="Stock In History">Stock In</x-ui.page-header>
     </x-slot>
 
-    {{-- Goods first: what arrived on the left, who it came from and the payment on the right. --}}
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div class="min-w-0 space-y-6 lg:col-span-2">
             <x-ui.card :title="empty($cart) ? 'Add a Product' : 'Add Another Product'">

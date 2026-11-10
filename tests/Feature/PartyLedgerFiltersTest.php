@@ -18,7 +18,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Party Ledger stage L3: the Customers/Vendors switch, the "with a balance"
+ * Party Ledger: the Customers/Vendors switch, the "with a balance"
  * filter, date shortcuts, the customer's read-only "other amounts owed"
  * list, vendor links to Stock-In history, and going live through the Super
  * Admin's per-shop Module access switch.

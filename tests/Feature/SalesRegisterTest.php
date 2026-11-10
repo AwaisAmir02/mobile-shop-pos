@@ -11,7 +11,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Design overhaul D4: the Sales register's quick-pick tiles, its controls, and
+ * The Sales register's quick-pick tiles, its controls, and
  * the "sale complete" confirmation. Selling itself is covered by the existing
  * Sale* tests; these only check what D4 added.
  */
@@ -163,7 +163,7 @@ class SalesRegisterTest extends TestCase
             ->assertDontSee('Sale complete')
             ->assertDontSeeHtml('data-next-sale');
 
-        // The full page also carries the screen guide (D14), which names the "Sale complete"
+        // The full page also carries the screen guide, which names the "Sale complete"
         // box in its text, so check for the box itself rather than its words.
         $this->get(route('sales.show', $sale))->assertOk()->assertDontSeeHtml('data-sale-complete');
     }

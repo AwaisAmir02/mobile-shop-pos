@@ -20,7 +20,7 @@ class QuantityCast implements CastsAttributes
 
     public function set(Model $model, string $key, mixed $value, array $attributes): mixed
     {
-        // Anything else is left for the database to refuse, as it always was.
+        // Anything else is left for the database to refuse.
         return is_numeric($value) ? number_format((float) Quantity::normalize($value), Quantity::DECIMALS, '.', '') : $value;
     }
 }

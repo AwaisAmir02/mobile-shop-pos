@@ -85,7 +85,7 @@ class ProductImportService
      * Re-parses and re-validates the file from scratch (never trusts a
      * previously computed preview), then — only if still valid — performs
      * every write inside one transaction. A file that became invalid since
-     * the preview (edited on disk, or simply re-checked and found to now
+     * the preview (edited on disk, or re-checked and found to now
      * violate something) is refused the same way the preview would refuse
      * it, and nothing is written.
      */
@@ -158,11 +158,7 @@ class ProductImportService
                 $mainCategoryId = $mainCategories[$mainKey]['id'];
                 $typeSlug = $mainCategories[$mainKey]['slug'];
 
-                // Shop-wide by name, per the table's actual UNIQUE(shop_id, name)
-                // constraint — a sub-category name can only exist once per shop,
-                // regardless of which Main Category it was originally created
-                // under, so matching (and thus never attempting a duplicate
-                // insert) must be shop-wide too, not scoped to this row's Main Category.
+                // Matched shop-wide: the table is UNIQUE(shop_id, name), whatever Main Category the name was made under.
                 $subCategoryName = null;
                 if ($row['subCategoryName'] !== null) {
                     $subKey = $this->normalize($row['subCategoryName']);
@@ -270,9 +266,7 @@ class ProductImportService
         try {
             $sheets = Excel::toCollection(new ProductSheetReader, $absolutePath);
         } catch (\Throwable $e) {
-            // A genuinely corrupt/unreadable file — including the stored
-            // upload having been tampered with or damaged between preview
-            // and confirm — must fail validation cleanly, not surface a 500.
+            // Includes an upload damaged or swapped between preview and confirm: a validation error, not a 500.
             return $this->invalid(['Could not read this file. It may be corrupted — please re-export it and upload again.']);
         }
 
@@ -311,9 +305,7 @@ class ProductImportService
             return $this->cellToString($raw);
         };
 
-        // Existing products for this shop, for the name+IMEI duplicate check — done in PHP
-        // rather than a JSON-column SQL comparison, which can silently ignore the app's
-        // collation depending on the MySQL version.
+        // Compared in PHP: a JSON-column comparison in SQL ignores the app's collation on some MySQL versions.
         $existingProducts = Product::where('shop_id', $shopId)->get(['name', 'details', 'barcode']);
         $existingKeys = $existingProducts->map(fn (Product $p) => $this->normalize($p->name).'|'.$this->normalize((string) ($p->details['imei'] ?? '')))->flip();
 
@@ -348,19 +340,10 @@ class ProductImportService
         $existingMainCategoryNames = MainCategory::query()->pluck('name')->all();
         $existingBrandNames = Brand::query()->pluck('name')->all();
 
-        // accessory_category_options has a UNIQUE(shop_id, name) constraint —
-        // a sub-category name is unique for the whole SHOP, not per Main
-        // Category (confirmed against the actual migration, not assumed).
-        // So "does this one already exist" is a flat shop-wide name check,
-        // same as Brand — a name that exists under a different Main
-        // Category than the row specifies is still the same row it must
-        // match against, since the database can't hold two.
+        // UNIQUE(shop_id, name): a sub-category name exists once per shop, under whichever Main Category.
         $existingSubCategoryNames = AccessoryCategoryOption::query()->pluck('name')->all();
 
-        // Keyed by normalized name => slug, so "is this row's Main Category
-        // Mobile Phone / Accessory" is decided from the ACTUAL existing
-        // category's slug (the same identity Product.type stores), not a
-        // hopeful string comparison against the row's own free-text name.
+        // Mobile / Accessory is decided by the existing category's slug (what Product.type stores), not the row's free text.
         $mainCategorySlugByName = MainCategory::query()->get(['name', 'slug'])
             ->mapWithKeys(fn (MainCategory $c) => [$this->normalize($c->name) => $c->slug]);
 
@@ -373,9 +356,7 @@ class ProductImportService
 
         $dataRowCount = 0;
 
-        // slice(1) keeps the sheet's original 0-based keys (header = 0), so
-        // the first data row's key is already 1 — the exact Excel row
-        // number it appears on (header occupies row 1).
+        // slice(1) keeps the 0-based keys, so key + 1 is the row number in Excel.
         foreach ($dataRows as $offset => $cells) {
             $excelRow = $offset + 1;
 
@@ -473,9 +454,7 @@ class ProductImportService
                 }
             }
 
-            // A brand-new Main Category can never resolve to 'mobile'/'accessory' —
-            // those two slugs are guaranteed to already exist (ensureDefaultsExist()),
-            // so only an actual name match against an EXISTING category can be either.
+            // A new Main Category is never mobile or accessory: ensureDefaultsExist() already made those two.
             $matchedSlug = $mainCategoryName !== '' ? ($mainCategorySlugByName[$this->normalize($mainCategoryName)] ?? null) : null;
             $isMobile = $matchedSlug === 'mobile';
             $isAccessory = $matchedSlug === 'accessory';
@@ -493,9 +472,7 @@ class ProductImportService
             }
 
             if (! $isMobile) {
-                // Brand/Model/IMEI are mobile-only — matches CreateProduct::detailsForType(),
-                // which never stores them for other types. A stray value in one of these
-                // columns on a non-mobile row is ignored rather than creating an unused Brand.
+                // Brand, Model and IMEI are mobile-only, as in CreateProduct::detailsForType(); ignored on other rows.
                 $model = '';
                 $imei = '';
                 $brandName = '';

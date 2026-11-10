@@ -91,7 +91,7 @@ class ProductMainCategoryDropdownTest extends TestCase
      * never runs real DOM morphing, so it cannot reproduce that symptom —
      * what it CAN verify is that the fix mechanism (a wire:key that changes
      * with the Main Category, forcing Alpine to fully reinitialize) is
-     * actually present in the rendered markup.
+     * present in the rendered markup.
      */
     public function test_the_sub_category_dropdown_carries_a_wire_key_that_changes_with_the_main_category(): void
     {

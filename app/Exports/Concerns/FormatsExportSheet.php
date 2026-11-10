@@ -33,10 +33,7 @@ trait FormatsExportSheet
 
     protected function metaAndHeaderRows(): array
     {
-        // A genuinely empty array row gets silently dropped by the
-        // underlying writer instead of reserving a blank row, which would
-        // shift every row below it up by one — so the spacer is a row of
-        // blank strings (one per column) instead of an empty array.
+        // The writer drops an empty array row, shifting everything below up; blank strings keep the spacer.
         $spacer = array_fill(0, max(1, count($this->headers)), '');
 
         return [
