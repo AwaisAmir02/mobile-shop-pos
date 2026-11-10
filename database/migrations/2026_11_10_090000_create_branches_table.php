@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Multi-branch Phase 1. Every shop gets one Main branch and every
+     * Multi-branch. Every shop gets one Main branch and every
      * existing transactional row is tagged to it. branch_id stays nullable
      * at the database level (the app always fills it on create) and is
      * nulled rather than blocking when a shop is deleted, since branches

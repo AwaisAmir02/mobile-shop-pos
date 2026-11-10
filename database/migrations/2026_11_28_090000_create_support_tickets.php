@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * D13: support tickets. A shop user opens a ticket from any screen; the
+ * Support tickets. A shop user opens a ticket from any screen; the
  * platform admin answers in the same thread. Images are stored on the
  * private disk and served only through routes that check the ticket.
  */
