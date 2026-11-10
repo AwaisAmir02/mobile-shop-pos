@@ -8,6 +8,7 @@ use App\Enums\WalletLoadDirection;
 use App\Models\Concerns\BelongsToBranch;
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Concerns\HasCancellation;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -32,6 +33,7 @@ class WalletLoad extends Model
         'total',
         'payment_status',
         'amount_paid',
+        'excluded_from_dues',
         'status',
         'cancelled_at',
         'cancelled_by',
@@ -50,6 +52,7 @@ class WalletLoad extends Model
             'total' => 'decimal:2',
             'payment_status' => PaymentStatus::class,
             'amount_paid' => 'decimal:2',
+            'excluded_from_dues' => 'boolean',
             'status' => RecordStatus::class,
             'cancelled_at' => 'datetime',
         ];
@@ -73,6 +76,30 @@ class WalletLoad extends Model
     public function receiptNumber(): string
     {
         return 'WL-'.str_pad((string) $this->id, 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Whatever the customer hasn't paid is their due, in both directions: the
+     * shop always sends or hands over the full amount. Cash Out rows saved
+     * before that rule was settled are excluded_from_dues until the owner decides.
+     */
+    public function scopeCountsAsDue(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $q) => $q->where('direction', WalletLoadDirection::CashIn->value)
+            ->orWhere(fn (Builder $out) => $out->where('direction', WalletLoadDirection::CashOut->value)->where('excluded_from_dues', false)));
+    }
+
+    public function countsAsDue(): bool
+    {
+        return $this->direction === WalletLoadDirection::CashIn || ! $this->excluded_from_dues;
+    }
+
+    /** How the customer's money reaches the shop: cash for Cash In, the shop's own account for Cash Out. */
+    public function customerPaysThrough(): array
+    {
+        return $this->direction === WalletLoadDirection::CashIn
+            ? ['cash', null]
+            : ['account', $this->shop_account_id];
     }
 
     public function amountOwed(): float

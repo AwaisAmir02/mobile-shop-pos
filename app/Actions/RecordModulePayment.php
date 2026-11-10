@@ -12,8 +12,11 @@ use Illuminate\Database\Eloquent\Model;
  */
 class RecordModulePayment
 {
-    public static function handle(Model $record, float $amount): void
+    public static function handle(Model $record, float $amount, ?string $method = null, ?int $shopAccountId = null, ?int $userId = null): void
     {
+        // Dated, with where the money went, for Cash & Balances (Wallet Loads know their own way).
+        RecordCounterPayment::handle($record, $amount, $method, $shopAccountId, $userId);
+
         $newAmountPaid = (float) $record->amount_paid + $amount;
 
         $record->update([

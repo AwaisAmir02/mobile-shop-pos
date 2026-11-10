@@ -94,7 +94,7 @@ class LedgerHealthReport
 
         foreach (self::MODULES as $table => $totalColumn) {
             $rows = DB::table($table)->where('shop_id', $this->shop->id)->where('status', '!=', RecordStatus::Cancelled->value)
-                ->when($table === 'wallet_loads', fn ($query) => $query->where('direction', 'cash_in'))
+                ->when($table === 'wallet_loads', fn ($query) => $query->where(fn ($q) => $q->where('direction', 'cash_in')->orWhere('excluded_from_dues', false)))
                 ->get([$totalColumn.' as total', 'amount_paid', 'payment_status']);
 
             foreach ($rows as $row) {

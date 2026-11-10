@@ -180,7 +180,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
         ]);
 
         [$paymentMethod, $shopAccountId] = $this->paidFromParts();
-        $this->paidFrom = '';
+        $this->paidFrom = 'cash';
 
         RecordStockInPayment::add($entry, (float) $this->paymentAmount, Auth::id(), paymentMethod: $paymentMethod, shopAccountId: $shopAccountId);
 

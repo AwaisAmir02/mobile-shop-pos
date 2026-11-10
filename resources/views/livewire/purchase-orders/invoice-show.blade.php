@@ -158,7 +158,7 @@ new #[Layout('layouts.app')] #[Title('Vendor Invoice')] class extends Component
         $this->validate(['payAmount' => ['required', 'numeric', 'min:0.01']], [], ['payAmount' => 'amount']);
 
         VendorInvoices::pay($this->invoice(), (float) $this->payAmount, Auth::id(), ...$this->paidFromParts());
-        $this->paidFrom = '';
+        $this->paidFrom = 'cash';
 
         $this->dispatch('close-modal', name: 'invoice-pay');
         $this->toastSuccess('Payment recorded.');

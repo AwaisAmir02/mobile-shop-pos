@@ -92,7 +92,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar')] class extends Component
         $customer = Customer::findOrFail($this->customerId);
 
         CreateUdhaarTransaction::handle($customer, $this->type, $this->amount, $this->transaction_date, $this->note, ...$this->paidFromParts());
-        $this->paidFrom = '';
+        $this->paidFrom = 'cash';
 
         $this->toastSuccess('Transaction recorded.');
         $this->dispatch('close-modal', name: 'quick-transaction-form');

@@ -88,10 +88,15 @@ new #[Layout('layouts.app')] #[Title('NADRA Verification History')] class extend
         $verification = NadraVerification::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($id);
         abort_if($verification->isCancelled(), 403);
 
+        $remaining = (float) $verification->total - (float) $verification->amount_paid;
+
         $verification->update([
             'payment_status' => PaymentStatus::Paid,
             'amount_paid' => $verification->total,
         ]);
+
+        // The rest arrived today; for a Wallet Load the way it came is known, otherwise it's not recorded.
+        \App\Actions\RecordCounterPayment::handle($verification, $remaining, null, null, Auth::id());
 
         $this->toastSuccess('Marked as paid.');
     }

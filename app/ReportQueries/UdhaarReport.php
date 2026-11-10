@@ -46,9 +46,9 @@ class UdhaarReport implements ScreenReport
     /**
      * Every customer's total outstanding amount across the non-Udhaar
      * sources also surfaced on their own consolidated "Other Amounts Owed"
-     * view, keyed by customer_id. Wallet Load Cash Out is intentionally
-     * excluded — its "owed" amount means the shop owes the customer, not
-     * the other way around. Shop-wide, like the Udhaar balances it is
+     * view, keyed by customer_id. Wallet Loads count in both directions
+     * (the shop always pays out in full, so any shortfall is the customer's),
+     * except older Cash Out rows marked excluded_from_dues. Shop-wide, like the Udhaar balances it is
      * added to, whichever branch the viewer works in.
      */
     protected function otherDueTotalsByCustomer(): Collection
@@ -74,7 +74,7 @@ class UdhaarReport implements ScreenReport
             });
         };
 
-        $accumulate($unpaidOrPartial(WalletLoad::query()->where('direction', 'cash_in'))->get(), fn (WalletLoad $m) => $m->amountOwed());
+        $accumulate($unpaidOrPartial(WalletLoad::query()->countsAsDue())->get(), fn (WalletLoad $m) => $m->amountOwed());
         $accumulate($unpaidOrPartial(BalanceLoad::query())->get(), fn (BalanceLoad $m) => $m->amountOwed());
         $accumulate($unpaidOrPartial(BillPayment::query())->get(), fn (BillPayment $m) => $m->amountOwed());
         $accumulate($unpaidOrPartial(Repair::query())->get(), fn (Repair $m) => $m->amountOwed());

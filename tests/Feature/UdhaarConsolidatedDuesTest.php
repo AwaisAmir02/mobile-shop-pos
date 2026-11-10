@@ -84,17 +84,32 @@ class UdhaarConsolidatedDuesTest extends TestCase
             ->assertDontSee('Other Amounts Owed');
     }
 
-    public function test_wallet_load_cash_out_is_excluded_from_the_dues_list(): void
+    public function test_wallet_load_cash_out_shortfall_is_in_the_dues_list(): void
     {
         [$shop, $owner, $customer] = $this->shopAndCustomer();
 
-        // Cash Out's "owed" amount means the shop owes the customer —
-        // the opposite direction from every other source in this list —
-        // so it must never appear here.
+        // The customer still has to send this to the shop's account: their due.
         WalletLoad::create([
             'shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $customer->id,
             'direction' => 'cash_out', 'provider' => 'JazzCash', 'amount' => 700, 'total' => 700,
             'payment_status' => 'unpaid', 'amount_paid' => 0,
+        ]);
+
+        $this->actingAs($owner);
+
+        Livewire::test('udhaar.show', ['customer' => $customer])
+            ->assertSee('Other Amounts Owed')
+            ->assertSee('Wallet Load');
+    }
+
+    public function test_an_older_cash_out_kept_out_of_dues_stays_off_the_list(): void
+    {
+        [$shop, $owner, $customer] = $this->shopAndCustomer();
+
+        WalletLoad::create([
+            'shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $customer->id,
+            'direction' => 'cash_out', 'provider' => 'JazzCash', 'amount' => 700, 'total' => 700,
+            'payment_status' => 'unpaid', 'amount_paid' => 0, 'excluded_from_dues' => true,
         ]);
 
         $this->actingAs($owner);

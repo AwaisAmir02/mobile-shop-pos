@@ -54,14 +54,16 @@ class WalletLoadReport implements ScreenReport
 
     /**
      * Deliberately unfiltered by date/provider/account (a running balance,
-     * not scoped to which rows are currently listed), but IS scoped to the
-     * active tab: Cash Out's shortfall is a shop liability, not a customer
-     * receivable, and must never be summed together with Cash In's.
+     * not scoped to which rows are currently listed), but scoped to the
+     * active tab. In both directions it's what customers still owe the shop:
+     * the shop always sends or hands over the full amount. Older Cash Out rows
+     * kept out of dues (excluded_from_dues) stay out of this figure too.
      */
     public function totalOwed(): float
     {
         return (float) WalletLoad::query()
             ->where('direction', $this->tab)
+            ->countsAsDue()
             ->where('payment_status', '!=', PaymentStatus::Paid->value)
             ->get()
             ->sum(fn (WalletLoad $load) => $load->amountOwed());
@@ -105,9 +107,9 @@ class WalletLoadReport implements ScreenReport
     public function summaryCards(): array
     {
         return [
-            ['label' => $this->tab === 'cash_in' ? 'Total Loaded' : 'Total Given', 'value' => 'Rs '.number_format($this->totalLoaded(), 2)],
+            ['label' => $this->tab === 'cash_in' ? 'Total Loaded' : 'Cash Handed Over', 'value' => 'Rs '.number_format($this->totalLoaded(), 2)],
             ['label' => 'Net Service Fees', 'value' => 'Rs '.number_format($this->totalFees(), 2)],
-            ['label' => $this->tab === 'cash_in' ? 'Total Owed by Customers' : 'Total Owed to Customers', 'value' => 'Rs '.number_format($this->totalOwed(), 2)],
+            ['label' => 'Total Owed by Customers', 'value' => 'Rs '.number_format($this->totalOwed(), 2)],
         ];
     }
 

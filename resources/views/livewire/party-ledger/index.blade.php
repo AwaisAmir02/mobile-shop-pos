@@ -262,7 +262,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
             }
         };
 
-        $add('Wallet Load', WalletLoad::where('customer_id', $customer->id)->where('direction', 'cash_in')->get(), fn (WalletLoad $r) => $r->receiptNumber().' · '.$r->provider);
+        $add('Wallet Load', WalletLoad::where('customer_id', $customer->id)->countsAsDue()->get(), fn (WalletLoad $r) => $r->receiptNumber().' · '.$r->provider);
         $add('Balance Load', BalanceLoad::where('customer_id', $customer->id)->get(), fn (BalanceLoad $r) => $r->receiptNumber().' · '.$r->network);
         $add('Bill', BillPayment::where('customer_id', $customer->id)->with('billCategory')->get(), fn (BillPayment $r) => $r->receiptNumber().' · '.($r->billCategory?->name ?? $r->consumer_name));
         $add('Repair', Repair::where('customer_id', $customer->id)->get(), fn (Repair $r) => $r->receiptNumber().' · '.$r->categoryLabel());

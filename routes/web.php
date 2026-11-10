@@ -180,6 +180,8 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('gross-profit', 'reports.profit')->name('profit.index')->middleware('shop.access:reports');
 
         Volt::route('party-ledger', 'party-ledger.index')->name('party-ledger.index')->middleware('shop.access:party-ledger');
+        // Cash & Balances: cash in hand and every shop account, balances and the daily flow.
+        Volt::route('cash-balances', 'cash-balances.index')->name('cash-balances.index')->middleware('shop.access:cash-balances');
 
         Volt::route('settings', 'settings.index')->name('settings.index')->middleware('shop.access:settings,users,shop-accounts,settings-categories,settings-networks,settings-bill-config,settings-percentage,settings-brands,settings-branding,settings-services,settings-integrations');
 

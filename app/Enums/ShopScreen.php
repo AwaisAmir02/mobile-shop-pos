@@ -59,6 +59,7 @@ enum ShopScreen: string
     case LedgerReports = 'ledger-reports';
     case OnlineOrders = 'online-orders';
     case OnlineOrdersDecide = 'online-orders-decide';
+    case CashBalances = 'cash-balances';
 
     public function label(): string
     {
@@ -118,6 +119,7 @@ enum ShopScreen: string
             self::LedgerReports => 'Ledger Reports (shows all the shop\'s finances)',
             self::OnlineOrders => 'Online Store Orders',
             self::OnlineOrdersDecide => 'Online Store Orders: Accept / Reject',
+            self::CashBalances => 'Cash & Balances (shows the shop\'s cash and account balances)',
         };
     }
 
@@ -153,6 +155,7 @@ enum ShopScreen: string
             self::Reports => 'reports.index',
             self::Users => 'users.index',
             self::PartyLedger => 'party-ledger.index',
+            self::CashBalances => 'cash-balances.index',
             self::SettingsCategories => 'settings.index',
             self::SettingsNetworks => 'settings.index',
             self::SettingsBillConfig => 'settings.index',
@@ -197,7 +200,7 @@ enum ShopScreen: string
             'Inventory & Sales' => [self::StockIns, self::StockInsEditCancel, self::PurchaseOrders, self::ReceiveGoods, self::VendorInvoices, self::VendorInvoicesApprove, self::Vendors, self::Sales, self::SalesEditCancel, self::SalesViewCostPrice, self::SimSales, self::SimSalesEditCancel],
             'Financial Services' => [self::BalanceLoads, self::BalanceLoadsEditCancel, self::WalletLoads, self::WalletLoadsEditCancel, self::Bills, self::BillsEditCancel, self::Repairs, self::RepairsEditCancel, self::NadraVerifications, self::NadraVerificationsEditCancel, self::Udhaar, self::Expenses, self::ExpensesEditCancel, self::Services, self::ServicesEditCancel],
             'Online Selling' => [self::WhatsAppOrders, self::WhatsAppOrdersDecide, self::OnlineOrders, self::OnlineOrdersDecide, self::WhatsAppMessages, self::Marketing, self::MarketingAnalytics, self::MarketingAds],
-            'Administration' => [self::Users, self::ShopAccounts, self::Branches, self::Payroll, self::PayrollRun, self::LedgerReports],
+            'Administration' => [self::Users, self::ShopAccounts, self::CashBalances, self::Branches, self::Payroll, self::PayrollRun, self::LedgerReports],
             'Settings' => [self::Settings, self::SettingsCategories, self::SettingsNetworks, self::SettingsBillConfig, self::SettingsPercentage, self::SettingsBrands, self::SettingsBranding, self::SettingsServices, self::SettingsIntegrations],
         ];
     }

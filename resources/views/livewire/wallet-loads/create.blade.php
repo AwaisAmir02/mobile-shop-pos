@@ -263,7 +263,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
                 :number="$lastLoad->receiptNumber().' · '.$lastLoad->direction->label()"
                 :total="$lastLoad->total"
                 :lines="[
-                    ['label' => $lastLoad->direction->value === 'cash_in' ? 'Amount Loaded' : 'Amount Given', 'value' => 'Rs '.number_format($lastLoad->net_amount, 2)],
+                    ['label' => $lastLoad->direction->value === 'cash_in' ? 'Amount Loaded' : 'Cash Handed Over', 'value' => 'Rs '.number_format($lastLoad->net_amount, 2)],
                     ['label' => 'Service Charge', 'value' => 'Rs '.number_format($lastLoad->fee, 2)],
                     ['label' => 'Discount', 'value' => '− Rs '.number_format($lastLoad->discount, 2)],
                     ['label' => $lastLoad->direction->value === 'cash_in' ? 'Total Collected' : 'Total Received', 'value' => 'Rs '.number_format($lastLoad->total, 2), 'total' => true],
@@ -285,18 +285,29 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
                 $paysVerb = $cashIn ? 'pays' : 'sends';
             @endphp
 
-            <div class="mb-6 flex max-w-sm gap-1 rounded-full border border-line bg-surface-sunken/60 p-1" role="group" aria-label="Direction">
+            {{-- What each direction moves, so it reads the way the counter works:
+                 Cash In = cash comes in, the account goes down; Cash Out = the reverse. --}}
+            <div class="mb-6 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2" role="group" aria-label="Direction">
                 @foreach ($directions as $option)
+                    @php($isIn = $option->value === 'cash_in')
                     <button
                         type="button"
                         wire:click="switchDirection('{{ $option->value }}')"
                         aria-pressed="{{ $direction === $option->value ? 'true' : 'false' }}"
+                        data-direction="{{ $option->value }}"
                         @class([
-                            'min-w-0 flex-1 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-link',
-                            'bg-surface text-ink shadow-soft ring-1 ring-line' => $direction === $option->value,
-                            'text-ink-faint hover:text-ink' => $direction !== $option->value,
+                            'rounded-xl border p-3.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-link',
+                            'border-primary bg-primary-soft ring-1 ring-primary' => $direction === $option->value,
+                            'border-line bg-surface hover:border-line-strong' => $direction !== $option->value,
                         ])
-                    >{{ $option->label() }}</button>
+                    >
+                        <span class="block text-sm font-bold text-ink">{{ $option->label() }}</span>
+                        <span class="mt-0.5 block text-xs text-ink-faint">{{ $isIn ? 'Customer gives you cash, you send it from your account to theirs.' : 'Customer sends money to your account, you hand them cash.' }}</span>
+                        <span class="mt-2 flex flex-wrap gap-1.5 text-xs font-semibold">
+                            <span class="rounded-full px-2 py-0.5 {{ $isIn ? 'bg-success-soft text-success' : 'bg-danger-soft text-danger' }}">Cash {{ $isIn ? 'in' : 'out' }}</span>
+                            <span class="rounded-full px-2 py-0.5 {{ $isIn ? 'bg-danger-soft text-danger' : 'bg-success-soft text-success' }}">Account {{ $isIn ? 'out' : 'in' }}</span>
+                        </span>
+                    </button>
                 @endforeach
             </div>
 
@@ -304,10 +315,10 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
                 <x-counter.section title="Account">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-ui.field
-                            :label="$cashIn ? 'Send From' : 'Received Into'"
+                            :label="$cashIn ? 'Send From (your account)' : 'Customer Sends To (your account)'"
                             name="shopAccountId"
                             for="shopAccountId"
-                            :help="$cashIn ? 'Which of the shop\'s own accounts is sending this' : 'Which of the shop\'s own accounts received this'"
+                            :help="$cashIn ? 'The shop\'s account the money leaves from' : 'The shop\'s account the customer\'s money arrives in'"
                             required
                         >
                             <x-ui.image-select
@@ -342,7 +353,7 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
 
                 <x-counter.section title="Amount">
                     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                        <x-ui.field label="Amount" name="amount" class="col-span-2 sm:col-span-1" for="amount" :help="$cashIn ? 'Amount being loaded into the recipient\'s account' : 'Amount being handed to the customer as cash'" required>
+                        <x-ui.field label="Amount" name="amount" class="col-span-2 sm:col-span-1" for="amount" :help="$cashIn ? 'What goes into the customer\'s account' : 'The cash you hand the customer'" required>
                             <x-ui.input wire:model.live="amount" id="amount" type="number" min="1" step="0.01" class="text-lg" autofocus />
                         </x-ui.field>
 
@@ -358,11 +369,12 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
                     <div class="mt-4 rounded-xl bg-surface-sunken/60 px-4 py-3">
                         <x-ui.checkbox wire:model.live="feeIncludedInAmount" label="Fee is already included in the amount above" />
 
-                        <p class="mt-2 text-xs text-ink-faint">
-                            @if ($feeIncludedInAmount)
-                                e.g. Rs {{ number_format(max(0, $exampleAmount - $exampleFee), 2) }} {{ $movesVerb }}, you keep Rs {{ number_format($exampleFee, 2) }}, customer {{ $paysVerb }} Rs {{ number_format($totalCollected, 2) }} total
+                        <p class="mt-2 text-xs text-ink-faint" data-fee-example>
+                            @php($kept = $feeIncludedInAmount ? max(0, $exampleAmount - $exampleFee) : $exampleAmount)
+                            @if ($cashIn)
+                                e.g. Rs {{ number_format($kept, 2) }} goes to their account{{ $feeIncludedInAmount ? ', you keep Rs '.number_format($exampleFee, 2) : '' }}; the customer pays you Rs {{ number_format($totalCollected, 2) }} in cash{{ $feeIncludedInAmount ? '' : ' (Rs '.number_format($exampleAmount, 2).' + Rs '.number_format($exampleFee, 2).' fee)' }}.
                             @else
-                                e.g. Rs {{ number_format($exampleAmount, 2) }} {{ $movesVerb }}, customer {{ $paysVerb }} Rs {{ number_format($totalCollected, 2) }} total (Rs {{ number_format($exampleAmount, 2) }} + Rs {{ number_format($exampleFee, 2) }} fee)
+                                e.g. You hand over Rs {{ number_format($kept, 2) }} in cash{{ $feeIncludedInAmount ? ' and keep Rs '.number_format($exampleFee, 2) : '' }}; the customer sends Rs {{ number_format($totalCollected, 2) }} to your account{{ $feeIncludedInAmount ? '' : ' (Rs '.number_format($exampleAmount, 2).' + Rs '.number_format($exampleFee, 2).' fee)' }}.
                             @endif
                         </p>
                     </div>
@@ -371,31 +383,39 @@ new #[Layout('layouts.app')] #[Title('Wallet Load')] class extends Component
                 <x-counter.section title="Payment">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-ui.field
-                            :label="$cashIn ? 'Cash Received' : 'Amount Received in Account'"
+                            :label="$cashIn ? 'Cash Received from Customer' : 'Received in Your Account'"
                             name="amountReceivedNow"
                             for="amountReceivedNow"
-                            :help="$cashIn ? 'How much cash did the customer hand you just now?' : 'How much did the customer just send into this account?'"
+                            :help="$cashIn ? 'How much cash the customer has handed you' : 'How much the customer has sent to your account so far'"
                         >
                             <x-ui.input wire:model.live="amountReceivedNow" id="amountReceivedNow" type="number" min="0" step="0.01" placeholder="0" />
                         </x-ui.field>
-
-                        <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
                     </div>
+                    <p class="mt-2 text-xs text-ink-faint">Anything the customer hasn't paid yet is their due, on the Udhaar screen.</p>
                 </x-counter.section>
 
                 <x-slot:summary>
                     <x-counter.summary
-                        :total-label="$cashIn ? 'Total to Collect from Customer' : 'Total to Receive from Customer'"
+                        :total-label="$cashIn ? 'Customer Pays You (cash)' : 'Customer Sends You (to your account)'"
                         :total="$totalCollected"
                         :lines="[
-                            ['label' => $cashIn ? 'Goes to the wallet' : 'Handed to the customer', 'value' => 'Rs '.number_format($netAmount, 2)],
+                            ['label' => $cashIn ? 'Goes to their account' : 'Cash you hand over', 'value' => 'Rs '.number_format($netAmount, 2)],
                             ['label' => 'Service Charge', 'value' => 'Rs '.number_format((float) $fee, 2)],
                             ['label' => 'Discount', 'value' => '− Rs '.number_format((float) $discount, 2)],
                         ]"
                         :status="$previewPaymentStatus"
                         :owed="$amountReceivedNow !== '' && (float) $amountReceivedNow < $totalCollected ? $totalCollected - (float) $amountReceivedNow : null"
-                        :owed-label="$cashIn ? 'Still Owed by Customer' : 'Still Owed to Customer'"
-                    />
+                        :owed-label="'Still Owed by Customer'"
+                    >
+                        @php($accountName = collect($shopAccountOptions)->firstWhere('value', (string) $shopAccountId)['label'] ?? 'Your account')
+                        <div class="mt-3 rounded-xl bg-surface-sunken/60 p-3 text-xs" data-what-moves>
+                            <p class="font-semibold text-ink">What moves, once fully paid</p>
+                            <dl class="mt-1.5 space-y-1">
+                                <div class="flex justify-between gap-3"><dt class="text-ink-faint">Cash in hand</dt><dd class="font-semibold tabular-nums {{ $cashIn ? 'text-success' : 'text-danger' }}">{{ $cashIn ? '+' : '−' }} Rs {{ number_format($cashIn ? $totalCollected : $netAmount, 2) }}</dd></div>
+                                <div class="flex justify-between gap-3"><dt class="min-w-0 truncate text-ink-faint">{{ $accountName }}</dt><dd class="font-semibold tabular-nums {{ $cashIn ? 'text-danger' : 'text-success' }}">{{ $cashIn ? '−' : '+' }} Rs {{ number_format($cashIn ? $netAmount : $totalCollected, 2) }}</dd></div>
+                            </dl>
+                        </div>
+                    </x-counter.summary>
                 </x-slot:summary>
             </x-counter.form>
         @endif

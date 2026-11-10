@@ -124,10 +124,10 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
      * balance/status above (see with()), rather than being a plain
      * separate checklist.
      *
-     * Wallet Load Cash Out is intentionally excluded — its "owed" amount
-     * means the shop still owes the customer cash, the opposite direction
-     * from every other source here, which all represent the customer
-     * owing the shop.
+     * Wallet Loads count in both directions: the shop always hands over the
+     * full amount, so any unpaid part is the customer's due. Only older Cash
+     * Out entries flagged excluded_from_dues (recorded under the old reading)
+     * stay out — see WalletLoad::scopeCountsAsDue().
      */
     protected function duesForCustomer(): Collection
     {
@@ -148,7 +148,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
                 }
             });
 
-        WalletLoad::where('customer_id', $customerId)->where('direction', 'cash_in')->get()
+        WalletLoad::where('customer_id', $customerId)->countsAsDue()->get()
             ->each(function (WalletLoad $load) use ($rows) {
                 if ($load->amountOwed() > 0) {
                     $rows->push([
@@ -275,7 +275,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
         $this->settlingSource = $source;
         $this->settlingId = $id;
         $this->dueSettleAmount = '';
-        $this->paymentMethod = '';
+        $this->paymentMethod = 'cash';
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'settle-due-form');
     }
@@ -289,12 +289,13 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
             'dueSettleAmount' => ['required', 'numeric', 'min:0.01', 'max:'.$amountDue],
         ]);
 
-        if ($this->settlingSource === 'sale') {
-            [$paymentMethod, $shopAccountId] = $this->chosenPaymentMethod();
+        [$paymentMethod, $shopAccountId] = $this->chosenPaymentMethod();
 
+        if ($this->settlingSource === 'sale') {
             RecordSalePayment::handle($record, (float) $this->dueSettleAmount, Auth::id(), $paymentMethod, $shopAccountId);
         } else {
-            RecordModulePayment::handle($record, (float) $this->dueSettleAmount);
+            // Counter services now keep how they were paid too (a Wallet Load knows its own way).
+            RecordModulePayment::handle($record, (float) $this->dueSettleAmount, $paymentMethod, $shopAccountId, Auth::id());
         }
 
         $this->toastSuccess('Payment recorded.');
@@ -322,7 +323,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
         $this->validate(CreateUdhaarTransaction::rules());
 
         CreateUdhaarTransaction::handle($this->customer, $this->type, $this->amount, $this->transaction_date, $this->note, ...$this->paidFromParts());
-        $this->paidFrom = '';
+        $this->paidFrom = 'cash';
 
         $this->toastSuccess('Transaction recorded.');
         $this->dispatch('close-modal', name: 'transaction-form');
@@ -644,7 +645,8 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
                     <x-ui.input wire:model="dueSettleAmount" id="dueSettleAmount" type="number" min="0.01" step="0.01" autofocus />
                 </x-ui.field>
 
-                @if ($settlingSource === 'sale')
+                {{-- A Wallet Load's money always arrives the same way (cash for Cash In, its own account for Cash Out). --}}
+                @if ($settlingSource !== 'wallet_load')
                     <x-sales.payment-method-picker :accounts="$this->paymentAccounts()" :value="$paymentMethod" amount="dueSettleAmount" />
                 @endif
             </div>

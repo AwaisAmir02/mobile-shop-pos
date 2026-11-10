@@ -200,7 +200,8 @@ class WalletLoadHistoryTabsTest extends TestCase
 
         Livewire::test('wallet-loads.history')
             ->call('switchTab', 'cash_out')
-            ->assertSee('Total Owed to Customers')
+            ->assertSee('Total Owed by Customers')
+            ->assertDontSee('Total Owed to Customers')
             ->assertViewHas('totalOwed', 400.0);
     }
 

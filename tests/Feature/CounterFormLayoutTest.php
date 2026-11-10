@@ -113,9 +113,9 @@ class CounterFormLayoutTest extends TestCase
     {
         Livewire::test('wallet-loads.create')
             ->assertSeeHtml("wire:click=\"switchDirection('cash_out')\"")
-            ->assertSee('Total to Collect from Customer')
+            ->assertSee('Customer Pays You (cash)')
             ->call('switchDirection', 'cash_out')
-            ->assertSee('Total to Receive from Customer');
+            ->assertSee('Customer Sends You (to your account)');
     }
 
     public function test_bills_send_from_has_a_placeholder_when_the_shop_has_no_accounts(): void

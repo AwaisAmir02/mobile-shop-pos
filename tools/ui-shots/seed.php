@@ -211,4 +211,28 @@ $try('support tickets', function () use ($owner) {
     app(\App\Actions\Support\OpenSupportTicket::class)->handle($owner, 'How do I add a second branch?', [], '/branches', 'Branches', 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36');
 });
 
+// Cash & Balances: two accounts with opening balances, wallet loads through them,
+// a deposit into the bank and a till count, so every tab has something to show.
+$try('cash and balances', function () use ($shop, $owner) {
+    $jazz = \App\Models\ShopAccount::firstOrCreate(['shop_id' => $shop->id, 'name' => 'JazzCash Retailer'], ['provider_type' => 'JazzCash']);
+    $bank = \App\Models\ShopAccount::firstOrCreate(['shop_id' => $shop->id, 'name' => 'Meezan Bank'], ['provider_type' => 'Bank']);
+    $cash = 'cash:'.\App\Support\BranchContext::current()->mainBranchIdFor($shop->id);
+    $start = now('Asia/Karachi')->subDays(2)->toDateString();
+
+    \App\Actions\MoneyEntries::opening($shop->id, $cash, 25000, $start, $owner->id);
+    \App\Actions\MoneyEntries::opening($shop->id, 'account:'.$jazz->id, 60000, $start, $owner->id);
+    \App\Actions\MoneyEntries::opening($shop->id, 'account:'.$bank->id, 150000, $start, $owner->id);
+
+    foreach ([['cash_in', 5000, 75, 5075], ['cash_out', 3000, 45, 3045], ['cash_in', 12000, 180, 12180], ['cash_out', 8000, 120, 7000]] as [$direction, $amount, $fee, $paid]) {
+        $load = WalletLoad::create(['shop_id' => $shop->id, 'user_id' => $owner->id, 'direction' => $direction, 'provider' => 'JazzCash', 'shop_account_id' => $jazz->id,
+            'account_name' => $direction === 'cash_in' ? 'Bilal Ahmed' : null, 'account_number' => $direction === 'cash_in' ? '03201234567' : null,
+            'amount' => $amount, 'fee' => $fee, 'discount' => 0, 'net_amount' => $amount, 'total' => $amount + $fee,
+            'payment_status' => $paid >= $amount + $fee ? 'paid' : 'partial', 'amount_paid' => 0]);
+        \App\Actions\RecordModulePayment::handle($load, $paid, null, null, $owner->id);
+    }
+
+    \App\Actions\MoneyEntries::transfer($shop->id, $cash, 'account:'.$bank->id, 10000, now('Asia/Karachi')->toDateString(), $owner->id, 'Evening deposit');
+    \App\Actions\MoneyEntries::count($shop->id, $cash, 20000, now('Asia/Karachi')->subDay()->toDateString(), $owner->id, 'Till count');
+});
+
 echo 'products='.Product::count().' sales='.Sale::count().' stockins='.StockIn::count().' failures='.$failures."\n";

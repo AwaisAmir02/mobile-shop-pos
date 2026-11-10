@@ -190,7 +190,7 @@ class SalePaymentMethodTest extends TestCase
 
         Livewire::test('udhaar.show', ['customer' => $customer])
             ->call('openSettleDue', 'sale', $sale->id)
-            ->assertSet('paymentMethod', '')
+            ->assertSet('paymentMethod', 'cash')
             ->set('dueSettleAmount', '250')
             ->set('paymentMethod', (string) $account->id)
             ->call('submitDueSettlement')

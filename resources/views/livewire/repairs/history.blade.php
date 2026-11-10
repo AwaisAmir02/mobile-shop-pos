@@ -100,10 +100,15 @@ new #[Layout('layouts.app')] #[Title('Repair History')] class extends Component
         $repair = Repair::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($id);
         abort_if($repair->isCancelled(), 403);
 
+        $remaining = (float) $repair->total - (float) $repair->amount_paid;
+
         $repair->update([
             'payment_status' => PaymentStatus::Paid,
             'amount_paid' => $repair->total,
         ]);
+
+        // The rest arrived today; for a Wallet Load the way it came is known, otherwise it's not recorded.
+        \App\Actions\RecordCounterPayment::handle($repair, $remaining, null, null, Auth::id());
 
         $this->toastSuccess('Marked as paid.');
     }

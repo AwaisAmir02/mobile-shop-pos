@@ -32,7 +32,7 @@ const PAGES = {
     'ledger-tb': '/ledger/trial-balance', 'ledger-pl': '/ledger/profit-and-loss', 'ledger-bs': '/ledger/balance-sheet', 'ledger-cash': '/ledger/cash-book', 'ledger-health': '/ledger/health', 'ledger-owner': '/ledger/owner-money',
     'payroll-emp': '/payroll/employees', 'payroll-run': '/payroll/run', 'payroll-adv': '/payroll/advances', 'payroll-hist': '/payroll/history', 'payroll-ded': '/payroll/deduction-types',
     'sim-sale': '/sim-sales', 'sim-history': '/sim-sales/history', 'balance-load': '/balance-loads', 'balance-history': '/balance-loads/history',
-    'wallet-load': '/wallet-loads', 'wallet-history': '/wallet-loads/history', bills: '/bills', 'bills-history': '/bills/history',
+    'wallet-load': '/wallet-loads', 'wallet-history': '/wallet-loads/history', 'cash-balances': '/cash-balances', 'cash-flow': '/cash-balances?tab=flow&from=&to=', 'cash-entries': '/cash-balances?tab=entries', bills: '/bills', 'bills-history': '/bills/history',
     nadra: '/nadra-verifications', 'nadra-history': '/nadra-verifications/history', repairs: '/repairs', 'repairs-history': '/repairs/history',
     services: '/services', 'services-history': '/services/history',
     'wa-orders': '/whatsapp-orders', 'online-orders': '/online-orders', messages: '/customer-messages',
@@ -119,8 +119,12 @@ async function captureStates(page, out, results, width) {
 
 (async () => {
   const root = path.join(__dirname, 'out', label);
-  const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--no-sandbox'] });
+  // protocolTimeout bounds every browser call; the watchdog and the finally below
+  // make sure a failure ends the run (a connected Chrome otherwise keeps node alive).
+  const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', protocolTimeout: 60000, args: ['--no-sandbox'] });
   const results = {};
+  const watchdog = setTimeout(() => { console.log('WATCHDOG: capture ran over 45 minutes, stopping'); browser.process()?.kill('SIGKILL'); process.exit(2); }, 45 * 60 * 1000);
+  try {
 
   for (const [role, pages] of Object.entries(PAGES)) {
     const context = await browser.createBrowserContext();
@@ -153,10 +157,16 @@ async function captureStates(page, out, results, width) {
     }
     await context.close();
   }
-
-  fs.mkdirSync(root, { recursive: true });
-  fs.writeFileSync(path.join(root, 'metrics.json'), JSON.stringify(results, null, 1));
-  await browser.close();
+  } catch (e) {
+    console.log('STOPPED EARLY', e.stack);
+    process.exitCode = 1;
+  } finally {
+    clearTimeout(watchdog);
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, 'metrics.json'), JSON.stringify(results, null, 1));
+    await Promise.race([browser.close(), wait(5000)]).catch(() => {});
+    browser.process()?.kill('SIGKILL');
+  }
   const rows = Object.values(results).filter((r) => !r.state);
   console.log(`\n${rows.length} captures, ${rows.filter((r) => r.status >= 400 || r.status === 0).length} failed, ${rows.filter((r) => r.clipped?.length).length} with clipped tables. Saved to ${root}`);
 })();

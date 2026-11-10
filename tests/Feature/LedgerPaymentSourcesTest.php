@@ -72,20 +72,23 @@ class LedgerPaymentSourcesTest extends TestCase
         $this->assertSame(0, (int) LedgerLine::sum('amount_paise'));
     }
 
-    // ── Hidden unless the ledger is on ─────────────────────────────────
+    // ── Every shop picks it now (Cash & Balances, 2026-11-10) ─────────
 
-    public function test_shops_without_the_ledger_see_no_new_field_anywhere(): void
+    public function test_shops_without_the_ledger_see_the_field_too_starting_on_cash(): void
     {
         $this->shop(['name' => 'Plain', 'services_enabled' => true]);
 
-        foreach (['expenses.index', 'stock-ins.history', 'balance-loads.create', 'balance-loads.history', 'wallet-loads.create', 'bills.create', 'sim-sales.create', 'repairs.create', 'nadra-verifications.create', 'services.create'] as $screen) {
-            Livewire::test($screen)->assertDontSeeHtml('wire:model="paidFrom"');
+        foreach (['expenses.index', 'stock-ins.history', 'balance-loads.create', 'balance-loads.history', 'bills.create', 'sim-sales.create', 'repairs.create', 'nadra-verifications.create', 'services.create'] as $screen) {
+            Livewire::test($screen)->assertSeeHtml('wire:model="paidFrom"')->assertSet('paidFrom', 'cash');
         }
+
+        // A Wallet Load's money always goes the same way, so it never asks.
+        Livewire::test('wallet-loads.create')->assertDontSeeHtml('wire:model="paidFrom"');
     }
 
     public function test_ledger_shops_see_it_where_money_moves(): void
     {
-        foreach (['expenses.index', 'stock-ins.history', 'stock-ins.create', 'balance-loads.create', 'balance-loads.history', 'wallet-loads.create', 'wallet-loads.history', 'bills.create', 'bills.history', 'sim-sales.create', 'sim-sales.history', 'repairs.create', 'repairs.history', 'nadra-verifications.create', 'nadra-verifications.history', 'services.create', 'services.history'] as $screen) {
+        foreach (['expenses.index', 'stock-ins.history', 'stock-ins.create', 'balance-loads.create', 'balance-loads.history', 'bills.create', 'bills.history', 'sim-sales.create', 'sim-sales.history', 'repairs.create', 'repairs.history', 'nadra-verifications.create', 'nadra-verifications.history', 'services.create', 'services.history'] as $screen) {
             Livewire::test($screen)->assertSeeHtml('wire:model="paidFrom"');
         }
     }
@@ -196,14 +199,15 @@ class LedgerPaymentSourcesTest extends TestCase
         $this->assertHealthy();
     }
 
-    public function test_without_the_ledger_no_source_rows_are_written(): void
+    public function test_without_the_ledger_the_source_row_is_still_written(): void
     {
         $this->shop(['name' => 'Plain']);
         $load = BalanceLoad::create(['user_id' => auth()->id(), 'network' => 'Jazz', 'load_type' => 'balance', 'amount' => 100, 'total' => 100, 'payment_status' => 'unpaid', 'amount_paid' => 0]);
 
         Livewire::test('balance-loads.history')->call('openAddPayment', $load->id)->set('paymentAmount', '50')->set('paidFrom', 'cash')->call('submitPayment');
 
-        $this->assertSame(0, CounterServicePayment::count());
+        $this->assertSame(1, CounterServicePayment::count());
+        $this->assertSame('cash', CounterServicePayment::sole()->payment_method);
         $this->assertSame(50.0, (float) $load->fresh()->amount_paid);
     }
 

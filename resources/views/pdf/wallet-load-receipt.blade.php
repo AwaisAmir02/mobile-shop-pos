@@ -103,7 +103,7 @@
             </tr>
         @endif
         <tr>
-            <td class="label">{{ $isCashIn ? 'Amount Loaded' : 'Amount Given' }}</td>
+            <td class="label">{{ $isCashIn ? 'Amount Loaded' : 'Cash Handed Over' }}</td>
             <td class="value">Rs {{ number_format($load->net_amount, 2) }}</td>
         </tr>
         <tr>

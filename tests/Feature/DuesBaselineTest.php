@@ -77,7 +77,10 @@ class DuesBaselineTest extends TestCase
 
         BalanceLoad::create(['shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $bilal->id, 'network' => 'Jazz', 'load_type' => 'balance', 'amount' => 500, 'total' => 500, 'payment_status' => 'unpaid', 'amount_paid' => 0]);
         WalletLoad::create(['shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $bilal->id, 'direction' => 'cash_in', 'provider' => 'JazzCash', 'amount' => 700, 'total' => 700, 'payment_status' => 'partial', 'amount_paid' => 200]);
-        WalletLoad::create(['shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $bilal->id, 'direction' => 'cash_out', 'provider' => 'JazzCash', 'amount' => 5000, 'total' => 5000, 'payment_status' => 'unpaid', 'amount_paid' => 0]);
+        // An older Cash Out, saved before shortfalls counted as the customer's due: the
+        // money_entries migration marks such rows excluded_from_dues, so the golden numbers hold.
+        // A new Cash Out shortfall does count (MoneyFlowTest).
+        WalletLoad::create(['shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $bilal->id, 'direction' => 'cash_out', 'provider' => 'JazzCash', 'amount' => 5000, 'total' => 5000, 'payment_status' => 'unpaid', 'amount_paid' => 0, 'excluded_from_dues' => true]);
         NadraVerification::create(['shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $bilal->id, 'phone_number' => '03001112223', 'cnic_number' => '42101-1234567-1', 'amount' => 300, 'fee' => 50, 'discount' => 0, 'total' => 350, 'payment_status' => 'unpaid', 'amount_paid' => 0]);
         SimSale::create(['shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $bilal->id, 'network' => 'Jazz', 'sim_type' => 'prepaid', 'sim_form' => 'physical', 'sim_number' => '03001234567', 'amount' => 200, 'fee' => 0, 'discount' => 0, 'total' => 200, 'payment_status' => 'unpaid', 'amount_paid' => 0]);
 

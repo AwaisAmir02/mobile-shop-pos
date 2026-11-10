@@ -107,10 +107,15 @@ new #[Layout('layouts.app')] #[Title('Service History')] class extends Component
         $payment = ServicePayment::findOrFail($id);
         abort_if($payment->isCancelled(), 403);
 
+        $remaining = (float) $payment->amount - (float) $payment->amount_paid;
+
         $payment->update([
             'payment_status' => PaymentStatus::Paid,
             'amount_paid' => $payment->amount,
         ]);
+
+        // The rest arrived today; for a Wallet Load the way it came is known, otherwise it's not recorded.
+        \App\Actions\RecordCounterPayment::handle($payment, $remaining, null, null, Auth::id());
 
         $this->toastSuccess('Marked as paid.');
     }

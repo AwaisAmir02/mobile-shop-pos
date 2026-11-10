@@ -95,10 +95,15 @@ new #[Layout('layouts.app')] #[Title('Balance Load History')] class extends Comp
         $load = BalanceLoad::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($id);
         abort_if($load->isCancelled(), 403);
 
+        $remaining = (float) $load->total - (float) $load->amount_paid;
+
         $load->update([
             'payment_status' => PaymentStatus::Paid,
             'amount_paid' => $load->total,
         ]);
+
+        // The rest arrived today; for a Wallet Load the way it came is known, otherwise it's not recorded.
+        \App\Actions\RecordCounterPayment::handle($load, $remaining, null, null, Auth::id());
 
         $this->toastSuccess('Marked as paid.');
     }

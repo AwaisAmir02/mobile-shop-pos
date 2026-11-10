@@ -308,15 +308,16 @@ class LedgerGoodsTradeTest extends TestCase
         $batch = $this->stock();
         $this->drain();
 
+        // "Paid From" starts on Cash now (Cash & Balances, 2026-11-10).
         Livewire::test('stock-ins.history')->call('openAddPayment', $batch->id)->set('paymentAmount', '400')->call('submitPayment');
-        $this->assertBalances([Chart::INVENTORY => 1000, Chart::PAYABLE => -600, Chart::NOT_CLASSIFIED => -400]);
+        $this->assertBalances([Chart::INVENTORY => 1000, Chart::PAYABLE => -600, Chart::CASH => -400]);
 
         Livewire::test('stock-ins.history')->call('markAsPaid', $batch->id);
-        $this->assertBalances([Chart::INVENTORY => 1000, Chart::NOT_CLASSIFIED => -1000]);
+        $this->assertBalances([Chart::INVENTORY => 1000, Chart::CASH => -400, Chart::NOT_CLASSIFIED => -600]);
         $this->assertHealthy();
 
         $this->stock(50, 2, status: 'paid');
-        $this->assertBalances([Chart::INVENTORY => 1100, Chart::NOT_CLASSIFIED => -1100]);
+        $this->assertBalances([Chart::INVENTORY => 1100, Chart::CASH => -400, Chart::NOT_CLASSIFIED => -700]);
         $this->assertHealthy();
     }
 

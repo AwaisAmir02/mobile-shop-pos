@@ -121,9 +121,28 @@ class LedgerPayrollAndServicesTest extends TestCase
         $this->assertHealthy();
     }
 
-    public function test_wallet_cash_out_pays_cash_from_the_till_and_nobody_owes_anything(): void
+    public function test_wallet_cash_out_pays_cash_from_the_till_and_the_customer_owes_what_they_havent_sent(): void
     {
+        // Owner's rule (2026-11-10): the till hands over the full cash; until the customer sends
+        // the total to the shop's wallet, it's their due, as on Cash In.
         WalletLoad::create($this->module(['direction' => 'cash_out', 'provider' => 'JazzCash', 'amount' => 5000, 'fee' => 50, 'discount' => 0, 'net_amount' => 5000, 'total' => 5050]));
+
+        $this->assertBalances([Chart::RECEIVABLE => 5050, Chart::CASH => -5000, Chart::SERVICE_INCOME => -50]);
+        $this->assertHealthy();
+    }
+
+    public function test_wallet_cash_out_money_received_lands_in_the_float(): void
+    {
+        WalletLoad::create($this->module(['direction' => 'cash_out', 'provider' => 'JazzCash', 'amount' => 5000, 'fee' => 50, 'discount' => 0, 'net_amount' => 5000, 'total' => 5050, 'payment_status' => 'paid', 'amount_paid' => 5050]));
+
+        $this->assertBalances([Chart::CLEARING => 5050, Chart::CASH => -5000, Chart::SERVICE_INCOME => -50]);
+        $this->assertArrayNotHasKey(Chart::RECEIVABLE, array_filter($this->balances()));
+        $this->assertHealthy();
+    }
+
+    public function test_an_older_wallet_cash_out_kept_out_of_dues_keeps_its_old_posting(): void
+    {
+        WalletLoad::create($this->module(['direction' => 'cash_out', 'provider' => 'JazzCash', 'amount' => 5000, 'fee' => 50, 'discount' => 0, 'net_amount' => 5000, 'total' => 5050, 'excluded_from_dues' => true]));
 
         $this->assertBalances([Chart::CLEARING => 5050, Chart::CASH => -5000, Chart::SERVICE_INCOME => -50]);
         $this->assertArrayNotHasKey(Chart::RECEIVABLE, $this->balances());

@@ -3,20 +3,20 @@
 namespace App\Livewire\Concerns;
 
 use App\Enums\SalePaymentMethod;
-use App\Ledger\LedgerSources;
-use App\Models\CounterServicePayment;
+use App\Actions\RecordCounterPayment;
 use App\Models\ShopAccount;
-use App\Support\BatchExpiry;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * The optional "paid from" choice, shown only to shops with the ledger on. Blank
- * means not recorded, which is fine: that money stays in Not Classified.
+ * The "Paid From" / "Received Into" choice: cash, one of the shop's accounts,
+ * or not recorded. Every shop sees it (Cash & Balances needs to know where
+ * money went); it starts on Cash, the usual case. The ledger, for shops that
+ * have it on, reads the same choice.
  */
 trait ChoosesPaymentSource
 {
-    public string $paidFrom = '';
+    public string $paidFrom = 'cash';
 
     /** @return array{0: ?string, 1: ?int} payment method, shop account */
     protected function paidFromParts(): array
@@ -35,21 +35,8 @@ trait ChoosesPaymentSource
     protected function notePaymentSource(Model $record, float $amount): void
     {
         [$method, $accountId] = $this->paidFromParts();
-        $this->paidFrom = '';
+        $this->paidFrom = 'cash';
 
-        if ($method === null || round($amount, 2) <= 0 || ! Auth::user()->shop?->ledger_enabled) {
-            return;
-        }
-
-        CounterServicePayment::create([
-            'shop_id' => $record->shop_id,
-            'source_type' => LedgerSources::documentFor($record)[0],
-            'source_id' => $record->id,
-            'user_id' => Auth::id(),
-            'amount' => round($amount, 2),
-            'paid_on' => BatchExpiry::today(),
-            'payment_method' => $method,
-            'shop_account_id' => $accountId,
-        ]);
+        RecordCounterPayment::handle($record, $amount, $method, $accountId, Auth::id());
     }
 }

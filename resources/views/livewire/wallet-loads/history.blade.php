@@ -126,10 +126,15 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
         $load = WalletLoad::withoutGlobalScope(ExcludesCancelledScope::class)->findOrFail($id);
         abort_if($load->isCancelled(), 403);
 
+        $remaining = (float) $load->total - (float) $load->amount_paid;
+
         $load->update([
             'payment_status' => PaymentStatus::Paid,
             'amount_paid' => $load->total,
         ]);
+
+        // The rest arrived today; for a Wallet Load the way it came is known, otherwise it's not recorded.
+        \App\Actions\RecordCounterPayment::handle($load, $remaining, null, null, Auth::id());
 
         $this->toastSuccess('Marked as paid.');
     }
@@ -271,6 +276,9 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
         <x-ui.page-header>
             Wallet Load History
             <x-slot:actions>
+                @if (auth()->user()->hasAccessTo('cash-balances'))
+                    <x-ui.button href="{{ route('cash-balances.index', ['tab' => 'flow']) }}" wire:navigate size="sm" variant="secondary" data-cash-balances-link>Cash &amp; Balances</x-ui.button>
+                @endif
                 <x-ui.button href="{{ route('wallet-loads.index') }}" wire:navigate size="sm">New Wallet Load</x-ui.button>
             </x-slot:actions>
         </x-ui.page-header>
@@ -332,9 +340,9 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
     </x-ui.filter-bar>
 
     <x-ui.stat-row>
-        <x-ui.stat label="{{ $tab === 'cash_in' ? 'Total Loaded' : 'Total Given' }}" value="Rs {{ number_format($totalLoaded, 2) }}" />
+        <x-ui.stat label="{{ $tab === 'cash_in' ? 'Total Loaded' : 'Cash Handed Over' }}" value="Rs {{ number_format($totalLoaded, 2) }}" />
         <x-ui.stat label="Net Service Fees" value="Rs {{ number_format($totalFees, 2) }}" />
-        <x-ui.stat label="{{ $tab === 'cash_in' ? 'Total Owed by Customers' : 'Total Owed to Customers' }}" value="Rs {{ number_format($totalOwed, 2) }}" />
+        <x-ui.stat label="Total Owed by Customers" value="Rs {{ number_format($totalOwed, 2) }}" sub="Shown on the Udhaar screen" />
     </x-ui.stat-row>
 
     @if ($providerTotals->isNotEmpty())
@@ -394,6 +402,9 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
                         @else
                             <x-ui.badge variant="danger">Unpaid</x-ui.badge>
                         @endif
+                        @if (! $load->isCancelled() && $load->payment_status->value !== 'paid' && ! $load->countsAsDue())
+                            <span class="ui-sub" data-not-in-dues title="Saved before Cash Out shortfalls counted as the customer's due">Not in dues (older entry)</span>
+                        @endif
                         @if (! $load->isCancelled() && $load->amountOwed() > 0)
                             <span class="ui-sub font-semibold text-ink">Rs {{ number_format($load->amountOwed(), 2) }} owed</span>
                         @endif
@@ -426,10 +437,14 @@ new #[Layout('layouts.app')] #[Title('Wallet Load History')] class extends Compo
             <h2 class="text-lg font-semibold text-ink">Add Payment</h2>
 
             <div class="mt-5 space-y-5">
-                <x-ui.field label="Amount Paid Now" name="paymentAmount" for="paymentAmount">
+                <x-ui.field
+                    :label="$tab === 'cash_in' ? 'Cash Received Now' : 'Received in Your Account Now'"
+                    name="paymentAmount"
+                    for="paymentAmount"
+                    :help="$tab === 'cash_in' ? 'Cash the customer has just handed you' : 'Money the customer has just sent to the load\'s account'"
+                >
                     <x-ui.input wire:model="paymentAmount" id="paymentAmount" type="number" min="0.01" step="0.01" autofocus />
                 </x-ui.field>
-                <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
             </div>
 
             <div class="mt-6 flex justify-end gap-3">

@@ -165,7 +165,7 @@ class UdhaarMainListCrossModuleDuesTest extends TestCase
             ->assertViewHas('rows', fn ($rows) => ! $rows->pluck('customer.id')->contains($customer->id));
     }
 
-    public function test_a_customer_whose_only_outstanding_item_is_a_wallet_load_cash_out_shortfall_does_not_appear(): void
+    public function test_a_customer_whose_only_outstanding_item_is_a_wallet_load_cash_out_shortfall_appears(): void
     {
         [$shop, $owner, $customer] = $this->shopAndCustomer();
         $this->actingAs($owner);
@@ -176,6 +176,11 @@ class UdhaarMainListCrossModuleDuesTest extends TestCase
             'payment_status' => 'unpaid', 'amount_paid' => 0,
         ]);
 
+        Livewire::test('udhaar.index')
+            ->assertViewHas('rows', fn ($rows) => $rows->firstWhere('customer.id', $customer->id)['balance'] === 700.0);
+
+        // Marked as an older entry, it leaves the list again.
+        WalletLoad::query()->update(['excluded_from_dues' => true]);
         Livewire::test('udhaar.index')
             ->assertViewHas('rows', fn ($rows) => ! $rows->pluck('customer.id')->contains($customer->id));
     }

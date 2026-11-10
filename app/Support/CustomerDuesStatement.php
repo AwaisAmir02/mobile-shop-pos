@@ -48,7 +48,7 @@ class CustomerDuesStatement
                 }
             });
 
-        WalletLoad::where('customer_id', $customerId)->where('direction', 'cash_in')->get()
+        WalletLoad::where('customer_id', $customerId)->countsAsDue()->get()
             ->each(function (WalletLoad $load) use ($rows) {
                 if ($load->amountOwed() > 0) {
                     $rows->push($this->row('wallet_load', $load->id, $load->receiptNumber(), $load->provider.' wallet load', $load->created_at, $load->amountOwed()));

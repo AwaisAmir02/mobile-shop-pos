@@ -122,7 +122,7 @@ class UdhaarCombinedBalanceTest extends TestCase
             ->assertViewHas('rows', fn ($rows) => $rows->firstWhere('customer.id', $customer->id)['balance'] === 750.0);
     }
 
-    public function test_wallet_load_cash_out_never_counts_toward_the_combined_headline_balance(): void
+    public function test_wallet_load_cash_out_shortfall_counts_toward_the_combined_headline_balance(): void
     {
         [$shop, $owner, $customer] = $this->shopAndCustomer();
         $this->actingAs($owner);
@@ -131,17 +131,23 @@ class UdhaarCombinedBalanceTest extends TestCase
             'user_id' => $owner->id, 'type' => 'given', 'amount' => 1000, 'transaction_date' => now()->toDateString(),
         ]);
 
-        // The shop owes the customer here, not the other way around — must
-        // never be added to what the customer owes.
+        // Owner's rule (2026-11-10): the shop always hands over the full cash, so whatever
+        // the customer hasn't sent yet is their due, the same as on Cash In.
         WalletLoad::create([
             'shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $customer->id,
             'direction' => 'cash_out', 'provider' => 'JazzCash', 'amount' => 5000, 'total' => 5000,
             'payment_status' => 'unpaid', 'amount_paid' => 0,
         ]);
+        // An older Cash Out kept out of dues by the migration stays out.
+        WalletLoad::create([
+            'shop_id' => $shop->id, 'user_id' => $owner->id, 'customer_id' => $customer->id,
+            'direction' => 'cash_out', 'provider' => 'JazzCash', 'amount' => 700, 'total' => 700,
+            'payment_status' => 'unpaid', 'amount_paid' => 0, 'excluded_from_dues' => true,
+        ]);
 
-        Livewire::test('udhaar.show', ['customer' => $customer])->assertViewHas('balance', 1000.0);
+        Livewire::test('udhaar.show', ['customer' => $customer])->assertViewHas('balance', 6000.0);
         Livewire::test('udhaar.index')
-            ->assertViewHas('rows', fn ($rows) => $rows->firstWhere('customer.id', $customer->id)['balance'] === 1000.0);
+            ->assertViewHas('rows', fn ($rows) => $rows->firstWhere('customer.id', $customer->id)['balance'] === 6000.0);
     }
 
     public function test_the_combined_balance_is_isolated_between_shops(): void
