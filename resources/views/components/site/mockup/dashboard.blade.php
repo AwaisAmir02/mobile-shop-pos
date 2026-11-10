@@ -5,7 +5,7 @@
 
 <div class="flex bg-slate-50 text-left" aria-hidden="true">
     <aside class="hidden w-40 shrink-0 border-r border-slate-200 bg-white p-3 sm:block">
-        <img src="{{ asset('branding/logo-site@1x.webp') }}" alt="" class="mb-4 h-5 w-auto" width="144" height="38" loading="lazy">
+        <img src="{{ \Illuminate\Support\Facades\Vite::asset('resources/images/site/logo@1x.webp') }}" alt="" class="mb-4 h-5 w-auto" width="144" height="38" loading="lazy">
         <ul class="space-y-0.5">
             @foreach ($nav as [$icon, $label, $active])
                 <li @class(['flex items-center gap-2 rounded-md px-2 py-1.5 text-[10px] font-medium', 'bg-brand-50 text-brand-700' => $active, 'text-slate-500' => ! $active])>

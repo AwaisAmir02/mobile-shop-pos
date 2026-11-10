@@ -24,6 +24,15 @@ Route::middleware('throttle:site')->group(function () {
     Route::view('pricing', 'site.pricing')->name('site.pricing');
     Route::view('about', 'site.about')->name('site.about');
     Route::view('contact', 'site.contact')->name('site.contact');
+    // A route, not a file in public/: the live web root is a separate copy that a deploy doesn't refresh.
+    Route::get('robots.txt', fn () => response(implode("
+", [
+        'User-agent: *',
+        ...array_map(fn ($path) => 'Disallow: '.$path, ['/admin', '/api/', '/webhooks/', '/auth/', '/signup/complete', '/billing', '/support']),
+        '',
+        'Sitemap: '.route('site.sitemap'),
+    ])."
+", 200, ['Content-Type' => 'text/plain; charset=UTF-8']))->name('site.robots');
     Route::get('sitemap.xml', fn () => response()->view('site.sitemap')->header('Content-Type', 'application/xml'))->name('site.sitemap');
 });
 

@@ -1,3 +1,6 @@
+// Site images go through the build so they ship inside public/build with everything else.
+import.meta.glob('../images/site/*');
+
 const revealOnScroll = () => {
     const items = document.querySelectorAll('[data-reveal]');
 

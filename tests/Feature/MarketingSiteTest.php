@@ -210,12 +210,12 @@ class MarketingSiteTest extends TestCase
                 $this->assertContains('BreadcrumbList', $types, $path);
             }
 
-            $this->assertStringContainsString('<meta property="og:image" content="'.asset('branding/og-image.png').'">', $html);
+            $this->assertStringContainsString('<meta property="og:image" content="'.\Illuminate\Support\Facades\Vite::asset('resources/images/site/og-image.png').'">', $html);
             $this->assertStringContainsString('<meta name="twitter:card" content="summary_large_image">', $html);
             $this->assertStringNotContainsString('name="robots"', $html, $path);
         }
 
-        $this->assertSame([1200, 630], array_slice(getimagesize(public_path('branding/og-image.png')), 0, 2));
+        $this->assertSame([1200, 630], array_slice(getimagesize(resource_path('images/site/og-image.png')), 0, 2));
     }
 
     public function test_home_and_pricing_faq_markup_matches_the_visible_questions_and_images_have_alt_text(): void
@@ -242,9 +242,22 @@ class MarketingSiteTest extends TestCase
     public function test_signup_completion_login_and_app_paths_stay_out_of_search(): void
     {
         $this->get('/login')->assertSee('<meta name="robots" content="noindex, follow">', false);
-        $robots = file_get_contents(public_path('robots.txt'));
+        $robots = $this->get('/robots.txt')->assertOk()->assertHeader('Content-Type', 'text/plain; charset=UTF-8')->getContent();
         $this->assertStringContainsString('Disallow: /admin', $robots);
-        $this->assertStringContainsString('Sitemap: https://hisabokitab.com/sitemap.xml', $robots);
+        $this->assertStringContainsString('Sitemap: '.route('site.sitemap'), $robots);
+    }
+
+    public function test_every_image_the_site_uses_ships_inside_the_build(): void
+    {
+        // The live web root only gets public/build on deploy, so a site image anywhere else in public/ goes missing.
+        foreach (['/', '/features', '/features/pos', '/pricing'] as $path) {
+            preg_match_all('#(?:src|srcset|content)="([^"]+\.(?:png|webp|jpe?g|svg))#', $this->get($path)->getContent(), $urls);
+            foreach (array_unique($urls[1]) as $url) {
+                $this->assertStringContainsString('/build/assets/', $url, "$path uses $url");
+            }
+        }
+        $this->assertDirectoryDoesNotExist(public_path('branding/site'));
+        $this->assertFileDoesNotExist(public_path('robots.txt'));
     }
 
     public function test_sitemap_lists_every_public_page(): void

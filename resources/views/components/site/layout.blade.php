@@ -16,7 +16,9 @@
     $chevron = '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="h-4 w-4 transition-transform duration-200 group-data-[open]:rotate-180"><path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>';
     $contact = config('site.contact');
     $canonical = url()->current();
-    $ogImage = asset('branding/og-image.png');
+    $ogImage = \Illuminate\Support\Facades\Vite::asset('resources/images/site/og-image.png');
+    $logo1x = \Illuminate\Support\Facades\Vite::asset('resources/images/site/logo@1x.webp');
+    $logo2x = \Illuminate\Support\Facades\Vite::asset('resources/images/site/logo@2x.webp');
     $organizationId = url('/').'#organization';
 
     $graph = [
@@ -114,15 +116,15 @@
         <a href="#main" class="sr-only z-[60] rounded-lg bg-white px-4 py-2 text-sm font-semibold text-brand-700 shadow focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to content</a>
 
         <header data-site-header class="sticky top-0 z-50 border-b border-transparent bg-white/85 backdrop-blur-md transition-[border-color,box-shadow] duration-300">
-            <nav class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:h-[4.5rem] lg:px-8" aria-label="Main">
+            <nav class="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:h-[4.5rem] lg:px-8" aria-label="Main">
                 <a href="{{ route('home') }}" class="shrink-0" aria-label="{{ $brand }} home">
-                    <img src="{{ asset('branding/logo-site@1x.webp') }}" srcset="{{ asset('branding/logo-site@1x.webp') }} 1x, {{ asset('branding/logo-site@2x.webp') }} 2x" alt="{{ $brand }}" class="h-8 w-auto sm:h-9" width="144" height="38" fetchpriority="high">
+                    <img src="{{ $logo1x }}" srcset="{{ $logo1x }} 1x, {{ $logo2x }} 2x" alt="{{ $brand }}" class="h-8 w-auto sm:h-9" width="144" height="38" fetchpriority="high">
                 </a>
 
                 <div class="hidden items-center gap-1 md:flex">
                     @foreach ($links as $link)
                         @if ($link['route'] === 'site.features')
-                            <div class="group relative" data-dropdown>
+                            <div class="group" data-dropdown>
                                 <div @class([
                                     'flex items-center rounded-full transition-colors',
                                     'bg-brand-50 text-brand-700' => $featuresActive,
@@ -131,20 +133,20 @@
                                     <a href="{{ route('site.features') }}" class="py-2 pl-4 pr-1 text-sm font-medium" @if (request()->routeIs('site.features')) aria-current="page" @endif>{{ $link['label'] }}</a>
                                     <button type="button" data-dropdown-toggle class="rounded-r-full py-2 pl-1 pr-3" aria-expanded="false" aria-controls="site-features-menu" aria-label="Show all features">{!! $chevron !!}</button>
                                 </div>
-                                <div id="site-features-menu" class="invisible absolute left-1/2 top-full z-50 w-[40rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 translate-y-1 pt-3 opacity-0 transition duration-150 group-data-[open]:visible group-data-[open]:translate-y-0 group-data-[open]:opacity-100">
-                                    <div class="overflow-hidden rounded-2xl bg-white shadow-2xl shadow-brand-950/15 ring-1 ring-slate-900/5">
-                                        <div class="grid grid-cols-2 gap-1 p-3">
+                                <div id="site-features-menu" class="invisible absolute inset-x-4 top-full z-50 translate-y-1 pt-1 opacity-0 sm:inset-x-6 lg:inset-x-8 transition duration-150 group-data-[open]:visible group-data-[open]:translate-y-0 group-data-[open]:opacity-100">
+                                    <div class="flex max-h-[calc(100vh-5.5rem)] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-brand-950/15 ring-1 ring-slate-900/5">
+                                        <div class="grid min-h-0 grid-cols-2 gap-1 overflow-y-auto overscroll-contain p-3 lg:grid-cols-3 xl:grid-cols-4">
                                             @foreach ($siteFeatures as $slug => $feature)
-                                                <a href="{{ route('site.feature', $slug) }}" @class(['flex gap-3 rounded-xl p-3 transition hover:bg-slate-50', 'bg-brand-50' => $currentFeature === $slug, 'col-span-2' => $loop->last && $loop->odd]) @if ($currentFeature === $slug) aria-current="page" @endif>
+                                                <a href="{{ route('site.feature', $slug) }}" @class(['flex gap-3 rounded-xl p-3 transition hover:bg-slate-50', 'bg-brand-50' => $currentFeature === $slug]) @if ($currentFeature === $slug) aria-current="page" @endif>
                                                     <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><x-site.icon :name="$feature['icon']" class="h-5 w-5" /></span>
                                                     <span class="min-w-0">
                                                         <span class="block text-sm font-semibold text-slate-900">{{ $feature['name'] }}@if (! empty($feature['badge']))<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $feature['badge'] }}</span>@endif</span>
-                                                        <span class="mt-0.5 line-clamp-2 block text-xs leading-5 text-slate-500">{{ $feature['summary'] }}</span>
+                                                        <span class="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-500">{{ $feature['summary'] }}</span>
                                                     </span>
                                                 </a>
                                             @endforeach
                                         </div>
-                                        <div class="border-t border-slate-100 bg-slate-50 px-6 py-3">
+                                        <div class="shrink-0 border-t border-slate-100 bg-slate-50 px-6 py-3">
                                             <a href="{{ route('site.features') }}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800">All features <x-site.icon name="arrow-right" class="h-4 w-4" /></a>
                                         </div>
                                     </div>
@@ -214,7 +216,7 @@
         <footer class="border-t border-slate-200 bg-slate-50">
             <div class="mx-auto grid grid-cols-1 max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-5 lg:px-8">
                 <div class="lg:col-span-2">
-                    <img src="{{ asset('branding/logo-site@1x.webp') }}" srcset="{{ asset('branding/logo-site@1x.webp') }} 1x, {{ asset('branding/logo-site@2x.webp') }} 2x" alt="{{ $brand }}" class="h-9 w-auto" width="144" height="38" loading="lazy">
+                    <img src="{{ $logo1x }}" srcset="{{ $logo1x }} 1x, {{ $logo2x }} 2x" alt="{{ $brand }}" class="h-9 w-auto" width="144" height="38" loading="lazy">
                     <p class="mt-4 max-w-sm text-sm leading-6 text-slate-600">POS, inventory and accounts software for Pakistani shops, online sellers and growing businesses — from kiryana stores, pharmacies and mobile shops to wholesalers and companies with several branches. {{ config('branding.slogan') }}</p>
                 </div>
                 <div>
