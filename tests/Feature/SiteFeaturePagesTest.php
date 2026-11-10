@@ -13,7 +13,7 @@ class SiteFeaturePagesTest extends TestCase
     public function test_the_feature_pages_exist_in_the_agreed_order_and_unknown_slugs_404(): void
     {
         $this->assertSame(
-            ['pos', 'stock', 'purchase-orders', 'udhaar', 'cash-balances', 'reports', 'payroll', 'multi-branch', 'whatsapp-ordering', 'social-posting', 'meta-ads', 'mobile-shop-services'],
+            ['pos', 'stock', 'purchase-orders', 'udhaar', 'cash-balances', 'reports', 'double-entry-ledger', 'payroll', 'multi-branch', 'online-store', 'whatsapp-ordering', 'social-posting', 'meta-ads', 'mobile-shop-services'],
             SiteFeatures::slugs(),
         );
 

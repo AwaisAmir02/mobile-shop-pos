@@ -291,9 +291,13 @@
             @endforeach
         </div>
 
-        <div class="mt-10 flex flex-col items-start gap-4 rounded-2xl border border-dashed border-slate-300 p-6 sm:flex-row sm:items-center sm:justify-between" data-reveal>
+        <div class="mt-10">
+            <x-site.roadmap />
+        </div>
+
+        <div class="mt-6 flex flex-col items-start gap-4 rounded-2xl border border-dashed border-slate-300 p-6 sm:flex-row sm:items-center sm:justify-between" data-reveal>
             <div>
-                <p class="font-semibold text-slate-900">On the roadmap</p>
+                <p class="font-semibold text-slate-900">More ad channels</p>
                 <p class="mt-1 text-sm text-slate-600">More ad channels are on the way, managed from the same dashboard.</p>
             </div>
             <div class="flex flex-wrap gap-2">

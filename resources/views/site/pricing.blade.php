@@ -125,6 +125,10 @@
         </div>
     </section>
 
+    <section class="mx-auto max-w-5xl px-4 pb-24 sm:px-6 lg:px-8">
+        <x-site.roadmap />
+    </section>
+
     <section class="bg-slate-50">
         <div class="mx-auto max-w-3xl px-4 py-24 sm:px-6">
             <x-site.section-heading eyebrow="Questions" title="Frequently asked" />

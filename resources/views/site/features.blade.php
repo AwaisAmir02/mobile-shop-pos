@@ -9,7 +9,7 @@
                 @foreach (\App\Support\SiteFeatures::all() as $slug => $feature)
                     <a id="{{ $feature['anchor'] }}" href="{{ route('site.feature', $slug) }}" class="group flex scroll-mt-24 flex-col rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-950/5" data-reveal style="--reveal-delay: {{ ($loop->index % 3) * 70 }}ms">
                         <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><x-site.icon :name="$feature['icon']" class="h-5 w-5" /></span>
-                        <h3 class="mt-4 font-semibold text-slate-900 group-hover:text-brand-700">{{ $feature['name'] }}</h3>
+                        <h3 class="mt-4 font-semibold text-slate-900 group-hover:text-brand-700">{{ $feature['name'] }}@if (! empty($feature['badge']))<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $feature['badge'] }}</span>@endif</h3>
                         <p class="mt-2 flex-1 text-sm leading-6 text-slate-600">{{ $feature['summary'] }}</p>
                         <span class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">Learn more <x-site.icon name="arrow-right" class="h-4 w-4 transition group-hover:translate-x-0.5" /></span>
                     </a>
@@ -39,6 +39,10 @@
             </div>
         </div>
     </section>
+
+    <div class="mx-auto max-w-7xl px-4 pt-24 sm:px-6 lg:px-8">
+        <x-site.roadmap />
+    </div>
 
     <div class="pt-24">
         <x-site.cta />

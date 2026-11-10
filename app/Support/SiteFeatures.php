@@ -8,9 +8,10 @@ namespace App\Support;
  * /features/{slug} routes.
  *
  * Copy here must only describe what shops can use today. Not built, so never
- * listed: per-branch stock or transfers, CRM, ERP or HR modules. Built but
- * held back from the site until the owner says otherwise: the double-entry
- * ledger and the online store connector.
+ * listed as a feature: per-branch stock or transfers, CRM, ERP or HR modules
+ * (those appear only in ROADMAP, marked coming soon). A page with a 'notice'
+ * is built but not on for everyone: the ledger is off until switched on per
+ * shop, and the online store connection hasn't served a live store yet.
  */
 class SiteFeatures
 {
@@ -18,7 +19,14 @@ class SiteFeatures
      * Pages with copy written after the original single Features page, so
      * SiteFeaturePagesTest doesn't hold them to that page's text.
      */
-    public const NEW_COPY = ['pos', 'stock', 'udhaar', 'reports', 'multi-branch', 'purchase-orders', 'payroll', 'cash-balances', 'mobile-shop-services'];
+    public const NEW_COPY = ['pos', 'stock', 'udhaar', 'reports', 'multi-branch', 'purchase-orders', 'payroll', 'cash-balances', 'mobile-shop-services', 'double-entry-ledger', 'online-store'];
+
+    /** Planned modules. Not built: shown only with a Coming soon label, never as a feature. */
+    public const ROADMAP = [
+        ['CRM', 'Customer relationship management: follow-ups, leads and customer notes in one place.'],
+        ['ERP', 'Wider business planning across purchasing, stock, production and finance.'],
+        ['HR management', 'Staff records and attendance beyond today’s payroll.'],
+    ];
 
     /**
      * @return array<string, array{
@@ -27,6 +35,7 @@ class SiteFeatures
      *     items: array<int, array{0: string, 1: string, 2: string}>,
      *     mockup: ?array{component: string, frame: string, url?: string, label: string},
      *     spotlights?: array<int, array{0: string, 1: string}>,
+     *     badge?: string, notice?: string,
      *     related: array<int, string>
      * }>
      */
@@ -176,6 +185,34 @@ class SiteFeatures
                 ],
                 'related' => ['multi-branch', 'cash-balances', 'stock'],
             ],
+            'double-entry-ledger' => [
+                'name' => 'Double-Entry Ledger',
+                'seo_title' => 'Double-Entry Accounting Ledger for Small Businesses',
+                'summary' => 'A double-entry journal built from the records you already keep: trial balance, profit & loss, balance sheet and cash book. Off until switched on for your business.',
+                'badge' => 'On request',
+                'notice' => 'The ledger is off by default and isn’t switched on for any business automatically. We turn it on for yours when you ask, and you complete a short setup with your opening balances. Your everyday screens work the same with it on or off.',
+                'icon' => 'calculator',
+                'anchor' => 'ledger',
+                'eyebrow' => 'Accounting',
+                'title' => 'Proper books, kept from what you already record',
+                'lead' => 'Every sale, purchase, payment and expense you enter becomes a balanced double-entry journal entry — so you get a trial balance, profit & loss and balance sheet without keying anything in twice.',
+                'description' => 'Double-entry accounting from your daily records: automatic journal entries, trial balance, profit & loss, balance sheet and cash book. Off by default, switched on per business on request.',
+                'items' => [
+                    ['layers', 'Posts itself', 'Sales, stock-ins, payments, udhaar, expenses, counter services and payslips each become a balanced journal entry automatically.'],
+                    ['calculator', 'Trial balance', 'Every account and its balance, with debits always equal to credits.'],
+                    ['chart', 'Profit & loss', 'Income and expenses from the journal, for any period you pick.'],
+                    ['receipt', 'Balance sheet', 'What the business owns and owes on any date.'],
+                    ['wallet', 'Cash book', 'Cash and bank movements, day by day.'],
+                    ['store', 'Branch profit', 'Profit for each branch from the same journal.'],
+                    ['users', 'Owner & held money', 'Money the owner put in or took out, and salary held back on payslips.'],
+                    ['shield', 'Ledger health', 'Checks the books against your stock, customer dues and supplier balances, and flags any difference.'],
+                ],
+                'mockup' => null,
+                'spotlights' => [
+                    ['Starts from the day you set it up', 'The ledger opens with the balances you enter during setup and posts from then on. It doesn’t rewrite your past records, and switching it off freezes it read-only.'],
+                ],
+                'related' => ['reports', 'cash-balances', 'multi-branch'],
+            ],
             'payroll' => [
                 'name' => 'Payroll',
                 'seo_title' => 'Payroll & Salary Software for Small Businesses',
@@ -222,6 +259,34 @@ class SiteFeatures
                     ['From one counter to many locations', 'A second shop across town, a warehouse behind your online store, or a company with offices in several cities — every location records its own work, while the catalog, customers and stock stay in one place.'],
                 ],
                 'related' => ['reports', 'payroll', 'purchase-orders'],
+            ],
+            'online-store' => [
+                'name' => 'Online Store Connection',
+                'seo_title' => 'Connect Your Online Store: Live Stock & Orders API',
+                'summary' => 'Connect your own website: publish products and live stock from HisabOKitab, and take its orders into the same inbox. New — set up with your developer.',
+                'badge' => 'New',
+                'notice' => 'New: the connection is built and tested, but no store is using it live yet. It needs your store’s developer to connect to our API, so talk to us and we’ll set up the first connection with you.',
+                'icon' => 'store',
+                'anchor' => 'online-store',
+                'eyebrow' => 'Online store',
+                'title' => 'Your website and your counter, selling from one stock',
+                'lead' => 'Your own online store reads products and live stock from HisabOKitab and sends its orders back in. Staff accept each order, and an accepted order becomes a real sale — the counter and the website never sell stock twice by mistake.',
+                'description' => 'Connect your own online store to HisabOKitab: publish products and live stock, receive orders for staff to accept, and send order statuses back, over a secure REST API and signed webhooks.',
+                'items' => [
+                    ['box', 'Publish chosen products', 'Pick which products your store shows, with their images. Sending your counter prices is optional.'],
+                    ['chart', 'Live stock, one source', 'HisabOKitab is the only place stock changes. Your store gets an update when it does, plus a full refresh every night.'],
+                    ['clock', 'Pending orders held back', 'Stock in orders waiting for a decision is taken off what the store shows, with an optional safety buffer.'],
+                    ['check', 'Accept or reject', 'Each online order lands in HisabOKitab. Accepted orders become sales, with stock and cost from the right batch.'],
+                    ['bell', 'Status back to the store', 'Accepted, rejected, fulfilment updates and cancellations are sent back as signed events.'],
+                    ['shield', 'Locked to your business', 'Each connection has its own scoped API token and signing secret, and can reach only your business’s data.'],
+                    ['layers', 'Pause any time', 'Pausing stops stock updates but still lets customer cancellations through; resuming sends a full stock refresh.'],
+                    ['receipt', 'Documented API', 'A versioned REST API with signed webhooks, documented for your store’s developer.'],
+                ],
+                'mockup' => null,
+                'spotlights' => [
+                    ['For stores with a developer', 'This is an API connection, not a one-click plugin: your website needs a developer to connect it. Ready-made plugins for specific store platforms aren’t available.'],
+                ],
+                'related' => ['stock', 'pos', 'whatsapp-ordering'],
             ],
             'whatsapp-ordering' => [
                 'name' => 'WhatsApp Ordering',

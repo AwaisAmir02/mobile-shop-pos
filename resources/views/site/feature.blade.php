@@ -5,6 +5,12 @@
 
 <x-site.layout :title="$feature['seo_title']" :description="$feature['description']" :breadcrumbs="[['Home', route('home')], ['Features', route('site.features')], [$feature['name'], route('site.feature', $slug)]]">
     <x-site.page-hero :eyebrow="$feature['eyebrow']" :title="$feature['title']" :lead="$feature['lead']">
+        @if (! empty($feature['notice']))
+            <div class="mx-auto mt-8 flex max-w-2xl items-start gap-3 rounded-2xl border border-accent-200 bg-accent-50 p-4 text-left" role="note" data-reveal style="--reveal-delay: 200ms">
+                <span class="mt-0.5 shrink-0 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">{{ $feature['badge'] ?? 'Note' }}</span>
+                <p class="text-sm leading-6 text-slate-700">{{ $feature['notice'] }}</p>
+            </div>
+        @endif
         <p class="mt-8" data-reveal style="--reveal-delay: 240ms">
             <a href="{{ route('site.features') }}" class="text-sm font-semibold text-brand-700 hover:text-brand-800">&larr; All {{ config('branding.name') }} features</a>
         </p>

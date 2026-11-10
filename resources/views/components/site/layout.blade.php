@@ -138,7 +138,7 @@
                                                 <a href="{{ route('site.feature', $slug) }}" @class(['flex gap-3 rounded-xl p-3 transition hover:bg-slate-50', 'bg-brand-50' => $currentFeature === $slug, 'col-span-2' => $loop->last && $loop->odd]) @if ($currentFeature === $slug) aria-current="page" @endif>
                                                     <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><x-site.icon :name="$feature['icon']" class="h-5 w-5" /></span>
                                                     <span class="min-w-0">
-                                                        <span class="block text-sm font-semibold text-slate-900">{{ $feature['name'] }}</span>
+                                                        <span class="block text-sm font-semibold text-slate-900">{{ $feature['name'] }}@if (! empty($feature['badge']))<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $feature['badge'] }}</span>@endif</span>
                                                         <span class="mt-0.5 line-clamp-2 block text-xs leading-5 text-slate-500">{{ $feature['summary'] }}</span>
                                                     </span>
                                                 </a>
@@ -187,7 +187,7 @@
                                 @foreach ($siteFeatures as $slug => $feature)
                                     <a href="{{ route('site.feature', $slug) }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
                                         <x-site.icon :name="$feature['icon']" class="h-5 w-5 text-brand-600" />
-                                        {{ $feature['name'] }}
+                                        <span>{{ $feature['name'] }}@if (! empty($feature['badge']))<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $feature['badge'] }}</span>@endif</span>
                                     </a>
                                 @endforeach
                             </div>
@@ -220,7 +220,7 @@
                 <div>
                     <h2 class="text-sm font-semibold text-slate-900">Features</h2>
                     <ul class="mt-4 space-y-3 text-sm text-slate-600">
-                        @foreach (array_slice($siteFeatures, 0, 8, true) as $slug => $feature)
+                        @foreach (\Illuminate\Support\Arr::only($siteFeatures, ['pos', 'stock', 'purchase-orders', 'udhaar', 'cash-balances', 'reports', 'payroll', 'multi-branch', 'whatsapp-ordering']) as $slug => $feature)
                             <li><a href="{{ route('site.feature', $slug) }}" class="hover:text-brand-700">{{ $feature['name'] }}</a></li>
                         @endforeach
                     </ul>

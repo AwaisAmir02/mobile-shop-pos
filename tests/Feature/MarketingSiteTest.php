@@ -32,6 +32,8 @@ class MarketingSiteTest extends TestCase
             'feature: udhaar' => ['/features/udhaar', 'Udhaar & Customer Ledger Software | HisabOKitab'],
             'feature: cash-balances' => ['/features/cash-balances', 'Cash in Hand, JazzCash, Easypaisa & Bank Balances | HisabOKitab'],
             'feature: reports' => ['/features/reports', 'Business Reports, Profit & Expense Tracking | HisabOKitab'],
+            'feature: double-entry-ledger' => ['/features/double-entry-ledger', 'Double-Entry Accounting Ledger for Small Businesses | HisabOKitab'],
+            'feature: online-store' => ['/features/online-store', 'Connect Your Online Store: Live Stock & Orders API | HisabOKitab'],
             'feature: payroll' => ['/features/payroll', 'Payroll & Salary Software for Small Businesses | HisabOKitab'],
             'feature: multi-branch' => ['/features/multi-branch', 'Multi-Branch Business Software | HisabOKitab'],
             'feature: whatsapp-ordering' => ['/features/whatsapp-ordering', 'WhatsApp Ordering Chatbot for Your Business | HisabOKitab'],
@@ -123,6 +125,44 @@ class MarketingSiteTest extends TestCase
 
             $this->assertDoesNotMatchRegularExpression('/(WhatsApp|Meta|Facebook|Instagram|Status)[^<]{0,40}<span[^>]*>Coming soon/', $html);
         }
+    }
+
+    public function test_planned_modules_are_only_ever_shown_as_coming_soon(): void
+    {
+        foreach (['/', '/pricing', '/features'] as $path) {
+            $html = $this->get($path)->assertOk()->getContent();
+            $this->assertStringContainsString('Planned, not available yet', $html, $path);
+            foreach (array_column(\App\Support\SiteFeatures::ROADMAP, 0) as $module) {
+                $this->assertMatchesRegularExpression('/'.preg_quote($module, '/').'\s*<span[^>]*>Coming soon/', $html, "$path: $module");
+            }
+        }
+
+        $names = strtolower(implode(' ', array_column(\App\Support\SiteFeatures::all(), 'name')).' '.implode(' ', \App\Support\SiteFeatures::slugs()));
+        foreach (['crm', 'erp', 'hr management'] as $module) {
+            $this->assertStringNotContainsString($module, $names);
+        }
+
+        preg_match('#<script type="application/ld\+json">(.*?)</script>#s', $this->get('/')->getContent(), $json);
+        $software = collect(json_decode($json[1], true)['@graph'])->firstWhere('@type', 'SoftwareApplication');
+        $this->assertNotEmpty(array_intersect(['Double-Entry Ledger', 'Online Store Connection'], $software['featureList']));
+        $this->assertEmpty(preg_grep('/CRM|ERP|HR/', $software['featureList']));
+    }
+
+    public function test_the_ledger_and_online_store_pages_say_plainly_they_are_not_on_for_everyone(): void
+    {
+        $this->get('/features/double-entry-ledger')->assertOk()
+            ->assertSee('role="note"', false)
+            ->assertSee('The ledger is off by default and isn’t switched on for any business automatically.')
+            ->assertSee('On request');
+
+        $this->get('/features/online-store')->assertOk()
+            ->assertSee('role="note"', false)
+            ->assertSee('no store is using it live yet')
+            ->assertSee('needs your store’s developer');
+
+        $features = $this->get('/features')->getContent();
+        $this->assertMatchesRegularExpression('/Double-Entry Ledger<span[^>]*>On request/', $features);
+        $this->assertMatchesRegularExpression('/Online Store Connection<span[^>]*>New/', $features);
     }
 
     public function test_no_page_claims_organic_whatsapp_status_posting(): void
