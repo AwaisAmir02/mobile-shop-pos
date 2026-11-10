@@ -4,26 +4,29 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
-Route::get('/', function () {
-    if (! auth()->check()) {
-        return view('site.home');
-    }
+Route::middleware('throttle:site')->group(function () {
+    Route::get('/', function () {
+        if (! auth()->check()) {
+            return view('site.home');
+        }
 
-    if (Auth::user()->is_super_admin) {
-        return redirect()->route('admin.dashboard');
-    }
+        if (Auth::user()->is_super_admin) {
+            return redirect()->route('admin.dashboard');
+        }
 
-    return redirect()->route(Auth::user()->hasAccessTo('dashboard') ? 'dashboard' : 'welcome');
-})->name('home');
+        return redirect()->route(Auth::user()->hasAccessTo('dashboard') ? 'dashboard' : 'welcome');
+    })->name('home');
 
-Route::view('features', 'site.features')->name('site.features');
-Route::get('features/{feature}', fn (string $feature) => view('site.feature', ['slug' => $feature, 'feature' => \App\Support\SiteFeatures::find($feature)]))
-    ->whereIn('feature', \App\Support\SiteFeatures::slugs())
-    ->name('site.feature');
-Route::view('pricing', 'site.pricing')->name('site.pricing');
-Route::view('about', 'site.about')->name('site.about');
-Route::view('contact', 'site.contact')->name('site.contact');
-Route::get('sitemap.xml', fn () => response()->view('site.sitemap')->header('Content-Type', 'application/xml'))->name('site.sitemap');
+    Route::view('features', 'site.features')->name('site.features');
+    Route::get('features/{feature}', fn (string $feature) => view('site.feature', ['slug' => $feature, 'feature' => \App\Support\SiteFeatures::find($feature)]))
+        ->whereIn('feature', \App\Support\SiteFeatures::slugs())
+        ->name('site.feature');
+    Route::view('pricing', 'site.pricing')->name('site.pricing');
+    Route::view('about', 'site.about')->name('site.about');
+    Route::view('contact', 'site.contact')->name('site.contact');
+    Route::get('sitemap.xml', fn () => response()->view('site.sitemap')->header('Content-Type', 'application/xml'))->name('site.sitemap');
+});
+
 Route::view('signup', 'site.signup')->middleware(['guest', 'throttle:30,1'])->name('site.signup');
 Route::view('signup/complete', 'site.signup-complete')->middleware(['guest', 'throttle:30,1'])->name('site.signup.complete');
 
@@ -32,7 +35,7 @@ Route::middleware('throttle:20,1')->group(function () {
     Route::get('auth/{provider}/callback', [\App\Http\Controllers\Auth\SocialLoginController::class, 'callback'])->whereIn('provider', ['google', 'microsoft'])->name('oauth.callback');
 });
 
-Route::get('webhooks/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'verify'])->name('webhooks.whatsapp.verify');
+Route::get('webhooks/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'verify'])->name('webhooks.whatsapp.verify')->middleware('throttle:60,1');
 Route::post('webhooks/whatsapp', [\App\Http\Controllers\WhatsAppWebhookController::class, 'receive'])->name('webhooks.whatsapp.receive')->middleware('throttle:600,1');
 
 Route::middleware(['auth'])->group(function () {

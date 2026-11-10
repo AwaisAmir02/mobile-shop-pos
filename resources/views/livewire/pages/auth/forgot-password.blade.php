@@ -42,6 +42,13 @@ new #[Layout('layouts.guest')] class extends Component
             'email' => ['required', 'string', 'email'],
         ], ['email.email' => 'Enter your email address or a Pakistani mobile number.']);
 
+        // The broker already waits a minute per address; this stops one visitor mailing many addresses.
+        $ipKey = 'reset-link-ip|'.request()->ip();
+        if (RateLimiter::tooManyAttempts($ipKey, 5)) {
+            throw ValidationException::withMessages(['email' => __('passwords.throttled')]);
+        }
+        RateLimiter::hit($ipKey, 900);
+
         // Intentionally ignore the broker's status: whether the email matches an
         // account or not, the response to the user must be identical, otherwise
         // this form becomes a way to test which emails have accounts.

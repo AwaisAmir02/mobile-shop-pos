@@ -5,10 +5,13 @@ namespace App\Providers;
 use App\Support\BranchContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use SocialiteProviders\Manager\SocialiteWasCalled;
+use Livewire\Livewire;
 use SocialiteProviders\Microsoft\MicrosoftExtendSocialite;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,6 +27,16 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Stack traces must never reach visitors, even if APP_DEBUG is left on in production.
+        if ($this->app->isProduction() && config('app.debug')) {
+            config(['app.debug' => false]);
+        }
+
+        // Behind a CDN or proxy every visitor shares its address unless it's trusted, and per-IP limits collapse.
+        if (filled($proxies = config('app.trusted_proxies'))) {
+            TrustProxies::at($proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)));
+        }
+
         foreach (\App\Ledger\LedgerSources::observed() as $model) {
             $model::observe(\App\Ledger\LedgerObserver::class);
         }
@@ -38,6 +51,22 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('store-api', fn (Request $request) => [
             Limit::perMinute(300)->by('token:'.sha1((string) $request->bearerToken())),
             Limit::perMinute(600)->by('ip:'.$request->ip()),
+        ]);
+
+        RateLimiter::for('site', fn (Request $request) => Limit::perMinute(300)->by('site:'.$request->ip()));
+
+        // Every Livewire action posts here. Signed-in staff get a lot of room; guests only reach login, signup and password reset.
+        RateLimiter::for('livewire', fn (Request $request) => $request->user()
+            ? Limit::perMinute(600)->by('lw-user:'.$request->user()->id)
+            : Limit::perMinute(120)->by('lw-ip:'.$request->ip()));
+
+        Livewire::setUpdateRoute(fn ($handle) => Route::post('/livewire/update', $handle)->middleware(['web', 'throttle:livewire']));
+
+        // Re-checked on every action, so access removed from a user stops working on pages they already have open.
+        Livewire::addPersistentMiddleware([
+            \App\Http\Middleware\EnsureSuperAdmin::class,
+            \App\Http\Middleware\EnsureShopUser::class,
+            \App\Http\Middleware\EnsureShopScreenAccess::class,
         ]);
 
         RateLimiter::for('store-webhook', fn (Request $request) => [
