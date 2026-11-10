@@ -1,4 +1,4 @@
-<x-site.layout title="Finish setting up your shop" description="Finish creating your HisabOKitab shop.">
+<x-site.layout title="Finish setting up your shop" description="Finish creating your HisabOKitab shop: add your business details and choose your plan." :noindex="true">
     <section class="relative overflow-hidden">
         <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
             <div class="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_50%,transparent_100%)] opacity-50"></div>

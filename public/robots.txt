@@ -1,4 +1,10 @@
 User-agent: *
-Disallow:
+Disallow: /admin
+Disallow: /api/
+Disallow: /webhooks/
+Disallow: /auth/
+Disallow: /signup/complete
+Disallow: /billing
+Disallow: /support
 
 Sitemap: https://hisabokitab.com/sitemap.xml

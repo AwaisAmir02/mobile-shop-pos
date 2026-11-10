@@ -21,20 +21,23 @@ class MarketingSiteTest extends TestCase
     public static function pages(): array
     {
         return [
-            'home' => ['/', 'HisabOKitab — Shop management software for every shop and online seller in Pakistan'],
-            'features' => ['/features', 'Features | HisabOKitab'],
-            'pricing' => ['/pricing', 'Pricing | HisabOKitab'],
-            'about' => ['/about', 'About | HisabOKitab'],
-            'contact' => ['/contact', 'Contact | HisabOKitab'],
-            'feature: pos' => ['/features/pos', 'Sales & Invoices | HisabOKitab'],
-            'feature: stock' => ['/features/stock', 'Stock & FIFO Costing | HisabOKitab'],
-            'feature: udhaar' => ['/features/udhaar', 'Udhaar & Customers | HisabOKitab'],
-            'feature: reports' => ['/features/reports', 'Reports & Expenses | HisabOKitab'],
-            'feature: multi-branch' => ['/features/multi-branch', 'Multi-Branch | HisabOKitab'],
-            'feature: whatsapp-ordering' => ['/features/whatsapp-ordering', 'WhatsApp Ordering | HisabOKitab'],
-            'feature: social-posting' => ['/features/social-posting', 'Facebook & Instagram Posting | HisabOKitab'],
-            'feature: meta-ads' => ['/features/meta-ads', 'Meta Ads | HisabOKitab'],
-            'feature: mobile-shop-services' => ['/features/mobile-shop-services', 'Mobile Shop Services | HisabOKitab'],
+            'home' => ['/', 'POS & Business Management Software in Pakistan | HisabOKitab'],
+            'features' => ['/features', 'Features: POS, Inventory, Udhaar, Payroll & WhatsApp | HisabOKitab'],
+            'pricing' => ['/pricing', 'Pricing & Plans in PKR | HisabOKitab'],
+            'about' => ['/about', 'About Us: Business Software Made in Pakistan | HisabOKitab'],
+            'contact' => ['/contact', 'Contact Us: WhatsApp, Email & Phone | HisabOKitab'],
+            'feature: pos' => ['/features/pos', 'POS Billing & Invoicing Software | HisabOKitab'],
+            'feature: stock' => ['/features/stock', 'Inventory & Stock Management Software | HisabOKitab'],
+            'feature: purchase-orders' => ['/features/purchase-orders', 'Purchase Order & Goods Receipt Software | HisabOKitab'],
+            'feature: udhaar' => ['/features/udhaar', 'Udhaar & Customer Ledger Software | HisabOKitab'],
+            'feature: cash-balances' => ['/features/cash-balances', 'Cash in Hand, JazzCash, Easypaisa & Bank Balances | HisabOKitab'],
+            'feature: reports' => ['/features/reports', 'Business Reports, Profit & Expense Tracking | HisabOKitab'],
+            'feature: payroll' => ['/features/payroll', 'Payroll & Salary Software for Small Businesses | HisabOKitab'],
+            'feature: multi-branch' => ['/features/multi-branch', 'Multi-Branch Business Software | HisabOKitab'],
+            'feature: whatsapp-ordering' => ['/features/whatsapp-ordering', 'WhatsApp Ordering Chatbot for Your Business | HisabOKitab'],
+            'feature: social-posting' => ['/features/social-posting', 'Facebook & Instagram Posting from Your Product List | HisabOKitab'],
+            'feature: meta-ads' => ['/features/meta-ads', 'Run Facebook, Instagram & WhatsApp Ads | HisabOKitab'],
+            'feature: mobile-shop-services' => ['/features/mobile-shop-services', 'Mobile Shop Software: Repairs, Loads, SIMs & Bills | HisabOKitab'],
         ];
     }
 
@@ -131,6 +134,79 @@ class MarketingSiteTest extends TestCase
         }
     }
 
+    public function test_every_page_has_a_unique_title_and_description_of_a_sensible_length(): void
+    {
+        $titles = [];
+        $descriptions = [];
+
+        foreach (array_column(self::pages(), 0) as $path) {
+            $html = $this->get($path)->assertOk()->getContent();
+            preg_match('#<title>(.*?)</title>#', $html, $title);
+            preg_match('#<meta name="description" content="([^"]*)">#', $html, $description);
+            $title = html_entity_decode($title[1]);
+            $description = html_entity_decode($description[1]);
+
+            $this->assertLessThanOrEqual(70, mb_strlen($title), "$path title: $title");
+            $this->assertGreaterThanOrEqual(110, mb_strlen($description), "$path description is thin");
+            $this->assertLessThanOrEqual(200, mb_strlen($description), "$path description is too long");
+            $titles[] = $title;
+            $descriptions[] = $description;
+        }
+
+        $this->assertSame($titles, array_values(array_unique($titles)), 'Two pages share a title.');
+        $this->assertSame($descriptions, array_values(array_unique($descriptions)), 'Two pages share a description.');
+    }
+
+    public function test_every_page_carries_structured_data_and_social_tags(): void
+    {
+        foreach (array_column(self::pages(), 0) as $path) {
+            $html = $this->get($path)->getContent();
+            $this->assertSame(1, preg_match('#<script type="application/ld\+json">(.*?)</script>#s', $html, $json), $path);
+            $data = json_decode($json[1], true, flags: JSON_THROW_ON_ERROR);
+            $types = array_column($data['@graph'], '@type');
+            $this->assertContains('Organization', $types, $path);
+            $this->assertContains('WebSite', $types, $path);
+            if ($path !== '/') {
+                $this->assertContains('BreadcrumbList', $types, $path);
+            }
+
+            $this->assertStringContainsString('<meta property="og:image" content="'.asset('branding/og-image.png').'">', $html);
+            $this->assertStringContainsString('<meta name="twitter:card" content="summary_large_image">', $html);
+            $this->assertStringNotContainsString('name="robots"', $html, $path);
+        }
+
+        $this->assertSame([1200, 630], array_slice(getimagesize(public_path('branding/og-image.png')), 0, 2));
+    }
+
+    public function test_home_and_pricing_faq_markup_matches_the_visible_questions_and_images_have_alt_text(): void
+    {
+        foreach (['/', '/pricing'] as $path) {
+            $html = $this->get($path)->getContent();
+            preg_match('#<script type="application/ld\+json">(.*?)</script>#s', $html, $json);
+            $faq = collect(json_decode($json[1], true)['@graph'])->firstWhere('@type', 'FAQPage');
+            $this->assertNotNull($faq, $path);
+            foreach ($faq['mainEntity'] as $question) {
+                $this->assertStringContainsString(e($question['name']), $html, $path);
+            }
+        }
+
+        foreach (array_column(self::pages(), 0) as $path) {
+            preg_match_all('#<img\b[^>]*>#', $this->get($path)->getContent(), $images);
+            foreach ($images[0] as $image) {
+                // Empty alt is allowed: the only one is decoration inside a mockup that has its own aria-label.
+                $this->assertMatchesRegularExpression('#\salt="#', $image, $path);
+            }
+        }
+    }
+
+    public function test_signup_completion_login_and_app_paths_stay_out_of_search(): void
+    {
+        $this->get('/login')->assertSee('<meta name="robots" content="noindex, follow">', false);
+        $robots = file_get_contents(public_path('robots.txt'));
+        $this->assertStringContainsString('Disallow: /admin', $robots);
+        $this->assertStringContainsString('Sitemap: https://hisabokitab.com/sitemap.xml', $robots);
+    }
+
     public function test_sitemap_lists_every_public_page(): void
     {
         $response = $this->get('/sitemap.xml')->assertOk()->assertHeader('Content-Type', 'application/xml');
@@ -142,5 +218,7 @@ class MarketingSiteTest extends TestCase
         foreach (\App\Support\SiteFeatures::slugs() as $slug) {
             $response->assertSee('<loc>'.route('site.feature', $slug).'</loc>', false);
         }
+        $this->assertMatchesRegularExpression('#<lastmod>\d{4}-\d{2}-\d{2}</lastmod>#', $response->getContent());
+        $response->assertDontSee('signup/complete');
     }
 }

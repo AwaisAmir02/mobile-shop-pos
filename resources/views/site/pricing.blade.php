@@ -12,12 +12,55 @@
         ['Who pays for Meta ads?', 'Ads are billed by Meta directly to your own ad account. HisabOKitab never charges you for ad spend, and you confirm the maximum spend before any ad goes live.'],
         ['Can I run more than one branch?', 'Yes. Each plan includes a set number of branches, and you can add more with a monthly or yearly branch add-on. Products, customers and stock are shared by every branch; each branch records its own sales, stock-ins, udhaar and expenses, and you see them side by side.'],
         ['Can I keep using WhatsApp Business on my phone?', 'Yes. Your number stays usable in the WhatsApp Business app while HisabOKitab handles chatbot orders and messages.'],
+        ['Do purchase orders and payroll cost extra?', 'Some plans include them; on the others you can add them as a monthly add-on from Billing inside the app, along with extra branches and product packs.'],
         ['Is my shop’s data private?', 'Yes. Every shop’s records are isolated from every other shop, and staff only see the screens you allow.'],
     ];
+
+    $everyPlan = [
+        'Sales, invoices & receipts',
+        'Inventory with FIFO batch costing',
+        'Udhaar & customer ledger',
+        'Vendors & party ledger statements',
+        'Cash & Balances: cash, JazzCash, Easypaisa & bank',
+        'Expenses',
+        'Gross profit & reports with Excel / PDF export',
+        'Stock write-offs',
+        'Staff roles & permissions',
+        'Repairs, SIM, loads, bills & NADRA for mobile shops',
+        'Guide on every screen in Roman Urdu & English',
+        'Help & support tickets',
+    ];
+
+    $offers = $plans->map(fn ($plan) => [
+        '@type' => 'Offer',
+        'name' => $plan->name,
+        'price' => (float) $plan->price,
+        'priceCurrency' => 'PKR',
+        'url' => route('site.signup', ['plan' => $plan->id]),
+        'availability' => 'https://schema.org/InStock',
+    ])->values()->all();
+
+    $schema = [
+        [
+            '@type' => 'FAQPage',
+            'mainEntity' => collect($faqs)->map(fn ($faq) => ['@type' => 'Question', 'name' => $faq[0], 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $faq[1]]])->all(),
+        ],
+    ];
+    if ($offers !== []) {
+        $schema[] = [
+            '@type' => 'SoftwareApplication',
+            'name' => config('branding.name'),
+            'url' => url('/'),
+            'applicationCategory' => 'BusinessApplication',
+            'operatingSystem' => 'Web browser (Android, iOS, Windows, macOS)',
+            'publisher' => ['@id' => url('/').'#organization'],
+            'offers' => $offers,
+        ];
+    }
 @endphp
 
-<x-site.layout title="Pricing" description="HisabOKitab plans for mobile and electronics shops in Pakistan — from counter sales and udhaar to WhatsApp ordering, social posting and Meta ads.">
-    <x-site.page-hero eyebrow="Pricing" title="Simple plans that grow with your shop" lead="Start with the counter. Add WhatsApp ordering and marketing when you’re ready. No hidden charges — ad spend is billed by Meta to your own account." />
+<x-site.layout title="Pricing & Plans in PKR" description="HisabOKitab plans in Pakistani rupees for shops, online sellers and growing businesses — POS, inventory and udhaar on every plan, plus WhatsApp ordering, social posting and Meta ads." :schema="$schema" :breadcrumbs="[['Home', route('home')], ['Pricing', route('site.pricing')]]">
+    <x-site.page-hero eyebrow="Pricing" title="Simple plans that grow with your business" lead="Start with the counter. Add WhatsApp ordering, marketing, branches and add-ons when you’re ready. No hidden charges — ad spend is billed by Meta to your own account." />
 
     <section class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         @if ($plans->isEmpty())
@@ -69,6 +112,19 @@
         @endif
     </section>
 
+    <section class="mx-auto max-w-5xl px-4 pb-24 sm:px-6 lg:px-8">
+        <div class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm sm:p-10" data-reveal>
+            <h2 class="text-xl font-bold text-slate-900">Included in every plan</h2>
+            <p class="mt-2 text-sm text-slate-600">Whichever plan you pick, these are part of it. Product variants, weighed and measured items and expiry date tracking are free too — ask us and we’ll switch them on.</p>
+            <ul class="mt-6 grid grid-cols-1 gap-x-8 gap-y-3 text-sm text-slate-700 sm:grid-cols-2">
+                @foreach ($everyPlan as $item)
+                    <li class="flex gap-3"><x-site.icon name="check" class="h-5 w-5 shrink-0 text-brand-600" /><span>{{ $item }}</span></li>
+                @endforeach
+            </ul>
+            <p class="mt-6 text-sm text-slate-600">Want the details? <a href="{{ route('site.features') }}" class="font-semibold text-brand-700 hover:text-brand-800">See every feature</a>.</p>
+        </div>
+    </section>
+
     <section class="bg-slate-50">
         <div class="mx-auto max-w-3xl px-4 py-24 sm:px-6">
             <x-site.section-heading eyebrow="Questions" title="Frequently asked" />
@@ -77,7 +133,7 @@
                     <details class="group p-6" data-reveal>
                         <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
                             {{ $question }}
-                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition group-open:rotate-45 group-open:bg-brand-600 group-open:text-white">+</span>
+                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition group-open:rotate-45 group-open:bg-brand-600 group-open:text-white" aria-hidden="true">+</span>
                         </summary>
                         <p class="mt-3 leading-7 text-slate-600">{{ $answer }}</p>
                     </details>
@@ -87,6 +143,6 @@
     </section>
 
     <div class="pt-24">
-        <x-site.cta title="Not sure which plan fits?" lead="Tell us about your shop and we’ll recommend the right setup." />
+        <x-site.cta title="Not sure which plan fits?" lead="Tell us about your business and we’ll recommend the right setup." />
     </div>
 </x-site.layout>

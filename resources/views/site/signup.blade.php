@@ -1,4 +1,4 @@
-<x-site.layout title="Create your shop" description="Create your HisabOKitab shop in a few minutes — choose a plan, add your details and start selling the same day.">
+<x-site.layout title="Sign Up: Create Your Business Account" description="Create your HisabOKitab account in a few minutes — choose a plan, add your business details and start selling the same day." :breadcrumbs="[['Home', route('home')], ['Pricing', route('site.pricing')], ['Sign up', route('site.signup')]]">
     <section class="relative overflow-hidden">
         <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
             <div class="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_50%,transparent_100%)] opacity-50"></div>

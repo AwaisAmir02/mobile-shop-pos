@@ -1,9 +1,9 @@
-@props(['title' => null, 'description' => null])
+@props(['title' => null, 'description' => null, 'schema' => [], 'breadcrumbs' => [], 'noindex' => false])
 
 @php
     $brand = config('branding.name');
-    $pageTitle = $title ? $title.' | '.$brand : $brand.' — Shop management software for every shop and online seller in Pakistan';
-    $metaDescription = $description ?? 'HisabOKitab runs your whole shop from one screen — kiryana, bakery, mobile shop or online store: sales and invoices, stock with FIFO costing, udhaar and expenses, plus WhatsApp ordering, social posting and Meta ads.';
+    $pageTitle = $title ? $title.' | '.$brand : 'POS & Business Management Software in Pakistan | '.$brand;
+    $metaDescription = $description ?? 'POS, inventory and accounts software for shops, online sellers and growing businesses in Pakistan: sales, stock, udhaar, cash, payroll and WhatsApp orders in one app.';
     $links = [
         ['route' => 'site.features', 'label' => 'Features'],
         ['route' => 'site.pricing', 'label' => 'Pricing'],
@@ -15,15 +15,57 @@
     $currentFeature = request()->route('feature');
     $chevron = '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="h-4 w-4 transition-transform duration-200 group-data-[open]:rotate-180"><path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>';
     $contact = config('site.contact');
-    $structuredData = json_encode([
-        '@context' => 'https://schema.org',
-        '@type' => 'SoftwareApplication',
-        'name' => $brand,
-        'applicationCategory' => 'BusinessApplication',
-        'operatingSystem' => 'Web',
-        'url' => url('/'),
-        'description' => $metaDescription,
-    ], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
+    $canonical = url()->current();
+    $ogImage = asset('branding/og-image.png');
+    $organizationId = url('/').'#organization';
+
+    $graph = [
+        [
+            '@type' => 'Organization',
+            '@id' => $organizationId,
+            'name' => $brand,
+            'url' => url('/'),
+            'logo' => ['@type' => 'ImageObject', 'url' => asset(config('branding.icon_512')), 'width' => 512, 'height' => 512],
+            'slogan' => config('branding.slogan'),
+            'email' => $contact['email'],
+            'telephone' => $contact['phone'],
+            'address' => ['@type' => 'PostalAddress', 'addressLocality' => 'Karachi', 'addressCountry' => 'PK'],
+            'areaServed' => ['@type' => 'Country', 'name' => 'Pakistan'],
+            'contactPoint' => [[
+                '@type' => 'ContactPoint',
+                'contactType' => 'customer support',
+                'telephone' => $contact['phone'],
+                'email' => $contact['email'],
+                'areaServed' => 'PK',
+                'availableLanguage' => ['English', 'Urdu'],
+            ]],
+        ],
+        [
+            '@type' => 'WebSite',
+            '@id' => url('/').'#website',
+            'name' => $brand,
+            'url' => url('/'),
+            'inLanguage' => 'en',
+            'publisher' => ['@id' => $organizationId],
+        ],
+    ];
+
+    if ($breadcrumbs !== []) {
+        $graph[] = [
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => collect($breadcrumbs)->values()->map(fn ($crumb, $i) => [
+                '@type' => 'ListItem',
+                'position' => $i + 1,
+                'name' => $crumb[0],
+                'item' => $crumb[1],
+            ])->all(),
+        ];
+    }
+
+    $structuredData = json_encode(
+        ['@context' => 'https://schema.org', '@graph' => array_merge($graph, $schema)],
+        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP,
+    );
 @endphp
 
 <!DOCTYPE html>
@@ -33,16 +75,27 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ $pageTitle }}</title>
         <meta name="description" content="{{ $metaDescription }}">
-        <link rel="canonical" href="{{ url()->current() }}">
+        @if ($noindex)
+            <meta name="robots" content="noindex, follow">
+        @else
+            <link rel="canonical" href="{{ $canonical }}">
+        @endif
         <meta name="theme-color" content="#0033a9">
 
         <meta property="og:type" content="website">
         <meta property="og:site_name" content="{{ $brand }}">
+        <meta property="og:locale" content="en_PK">
         <meta property="og:title" content="{{ $pageTitle }}">
         <meta property="og:description" content="{{ $metaDescription }}">
-        <meta property="og:url" content="{{ url()->current() }}">
-        <meta property="og:image" content="{{ asset(config('branding.icon_512')) }}">
-        <meta name="twitter:card" content="summary">
+        <meta property="og:url" content="{{ $canonical }}">
+        <meta property="og:image" content="{{ $ogImage }}">
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta property="og:image:alt" content="{{ $brand }}: POS, inventory, udhaar and WhatsApp orders for businesses in Pakistan">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="{{ $pageTitle }}">
+        <meta name="twitter:description" content="{{ $metaDescription }}">
+        <meta name="twitter:image" content="{{ $ogImage }}">
 
         <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
         <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
@@ -50,7 +103,7 @@
 
         <script>document.documentElement.classList.add('js')</script>
 
-        <link rel="preconnect" href="https://fonts.bunny.net">
+        <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet" />
 
         @vite(['resources/css/app.css', 'resources/js/site.js'])
@@ -63,7 +116,7 @@
         <header data-site-header class="sticky top-0 z-50 border-b border-transparent bg-white/85 backdrop-blur-md transition-[border-color,box-shadow] duration-300">
             <nav class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:h-[4.5rem] lg:px-8" aria-label="Main">
                 <a href="{{ route('home') }}" class="shrink-0" aria-label="{{ $brand }} home">
-                    <img src="{{ asset(config('branding.logo_horizontal')) }}" srcset="{{ asset(config('branding.logo_horizontal')) }} 1x, {{ asset(config('branding.logo_horizontal_2x')) }} 2x" alt="{{ $brand }}" class="h-8 w-auto sm:h-9" width="220" height="56">
+                    <img src="{{ asset('branding/logo-site@1x.webp') }}" srcset="{{ asset('branding/logo-site@1x.webp') }} 1x, {{ asset('branding/logo-site@2x.webp') }} 2x" alt="{{ $brand }}" class="h-8 w-auto sm:h-9" width="144" height="38" fetchpriority="high">
                 </a>
 
                 <div class="hidden items-center gap-1 md:flex">
@@ -159,10 +212,18 @@
         </main>
 
         <footer class="border-t border-slate-200 bg-slate-50">
-            <div class="mx-auto grid grid-cols-1 max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
+            <div class="mx-auto grid grid-cols-1 max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-5 lg:px-8">
                 <div class="lg:col-span-2">
-                    <img src="{{ asset(config('branding.logo_horizontal')) }}" alt="{{ $brand }}" class="h-9 w-auto" width="220" height="56" loading="lazy">
-                    <p class="mt-4 max-w-sm text-sm leading-6 text-slate-600">Shop management software for Pakistani shops and online sellers — from kiryana stores and bakeries to mobile shops and Instagram resellers. {{ config('branding.slogan') }}</p>
+                    <img src="{{ asset('branding/logo-site@1x.webp') }}" srcset="{{ asset('branding/logo-site@1x.webp') }} 1x, {{ asset('branding/logo-site@2x.webp') }} 2x" alt="{{ $brand }}" class="h-9 w-auto" width="144" height="38" loading="lazy">
+                    <p class="mt-4 max-w-sm text-sm leading-6 text-slate-600">POS, inventory and accounts software for Pakistani shops, online sellers and growing businesses — from kiryana stores, pharmacies and mobile shops to wholesalers and companies with several branches. {{ config('branding.slogan') }}</p>
+                </div>
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-900">Features</h2>
+                    <ul class="mt-4 space-y-3 text-sm text-slate-600">
+                        @foreach (array_slice($siteFeatures, 0, 8, true) as $slug => $feature)
+                            <li><a href="{{ route('site.feature', $slug) }}" class="hover:text-brand-700">{{ $feature['name'] }}</a></li>
+                        @endforeach
+                    </ul>
                 </div>
                 <div>
                     <h2 class="text-sm font-semibold text-slate-900">Product</h2>
@@ -192,7 +253,7 @@
             <div class="border-t border-slate-200">
                 <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
                     <p>&copy; {{ now()->year }} {{ $brand }}. All rights reserved.</p>
-                    <p>Made in Pakistan, for Pakistani shops.</p>
+                    <p>Made in Pakistan, for Pakistani businesses.</p>
                 </div>
             </div>
         </footer>

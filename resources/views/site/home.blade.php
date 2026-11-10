@@ -1,4 +1,46 @@
-<x-site.layout>
+@php
+    $faqs = [
+        ['What is HisabOKitab?', 'HisabOKitab is POS, inventory and accounts software made in Pakistan. It records your sales, stock, udhaar, cash and expenses in one place, and adds WhatsApp ordering, Facebook and Instagram posting and Meta ads on the plans that include them.'],
+        ['Which businesses is it for?', 'Kiryana and general stores, bakeries, pharmacies, clothing shops, mobile and electronics shops, online sellers, wholesalers and distributors, and businesses with more than one branch. Screens like repairs and loads only appear for the businesses that need them.'],
+        ['Do I need to install anything?', 'No. HisabOKitab runs in your browser on a phone, tablet or computer. Log in and start selling.'],
+        ['Is it available in Urdu?', 'Every screen has a guide in Roman Urdu and English, and the WhatsApp chatbot replies to customers in Urdu or English, whichever they write in.'],
+        ['Can it handle more than one branch?', 'Yes. Branches share one catalog, one stock pool and one customer list, while each branch records its own sales, stock-ins, udhaar and expenses. Owners see every branch side by side.'],
+        ['Is my business data private?', 'Yes. Every business’s records are kept separate from every other, and staff only see the screens you allow.'],
+    ];
+
+    $plans = \App\Models\Plan::active()->get(['price']);
+    $software = [
+        '@type' => 'SoftwareApplication',
+        'name' => config('branding.name'),
+        'url' => url('/'),
+        'applicationCategory' => 'BusinessApplication',
+        'applicationSubCategory' => 'Point of sale and inventory management',
+        'operatingSystem' => 'Web browser (Android, iOS, Windows, macOS)',
+        'inLanguage' => ['en', 'ur'],
+        'description' => 'POS, inventory and accounts software for shops, online sellers and growing businesses in Pakistan.',
+        'publisher' => ['@id' => url('/').'#organization'],
+        'featureList' => collect(\App\Support\SiteFeatures::all())->pluck('name')->all(),
+    ];
+    if ($plans->isNotEmpty()) {
+        $software['offers'] = [
+            '@type' => 'AggregateOffer',
+            'priceCurrency' => 'PKR',
+            'lowPrice' => (float) $plans->min('price'),
+            'highPrice' => (float) $plans->max('price'),
+            'offerCount' => $plans->count(),
+            'url' => route('site.pricing'),
+        ];
+    }
+    $schema = [
+        $software,
+        [
+            '@type' => 'FAQPage',
+            'mainEntity' => collect($faqs)->map(fn ($faq) => ['@type' => 'Question', 'name' => $faq[0], 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $faq[1]]])->all(),
+        ],
+    ];
+@endphp
+
+<x-site.layout :schema="$schema">
     <section class="relative overflow-hidden">
         <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
             <div class="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_0%,#000_60%,transparent_100%)] opacity-60"></div>
@@ -10,14 +52,14 @@
             <div class="lg:col-span-6">
                 <p class="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-white/80 px-3 py-1 text-xs font-semibold text-brand-700 shadow-sm" data-reveal>
                     <span class="flex h-5 w-5 items-center justify-center rounded-full bg-accent-500 text-white"><x-site.icon name="sparkles" class="h-3 w-3" /></span>
-                    Built for Pakistani shops &amp; online sellers
+                    POS &amp; business software for Pakistan
                 </p>
                 <h1 class="mt-6 text-4xl font-extrabold leading-[1.08] tracking-tight text-slate-900 sm:text-5xl lg:text-6xl" data-reveal style="--reveal-delay: 80ms">
-                    Your counter, your udhaar and your WhatsApp orders —
-                    <span class="bg-gradient-to-r from-brand-600 via-brand-500 to-accent-500 bg-clip-text text-transparent">on one screen.</span>
+                    Sales, stock, cash and WhatsApp orders —
+                    <span class="bg-gradient-to-r from-brand-600 via-brand-500 to-accent-500 bg-clip-text text-transparent">your whole business on one screen.</span>
                 </h1>
                 <p class="mt-6 max-w-xl text-lg leading-8 text-slate-600" data-reveal style="--reveal-delay: 160ms">
-                    Kiryana store, bakery, mobile shop or online seller — HisabOKitab runs your sales, stock and udhaar, then takes orders on WhatsApp, posts to Facebook and Instagram, and runs your Meta ads from the same dashboard. <span class="font-semibold text-slate-800">Hisab ab hua asaan.</span>
+                    From a single counter to a business with branches, suppliers and staff on payroll — HisabOKitab runs your sales, stock, udhaar and cash, then takes orders on WhatsApp, posts to Facebook and Instagram, and runs your Meta ads from the same dashboard. <span class="font-semibold text-slate-800">Hisab ab hua asaan.</span>
                 </p>
                 <div class="mt-9 flex flex-col gap-3 sm:flex-row" data-reveal style="--reveal-delay: 240ms">
                     <a href="{{ route('site.pricing') }}" class="group inline-flex items-center justify-center gap-2 rounded-full bg-accent-500 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-accent-500/30 transition hover:-translate-y-0.5 hover:bg-accent-600">
@@ -28,7 +70,7 @@
                     </a>
                 </div>
                 <ul class="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-600" data-reveal style="--reveal-delay: 320ms">
-                    @foreach (['WhatsApp bot in Urdu & English', 'Works on phone, tablet & PC', 'Each shop’s data kept separate'] as $point)
+                    @foreach (['Guide on every screen in Roman Urdu & English', 'Works on phone, tablet & PC', 'Each business’s data kept separate'] as $point)
                         <li class="flex items-center gap-2"><span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><x-site.icon name="check" class="h-3 w-3" /></span>{{ $point }}</li>
                     @endforeach
                 </ul>
@@ -70,7 +112,7 @@
     <section class="border-y border-slate-200 bg-slate-50/70" aria-label="Modules included">
         <div class="relative overflow-hidden py-5 [mask-image:linear-gradient(to_right,transparent,#000_10%,#000_90%,transparent)]">
             <div class="site-marquee flex w-max gap-3">
-                @php($modules = ['Sales & invoices', 'Barcode scanning', 'Stock In', 'FIFO batch costing', 'Vendors', 'Udhaar ledger', 'Expenses', 'Party ledger', 'Reports', 'Multi-branch', 'WhatsApp orders', 'Social posting', 'Meta ads', 'Staff roles', 'Repairs', 'SIM sales', 'Balance loads', 'Wallet loads', 'Bills & NADRA'])
+                @php($modules = ['Sales & invoices', 'Barcode scanning', 'Stock In', 'FIFO batch costing', 'Expiry tracking', 'Variants', 'Purchase orders', 'Vendor invoices', 'Vendors', 'Udhaar ledger', 'Cash & balances', 'Expenses', 'Payroll', 'Party ledger', 'Gross profit', 'Reports', 'Multi-branch', 'WhatsApp orders', 'Social posting', 'Meta ads', 'Staff roles', 'Repairs', 'SIM sales', 'Balance loads', 'Wallet loads', 'Bills & NADRA'])
                 {{-- Listed twice for the seamless loop; the second copy is hidden from screen readers. --}}
                 @foreach (array_merge($modules, $modules) as $i => $module)
                     <span class="whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-medium text-slate-600" @if ($i >= count($modules)) aria-hidden="true" @endif>{{ $module }}</span>
@@ -80,37 +122,41 @@
     </section>
 
     <section class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
-        <x-site.section-heading eyebrow="At the counter" title="Everything your shop does in a day, in one place" lead="Not just a till. Sales, stock, supplier dues, udhaar and expenses — kept the way Pakistani shops actually work, whatever you sell." />
+        <x-site.section-heading eyebrow="Everything in one place" title="Everything your business does in a day, in one place" lead="Not just a till. Sales, stock, purchasing, udhaar, cash, expenses and payroll — kept the way Pakistani businesses actually work, whatever you sell." />
 
         <div class="mt-16 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             @foreach ([
-                ['cart', 'Sales & invoices', 'Fast checkout with barcode scanning, partial payments and branded PDF invoices with a QR code.'],
-                ['box', 'Stock In & vendors', 'Record every purchase by batch and vendor, so stock and payables are always right.'],
-                ['calculator', 'Real profit with FIFO', 'Each unit sells at the cost of the batch it came from — no guessing your margins.'],
-                ['wallet', 'Udhaar ledger', 'Every rupee a customer owes, itemised by where it came from, with WhatsApp reminders.'],
-                ['calculator', 'Expenses & accounts', 'Rent, salaries and daily expenses recorded alongside sales, so your profit is the real one.'],
-                ['users', 'Customers & suppliers', 'Every customer’s purchases and dues, and what you owe each supplier, on one page.'],
-                ['chart', 'Reports & dashboard', 'Revenue, dues, expenses and stock — by day, month or year.'],
-                ['device', 'Extras for mobile shops', 'Repairs, SIM sales, balance & wallet loads, bills and NADRA — switched on when you need them.'],
-            ] as $i => [$icon, $title, $text])
-                <div class="group rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-xl hover:shadow-brand-950/5" data-reveal style="--reveal-delay: {{ ($i % 4) * 80 }}ms">
+                ['pos', 'cart', 'Sales & invoices', 'Fast checkout with barcode scanning, partial payments and branded PDF invoices with a QR code.'],
+                ['stock', 'box', 'Inventory & FIFO costing', 'Stock by batch and vendor, with expiry dates, sizes and colours, and every unit costed from the batch it came from.'],
+                ['purchase-orders', 'receipt', 'Purchase orders', 'Order from vendors, receive goods against the order and check each vendor bill before you pay it.'],
+                ['udhaar', 'wallet', 'Udhaar ledger', 'Every rupee a customer owes, itemised by where it came from, with WhatsApp reminders.'],
+                ['cash-balances', 'calculator', 'Cash & balances', 'Cash in hand and every JazzCash, Easypaisa and bank account, with the day’s money in and out.'],
+                ['reports', 'chart', 'Reports & profit', 'Gross profit, sales, dues and expenses by day, month or year, exportable to Excel and PDF.'],
+                ['payroll', 'users', 'Payroll', 'Salaries, advances and deductions, monthly payslips — and paid salaries land in your expenses.'],
+                ['mobile-shop-services', 'device', 'Counter services', 'Repairs, SIM sales, balance & wallet loads, bills and NADRA — switched on when you need them.'],
+            ] as $i => [$slug, $icon, $title, $text])
+                <a href="{{ route('site.feature', $slug) }}" class="group rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-xl hover:shadow-brand-950/5" data-reveal style="--reveal-delay: {{ ($i % 4) * 80 }}ms">
                     <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition group-hover:bg-brand-600 group-hover:text-white"><x-site.icon :name="$icon" /></span>
-                    <h3 class="mt-5 text-base font-semibold text-slate-900">{{ $title }}</h3>
+                    <h3 class="mt-5 text-base font-semibold text-slate-900 group-hover:text-brand-700">{{ $title }}</h3>
                     <p class="mt-2 text-sm leading-6 text-slate-600">{{ $text }}</p>
-                </div>
+                </a>
             @endforeach
         </div>
     </section>
 
     <section class="bg-slate-50 py-24 lg:py-28">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <x-site.section-heading eyebrow="Who it’s for" title="Made for the way you sell" lead="One app, set up for your kind of business." />
+            <x-site.section-heading eyebrow="Who it’s for" title="Made for the way you sell" lead="One app, set up for your kind of business — from a single counter to several branches." />
             <div class="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ([
                     ['store', 'Kiryana & general stores', 'Scan barcodes at the counter, keep udhaar for regular customers, see what’s running low and what you owe each supplier.'],
                     ['heart', 'Bakeries & sweet shops', 'Fast counter sales, orders taken on WhatsApp, udhaar for regular customers and every daily expense in one place.'],
                     ['device', 'Mobile & electronics shops', 'Phones with IMEIs, accessories, SIMs, loads, bills, NADRA and repairs — each with its own screen and fee income.'],
                     ['megaphone', 'Online sellers', 'Selling on Daraz, Instagram, Facebook or WhatsApp? Keep your stock, orders and real profit in one place, and let customers order on WhatsApp.'],
+                    ['clock', 'Pharmacies & medical stores', 'Expiry dates on every batch: the stock closest to expiry sells first, and expired stock can’t be sold by mistake.'],
+                    ['layers', 'Clothing & garments', 'One product in several sizes and colours, each with its own barcode and price, and fabric sold by the metre or gaz.'],
+                    ['receipt', 'Wholesalers & distributors', 'Purchase orders, goods received and vendor invoices checked against each other, with a running ledger for every party.'],
+                    ['chart', 'Growing businesses', 'Several branches, staff on payroll and roles for who sees what — with every location’s numbers side by side.'],
                 ] as $i => [$icon, $title, $text])
                     <div class="rounded-2xl border border-slate-200 bg-white p-6" data-reveal style="--reveal-delay: {{ $i * 80 }}ms">
                         <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600"><x-site.icon :name="$icon" /></span>
@@ -230,11 +276,12 @@
     </section>
 
     <section class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-28">
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
             @foreach ([
-                ['shield', 'Built for many shops from day one', 'Every shop gets its own isolated records, staff, settings and invoice branding — nothing is ever mixed between shops.'],
-                ['users', 'Staff roles & permissions', 'Decide who can sell, who can edit or cancel, and who can see cost prices — screen by screen.'],
-                ['language', 'Speaks your customers’ language', 'The WhatsApp assistant replies in Urdu or English automatically, based on how the customer writes.'],
+                ['shield', 'Your data stays yours', 'Every business gets its own isolated records, staff, settings and invoice branding — nothing is ever mixed between accounts.'],
+                    ['users', 'Staff roles & permissions', 'Decide who can sell, who can edit or cancel, and who can see cost prices — screen by screen.'],
+                ['language', 'Help in your language', 'A guide on every screen in Roman Urdu and English, and a WhatsApp assistant that answers customers in the language they write in.'],
+                ['chat', 'Support from a real person', 'Raise a support ticket from inside the app, attach a screenshot and follow the reply in the same place.'],
             ] as $i => [$icon, $title, $text])
                 <div class="rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 p-7 text-white shadow-xl shadow-brand-900/20" data-reveal style="--reveal-delay: {{ $i * 100 }}ms">
                     <x-site.icon :name="$icon" class="h-7 w-7 text-accent-300" />
@@ -257,5 +304,25 @@
         </div>
     </section>
 
-    <x-site.cta />
+    <section class="bg-slate-50">
+        <div class="mx-auto max-w-3xl px-4 py-24 sm:px-6">
+            <x-site.section-heading eyebrow="Questions" title="Frequently asked" />
+            <div class="mt-12 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
+                @foreach ($faqs as [$question, $answer])
+                    <details class="group p-6" data-reveal>
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
+                            {{ $question }}
+                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition group-open:rotate-45 group-open:bg-brand-600 group-open:text-white" aria-hidden="true">+</span>
+                        </summary>
+                        <p class="mt-3 leading-7 text-slate-600">{{ $answer }}</p>
+                    </details>
+                @endforeach
+            </div>
+            <p class="mt-8 text-center text-sm text-slate-600" data-reveal>More questions about plans? <a href="{{ route('site.pricing') }}" class="font-semibold text-brand-700 hover:text-brand-800">See pricing</a> or <a href="{{ route('site.contact') }}" class="font-semibold text-brand-700 hover:text-brand-800">talk to us</a>.</p>
+        </div>
+    </section>
+
+    <div class="pt-24">
+        <x-site.cta />
+    </div>
 </x-site.layout>

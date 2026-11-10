@@ -7,8 +7,8 @@
     ];
 @endphp
 
-<x-site.layout title="Contact" description="Contact HisabOKitab on WhatsApp, email or phone. Based in Karachi, Pakistan.">
-    <x-site.page-hero eyebrow="Contact" title="Let’s get your shop set up" lead="Questions about features, pricing or moving from your register? Message us — a real person will reply." />
+<x-site.layout title="Contact Us: WhatsApp, Email & Phone" description="Talk to the HisabOKitab team on WhatsApp, email or phone about features, pricing or moving your business off the register. Based in Karachi, serving all of Pakistan." :breadcrumbs="[['Home', route('home')], ['Contact', route('site.contact')]]">
+    <x-site.page-hero eyebrow="Contact" title="Let’s get your business set up" lead="Questions about features, pricing or moving from your register? Message us — a real person will reply." />
 
     <section class="mx-auto max-w-5xl px-4 py-20 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -25,7 +25,7 @@
         <div class="mt-10 flex flex-col items-center gap-3 rounded-2xl bg-slate-50 p-8 text-center ring-1 ring-slate-200" data-reveal>
             <span class="flex h-11 w-11 items-center justify-center rounded-full bg-white text-brand-600 shadow-sm"><x-site.icon name="map" /></span>
             <p class="font-semibold text-slate-900">{{ $contact['location'] }}</p>
-            <p class="text-sm text-slate-600">We work with shops across Pakistan — online setup and support, wherever you are.</p>
+            <p class="text-sm text-slate-600">We work with businesses across Pakistan — online setup and support, wherever you are. Already a customer? Use Help &amp; Support inside the app.</p>
         </div>
     </section>
 </x-site.layout>

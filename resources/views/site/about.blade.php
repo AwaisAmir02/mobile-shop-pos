@@ -1,5 +1,5 @@
-<x-site.layout title="About" description="HisabOKitab is shop management software made in Pakistan for every kind of shop and online seller — bringing the counter, the ledger and WhatsApp selling together.">
-    <x-site.page-hero eyebrow="About us" title="Made for the shops that keep Pakistan running" lead="The kiryana on the corner, the bakery down the street, the mobile shop in the market and the seller packing orders from home — they all juggle stock, udhaar and customers on WhatsApp. HisabOKitab was built to keep up with all of it." />
+<x-site.layout title="About Us: Business Software Made in Pakistan" description="HisabOKitab is POS, inventory and accounts software made in Karachi for Pakistani shops, online sellers and growing businesses — the counter, the ledger and WhatsApp selling in one app." :breadcrumbs="[['Home', route('home')], ['About', route('site.about')]]">
+    <x-site.page-hero eyebrow="About us" title="Made for the businesses that keep Pakistan running" lead="The kiryana on the corner, the pharmacy down the street, the mobile shop in the market, the seller packing orders from home and the distributor with three branches — they all juggle stock, udhaar, suppliers and customers on WhatsApp. HisabOKitab was built to keep up with all of it." />
 
     <section class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 gap-16 lg:grid-cols-2 lg:items-center">
@@ -7,6 +7,7 @@
                 <h2 class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Hisab ab hua asaan.</h2>
                 <p>Too many shopkeepers still close the day with a calculator, a register and a stack of WhatsApp chats. Profit is a guess, udhaar lives in someone’s memory, and online customers wait for a reply.</p>
                 <p>We built HisabOKitab so that every sale, every rupee of udhaar and every WhatsApp order lands in one place — with the real cost behind it and a clear record of who owes what.</p>
+                <p>As our shops grew, so did the app: purchase orders and vendor invoices, payroll, a live view of cash and bank balances, and branches that share one catalog while keeping their own records.</p>
                 <p>Then we went further: the same dashboard posts to Facebook and Instagram and runs Meta ads that bring new customers straight into your WhatsApp.</p>
             </div>
             <div class="grid grid-cols-2 gap-4" data-reveal="right">

@@ -3,10 +3,10 @@
     $related = collect($feature['related'])->mapWithKeys(fn ($relatedSlug) => [$relatedSlug => \App\Support\SiteFeatures::find($relatedSlug)]);
 @endphp
 
-<x-site.layout :title="$feature['name']" :description="$feature['description']">
+<x-site.layout :title="$feature['seo_title']" :description="$feature['description']" :breadcrumbs="[['Home', route('home')], ['Features', route('site.features')], [$feature['name'], route('site.feature', $slug)]]">
     <x-site.page-hero :eyebrow="$feature['eyebrow']" :title="$feature['title']" :lead="$feature['lead']">
         <p class="mt-8" data-reveal style="--reveal-delay: 240ms">
-            <a href="{{ route('site.features') }}" class="text-sm font-semibold text-brand-700 hover:text-brand-800">&larr; All features</a>
+            <a href="{{ route('site.features') }}" class="text-sm font-semibold text-brand-700 hover:text-brand-800">&larr; All {{ config('branding.name') }} features</a>
         </p>
     </x-site.page-hero>
 

@@ -1,9 +1,9 @@
-<x-site.layout title="Features" description="Every HisabOKitab feature for shops and online sellers: sales and invoices, FIFO stock costing, udhaar ledger and expenses, multi-branch, WhatsApp ordering, Facebook and Instagram posting and Meta ads — plus repairs, SIM, loads, bills and NADRA for mobile shops.">
-    <x-site.page-hero eyebrow="Features" title="Built around how Pakistani shops really work" lead="Kiryana store, bakery, mobile shop or online seller — from the first scan at the counter to the WhatsApp message that brings a customer back, here’s everything HisabOKitab does." />
+<x-site.layout title="Features: POS, Inventory, Udhaar, Payroll & WhatsApp" description="Every HisabOKitab feature: POS and invoices, inventory with FIFO costing, purchase orders, udhaar, cash and bank balances, payroll, reports, multi-branch and WhatsApp ordering." :breadcrumbs="[['Home', route('home')], ['Features', route('site.features')]]">
+    <x-site.page-hero eyebrow="Features" title="Built around how Pakistani businesses really work" lead="Kiryana store, pharmacy, mobile shop, online seller, wholesaler or a business with several branches — from the first scan at the counter to the supplier’s bill, the month’s payroll and the WhatsApp message that brings a customer back, here’s everything HisabOKitab does." />
 
     <section>
         <div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-            <h2 class="sr-only">All features</h2>
+            <h2 class="sr-only">All HisabOKitab features</h2>
             {{-- Each card keeps the anchor its section had on the old single page, so /features#whatsapp etc. still land in the right place. --}}
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach (\App\Support\SiteFeatures::all() as $slug => $feature)
@@ -26,6 +26,9 @@
                     ['users', 'Roles & permissions', 'Choose exactly which screens each staff member can open — and who can edit, cancel or see cost prices.'],
                     ['shield', 'Isolated per shop', 'Every shop’s data is separated at the core. Your records are only ever visible to your team.'],
                     ['store', 'Your brand on everything', 'Your shop name and logo on invoices and posts.'],
+                    ['language', 'A guide on every screen', 'Tap “?” on any screen for a short guide in Roman Urdu or English, showing only what applies to you.'],
+                    ['chat', 'Help & support tickets', 'Raise a ticket from inside the app, attach a screenshot and follow our reply in the same place.'],
+                    ['device', 'Phone, tablet or computer', 'Runs in the browser — nothing to install, and every device sees the same up-to-date records.'],
                 ] as $i => [$icon, $title, $text])
                     <div class="rounded-2xl bg-white p-7 shadow-sm ring-1 ring-slate-200" data-reveal style="--reveal-delay: {{ $i * 90 }}ms">
                         <x-site.icon :name="$icon" class="h-7 w-7 text-brand-600" />
