@@ -22,10 +22,11 @@ class SuperAdminSettingsTabPermissionsTest extends TestCase
         $owner = User::factory()->create(['shop_id' => $shop->id]);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'settings-networks');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'sim-sales');
 
         $this->actingAs($owner->fresh());
 
+        // The Networks tab only serves SIM Sale, so it goes with it.
         Livewire::test('settings.index')
             ->assertViewHas('accessibleTabs', function ($tabs) {
                 return in_array('accessory-categories', $tabs, true)
@@ -35,27 +36,27 @@ class SuperAdminSettingsTabPermissionsTest extends TestCase
             });
     }
 
-    public function test_each_of_the_four_new_tab_screens_can_be_disabled_independently(): void
+    public function test_each_settings_tab_module_can_be_disabled_independently(): void
     {
         $admin = User::factory()->create(['shop_id' => null, 'is_super_admin' => true]);
         $shop = Shop::create(['name' => 'Shop A']);
 
-        foreach (['settings-categories', 'settings-networks', 'settings-bill-config', 'settings-percentage'] as $screen) {
+        foreach (['settings-categories', 'settings-brands', 'settings-percentage'] as $screen) {
             $this->actingAs($admin);
             $component = Livewire::test('admin.shops.show', ['shop' => $shop]);
-            $component->call('toggleScreen', $screen);
+            $component->call('toggleModule', $screen);
 
             $this->assertTrue($shop->fresh()->isScreenDisabled($screen));
 
             // Every other one of the four stays enabled.
-            foreach (['settings-categories', 'settings-networks', 'settings-bill-config', 'settings-percentage'] as $other) {
+            foreach (['settings-categories', 'settings-brands', 'settings-percentage', 'settings-networks', 'settings-bill-config'] as $other) {
                 if ($other !== $screen) {
                     $this->assertFalse($shop->fresh()->isScreenDisabled($other), "$other should remain enabled while only $screen is disabled.");
                 }
             }
 
             // Re-enable before testing the next one.
-            $component->call('toggleScreen', $screen);
+            $component->call('toggleModule', $screen);
         }
     }
 
@@ -66,7 +67,7 @@ class SuperAdminSettingsTabPermissionsTest extends TestCase
         $owner = User::factory()->create(['shop_id' => $shop->id]);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'settings-percentage');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'settings-percentage');
 
         $this->actingAs($owner->fresh());
 
@@ -91,7 +92,7 @@ class SuperAdminSettingsTabPermissionsTest extends TestCase
             ->assertViewHas('accessibleTabs', fn ($tabs) => in_array('accessory-categories', $tabs, true));
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'settings-categories');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'settings-categories');
 
         $this->actingAs($staff->fresh());
         Livewire::test('settings.index')
@@ -120,7 +121,7 @@ class SuperAdminSettingsTabPermissionsTest extends TestCase
         $shop = Shop::create(['name' => 'Shop A']);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'dashboard');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'dashboard');
 
         $this->assertTrue($shop->fresh()->isScreenDisabled('dashboard'));
     }
@@ -138,9 +139,9 @@ class SuperAdminSettingsTabPermissionsTest extends TestCase
             ->assertSee('Administration')
             ->assertSee('Settings')
             ->assertSee('Settings: Categories')
-            ->assertSee('Settings: Networks')
-            ->assertSee('Settings: Bill Providers')
             ->assertSee('Settings: Percentage')
+            ->assertSee('Includes Edit / Cancel, Networks settings', false)
+            ->assertDontSee('Settings: Bill Providers</span>', false)
             ->assertSee('Dashboard')
             ->assertSee('Party Ledger');
     }
@@ -153,10 +154,10 @@ class SuperAdminSettingsTabPermissionsTest extends TestCase
         $this->actingAs($admin);
         $component = Livewire::test('admin.shops.show', ['shop' => $shop]);
 
-        $component->call('toggleScreen', 'settings-bill-config');
+        $component->call('toggleModule', 'bills');
         $this->assertTrue($shop->fresh()->isScreenDisabled('settings-bill-config'));
 
-        $component->call('toggleScreen', 'settings-bill-config');
+        $component->call('toggleModule', 'bills');
         $this->assertFalse($shop->fresh()->isScreenDisabled('settings-bill-config'));
     }
 

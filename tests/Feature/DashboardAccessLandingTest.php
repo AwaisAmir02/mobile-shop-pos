@@ -105,7 +105,7 @@ class DashboardAccessLandingTest extends TestCase
         $owner = User::factory()->create(['shop_id' => $shop->id]);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'dashboard');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'dashboard');
 
         $this->assertTrue($shop->fresh()->isScreenDisabled('dashboard'));
 

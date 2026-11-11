@@ -32,7 +32,7 @@ class VendorSuperAdminAccessTest extends TestCase
         $shopB = Shop::create(['name' => 'Shop B']);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleScreen', 'vendors');
+        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleModule', 'vendors');
 
         $this->assertTrue($shopA->fresh()->isScreenDisabled('vendors'));
         $this->assertFalse($shopB->fresh()->isScreenDisabled('vendors'));

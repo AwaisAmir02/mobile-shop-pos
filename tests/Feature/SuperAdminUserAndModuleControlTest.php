@@ -156,7 +156,7 @@ class SuperAdminUserAndModuleControlTest extends TestCase
 
         $this->actingAs($admin);
         Livewire::test('admin.shops.show', ['shop' => $shop])
-            ->call('toggleScreen', 'udhaar');
+            ->call('toggleModule', 'udhaar');
 
         $this->assertTrue($shop->fresh()->isScreenDisabled('udhaar'));
 
@@ -179,7 +179,7 @@ class SuperAdminUserAndModuleControlTest extends TestCase
         $owner = User::factory()->create(['shop_id' => $shop->id]);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'expenses');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'expenses');
 
         $this->actingAs($owner->fresh());
         $this->get(route('dashboard'))->assertDontSee(route('expenses.index'));
@@ -194,7 +194,7 @@ class SuperAdminUserAndModuleControlTest extends TestCase
         $ownerB = User::factory()->create(['shop_id' => $shopB->id]);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleScreen', 'sales');
+        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleModule', 'sales');
 
         $this->actingAs($ownerA);
         $this->get(route('sales.index'))->assertForbidden();
@@ -211,8 +211,8 @@ class SuperAdminUserAndModuleControlTest extends TestCase
 
         $this->actingAs($admin);
         $component = Livewire::test('admin.shops.show', ['shop' => $shop]);
-        $component->call('toggleScreen', 'expenses');
-        $component->call('toggleScreen', 'expenses');
+        $component->call('toggleModule', 'expenses');
+        $component->call('toggleModule', 'expenses');
 
         $this->assertFalse($shop->fresh()->isScreenDisabled('expenses'));
 
@@ -246,7 +246,7 @@ class SuperAdminUserAndModuleControlTest extends TestCase
         $this->get(route('expenses.index'))->assertOk();
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'expenses');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'expenses');
 
         $this->actingAs($staff->fresh());
         $this->get(route('expenses.index'))->assertForbidden();

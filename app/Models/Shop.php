@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BusinessCategory;
 use App\Enums\PlanType;
+use App\Enums\ShopModule;
 use App\Enums\ShopScreen;
 use App\Enums\SubscriptionStatus;
 use App\Support\BranchContext;
@@ -207,11 +208,16 @@ class Shop extends Model
      * unreachable for every user of this shop, owner included, regardless
      * of their own role permissions. Checked first by User::hasAccessTo().
      */
+    /**
+     * Off for this shop by the Super Admin. A screen follows its module's
+     * main screen (ShopModule), so an entry for a sub-permission alone,
+     * saved before modules had one switch, no longer counts.
+     */
     public function isScreenDisabled(ShopScreen|string $screen): bool
     {
         $value = $screen instanceof ShopScreen ? $screen->value : $screen;
 
-        return in_array($value, $this->disabled_screens ?? [], true);
+        return in_array(ShopModule::forScreen($value)?->value ?? $value, $this->disabled_screens ?? [], true);
     }
 
     public function isScreenHidden(ShopScreen|string $screen): bool

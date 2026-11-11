@@ -52,7 +52,7 @@ class ReportsScreenTest extends TestCase
         $owner = User::factory()->create(['shop_id' => $shop->id]);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'sales');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'sales');
 
         $this->actingAs($owner->fresh());
 

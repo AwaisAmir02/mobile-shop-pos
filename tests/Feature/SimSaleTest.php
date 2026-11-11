@@ -202,7 +202,7 @@ class SimSaleTest extends TestCase
         $this->get(route('sim-sales.index'))->assertOk();
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'sim-sales');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'sim-sales');
 
         $this->assertTrue($shop->fresh()->isScreenDisabled('sim-sales'));
 

@@ -24,7 +24,6 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
     public string $billingInterval = 'monthly';
     public bool $isActive = true;
     public bool $isFeatured = false;
-    public array $features = [];
     public array $limits = [];
     public array $featureFlags = [];
 
@@ -46,7 +45,6 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
         $this->reset(['editingId', 'name', 'tagline', 'price', 'isFeatured']);
         $this->billingInterval = PlanType::Monthly->value;
         $this->isActive = true;
-        $this->features = [['label' => '', 'included' => true]];
         $this->limits = array_fill_keys(array_column(LimitKey::cases(), 'value'), '');
         $this->featureFlags = array_fill_keys(array_column(FeatureKey::planCases(), 'value'), false);
         $this->limited = $this->pairedLimits()->mapWithKeys(fn (LimitKey $key) => [$key->value => false])->all();
@@ -85,7 +83,6 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
         $this->billingInterval = $plan->billing_interval->value;
         $this->isActive = $plan->is_active;
         $this->isFeatured = $plan->is_featured;
-        $this->features = $plan->featureList() ?: [['label' => '', 'included' => true]];
 
         foreach (LimitKey::cases() as $key) {
             $value = $plan->limits[$key->value] ?? null;
@@ -103,17 +100,22 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
         $this->dispatch('open-modal', name: 'plan-form');
     }
 
-    public function addFeature(): void
+    /** The form as an unsaved plan, for the pricing preview. Anything not yet a valid number counts as unlimited. */
+    protected function draftPlan(): Plan
     {
-        if (count($this->features) < Plan::MAX_FEATURES) {
-            $this->features[] = ['label' => '', 'included' => true];
-        }
+        return new Plan([
+            'limits' => collect(LimitKey::cases())->mapWithKeys(fn (LimitKey $key) => [$key->value => is_numeric($this->limits[$key->value] ?? null) ? max(0, (int) $this->limits[$key->value]) : null])->all(),
+            'feature_flags' => collect(FeatureKey::planCases())->mapWithKeys(fn (FeatureKey $key) => [$key->value => (bool) ($this->featureFlags[$key->value] ?? false)])->all(),
+        ]);
     }
 
-    public function removeFeature(int $index): void
+    /** What the pricing page will show for this plan, beside the other active plans. */
+    protected function previewLines(): array
     {
-        unset($this->features[$index]);
-        $this->features = array_values($this->features);
+        $draft = $this->draftPlan();
+        $others = Plan::active()->when($this->editingId, fn ($query) => $query->whereKeyNot($this->editingId))->get();
+
+        return $draft->pricingLines(Plan::offeredFeatures($others->push($draft)));
     }
 
     public function save(): void
@@ -125,33 +127,17 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
             'tagline' => ['nullable', 'string', 'max:160'],
             'price' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
             'billingInterval' => ['required', Rule::enum(PlanType::class)],
-            'features' => ['array', 'max:'.Plan::MAX_FEATURES],
-            'features.*.label' => ['nullable', 'string', 'max:120'],
-            'features.*.included' => ['boolean'],
             ...collect(LimitKey::cases())->mapWithKeys(fn (LimitKey $key) => ['limits.'.$key->value => [
                 ($this->limited[$key->value] ?? false) ? 'required' : 'nullable', 'integer', 'min:'.$key->minimum(), 'max:100000000',
             ]])->all(),
             'featureFlags.*' => ['boolean'],
-        ], ['limits.*.required' => 'Enter a limit, or turn off “Has a usage limit?”.'], ['features.*.label' => 'feature', 'limits.*' => 'limit']);
-
-        $features = collect($this->features)
-            ->map(fn ($f) => ['label' => trim((string) ($f['label'] ?? '')), 'included' => (bool) ($f['included'] ?? false)])
-            ->filter(fn ($f) => $f['label'] !== '')
-            ->values()
-            ->all();
-
-        if ($features === []) {
-            $this->addError('features', 'Add at least one feature line.');
-
-            return;
-        }
+        ], ['limits.*.required' => 'Enter a limit, or turn off “Has a usage limit?”.'], ['limits.*' => 'limit']);
 
         $data = [
             'name' => trim($this->name),
             'tagline' => trim($this->tagline) !== '' ? trim($this->tagline) : null,
             'price' => $this->price,
             'billing_interval' => $this->billingInterval,
-            'features' => $features,
             'is_active' => $this->isActive,
             'is_featured' => $this->isFeatured,
             'limits' => collect(LimitKey::cases())->mapWithKeys(fn (LimitKey $key) => [$key->value => ($this->limits[$key->value] ?? '') === '' ? null : (int) $this->limits[$key->value]])->all(),
@@ -164,7 +150,8 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
             app(Entitlements::class)->syncPlan($plan);
             $this->toastSuccess('Plan updated. Shops on this plan now use the new limits and features.');
         } else {
-            Plan::create($data + ['sort_order' => (int) Plan::max('sort_order') + 1]);
+            // features: the old hand-typed pricing lines, no longer shown anywhere.
+            Plan::create($data + ['features' => [], 'sort_order' => (int) Plan::max('sort_order') + 1]);
             $this->toastSuccess('Plan created.');
         }
 
@@ -223,6 +210,7 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
     {
         return [
             'plans' => Plan::ordered()->withCount('shops')->get(),
+            'preview' => $this->previewLines(),
         ];
     }
 }; ?>
@@ -265,7 +253,7 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
                             @endif
                         </x-ui.table-cell>
                         <x-ui.table-cell label="Price" class="font-semibold text-ink">{{ $plan->priceLabel() }} <span class="font-normal text-ink-faint">/ {{ $plan->intervalLabel() }}</span></x-ui.table-cell>
-                        <x-ui.table-cell label="Features">{{ collect($plan->featureList())->where('included', true)->count() }} included · {{ collect($plan->featureList())->where('included', false)->count() }} not</x-ui.table-cell>
+                        <x-ui.table-cell label="Features">{{ count($plan->includedFeatures()) }} of {{ count(FeatureKey::planCases()) }}</x-ui.table-cell>
                         <x-ui.table-cell label="Shops">{{ $plan->shops_count }}</x-ui.table-cell>
                         <x-ui.table-cell label="Status">
                             <x-ui.badge :variant="$plan->is_active ? 'success' : 'neutral'">{{ $plan->is_active ? 'Active' : 'Inactive' }}</x-ui.badge>
@@ -319,7 +307,7 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
                     <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                         @foreach (LimitKey::core() as $limitKey)
                             <x-ui.field :label="$limitKey->label()" :name="'limits.'.$limitKey->value" :for="'limit-'.$limitKey->value">
-                                <x-ui.input wire:model="limits.{{ $limitKey->value }}" id="limit-{{ $limitKey->value }}" type="number" :min="$limitKey->minimum()" placeholder="Unlimited" />
+                                <x-ui.input wire:model.live.debounce.400ms="limits.{{ $limitKey->value }}" id="limit-{{ $limitKey->value }}" type="number" :min="$limitKey->minimum()" placeholder="Unlimited" />
                             </x-ui.field>
                         @endforeach
                     </div>
@@ -333,13 +321,13 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
                             @php $pairedLimit = $featureKey->limit(); @endphp
                             <div class="py-2.5" wire:key="plan-feature-{{ $featureKey->value }}">
                                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                    <x-ui.checkbox wire:model="featureFlags.{{ $featureKey->value }}" :label="$featureKey->label()" />
+                                    <x-ui.checkbox wire:model.live="featureFlags.{{ $featureKey->value }}" :label="$featureKey->label()" />
                                     @if ($pairedLimit)
                                         <div class="flex flex-wrap items-center gap-3">
                                             <x-ui.checkbox wire:model.live="limited.{{ $pairedLimit->value }}" label="Has a usage limit?" />
                                             @if ($limited[$pairedLimit->value] ?? false)
                                                 <div class="flex items-center gap-2">
-                                                    <x-ui.input wire:model="limits.{{ $pairedLimit->value }}" id="limit-{{ $pairedLimit->value }}" type="number" :min="$pairedLimit->minimum()" class="w-28" aria-label="{{ $pairedLimit->label() }}" />
+                                                    <x-ui.input wire:model.live.debounce.400ms="limits.{{ $pairedLimit->value }}" id="limit-{{ $pairedLimit->value }}" type="number" :min="$pairedLimit->minimum()" class="w-28" aria-label="{{ $pairedLimit->label() }}" />
                                                     <span class="text-xs text-ink-faint">{{ $pairedLimit->unit().($pairedLimit->isMonthly() ? ' a month' : '') }}</span>
                                                 </div>
                                             @else
@@ -356,27 +344,22 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
                     </div>
                 </div>
 
-                <div>
-                    <div class="flex items-center justify-between">
-                        <p class="text-sm font-medium text-ink-muted">Pricing page lines</p>
-                        <p class="text-xs text-ink-faint">Tick = included, untick = shown as not included</p>
-                    </div>
-                    <div class="mt-2 space-y-2">
-                        @foreach ($features as $index => $feature)
-                            <div class="flex items-center gap-3" wire:key="feature-{{ $index }}">
-                                <input type="checkbox" wire:model="features.{{ $index }}.included" class="h-4 w-4 rounded border-line-strong text-link focus:ring-link" aria-label="Feature {{ $index + 1 }} included">
-                                <x-ui.input wire:model="features.{{ $index }}.label" placeholder="e.g. WhatsApp chatbot ordering" maxlength="120" class="flex-1" aria-label="Feature {{ $index + 1 }}" />
-                                <button type="button" wire:click="removeFeature({{ $index }})" class="rounded p-1.5 text-ink-faint hover:bg-surface-sunken hover:text-danger" aria-label="Remove feature {{ $index + 1 }}">
-                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                            <x-ui.error :messages="$errors->get('features.'.$index.'.label')" />
+                <div class="rounded-lg border border-line bg-surface-sunken/60 p-4">
+                    <p class="text-sm font-medium text-ink-muted">Pricing page preview</p>
+                    <p class="text-xs text-ink-faint">Built from the limits and features above, so there's nothing else to keep in sync. A feature no active plan includes isn't listed.</p>
+                    <ul class="mt-3 space-y-2 text-sm" data-plan-preview>
+                        @foreach ($preview as $line)
+                            <li @class(['flex gap-2.5', 'text-ink-faint' => ! $line['included'], 'text-ink' => $line['included']])>
+                                @if ($line['included'])
+                                    <svg class="mt-0.5 h-4 w-4 shrink-0 text-success" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                                    <span>{{ $line['label'] }}@if ($line['detail'])<span class="text-ink-faint"> · {{ $line['detail'] }}</span>@endif</span>
+                                @else
+                                    <svg class="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                                    <span class="line-through"><span class="sr-only">Not included: </span>{{ $line['label'] }}</span>
+                                @endif
+                            </li>
                         @endforeach
-                    </div>
-                    <x-ui.error :messages="$errors->get('features')" class="mt-2" />
-                    @if (count($features) < Plan::MAX_FEATURES)
-                        <x-ui.button type="button" size="sm" variant="secondary" wire:click="addFeature" class="mt-3">Add feature</x-ui.button>
-                    @endif
+                    </ul>
                 </div>
             </div>
 

@@ -7,10 +7,10 @@
             <p class="mt-1 text-2xl font-extrabold">{{ $plan->name }}</p>
             <p class="mt-1 text-brand-100"><span class="text-xl font-bold text-white">{{ $plan->priceLabel() }}</span> / {{ $plan->intervalLabel() }}</p>
             <ul class="mt-6 space-y-2.5 text-sm">
-                @foreach ($plan->featureList() as $feature)
-                    <li @class(['flex gap-2.5', 'opacity-50' => ! $feature['included']])>
-                        <x-site.icon :name="$feature['included'] ? 'check' : 'close'" class="h-5 w-5 shrink-0 text-accent-300" />
-                        <span @class(['line-through' => ! $feature['included']])>@unless ($feature['included'])<span class="sr-only">Not included: </span>@endunless{{ $feature['label'] }}</span>
+                @foreach ($plan->pricingLines(\App\Models\Plan::offeredFeatures(\App\Models\Plan::active()->get())) as $line)
+                    <li @class(['flex gap-2.5', 'opacity-50' => ! $line['included']])>
+                        <x-site.icon :name="$line['included'] ? 'check' : 'close'" class="h-5 w-5 shrink-0 text-accent-300" />
+                        <span @class(['line-through' => ! $line['included']])>@unless ($line['included'])<span class="sr-only">Not included: </span>@endunless{{ $line['label'] }}@if ($line['detail'])<span class="block text-xs opacity-80">{{ $line['detail'] }}</span>@endif</span>
                     </li>
                 @endforeach
             </ul>

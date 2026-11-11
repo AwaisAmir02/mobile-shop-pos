@@ -267,7 +267,7 @@ class BillPaymentTest extends TestCase
         $this->get(route('bills.index'))->assertOk();
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'bills');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'bills');
 
         $this->assertTrue($shop->fresh()->isScreenDisabled('bills'));
 

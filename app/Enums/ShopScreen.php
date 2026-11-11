@@ -186,10 +186,10 @@ enum ShopScreen: string
     }
 
     /**
-     * Screens grouped into logical sections for display -- used by both the
-     * Super Admin Module Access grid and the shop's own Role "Screen
-     * Access" checklist, so the two stay visually consistent and adding a
-     * screen only ever means updating this one place.
+     * Screens grouped into logical sections for the shop's own Role "Screen
+     * Access" checklist, where every permission is granted on its own. The
+     * Super Admin switches whole modules instead (ShopModule); a new screen
+     * must be added there too.
      *
      * @return array<string, array<self>>
      */

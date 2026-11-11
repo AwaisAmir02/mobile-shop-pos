@@ -132,7 +132,7 @@ class SettingsBrandTest extends TestCase
         $owner = User::factory()->create(['shop_id' => $shop->id]);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'settings-brands');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'settings-brands');
 
         $this->assertTrue($shop->fresh()->isScreenDisabled('settings-brands'));
 
@@ -149,7 +149,7 @@ class SettingsBrandTest extends TestCase
         $staff = User::factory()->staff()->create(['shop_id' => $shop->id, 'role_id' => $role->id]);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'settings-brands');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'settings-brands');
 
         $this->actingAs($staff->fresh());
         Livewire::test('settings.index')

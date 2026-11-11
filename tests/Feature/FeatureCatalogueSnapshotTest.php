@@ -149,14 +149,14 @@ class FeatureCatalogueSnapshotTest extends TestCase
 
         $editor = Livewire::test('admin.plans')->call('openCreate');
         $snapshot['plan_create_form'] = ['limits' => $editor->get('limits'), 'featureFlags' => $editor->get('featureFlags')];
-        $editor->set('name', 'Created')->set('price', '999')->set('features.0.label', 'Everything')
+        $editor->set('name', 'Created')->set('price', '999')
             ->set('limits.products', '25')->set('limits.whatsapp_messages_per_month', '0')->set('limits.branches', '3')
             ->set('featureFlags.whatsapp_ordering', true)->set('featureFlags.whatsapp_messaging', true)->set('featureFlags.branding', true)
             ->call('save');
         $snapshot['plan_create'] = ['errors' => $editor->errors()->keys(), 'stored' => $this->storedPlan(Plan::where('name', 'Created')->sole()->id)];
 
         foreach (['branches' => '0', 'products' => '-1', 'sales_per_month' => 'abc'] as $key => $value) {
-            $editor = Livewire::test('admin.plans')->call('openCreate')->set('name', 'Invalid')->set('price', '1')->set('features.0.label', 'x')->set('limits.'.$key, $value)->call('save');
+            $editor = Livewire::test('admin.plans')->call('openCreate')->set('name', 'Invalid')->set('price', '1')->set('limits.'.$key, $value)->call('save');
             $snapshot['plan_validation'][$key] = ['errors' => $editor->errors()->keys(), 'messages' => $editor->errors()->all()];
         }
 

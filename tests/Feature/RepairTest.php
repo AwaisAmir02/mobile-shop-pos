@@ -179,7 +179,7 @@ class RepairTest extends TestCase
         $this->get(route('repairs.index'))->assertOk();
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'repairs');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'repairs');
 
         $this->assertTrue($shop->fresh()->isScreenDisabled('repairs'));
 

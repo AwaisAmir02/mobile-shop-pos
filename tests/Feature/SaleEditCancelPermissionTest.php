@@ -86,25 +86,35 @@ class SaleEditCancelPermissionTest extends TestCase
         $this->get(route('sales.edit', $sale))->assertForbidden();
     }
 
-    public function test_super_admin_can_disable_sales_edit_cancel_for_one_shop_without_affecting_another(): void
+    public function test_super_admin_turning_sales_off_turns_edit_cancel_off_for_that_shop_only(): void
     {
         $admin = User::factory()->create(['shop_id' => null, 'is_super_admin' => true]);
         $shopA = Shop::create(['name' => 'Shop A']);
         $shopB = Shop::create(['name' => 'Shop B']);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleScreen', 'sales-edit-cancel');
+        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleModule', 'sales');
 
         $this->assertTrue($shopA->fresh()->isScreenDisabled('sales-edit-cancel'));
         $this->assertFalse($shopB->fresh()->isScreenDisabled('sales-edit-cancel'));
     }
 
-    public function test_super_admin_disabling_sales_edit_cancel_blocks_even_the_owner(): void
+    public function test_super_admin_turning_sales_off_blocks_editing_even_for_the_owner(): void
+    {
+        [$shop, $owner, $sale] = $this->shopWithSale();
+        $shop->update(['disabled_screens' => ['sales']]);
+        $this->actingAs($owner);
+
+        $this->get(route('sales.edit', $sale))->assertForbidden();
+    }
+
+    public function test_a_leftover_edit_cancel_entry_without_sales_no_longer_blocks_the_owner(): void
     {
         [$shop, $owner, $sale] = $this->shopWithSale();
         $shop->update(['disabled_screens' => ['sales-edit-cancel']]);
         $this->actingAs($owner);
 
-        $this->get(route('sales.edit', $sale))->assertForbidden();
+        $this->assertFalse($shop->fresh()->isScreenDisabled('sales-edit-cancel'));
+        $this->get(route('sales.edit', $sale))->assertOk();
     }
 }

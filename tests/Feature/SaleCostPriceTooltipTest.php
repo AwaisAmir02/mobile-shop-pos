@@ -131,20 +131,20 @@ class SaleCostPriceTooltipTest extends TestCase
         $this->assertNull($test->get('cart')[$product->id]['cost_price']);
     }
 
-    public function test_super_admin_can_disable_sales_view_cost_price_for_one_shop_without_affecting_another(): void
+    public function test_super_admin_turning_sales_off_turns_view_cost_price_off_for_that_shop_only(): void
     {
         $admin = User::factory()->create(['shop_id' => null, 'is_super_admin' => true]);
         $shopA = Shop::create(['name' => 'Shop A']);
         $shopB = Shop::create(['name' => 'Shop B']);
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleScreen', 'sales-view-cost-price');
+        Livewire::test('admin.shops.show', ['shop' => $shopA])->call('toggleModule', 'sales');
 
         $this->assertTrue($shopA->fresh()->isScreenDisabled('sales-view-cost-price'));
         $this->assertFalse($shopB->fresh()->isScreenDisabled('sales-view-cost-price'));
     }
 
-    public function test_super_admin_disabling_sales_view_cost_price_blocks_even_the_owner(): void
+    public function test_a_leftover_view_cost_price_entry_without_sales_no_longer_hides_cost_from_the_owner(): void
     {
         [$shop, $owner] = $this->shopOwner();
         $product = Product::create(['shop_id' => $shop->id, 'type' => 'accessory', 'name' => 'Cable', 'price' => 500, 'cost_price' => 150, 'stock_quantity' => 10, 'details' => ['category' => 'Cable']]);
@@ -152,7 +152,7 @@ class SaleCostPriceTooltipTest extends TestCase
 
         $test = Livewire::test('sales.create')->call('addToCart', $product->id);
 
-        $this->assertNull($test->get('cart')[$product->id]['cost_price']);
+        $this->assertEquals(150, $test->get('cart')[$product->id]['cost_price']);
     }
 
     protected function assertMarkupIsInsideComponentBoundary(string $routeName, array $routeParams, string $componentName, string $needle): void

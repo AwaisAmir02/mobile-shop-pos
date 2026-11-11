@@ -59,7 +59,7 @@ class LimitWordingAndSeverityTest extends TestCase
     public function test_the_plan_editor_needs_at_least_one_branch_but_other_limits_still_take_zero(): void
     {
         $this->actingAs(User::factory()->create(['is_super_admin' => true, 'shop_id' => null]));
-        $form = fn () => Livewire::test('admin.plans')->call('openCreate')->set('name', 'Basic')->set('price', '1000')->set('features.0.label', 'Everything');
+        $form = fn () => Livewire::test('admin.plans')->call('openCreate')->set('name', 'Basic')->set('price', '1000');
 
         $form()->set('limits.branches', '0')->call('save')->assertHasErrors(['limits.branches']);
         $form()->set('limits.branches', '1')->set('limits.marketing_posts_per_month', '0')->call('save')->assertHasNoErrors();

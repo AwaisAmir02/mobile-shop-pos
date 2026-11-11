@@ -258,7 +258,7 @@ class WalletLoadShopAccountAndFeeTest extends TestCase
         Livewire::test('settings.index')->set('tab', 'shop-accounts')->assertSee('Shop Accounts');
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'shop-accounts');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'shop-accounts');
 
         $this->assertTrue($shop->fresh()->isScreenDisabled('shop-accounts'));
 

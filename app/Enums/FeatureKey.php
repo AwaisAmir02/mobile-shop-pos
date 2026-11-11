@@ -40,6 +40,22 @@ enum FeatureKey: string
         return array_values(array_filter(self::cases(), fn (self $feature) => $feature->planControlled()));
     }
 
+    /**
+     * Plan features in the order a customer compares them on the pricing
+     * page: selling and marketing first, back office next, extras last.
+     *
+     * @return array<int, self>
+     */
+    public static function pricingOrder(): array
+    {
+        $order = [self::WhatsAppOrdering, self::WhatsAppMessaging, self::Social, self::Ads, self::OnlineStore, self::PurchaseOrders, self::Payroll, self::Services, self::Barcode, self::Import, self::Branding];
+
+        return collect(self::planCases())
+            ->sortBy(fn (self $feature) => ($position = array_search($feature, $order, true)) === false ? PHP_INT_MAX : $position)
+            ->values()
+            ->all();
+    }
+
     public function label(): string
     {
         return match ($this) {

@@ -187,7 +187,7 @@ class NadraVerificationTest extends TestCase
         $this->get(route('nadra-verifications.index'))->assertOk();
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'nadra-verifications');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'nadra-verifications');
 
         $this->assertTrue($shop->fresh()->isScreenDisabled('nadra-verifications'));
 

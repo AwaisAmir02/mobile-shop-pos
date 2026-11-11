@@ -236,7 +236,7 @@ class PartyLedgerFiltersTest extends TestCase
         $this->get(route('dashboard'))->assertOk()->assertDontSee(route('party-ledger.index'));
 
         $this->actingAs($admin);
-        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleScreen', 'party-ledger');
+        Livewire::test('admin.shops.show', ['shop' => $shop])->call('toggleModule', 'party-ledger');
         $this->assertSame([], $shop->fresh()->disabled_screens);
 
         $this->actingAs($owner->fresh());

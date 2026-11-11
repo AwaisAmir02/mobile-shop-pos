@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Enums\FeatureKey;
 use App\Enums\LimitKey;
+use App\Enums\ShopModule;
+use App\Enums\ShopScreen;
 use App\Models\Plan;
 use App\Models\Shop;
 use App\Models\User;
@@ -53,12 +55,71 @@ class FeatureCatalogueTest extends TestCase
         $shop = Shop::create(['name' => 'Switches']);
         $page = Livewire::test('admin.shops.show', ['shop' => $shop]);
 
+        // A feature with screens of its own is switched by its module's row; the rest have their own switch. Never both.
         foreach (FeatureKey::cases() as $feature) {
-            $page->assertSeeHtml("toggleFeature('{$feature->value}')")->assertSee($feature->adminSwitch()['label']);
+            $module = ShopModule::forFeature($feature);
+
+            if ($module !== null) {
+                $page->assertSeeHtml("toggleModule('{$module->value}')")->assertDontSeeHtml("toggleFeature('{$feature->value}')");
+            } else {
+                $page->assertSeeHtml("toggleFeature('{$feature->value}')")->assertSee($feature->adminSwitch()['label']);
+            }
         }
 
-        $page->call('toggleFeature', 'services')->assertDispatched('toast', message: 'Services enabled for this shop.');
+        $page->call('toggleFeature', 'barcode')->assertDispatched('toast', message: 'Barcodes disabled for this shop.');
+        $this->assertFalse($shop->fresh()->barcode_enabled);
+
+        $page->call('toggleModule', 'services')->assertDispatched('toast', message: 'Services turned on for this shop.');
         $this->assertTrue($shop->fresh()->services_enabled);
+    }
+
+    public function test_every_screen_belongs_to_exactly_one_admin_module(): void
+    {
+        $owners = collect(ShopScreen::cases())->mapWithKeys(fn (ShopScreen $screen) => [
+            $screen->value => collect(ShopModule::cases())->filter(fn (ShopModule $module) => in_array($screen, $module->screens(), true))->count(),
+        ]);
+
+        $this->assertSame([], $owners->reject(fn (int $count) => $count === 1)->all());
+        $this->assertEqualsCanonicalizing(ShopModule::cases(), array_merge(...array_values(ShopModule::grouped())));
+    }
+
+    public function test_a_feature_module_switches_the_feature_and_its_screens_together(): void
+    {
+        $shop = Shop::create(['name' => 'Modules', 'disabled_screens' => ['payroll-run']]);
+        $owner = User::factory()->create(['shop_id' => $shop->id]);
+        $page = Livewire::test('admin.shops.show', ['shop' => $shop]);
+
+        $page->call('toggleModule', 'payroll');
+        $shop->refresh();
+        $this->assertTrue($shop->payroll_enabled);
+        $this->assertSame([], $shop->disabled_screens, 'Turning a module on clears what was left of the old per-screen switches.');
+        $this->assertTrue($owner->fresh()->hasAccessTo('payroll-run'));
+
+        $page->call('toggleModule', 'payroll');
+        $this->assertFalse($shop->fresh()->payroll_enabled);
+    }
+
+    public function test_a_plain_module_switches_its_sub_permissions_with_it(): void
+    {
+        $shop = Shop::create(['name' => 'Modules']);
+        $owner = User::factory()->create(['shop_id' => $shop->id]);
+        $page = Livewire::test('admin.shops.show', ['shop' => $shop]);
+
+        $page->call('toggleModule', 'bills');
+        $this->assertSame(['bills'], $shop->fresh()->disabled_screens);
+        foreach (['bills', 'bills-edit-cancel', 'settings-bill-config'] as $screen) {
+            $this->assertFalse($owner->fresh()->hasAccessTo($screen), $screen);
+        }
+
+        $page->call('toggleModule', 'bills');
+        $this->assertTrue($owner->fresh()->hasAccessTo('settings-bill-config'));
+    }
+
+    public function test_a_module_the_owner_hid_is_flagged_on_the_admin_page(): void
+    {
+        $shop = Shop::create(['name' => 'Modules', 'hidden_screens' => ['repairs', 'repairs-edit-cancel']]);
+
+        Livewire::test('admin.shops.show', ['shop' => $shop])->assertSee('Hidden by the shop in Settings → Modules');
     }
 
     public function test_admin_shop_limit_overrides_are_validated_per_limit(): void

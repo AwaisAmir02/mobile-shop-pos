@@ -63,6 +63,23 @@ enum LimitKey: string
         return ! in_array($this, [self::Branches, self::StaffUsers], true);
     }
 
+    /**
+     * The amount as the pricing page says it: "500 products", "1,500 sales a
+     * month", "Unlimited branches". Null is unlimited.
+     */
+    public function amountLabel(?int $limit): string
+    {
+        if ($limit === null) {
+            return 'Unlimited '.$this->unit();
+        }
+
+        if ($limit === 0 && $this === self::StaffUsers) {
+            return 'Owner login only';
+        }
+
+        return number_format($limit).' '.$this->unit($limit).($this->isMonthly() ? ' a month' : '');
+    }
+
     public function isMonthly(): bool
     {
         return in_array($this, [self::SalesPerMonth, self::WhatsAppMessagesPerMonth, self::MarketingPostsPerMonth, self::WhatsAppOrdersPerMonth, self::OnlineOrdersPerMonth], true);

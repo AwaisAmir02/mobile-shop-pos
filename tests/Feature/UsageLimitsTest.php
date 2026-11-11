@@ -260,7 +260,6 @@ class UsageLimitsTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test('admin.plans')->call('openCreate')->set('name', 'Mini')->set('price', '999')
-            ->set('features', [['label' => 'Basics', 'included' => true]])
             ->set('limits.products', '50')->set('limits.staff_users', '')->set('featureFlags.import', true)
             ->call('save')->assertHasNoErrors();
 

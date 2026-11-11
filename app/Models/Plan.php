@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\FeatureKey;
+use App\Enums\LimitKey;
 use App\Enums\PlanType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -9,8 +11,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Plan extends Model
 {
-    public const MAX_FEATURES = 20;
-
     protected $fillable = [
         'name',
         'tagline',
@@ -53,13 +53,77 @@ class Plan extends Model
         return $query->orderBy('sort_order')->orderBy('id');
     }
 
-    public function featureList(): array
+    /** The plan's limit for $key; null (or a key the plan never set) is unlimited. */
+    public function limitFor(LimitKey $key): ?int
     {
-        return collect($this->features ?? [])
-            ->filter(fn ($feature) => is_array($feature) && trim((string) ($feature['label'] ?? '')) !== '')
-            ->map(fn ($feature) => ['label' => trim((string) $feature['label']), 'included' => (bool) ($feature['included'] ?? false)])
-            ->values()
-            ->all();
+        $value = ($this->limits ?? [])[$key->value] ?? null;
+
+        return $value === null || $value === '' ? null : (int) $value;
+    }
+
+    /**
+     * Whether the plan really gives this feature: ticked, and not capped at
+     * zero (a feature allowed 0 uses a month can't be used).
+     */
+    public function includes(FeatureKey $feature): bool
+    {
+        return (bool) (($this->feature_flags ?? [])[$feature->value] ?? false)
+            && ($feature->limit() === null || $this->limitFor($feature->limit()) !== 0);
+    }
+
+    /** @return array<int, FeatureKey> */
+    public function includedFeatures(): array
+    {
+        return array_values(array_filter(FeatureKey::pricingOrder(), fn (FeatureKey $feature) => $this->includes($feature)));
+    }
+
+    /**
+     * Features at least one of $plans includes. The pricing page lists only
+     * these as "not included" on the plans that lack them; a feature no plan
+     * sells isn't mentioned at all.
+     *
+     * @param  iterable<int, self>  $plans
+     * @return array<int, FeatureKey>
+     */
+    public static function offeredFeatures(iterable $plans): array
+    {
+        $offered = collect($plans)->flatMap(fn (self $plan) => $plan->includedFeatures());
+
+        return array_values(array_filter(FeatureKey::pricingOrder(), fn (FeatureKey $feature) => $offered->contains($feature)));
+    }
+
+    /**
+     * The plan's lines on the pricing page and at signup, built from its
+     * limits and features so they can't drift from what the plan does:
+     * core limits first, then the features it includes (with their limit
+     * when they have one), then the offered ones it doesn't.
+     *
+     * @param  array<int, FeatureKey>|null  $offered  features to show as "not included" when missing; null shows every plan feature
+     * @return array<int, array{label: string, detail: ?string, included: bool}>
+     */
+    public function pricingLines(?array $offered = null): array
+    {
+        $lines = array_map(fn (LimitKey $key) => ['label' => $key->amountLabel($this->limitFor($key)), 'detail' => null, 'included' => true], LimitKey::core());
+        $missing = [];
+
+        foreach (FeatureKey::pricingOrder() as $feature) {
+            $included = $this->includes($feature);
+
+            if (! $included && $offered !== null && ! in_array($feature, $offered, true)) {
+                continue;
+            }
+
+            if (! $included) {
+                $missing[] = ['label' => $feature->label(), 'detail' => null, 'included' => false];
+
+                continue;
+            }
+
+            $limit = $feature->limit();
+            $lines[] = ['label' => $feature->label(), 'detail' => $limit?->amountLabel($this->limitFor($limit)), 'included' => true];
+        }
+
+        return [...$lines, ...$missing];
     }
 
     public function intervalLabel(): string

@@ -48,7 +48,7 @@ new #[Layout('layouts.guest')] class extends Component
         </x-ui.field>
 
         <x-ui.field label="Password" name="form.password" for="password">
-            <x-ui.input wire:model="form.password" id="password" type="password" name="password" required autocomplete="current-password" />
+            <x-ui.password-input wire:model="form.password" id="password" name="password" required autocomplete="current-password" />
         </x-ui.field>
 
         <div class="flex items-center">

@@ -1,5 +1,6 @@
 @php
     $plans = \App\Models\Plan::active()->ordered()->get();
+    $offered = \App\Models\Plan::offeredFeatures($plans);
     $columns = match (true) {
         $plans->count() === 1 => 'mx-auto max-w-md',
         $plans->count() === 2 => 'mx-auto max-w-4xl md:grid-cols-2',
@@ -89,14 +90,19 @@
                             <span @class(['text-sm', 'text-brand-100' => $plan->is_featured, 'text-slate-500' => ! $plan->is_featured])>/ {{ $plan->intervalLabel() }}</span>
                         </p>
                         <ul class="mt-8 flex-1 space-y-3 text-sm">
-                            @foreach ($plan->featureList() as $feature)
-                                <li @class(['flex gap-3', 'opacity-50' => ! $feature['included']])>
-                                    @if ($feature['included'])
+                            @foreach ($plan->pricingLines($offered) as $line)
+                                <li @class(['flex gap-3', 'opacity-50' => ! $line['included']])>
+                                    @if ($line['included'])
                                         <x-site.icon name="check" @class(['h-5 w-5 shrink-0', 'text-accent-300' => $plan->is_featured, 'text-brand-600' => ! $plan->is_featured]) />
-                                        <span>{{ $feature['label'] }}</span>
+                                        <span>
+                                            {{ $line['label'] }}
+                                            @if ($line['detail'])
+                                                <span @class(['block text-xs', 'text-brand-100' => $plan->is_featured, 'text-slate-500' => ! $plan->is_featured])>{{ $line['detail'] }}</span>
+                                            @endif
+                                        </span>
                                     @else
                                         <x-site.icon name="close" class="h-5 w-5 shrink-0" />
-                                        <span class="line-through decoration-1"><span class="sr-only">Not included: </span>{{ $feature['label'] }}</span>
+                                        <span class="line-through decoration-1"><span class="sr-only">Not included: </span>{{ $line['label'] }}</span>
                                     @endif
                                 </li>
                             @endforeach

@@ -4,7 +4,7 @@ use App\Enums\BusinessCategory;
 use App\Enums\FeatureKey;
 use App\Enums\LimitKey;
 use App\Enums\PlanType;
-use App\Enums\ShopScreen;
+use App\Enums\ShopModule;
 use App\Enums\SubscriptionStatus;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Plan;
@@ -175,29 +175,50 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $this->toastSuccess($user->is_active ? "{$user->name} activated." : "{$user->name} deactivated.");
     }
 
-    public function toggleScreen(string $screen): void
+    public function moduleOn(ShopModule $module): bool
     {
-        $disabled = $this->shop->disabled_screens ?? [];
-
-        $disabled = in_array($screen, $disabled, true)
-            ? array_values(array_diff($disabled, [$screen]))
-            : [...$disabled, $screen];
-
-        $this->shop->update(['disabled_screens' => $disabled]);
-        $this->shop->refresh();
-
-        $this->toastSuccess('Module access updated.');
+        return ! $this->shop->isScreenDisabled($module->mainScreen())
+            && ($module->feature() === null || (bool) $this->shop->{$module->feature()->column()});
     }
 
     /**
-     * A shop feature switch (shops.{feature}_enabled). These are opt-in
-     * capability flags, deliberately separate from Module Access: nothing
-     * in the shop's own UI can flip them, only this page.
+     * The one switch for a module and everything in it. A module backed by a
+     * feature is switched by that feature (following the plan unless it is
+     * overridden here); any other is switched with disabled_screens. Either
+     * way the module's own entries are cleared first, so a leftover from the
+     * old per-screen switches can't keep part of it off.
+     */
+    public function toggleModule(string $module): void
+    {
+        $module = ShopModule::from($module);
+        $turnOn = ! $this->moduleOn($module);
+
+        $disabled = array_values(array_diff($this->shop->disabled_screens ?? [], $module->screenValues()));
+
+        if (! $turnOn && $module->feature() === null) {
+            $disabled[] = $module->value;
+        }
+
+        $this->shop->update(['disabled_screens' => $disabled]);
+
+        if ($module->feature() !== null && (bool) $this->shop->{$module->feature()->column()} !== $turnOn) {
+            $this->setFeature($module->feature(), $turnOn);
+        }
+
+        $this->shop->refresh();
+
+        $this->toastSuccess($module->label().($turnOn ? ' turned on' : ' turned off').' for this shop.');
+    }
+
+    /**
+     * A shop feature switch (shops.{feature}_enabled). Nothing in the shop's
+     * own UI can flip them, only this page. Features with screens of their
+     * own are switched through their module row (toggleModule).
      */
     public function toggleFeature(string $feature): void
     {
         $feature = FeatureKey::from($feature);
-        $this->flipFeature($feature);
+        $this->setFeature($feature, ! $this->shop->{$feature->column()});
         $this->shop->refresh();
 
         $this->toastSuccess($feature->adminSwitch()['toast'].($this->shop->{$feature->column()} ? ' enabled' : ' disabled').' for this shop.');
@@ -217,10 +238,9 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $this->toastSuccess('Defaults for '.$this->shop->business_category->label().' applied.');
     }
 
-    protected function flipFeature(FeatureKey $feature): void
+    protected function setFeature(FeatureKey $feature, bool $value): void
     {
         $entitlements = app(Entitlements::class);
-        $value = ! $this->shop->{$feature->column()};
 
         if ($feature->planControlled() && $entitlements->governed($this->shop)) {
             $entitlements->setFeatureOverride($this->shop, $feature, $value);
@@ -295,8 +315,8 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                     'plan' => app(Entitlements::class)->planFeature($this->shop, $feature),
                 ])->values(),
             'users' => $this->shop->users()->with('role')->orderByDesc('is_owner')->orderBy('name')->get(),
-            'screens' => ShopScreen::cases(),
-            'groupedScreens' => ShopScreen::grouped(),
+            'groupedModules' => ShopModule::grouped(),
+            'otherFeatures' => collect(FeatureKey::adminSwitches())->filter(fn (FeatureKey $feature) => ShopModule::forFeature($feature) === null)->values()->all(),
             ...$reports->summary($this->shop, $start, $end),
         ];
     }
@@ -604,23 +624,50 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         </div>
     </x-ui.card>
 
-    <x-ui.card title="Module Access" description="Turn a module off entirely for this shop — no one there, including the owner, can reach it while it's disabled here, regardless of their own role." class="mt-8">
+    <x-ui.card title="Module Access" description="One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows." class="mt-8">
+        @if ($governed && $featureOverrides->isNotEmpty())
+            <div class="mb-6 rounded-lg bg-primary-soft/60 px-4 py-2.5 text-xs text-ink-muted">
+                Switches marked “Plan” follow the <span class="font-semibold">{{ $shop->plan?->name }}</span> plan. These differ from the plan for this shop only:
+                @foreach ($featureOverrides as $override)
+                    <span class="mt-1 flex items-center justify-between gap-2">
+                        <span>{{ $override['label'] }}: <span class="font-semibold">{{ $override['value'] ? 'on' : 'off' }}</span> here, plan says {{ $override['plan'] === null ? 'nothing' : ($override['plan'] ? 'on' : 'off') }}</span>
+                        <button type="button" wire:click="usePlanDefault('{{ $override['key'] }}')" class="font-semibold text-link hover:underline">Use plan default</button>
+                    </span>
+                @endforeach
+            </div>
+        @endif
+
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            @foreach ($groupedScreens as $groupLabel => $groupScreens)
+            @foreach ($groupedModules as $groupLabel => $groupModules)
                 <div>
                     <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-faint">{{ $groupLabel }}</h3>
                     <div class="divide-y divide-line rounded-lg border border-line">
-                        @foreach ($groupScreens as $screen)
-                            @php $enabled = ! $shop->isScreenDisabled($screen); @endphp
-                            <div class="flex items-center justify-between gap-3 px-4 py-2.5">
-                                <span class="text-sm font-medium text-ink">{{ $screen->label() }}</span>
+                        @foreach ($groupModules as $module)
+                            @php
+                                $enabled = $this->moduleOn($module);
+                                $feature = $module->feature();
+                                $confirm = ($enabled ? 'Turn off ' : 'Turn on ').$module->label().' for this shop?'.($feature ? ' '.$feature->adminSwitch()['description'] : '');
+                            @endphp
+                            <div class="flex items-center justify-between gap-3 px-4 py-2.5" wire:key="module-{{ $module->value }}">
+                                <div class="min-w-0">
+                                    <span class="text-sm font-medium text-ink">{{ $module->label() }}</span>
+                                    @if ($feature && $governed && $feature->planControlled())
+                                        <x-ui.badge class="ml-1">Plan</x-ui.badge>
+                                    @endif
+                                    @if ($module->includesLabel())
+                                        <p class="text-xs text-ink-faint">{{ $module->includesLabel() }}</p>
+                                    @endif
+                                    @if ($shop->isScreenHidden($module->mainScreen()))
+                                        <p class="text-xs text-ink-faint">Hidden by the shop in Settings → Modules</p>
+                                    @endif
+                                </div>
                                 <button
                                     type="button"
                                     role="switch"
                                     aria-checked="{{ $enabled ? 'true' : 'false' }}"
-                                    aria-label="{{ $enabled ? 'Disable' : 'Enable' }} {{ $screen->label() }}"
-                                    wire:click="toggleScreen('{{ $screen->value }}')"
-                                    wire:confirm="{{ $enabled ? 'Disable' : 'Enable' }} {{ $screen->label() }} for this shop?"
+                                    aria-label="{{ $enabled ? 'Turn off' : 'Turn on' }} {{ $module->label() }}"
+                                    wire:click="toggleModule('{{ $module->value }}')"
+                                    wire:confirm="{{ $confirm }}"
                                     @class([
                                         'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
                                         'bg-success' => $enabled,
@@ -642,20 +689,10 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             @endforeach
 
             <div>
-                <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-faint">Shop Features</h3>
+                <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-faint">Other features</h3>
+                <p class="mb-2 text-xs text-ink-faint">Capabilities inside existing screens, with no screen of their own.</p>
                 <div class="divide-y divide-line rounded-lg border border-line">
-                    @if ($governed)
-                        <div class="bg-primary-soft/60 px-4 py-2.5 text-xs text-ink-muted">
-                            These switches follow the <span class="font-semibold">{{ $shop->plan?->name }}</span> plan. Flipping one here overrides the plan for this shop only.
-                            @foreach ($featureOverrides as $override)
-                                <span class="mt-1 flex items-center justify-between gap-2">
-                                    <span>{{ $override['label'] }}: <span class="font-semibold">{{ $override['value'] ? 'on' : 'off' }}</span> here, plan says {{ $override['plan'] === null ? 'nothing' : ($override['plan'] ? 'on' : 'off') }}</span>
-                                    <button type="button" wire:click="usePlanDefault('{{ $override['key'] }}')" class="font-semibold text-link hover:underline">Use plan default</button>
-                                </span>
-                            @endforeach
-                        </div>
-                    @endif
-                    @foreach (FeatureKey::adminSwitches() as $feature)
+                    @foreach ($otherFeatures as $feature)
                         @php
                             $switch = $feature->adminSwitch();
                             $on = (bool) $shop->{$feature->column()};
@@ -663,6 +700,9 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                         <div class="flex items-center justify-between gap-3 px-4 py-2.5" wire:key="feature-switch-{{ $feature->value }}">
                             <div>
                                 <span class="text-sm font-medium text-ink">{{ $switch['label'] }}</span>
+                                @if ($governed && $feature->planControlled())
+                                    <x-ui.badge class="ml-1">Plan</x-ui.badge>
+                                @endif
                                 <p class="text-xs text-ink-faint">{{ $switch['description'] }}</p>
                             </div>
                             <button

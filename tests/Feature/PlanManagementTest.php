@@ -49,7 +49,7 @@ class PlanManagementTest extends TestCase
         $this->actingAs($owner)->get(route('dashboard'))->assertOk();
     }
 
-    public function test_the_admin_creates_a_plan_with_feature_lines_and_it_appears_last_on_pricing(): void
+    public function test_the_admin_creates_a_plan_and_its_pricing_lines_come_from_its_limits_and_features(): void
     {
         $this->actingAs($this->superAdmin());
 
@@ -59,17 +59,46 @@ class PlanManagementTest extends TestCase
             ->set('tagline', 'For chains of shops')
             ->set('price', '60000')
             ->set('billingInterval', 'yearly')
-            ->set('features', [['label' => 'Everything in Commerce', 'included' => true], ['label' => '  ', 'included' => true], ['label' => 'Custom domain', 'included' => false]])
+            ->set('limits.products', '5000')
+            ->set('limits.staff_users', '25')
+            ->set('limits.branches', '1')
+            ->set('featureFlags.whatsapp_ordering', true)
+            ->set('limited.whatsapp_orders_per_month', true)
+            ->set('limits.whatsapp_orders_per_month', '100')
+            ->assertSee('5,000 products')
+            ->assertSee('100 orders a month')
             ->call('save')
             ->assertHasNoErrors();
 
         $plan = Plan::where('name', 'Enterprise')->sole();
         $this->assertSame(PlanType::Yearly, $plan->billing_interval);
-        $this->assertSame([['label' => 'Everything in Commerce', 'included' => true], ['label' => 'Custom domain', 'included' => false]], $plan->features);
+        $this->assertSame([], $plan->features);
         $this->assertSame(4, $plan->sort_order);
 
         auth()->logout();
-        $this->get('/pricing')->assertSeeInOrder(['Commerce', 'Enterprise', 'Rs 60,000', '/ year', 'Custom domain']);
+        $this->get('/pricing')->assertSeeInOrder(['Commerce', 'Enterprise', 'Rs 60,000', '/ year', '5,000 products', '25 staff users', 'Unlimited sales', '1 branch', 'WhatsApp ordering', '100 orders a month']);
+    }
+
+    public function test_pricing_lines_show_limits_and_list_only_features_some_plan_sells(): void
+    {
+        Plan::query()->delete();
+        $basic = Plan::create(['name' => 'Basic', 'price' => 1000, 'billing_interval' => 'monthly', 'features' => [], 'limits' => ['products' => 500, 'staff_users' => 0, 'sales_per_month' => 1000, 'branches' => 1, 'marketing_posts_per_month' => 10], 'feature_flags' => ['social' => true, 'whatsapp_ordering' => false]]);
+        $pro = Plan::create(['name' => 'Pro', 'price' => 2000, 'billing_interval' => 'monthly', 'features' => [], 'limits' => ['whatsapp_messages_per_month' => 0], 'feature_flags' => ['whatsapp_ordering' => true, 'social' => true, 'whatsapp_messaging' => true]]);
+
+        $offered = Plan::offeredFeatures([$basic->fresh(), $pro->fresh()]);
+        $this->assertSame(['whatsapp_ordering', 'social'], array_map(fn ($f) => $f->value, $offered), 'Messaging capped at 0 is not really offered; payroll is in no plan.');
+
+        $lines = collect($basic->fresh()->pricingLines($offered))->keyBy('label');
+        $this->assertSame(['500 products', 'Owner login only', '1,000 sales a month', '1 branch', 'Facebook & Instagram posting', 'WhatsApp ordering'], $lines->keys()->all(), 'Included lines first, then what the plan lacks.');
+        $this->assertFalse($lines['WhatsApp ordering']['included']);
+        $this->assertSame('10 posts a month', $lines['Facebook & Instagram posting']['detail']);
+
+        $proLines = collect($pro->fresh()->pricingLines($offered))->keyBy('label');
+        $this->assertSame('Unlimited products', $proLines->keys()->first());
+        $this->assertSame('Unlimited orders', $proLines['WhatsApp ordering']['detail']);
+        $this->assertSame('Unlimited posts', $proLines['Facebook & Instagram posting']['detail']);
+
+        $this->get('/pricing')->assertSee('<span class="sr-only">Not included: </span>WhatsApp ordering', false);
     }
 
     public function test_plan_form_validation(): void
@@ -83,14 +112,6 @@ class PlanManagementTest extends TestCase
             ->set('billingInterval', 'weekly')
             ->call('save')
             ->assertHasErrors(['name', 'price', 'billingInterval']);
-
-        Livewire::test('admin.plans')
-            ->call('openCreate')
-            ->set('name', 'Empty')
-            ->set('price', '100')
-            ->set('features', [['label' => '', 'included' => true]])
-            ->call('save')
-            ->assertHasErrors(['features']);
 
         $this->assertSame(3, Plan::count());
     }
@@ -106,17 +127,16 @@ class PlanManagementTest extends TestCase
             ->assertSet('price', '4500')
             ->set('price', '3999')
             ->set('isFeatured', false)
-            ->call('removeFeature', 0)
+            ->set('limits.products', '1234')
             ->call('save')
             ->assertHasNoErrors();
 
         $growth->refresh();
         $this->assertSame('3999.00', $growth->price);
         $this->assertFalse($growth->is_featured);
-        $this->assertCount(5, $growth->features);
 
         auth()->logout();
-        $this->get('/pricing')->assertSee('Rs 3,999')->assertDontSee('Most popular')->assertDontSee('Everything in Starter');
+        $this->get('/pricing')->assertSee('Rs 3,999')->assertDontSee('Most popular')->assertSee('1,234 products')->assertDontSee('Everything in Starter');
     }
 
     public function test_plans_can_be_reordered(): void
