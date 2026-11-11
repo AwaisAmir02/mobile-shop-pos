@@ -3,6 +3,7 @@
 namespace App\Services\Billing;
 
 use App\Enums\SubscriptionPaymentStatus;
+use App\Models\PaymentAccount;
 use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPayment;
 
@@ -31,11 +32,16 @@ class ManualBankTransferGateway implements PaymentGateway
         ]);
     }
 
+    /**
+     * The accounts set up under Admin > Payment Accounts; the config text is
+     * the fallback while there are none.
+     */
     public function nextStep(SubscriptionPayment $payment): array
     {
         return [
             'type' => 'instructions',
             'instructions' => (string) config('billing.manual_bank_transfer.instructions'),
+            'accounts' => PaymentAccount::active()->ordered()->get(),
         ];
     }
 }

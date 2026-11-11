@@ -22,6 +22,7 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
     public string $tagline = '';
     public string $price = '';
     public string $billingInterval = 'monthly';
+    public string $trialDays = '15';
     public bool $isActive = true;
     public bool $isFeatured = false;
     public array $limits = [];
@@ -42,7 +43,7 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
     protected function resetForm(): void
     {
         $this->resetValidation();
-        $this->reset(['editingId', 'name', 'tagline', 'price', 'isFeatured']);
+        $this->reset(['editingId', 'name', 'tagline', 'price', 'isFeatured', 'trialDays']);
         $this->billingInterval = PlanType::Monthly->value;
         $this->isActive = true;
         $this->limits = array_fill_keys(array_column(LimitKey::cases(), 'value'), '');
@@ -81,6 +82,7 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
         $this->tagline = (string) $plan->tagline;
         $this->price = (string) (float) $plan->price;
         $this->billingInterval = $plan->billing_interval->value;
+        $this->trialDays = (string) $plan->trial_days;
         $this->isActive = $plan->is_active;
         $this->isFeatured = $plan->is_featured;
 
@@ -127,17 +129,19 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
             'tagline' => ['nullable', 'string', 'max:160'],
             'price' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
             'billingInterval' => ['required', Rule::enum(PlanType::class)],
+            'trialDays' => ['required', 'integer', 'min:0', 'max:365'],
             ...collect(LimitKey::cases())->mapWithKeys(fn (LimitKey $key) => ['limits.'.$key->value => [
                 ($this->limited[$key->value] ?? false) ? 'required' : 'nullable', 'integer', 'min:'.$key->minimum(), 'max:100000000',
             ]])->all(),
             'featureFlags.*' => ['boolean'],
-        ], ['limits.*.required' => 'Enter a limit, or turn off “Has a usage limit?”.'], ['limits.*' => 'limit']);
+        ], ['limits.*.required' => 'Enter a limit, or turn off “Has a usage limit?”.'], ['limits.*' => 'limit', 'trialDays' => 'free trial']);
 
         $data = [
             'name' => trim($this->name),
             'tagline' => trim($this->tagline) !== '' ? trim($this->tagline) : null,
             'price' => $this->price,
             'billing_interval' => $this->billingInterval,
+            'trial_days' => (int) $this->trialDays,
             'is_active' => $this->isActive,
             'is_featured' => $this->isFeatured,
             'limits' => collect(LimitKey::cases())->mapWithKeys(fn (LimitKey $key) => [$key->value => ($this->limits[$key->value] ?? '') === '' ? null : (int) $this->limits[$key->value]])->all(),
@@ -252,7 +256,9 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
                                 <p class="text-xs text-ink-faint">{{ $plan->tagline }}</p>
                             @endif
                         </x-ui.table-cell>
-                        <x-ui.table-cell label="Price" class="font-semibold text-ink">{{ $plan->priceLabel() }} <span class="font-normal text-ink-faint">/ {{ $plan->intervalLabel() }}</span></x-ui.table-cell>
+                        <x-ui.table-cell label="Price" class="font-semibold text-ink">{{ $plan->priceLabel() }} <span class="font-normal text-ink-faint">/ {{ $plan->intervalLabel() }}</span>
+                            <span class="block text-xs font-normal text-ink-faint">{{ $plan->trial_days > 0 ? $plan->trial_days.'-day free trial' : 'No free trial' }}</span>
+                        </x-ui.table-cell>
                         <x-ui.table-cell label="Features">{{ count($plan->includedFeatures()) }} of {{ count(FeatureKey::planCases()) }}</x-ui.table-cell>
                         <x-ui.table-cell label="Shops">{{ $plan->shops_count }}</x-ui.table-cell>
                         <x-ui.table-cell label="Status">
@@ -293,6 +299,9 @@ new #[Layout('layouts.app')] #[Title('Plans')] class extends Component
                                 <option value="{{ $interval->value }}">{{ $interval->label() }}</option>
                             @endforeach
                         </x-ui.select>
+                    </x-ui.field>
+                    <x-ui.field label="Free trial (days)" name="trialDays" for="planTrialDays" help="Full use of the plan from signup, before the first payment. 0 asks for payment straight away. Changing it affects new signups only.">
+                        <x-ui.input wire:model="trialDays" id="planTrialDays" type="number" min="0" max="365" />
                     </x-ui.field>
                 </div>
 

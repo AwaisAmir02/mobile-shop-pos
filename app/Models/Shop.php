@@ -32,6 +32,8 @@ class Shop extends Model
         'plan_id',
         'subscription_status',
         'subscription_start_date',
+        'auto_billing',
+        'trial_ends_at',
         'products_allowed',
         'sales_allowed',
         'limit_overrides',
@@ -72,6 +74,8 @@ class Shop extends Model
             'plan_type' => PlanType::class,
             'subscription_status' => SubscriptionStatus::class,
             'subscription_start_date' => 'date',
+            'auto_billing' => 'boolean',
+            'trial_ends_at' => 'datetime',
             'disabled_screens' => 'array',
             'hidden_screens' => 'array',
             'business_category' => BusinessCategory::class,
@@ -227,6 +231,11 @@ class Shop extends Model
         return in_array($value, $this->hidden_screens ?? [], true);
     }
 
+    /**
+     * The day after the paid period's last day. No overflow, so it matches
+     * SubscriptionInvoice::periodEndFor(): a period from 31 Jan renews on
+     * 28 Feb, not 3 Mar.
+     */
     public function expectedRenewalDate(): ?Carbon
     {
         if (! $this->subscription_start_date || ! $this->plan_type) {
@@ -234,8 +243,8 @@ class Shop extends Model
         }
 
         return match ($this->plan_type) {
-            PlanType::Monthly => $this->subscription_start_date->copy()->addMonth(),
-            PlanType::Yearly => $this->subscription_start_date->copy()->addYear(),
+            PlanType::Monthly => $this->subscription_start_date->copy()->addMonthNoOverflow(),
+            PlanType::Yearly => $this->subscription_start_date->copy()->addYearNoOverflow(),
         };
     }
 

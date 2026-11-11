@@ -96,7 +96,7 @@ new #[Layout('layouts.app')] #[Title('Payments')] class extends Component
         <x-ui.page-header>Payments</x-ui.page-header>
     </x-slot>
 
-    <x-ui.card title="Signup payments" description="Bank transfers from self-serve signups. Confirming marks the invoice paid and activates the shop — or the add-on, for add-on payments.">
+    <x-ui.card title="Plan payments" description="Bank transfers for signups, trials and renewals, each with the slip the shop uploaded. Confirming marks the invoice paid and starts the paid period (unlocking a locked shop) — or activates the add-on, for add-on payments. Tell shops verification can take up to a day.">
         <x-slot name="actions">
             <x-ui.select wire:model.live="status" class="w-44" aria-label="Filter by status">
                 <option value="pending">Pending ({{ $pendingCount }} to review)</option>
@@ -107,7 +107,7 @@ new #[Layout('layouts.app')] #[Title('Payments')] class extends Component
         </x-slot>
 
         @if ($payments->isEmpty())
-            <x-ui.empty-state title="Nothing here" description="Payments appear when a shop signs up from the website." />
+            <x-ui.empty-state title="Nothing here" description="Payments appear when a shop pays for its plan, a renewal or an add-on." />
         @else
             <x-ui.table stack :headers="['Shop', 'For', 'Invoice', 'Amount', 'Reference', 'Status', '']">
                 @foreach ($payments as $payment)

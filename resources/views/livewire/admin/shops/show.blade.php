@@ -10,6 +10,7 @@ use App\Livewire\Concerns\Toasts;
 use App\Models\Plan;
 use App\Models\Shop;
 use App\Models\UdhaarTransaction;
+use App\Services\Billing\BillingCycle;
 use App\Services\Billing\Entitlements;
 use App\Services\BusinessCategories;
 use App\Services\ShopReportService;
@@ -37,6 +38,8 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
     public string $planType = 'monthly';
     public string $subscriptionStatus = 'inactive';
     public string $subscriptionStartDate = '';
+    public bool $autoBilling = false;
+    public string $extendDays = '7';
     /** @var array<string, string> per LimitKey value; blank = use the plan's limit */
     public array $limitOverrides = [];
 
@@ -61,6 +64,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $this->planType = $shop->plan_type?->value ?? 'monthly';
         $this->subscriptionStatus = $shop->subscription_status->value;
         $this->subscriptionStartDate = $shop->subscription_start_date?->toDateString() ?? now()->toDateString();
+        $this->autoBilling = (bool) $shop->auto_billing;
         $overrides = $shop->limit_overrides ?? [];
         foreach (LimitKey::cases() as $key) {
             $legacy = $key->legacyColumn();
@@ -120,6 +124,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             'plan_type' => $this->planType,
             'subscription_status' => $this->subscriptionStatus,
             'subscription_start_date' => $this->subscriptionStartDate,
+            'auto_billing' => $this->autoBilling,
             ...collect(LimitKey::cases())->filter(fn (LimitKey $key) => $key->legacyColumn() !== null)
                 ->mapWithKeys(fn (LimitKey $key) => [$key->legacyColumn() => $values[$key->value] !== '' ? $values[$key->value] : null])->all(),
         ]);
@@ -129,6 +134,24 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         app(Entitlements::class)->forgetMeters($this->shop);
         $this->shop->refresh();
         $this->toastSuccess('Subscription updated.');
+    }
+
+    /** More free days for a shop still on (or just past) its trial. */
+    public function extendTrial(BillingCycle $cycle): void
+    {
+        abort_unless(auth()->user()?->is_super_admin, 403);
+
+        $this->validate(['extendDays' => ['required', 'integer', 'min:1', 'max:365']], [], ['extendDays' => 'days']);
+
+        try {
+            $this->shop = $cycle->extendTrial($this->shop, (int) $this->extendDays);
+        } catch (\RuntimeException $e) {
+            $this->toastError($e->getMessage());
+
+            return;
+        }
+
+        $this->toastSuccess('Trial extended to '.$this->shop->trial_ends_at->format('d M Y, g:i a').'.');
     }
 
     public function renewSubscription(): void
@@ -300,6 +323,10 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             'udhaarOutstanding' => max(0.0, (float) $udhaarBalances),
             'loginEmail' => $this->shop->user?->loginLabel(),
             'expectedRenewalDate' => $this->shop->expectedRenewalDate(),
+            'phase' => app(BillingCycle::class)->phase($this->shop),
+            'cycleEndsAt' => app(BillingCycle::class)->endsAt($this->shop),
+            'cycleDaysLeft' => app(BillingCycle::class)->daysLeft($this->shop),
+            'locked' => app(BillingCycle::class)->locked($this->shop),
             'plans' => Plan::ordered()->get(),
             'governed' => app(Entitlements::class)->governed($this->shop),
             'hiddenModules' => BusinessCategories::hiddenModules($this->shop),
@@ -427,6 +454,25 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
 
                     </div>
 
+                    <div class="rounded-lg border border-line p-4" data-auto-billing>
+                        <x-ui.checkbox wire:model="autoBilling" label="Automatic billing" />
+                        <p class="mt-1 text-xs text-ink-faint">Free trial, a renewal invoice {{ config('billing.renewal_notice_days') }} days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed.</p>
+                        @if ($phase !== \App\Enums\BillingPhase::Manual)
+                            <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                                <x-ui.badge :variant="$phase->badge()">{{ $phase->label() }}</x-ui.badge>
+                                @if ($cycleEndsAt)
+                                    <span class="text-ink-muted">
+                                        {{ in_array($phase, [\App\Enums\BillingPhase::Trial, \App\Enums\BillingPhase::TrialEnded], true) ? 'Trial ends' : 'Period ends' }}
+                                        {{ $cycleEndsAt->format('d M Y, g:i a') }}@if ($cycleDaysLeft > 0) · {{ $cycleDaysLeft }} {{ \Illuminate\Support\Str::plural('day', $cycleDaysLeft) }} left @endif
+                                    </span>
+                                @endif
+                                @if ($phase->locks() && ! $locked)
+                                    <span class="text-xs text-ink-faint">Open while a payment waits for review.</span>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+
                     <div class="rounded-lg border border-line p-4">
                         <p class="text-sm font-medium text-ink">Usage limits</p>
                         <p class="mt-0.5 text-xs text-ink-faint">{{ $governed ? 'Leave blank to use the plan’s limit. A number here replaces it for this shop only.' : 'Not enforced — limits only apply to shops on a plan.' }}</p>
@@ -446,6 +492,17 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                     </div>
                 </form>
             </x-ui.card>
+
+            @if (in_array($phase, [\App\Enums\BillingPhase::Trial, \App\Enums\BillingPhase::TrialEnded], true))
+                <x-ui.card title="Extend trial" description="Gives this shop more free days, counted from the current trial end, or from now if it has already ended. An unpaid first invoice moves with it.">
+                    <form wire:submit="extendTrial" class="flex flex-wrap items-end gap-3">
+                        <x-ui.field label="Days to add" name="extendDays" for="extendDays">
+                            <x-ui.input wire:model="extendDays" id="extendDays" type="number" min="1" max="365" class="w-32" />
+                        </x-ui.field>
+                        <x-ui.button type="submit" size="sm" wire:loading.attr="disabled" wire:target="extendTrial">Extend trial</x-ui.button>
+                    </form>
+                </x-ui.card>
+            @endif
 
             @if ($meters !== [])
                 <x-ui.card title="Usage this month" description="Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged.">
@@ -470,7 +527,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         </div>
 
         <div class="space-y-6">
-            <x-ui.stat label="Subscription Status" :value="$shop->isSubscriptionActive() ? 'Active' : 'Inactive'" />
+            <x-ui.stat label="Subscription Status" :value="$phase === \App\Enums\BillingPhase::Manual ? ($shop->isSubscriptionActive() ? 'Active' : 'Inactive') : $phase->label()" :sub="$phase === \App\Enums\BillingPhase::Manual ? null : ($locked ? 'Locked — the shop can log in but every screen asks for payment' : 'Automatic billing')" />
             <x-ui.stat label="Product Count" :value="$productCount" />
             <x-ui.stat label="Customer Count" :value="$customerCount" />
             <x-ui.stat label="Udhaar Outstanding" value="Rs {{ number_format($udhaarOutstanding, 2) }}" sub="Current, across all customers" />

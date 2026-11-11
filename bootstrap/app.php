@@ -31,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'super.admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
             'shop.user' => \App\Http\Middleware\EnsureShopUser::class,
             'shop.access' => \App\Http\Middleware\EnsureShopScreenAccess::class,
+            'shop.paid' => \App\Http\Middleware\EnsureSubscriptionPaid::class,
             'store.token' => \App\Http\Middleware\AuthenticateStoreToken::class,
             'store.signature' => \App\Http\Middleware\VerifyStoreSignature::class,
         ]);

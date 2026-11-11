@@ -3,7 +3,6 @@
 namespace App\Services\Billing;
 
 use App\Actions\CreateShopWithOwner;
-use App\Enums\PlanType;
 use App\Enums\SubscriptionPaymentStatus;
 use App\Enums\SubscriptionStatus;
 use App\Models\Plan;
@@ -25,6 +24,7 @@ class SubscriptionPaymentService
         protected SubscriptionBillingService $billing,
         protected PaymentGateways $gateways,
         protected Entitlements $entitlements,
+        protected BillingCycle $cycle,
     ) {}
 
     /**
@@ -48,12 +48,11 @@ class SubscriptionPaymentService
                 'subscription_start_date' => $today,
             ], $emailVerified);
 
-            $invoice = $this->billing->create($createdShop, [
-                'period_start' => $today,
-                'months' => $plan->billing_interval === PlanType::Yearly ? 12 : 1,
-                'amount' => (float) $plan->price,
-                'notes' => $plan->name.' plan — self-serve signup',
-            ], $user->id);
+            // Full use of the plan from now; the first paid period starts when the trial ends.
+            $createdShop->update($this->cycle->signupAttributes($plan));
+            $createdShop->setRelation('plan', $plan);
+
+            $invoice = $this->cycle->createInvoice($createdShop, $this->cycle->firstPeriodStart($createdShop), 'self-serve signup', $user->id);
 
             $this->entitlements->syncFeatureFlags($createdShop);
 
@@ -115,9 +114,13 @@ class SubscriptionPaymentService
             } elseif ($invoice->plan_id !== null) {
                 app(PlanChangeService::class)->apply($invoice);
             } else {
+                $shop = Shop::findOrFail($payment->shop_id);
+                // On automatic billing a period confirmed after its start day (the shop sat locked) starts today.
+                $start = $this->cycle->enabled($shop) ? $this->cycle->startOnConfirm($invoice) : $invoice->period_start;
+
                 Shop::whereKey($payment->shop_id)->update([
                     'subscription_status' => SubscriptionStatus::Active->value,
-                    'subscription_start_date' => $invoice->period_start->toDateString(),
+                    'subscription_start_date' => $start->toDateString(),
                 ]);
             }
 

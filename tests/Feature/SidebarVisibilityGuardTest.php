@@ -305,6 +305,7 @@ class SidebarVisibilityGuardTest extends TestCase
             'Plans' => '/admin/plans',
             'Add-ons' => '/admin/addons',
             'Payments' => '/admin/payments',
+            'Payment Accounts' => '/admin/payment-accounts',
             'Support' => '/admin/support',
             'Integrations' => '/admin/integrations',
             'Backups' => '/admin/backups',

@@ -18,6 +18,9 @@ class ShopAddon extends Model
         'shop_id',
         'addon_id',
         'subscription_invoice_id',
+        'plan_billed',
+        'first_charge',
+        'first_charge_invoice_id',
         'status',
         'name',
         'kind',
@@ -41,6 +44,8 @@ class ShopAddon extends Model
             'billing' => AddonBilling::class,
             'quantity' => 'integer',
             'price' => 'decimal:2',
+            'plan_billed' => 'boolean',
+            'first_charge' => 'decimal:2',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
         ];

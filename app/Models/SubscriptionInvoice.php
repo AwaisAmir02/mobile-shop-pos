@@ -7,6 +7,7 @@ use App\Enums\SubscriptionInvoiceStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class SubscriptionInvoice extends Model
 {
@@ -21,6 +22,7 @@ class SubscriptionInvoice extends Model
         'amount',
         'discount',
         'total',
+        'items',
         'status',
         'paid_at',
         'notes',
@@ -40,6 +42,7 @@ class SubscriptionInvoice extends Model
             'amount' => 'decimal:2',
             'discount' => 'decimal:2',
             'total' => 'decimal:2',
+            'items' => 'array',
             'status' => SubscriptionInvoiceStatus::class,
         ];
     }
@@ -78,6 +81,26 @@ class SubscriptionInvoice extends Model
     public function isPaid(): bool
     {
         return $this->status === SubscriptionInvoiceStatus::Paid;
+    }
+
+    /**
+     * What the invoice is for, line by line. Invoices from before itemising
+     * (and ones an admin types in) are a single line for the whole amount.
+     *
+     * @return array<int, array{kind: string, label: string, amount: float, shop_addon_id?: int}>
+     */
+    public function lines(): array
+    {
+        if ($this->items) {
+            return $this->items;
+        }
+
+        return [[
+            'kind' => 'plan',
+            'label' => config('branding.name').' subscription — '.$this->planLabel().' plan, '.$this->months.' '.Str::plural('month', $this->months)
+                .' ('.$this->period_start->format('d M Y').' – '.$this->period_end->format('d M Y').')',
+            'amount' => (float) $this->amount,
+        ]];
     }
 
     public function planLabel(): string

@@ -132,7 +132,7 @@ class SocialLoginTest extends TestCase
             ->set('phone', '0321 5556667')
             ->call('submit')
             ->assertHasNoErrors()
-            ->assertRedirect(route('billing.index'));
+            ->assertRedirect(route('dashboard'));
 
         $owner = User::sole();
         $this->assertAuthenticatedAs($owner);

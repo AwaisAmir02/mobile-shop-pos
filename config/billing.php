@@ -9,6 +9,9 @@ return [
 
     'proof_max_kb' => 4096,
 
+    // Days before a paid period ends that the renewal notice and invoice appear.
+    'renewal_notice_days' => 2,
+
     'signup' => [
         'min_seconds' => 3,
         'per_hour' => 3,

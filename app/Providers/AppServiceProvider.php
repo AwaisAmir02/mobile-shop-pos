@@ -67,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Http\Middleware\EnsureSuperAdmin::class,
             \App\Http\Middleware\EnsureShopUser::class,
             \App\Http\Middleware\EnsureShopScreenAccess::class,
+            \App\Http\Middleware\EnsureSubscriptionPaid::class,
         ]);
 
         RateLimiter::for('store-webhook', fn (Request $request) => [

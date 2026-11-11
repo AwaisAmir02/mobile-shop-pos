@@ -21,6 +21,7 @@ class AddonService
         protected SubscriptionBillingService $billing,
         protected PaymentGateways $gateways,
         protected Entitlements $entitlements,
+        protected BillingCycle $cycle,
     ) {}
 
     public function purchase(Shop $shop, Addon $addon, ?int $userId): ShopAddon
@@ -31,6 +32,10 @@ class AddonService
 
         if (! $this->entitlements->governed($shop)) {
             throw new RuntimeException('Add-ons are available once your shop is on a plan.');
+        }
+
+        if ($this->cycle->enabled($shop)) {
+            return $this->purchaseWithPlan($shop, $addon, $userId);
         }
 
         if (SubscriptionPayment::openFor($shop->id)) {
@@ -67,6 +72,59 @@ class AddonService
             $this->gateways->current()->start($invoice);
 
             return $shopAddon;
+        });
+    }
+
+    /**
+     * On automatic billing an add-on starts straight away and is paid with
+     * the plan: the rest of this cycle pro-rated, then each renewal in full
+     * (see BillingCycle::chargeNewAddon). No invoice or payment of its own.
+     */
+    protected function purchaseWithPlan(Shop $shop, Addon $addon, ?int $userId): ShopAddon
+    {
+        if ($this->cycle->locked($shop)) {
+            throw new RuntimeException('Please complete your plan payment first, then add the add-on.');
+        }
+
+        if (SubscriptionPayment::openFor($shop->id)?->isAwaitingReview()) {
+            throw new RuntimeException('We’re checking your last payment (this can take up to a day). You can add add-ons once it’s confirmed.');
+        }
+
+        if ($addon->kind === AddonKind::FeatureUnlock && $this->entitlements->planIncludesAll($shop, $addon->feature_keys)) {
+            throw new RuntimeException('Your plan already includes '.$addon->featuresLabel().'.');
+        }
+
+        if ($addon->kind === AddonKind::FeatureUnlock && ShopAddon::where('shop_id', $shop->id)->where('addon_id', $addon->id)->where('plan_billed', true)->inEffect()->exists()) {
+            throw new RuntimeException('You already have '.$addon->name.'.');
+        }
+
+        return DB::transaction(function () use ($shop, $addon, $userId) {
+            $shop = Shop::whereKey($shop->id)->lockForUpdate()->firstOrFail();
+
+            $shopAddon = ShopAddon::create([
+                'shop_id' => $shop->id,
+                'addon_id' => $addon->id,
+                'plan_billed' => true,
+                'status' => ShopAddonStatus::Active,
+                'name' => $addon->name,
+                'kind' => $addon->kind,
+                'limit_key' => $addon->limit_key,
+                'quantity' => $addon->quantity,
+                'feature_keys' => $addon->feature_keys,
+                'price' => $addon->price,
+                'billing' => $addon->billing,
+                'starts_at' => now(),
+                // Recurring ones run with the plan; a one-off ends with the cycle it was bought in.
+                'ends_at' => $addon->billing === AddonBilling::OneOff ? $this->cycle->oneOffEndsAt($shop) : null,
+                'purchased_by' => $userId,
+            ]);
+
+            $this->cycle->chargeNewAddon($shopAddon, $shop);
+
+            $this->entitlements->syncFeatureFlags($shop->fresh());
+            $this->entitlements->forgetMeters($shop);
+
+            return $shopAddon->fresh();
         });
     }
 

@@ -16,6 +16,7 @@ class Plan extends Model
         'tagline',
         'price',
         'billing_interval',
+        'trial_days',
         'features',
         'limits',
         'feature_flags',
@@ -29,6 +30,7 @@ class Plan extends Model
         return [
             'price' => 'decimal:2',
             'billing_interval' => PlanType::class,
+            'trial_days' => 'integer',
             'features' => 'array',
             'limits' => 'array',
             'feature_flags' => 'array',

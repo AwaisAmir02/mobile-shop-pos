@@ -8,6 +8,7 @@
             ['label' => 'Plans', 'route' => 'admin.plans', 'icon' => 'banknote', 'active' => ['admin.plans', 'admin.plans.*']],
             ['label' => 'Add-ons', 'route' => 'admin.addons', 'icon' => 'sparkles', 'active' => ['admin.addons', 'admin.addons.*']],
             ['label' => 'Payments', 'route' => 'admin.payments', 'icon' => 'wallet', 'active' => ['admin.payments', 'admin.payments.*']],
+            ['label' => 'Payment Accounts', 'route' => 'admin.payment-accounts', 'icon' => 'banknote', 'active' => ['admin.payment-accounts']],
             ['label' => 'Support', 'route' => 'admin.support', 'icon' => 'lifebuoy', 'active' => ['admin.support', 'admin.support.*'], 'badge' => \App\Models\SupportTicket::waitingOnAdmin()->count(), 'badgeKey' => 'data-support-waiting'],
             ['label' => 'Integrations', 'route' => 'admin.integrations', 'icon' => 'link', 'active' => ['admin.integrations', 'admin.integrations.*']],
             ['label' => 'Backups', 'route' => 'admin.backups', 'icon' => 'cog', 'active' => ['admin.backups', 'admin.backups.*']],

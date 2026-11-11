@@ -9,7 +9,9 @@ use App\Livewire\Concerns\Toasts;
 use App\Models\Addon;
 use App\Models\Plan;
 use App\Models\SubscriptionPayment;
+use App\Enums\BillingPhase;
 use App\Services\Billing\AddonService;
+use App\Services\Billing\BillingCycle;
 use App\Services\Billing\Entitlements;
 use App\Services\Billing\PaymentGateways;
 use App\Services\Billing\PlanChangeService;
@@ -27,9 +29,12 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
     public string $reference = '';
     public $proof = null;
 
-    public function mount(): void
+    public function mount(BillingCycle $cycle): void
     {
         abort_unless(Auth::user()->is_owner, 403);
+
+        // On automatic billing, the invoice for the first payment or the renewal appears once it's due.
+        $cycle->openPayment(Auth::user()->shop, Auth::id());
     }
 
     protected function openPayment(): ?SubscriptionPayment
@@ -72,7 +77,26 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
             return;
         }
 
-        $this->toastSuccess('Add-on reserved — pay the invoice below and it switches on once we confirm.');
+        $this->toastSuccess(app(BillingCycle::class)->enabled(Auth::user()->shop)
+            ? 'Add-on is on — you can use it now. Its cost is added to your next plan payment.'
+            : 'Add-on reserved — pay the invoice below and it switches on once we confirm.');
+    }
+
+    /** The add-on confirmation on automatic billing: it starts now and what it adds to which plan payment. */
+    public function confirmText(array $quote): string
+    {
+        $rs = fn (float $amount) => 'Rs '.number_format($amount, 2);
+        $on = $quote['on'] ? ' on '.$quote['on']->format('d M Y') : '';
+
+        if ($quote['trial']) {
+            $added = $quote['each'] !== null ? $rs($quote['each']).' for your first month' : $rs($quote['now']).' (one-off)';
+
+            return 'You can start using it right away, free for the rest of your trial. '.$added.' is added to your first plan payment'.$on.'. Nothing to pay now.';
+        }
+
+        return 'You can start using it right away. For the rest of this billing cycle it costs '.$rs($quote['now']).' (pro-rated), due together with your next plan payment'.$on.'.'
+            .($quote['each'] !== null ? ' After that it’s '.$rs($quote['each']).' each cycle with your plan.' : '')
+            .' Nothing to pay now.';
     }
 
     public function switchPlan(int $planId, PlanChangeService $changes): void
@@ -90,11 +114,16 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
         $this->toastSuccess('Plan change requested — pay the invoice above and your new plan starts the day we confirm it.');
     }
 
-    public function with(PaymentGateways $gateways, Entitlements $entitlements, PlanChangeService $changes): array
+    public function with(PaymentGateways $gateways, Entitlements $entitlements, PlanChangeService $changes, BillingCycle $cycle): array
     {
         $shop = Auth::user()->shop()->with('plan')->first();
         $payment = $this->openPayment()?->load('invoice.plan');
         $governed = $entitlements->governed($shop);
+        $auto = $cycle->enabled($shop);
+        $locked = $cycle->locked($shop);
+        // On automatic billing add-ons go on the plan bill, so an unpaid invoice doesn't stop them;
+        // only a payment we're still checking, or a locked shop, does.
+        $canBuy = $auto ? ! $locked && ! $payment?->isAwaitingReview() : $payment === null;
 
         // Packs for a limit the shop already has unlimited would add nothing.
         $catalogue = Addon::active()->ordered()->get()
@@ -119,6 +148,14 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
             'myAddons' => $shop->addons()->whereIn('status', [ShopAddonStatus::Pending->value, ShopAddonStatus::Active->value])->latest('id')->get(),
             'plans' => $plans,
             'blockers' => $plans->mapWithKeys(fn (Plan $plan) => [$plan->id => $plan->id === $shop->plan_id ? null : $changes->blockerMessage($shop, $plan)]),
+            'auto' => $auto,
+            'phase' => $cycle->phase($shop),
+            'locked' => $locked,
+            'endsAt' => $cycle->endsAt($shop),
+            'daysLeft' => $cycle->daysLeft($shop),
+            'owed' => $cycle->owed($shop),
+            'canBuy' => $canBuy,
+            'quotes' => $auto ? $catalogue->mapWithKeys(fn (Addon $addon) => [$addon->id => $cycle->quote($shop, $addon)]) : collect(),
         ];
     }
 }; ?>
@@ -130,6 +167,13 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
+            @if ($locked)
+                <x-ui.alert variant="danger" :title="$phase === BillingPhase::TrialEnded ? 'Your free trial has ended' : 'Your subscription ended on '.$endsAt?->format('d M Y')" data-subscription-locked>
+                    <p>Every screen is paused until you complete your payment and we’ve verified it. Nothing has been deleted — all your records are safe.</p>
+                    <p class="mt-1">Pay into one of the accounts below, then send us the transaction reference and a screenshot of the slip. Verification can take up to a day.</p>
+                </x-ui.alert>
+            @endif
+
             @if ($payment)
                 <x-ui.card title="Complete your payment" :description="($payment->shopAddon ? 'For the '.$payment->shopAddon->name.' add-on. ' : '').($payment->invoice->plan ? 'For switching to '.$payment->invoice->plan->name.'. ' : '').'Transfer the amount below, then enter the transaction reference so we can confirm it.'">
                     @if ($payment->status === SubscriptionPaymentStatus::Rejected)
@@ -141,7 +185,7 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
                     @elseif ($payment->isAwaitingReview())
                         <div class="mb-5 rounded-lg border border-success/20 bg-success-soft p-4 text-sm text-success">
                             <p class="font-semibold">Payment details received — we’re checking them.</p>
-                            <p class="mt-1">Reference <span class="font-mono">{{ $payment->reference }}</span>, sent {{ $payment->submitted_at->diffForHumans() }}. You can keep using your shop in the meantime.</p>
+                            <p class="mt-1">Reference <span class="font-mono">{{ $payment->reference }}</span>, sent {{ $payment->submitted_at->diffForHumans() }}. Verification can take up to a day. You can keep using your shop in the meantime.</p>
                         </div>
                     @endif
 
@@ -153,8 +197,29 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
 
                     @if (($step['type'] ?? null) === 'instructions')
                         <div class="mt-5 rounded-lg bg-surface-sunken p-4">
-                            <p class="text-sm font-semibold text-ink">Bank transfer details</p>
-                            <p class="mt-2 whitespace-pre-line font-mono text-sm text-ink-muted">{{ $step['instructions'] }}</p>
+                            @if (($step['accounts'] ?? collect())->isNotEmpty())
+                                <p class="text-sm font-semibold text-ink">Pay into any of these accounts</p>
+                                <ul class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    @foreach ($step['accounts'] as $account)
+                                        <li class="rounded-lg border border-line bg-surface p-3 text-sm" wire:key="account-{{ $account->id }}">
+                                            <p class="font-semibold text-ink">{{ $account->heading() }}</p>
+                                            <dl class="mt-1.5 space-y-0.5 text-ink-muted">
+                                                <div><dt class="sr-only">Account title</dt><dd>{{ $account->account_title }}</dd></div>
+                                                <div><dt class="sr-only">Account number</dt><dd class="font-mono text-ink">{{ $account->account_number }}</dd></div>
+                                                @if ($account->iban)
+                                                    <div><dt class="inline text-xs text-ink-faint">IBAN </dt><dd class="inline break-all font-mono text-xs">{{ $account->iban }}</dd></div>
+                                                @endif
+                                                @if ($account->note)
+                                                    <div><dt class="sr-only">Note</dt><dd class="text-xs text-ink-faint">{{ $account->note }}</dd></div>
+                                                @endif
+                                            </dl>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @else
+                                <p class="text-sm font-semibold text-ink">Bank transfer details</p>
+                                <p class="mt-2 whitespace-pre-line font-mono text-sm text-ink-muted">{{ $step['instructions'] }}</p>
+                            @endif
                             <p class="mt-3 text-xs text-ink-faint">Use invoice number <span class="font-semibold">{{ $payment->invoice->invoice_number }}</span> as the transfer note if your bank allows it.</p>
                         </div>
                     @endif
@@ -167,11 +232,16 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
                         <x-ui.field label="Transaction reference / TID" name="reference" for="reference" help="Shown in your banking app after the transfer">
                             <x-ui.input wire:model="reference" id="reference" maxlength="100" />
                         </x-ui.field>
-                        <x-ui.field label="Screenshot of the transfer" name="proof" for="proof" help="JPG, PNG or WebP, up to 4 MB">
+                        <x-ui.field label="Screenshot of the transfer slip" name="proof" for="proof" help="JPG, PNG or WebP, up to 4 MB">
                             <input type="file" wire:model="proof" id="proof" accept="image/jpeg,image/png,image/webp" class="block w-full text-sm text-ink-muted file:mr-3 file:rounded-md file:border-0 file:bg-primary-soft file:px-3 file:py-2 file:text-sm file:font-semibold file:text-link hover:file:bg-primary-soft">
                         </x-ui.field>
+                        <p class="text-xs text-ink-faint">We check every payment by hand. Verification can take up to a day; you’ll see it here once it’s confirmed.</p>
                         <div class="flex flex-wrap items-center justify-between gap-3">
-                            <a href="{{ route('dashboard') }}" wire:navigate class="text-sm font-medium text-ink-muted hover:text-ink">Skip for now — go to my dashboard</a>
+                            @if ($locked)
+                                <span></span>
+                            @else
+                                <a href="{{ route('dashboard') }}" wire:navigate class="text-sm font-medium text-ink-muted hover:text-ink">Skip for now — go to my dashboard</a>
+                            @endif
                             <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="submitProof,proof">{{ $payment->isAwaitingReview() ? 'Update payment details' : 'Submit payment details' }}</x-ui.button>
                         </div>
                     </form>
@@ -188,12 +258,35 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
                 </div>
             @endif
 
+            @if ($owed)
+                <x-ui.card :title="$owed['invoice'] ? 'What you owe' : 'Next payment'" :description="$owed['invoice'] ? 'Invoice '.$owed['invoice']->invoice_number.($owed['due'] && ! $locked ? ', due by '.$owed['due']->format('d M Y') : '').'.' : 'Due on '.$owed['due']->format('d M Y').'. Add-ons you buy are added here, pro-rated for the rest of the cycle you buy them in.'" data-billing-owed>
+                    <ul class="divide-y divide-line text-sm">
+                        @foreach ($owed['lines'] as $line)
+                            <li class="flex items-start justify-between gap-4 py-2">
+                                <span class="text-ink-muted">{{ $line['label'] }}</span>
+                                <span class="shrink-0 font-medium tabular-nums text-ink">Rs {{ number_format((float) $line['amount'], 2) }}</span>
+                            </li>
+                        @endforeach
+                        @if ($owed['invoice'] && (float) $owed['invoice']->discount > 0)
+                            <li class="flex items-start justify-between gap-4 py-2">
+                                <span class="text-ink-muted">Discount</span>
+                                <span class="shrink-0 font-medium tabular-nums text-ink">− Rs {{ number_format((float) $owed['invoice']->discount, 2) }}</span>
+                            </li>
+                        @endif
+                        <li class="flex items-start justify-between gap-4 pt-3">
+                            <span class="font-semibold text-ink">Total</span>
+                            <span class="shrink-0 text-base font-semibold tabular-nums text-ink">Rs {{ number_format($owed['total'], 2) }}</span>
+                        </li>
+                    </ul>
+                </x-ui.card>
+            @endif
+
             @if ($meters !== [])
                 <x-ui.card title="Usage" description="Monthly counts reset on the 1st (Pakistan time).">
-                    <x-billing.usage-meters :meters="$meters" remaining :packs="$packs" :can-buy="$payment === null" />
+                    <x-billing.usage-meters :meters="$meters" remaining :packs="$packs" :can-buy="$canBuy" />
                     <p class="mt-4 text-xs text-ink-faint">Out-of-stock products you no longer sell can be archived from Products so they stop counting.</p>
-                    @if ($payment && $packs->isNotEmpty())
-                        <p class="mt-1 text-xs text-ink-faint">Finish your pending payment before adding more.</p>
+                    @if (! $canBuy && $packs->isNotEmpty())
+                        <p class="mt-1 text-xs text-ink-faint">{{ $auto && ! $locked ? 'You can add more once we’ve confirmed your payment.' : 'Finish your pending payment before adding more.' }}</p>
                     @endif
                 </x-ui.card>
             @endif
@@ -283,7 +376,19 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
                     <p class="text-sm text-ink-faint">No plan assigned.</p>
                 @endif
                 <div class="mt-4">
-                    <x-ui.badge :variant="$shop->isSubscriptionActive() ? 'success' : 'warning'">{{ $shop->isSubscriptionActive() ? 'Active' : 'Awaiting payment' }}</x-ui.badge>
+                    @if ($auto)
+                        <x-ui.badge :variant="$phase->badge()">{{ $phase->label() }}</x-ui.badge>
+                        @if ($endsAt)
+                            <p class="mt-2 text-xs text-ink-faint">{{ match ($phase) {
+                                BillingPhase::Trial => 'Free until '.$endsAt->format('d M Y, g:i a').' ('.$daysLeft.' '.\Illuminate\Support\Str::plural('day', $daysLeft).' left)',
+                                BillingPhase::TrialEnded => 'Trial ended '.$endsAt->format('d M Y'),
+                                BillingPhase::Lapsed => 'Ended '.$endsAt->format('d M Y'),
+                                default => 'Paid until '.$endsAt->copy()->subDay()->format('d M Y'),
+                            } }}</p>
+                        @endif
+                    @else
+                        <x-ui.badge :variant="$shop->isSubscriptionActive() ? 'success' : 'warning'">{{ $shop->isSubscriptionActive() ? 'Active' : 'Awaiting payment' }}</x-ui.badge>
+                    @endif
                 </div>
 
                 {{-- The full list is long, so the first few show and the rest open on
@@ -315,7 +420,7 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
             </x-ui.card>
 
             @if ($governed && ($catalogue->isNotEmpty() || $myAddons->isNotEmpty()))
-                <x-ui.card id="addons" title="Add-ons" description="Need a bit more? Add it to your plan.">
+                <x-ui.card id="addons" title="Add-ons" :description="$auto ? 'Need a bit more? It starts straight away and is billed with your plan.' : 'Need a bit more? Add it to your plan.'">
                     @if ($myAddons->isNotEmpty())
                         <ul class="mb-4 space-y-2">
                             @foreach ($myAddons as $mine)
@@ -339,13 +444,17 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
                                 <p class="text-xs text-ink-faint">{{ $addon->description ?? $addon->grants() }}</p>
                                 <div class="mt-2 flex items-center justify-between gap-3">
                                     <span class="text-sm font-semibold text-ink">{{ $addon->priceLabel() }}</span>
-                                    <x-ui.button size="sm" wire:click="buyAddon({{ $addon->id }})" confirm="Buy {{ $addon->name }} for {{ $addon->priceLabel() }}? We'll create an invoice for you to pay by bank transfer." :disabled="$payment !== null">Buy</x-ui.button>
+                                    @if ($auto)
+                                        <x-ui.button size="sm" wire:click="buyAddon({{ $addon->id }})" :confirm-title="'Add '.$addon->name.'?'" confirm-label="Add it now" :confirm="$this->confirmText($quotes[$addon->id])" :disabled="! $canBuy">Buy</x-ui.button>
+                                    @else
+                                        <x-ui.button size="sm" wire:click="buyAddon({{ $addon->id }})" confirm="Buy {{ $addon->name }} for {{ $addon->priceLabel() }}? We'll create an invoice for you to pay by bank transfer." :disabled="$payment !== null">Buy</x-ui.button>
+                                    @endif
                                 </div>
                             </li>
                         @endforeach
                     </ul>
-                    @if ($payment)
-                        <p class="mt-3 text-xs text-ink-faint">Finish your pending payment before buying another add-on.</p>
+                    @if (! $canBuy)
+                        <p class="mt-3 text-xs text-ink-faint">{{ $auto && ! $locked ? 'You can buy add-ons once we’ve confirmed your payment.' : 'Finish your pending payment before buying another add-on.' }}</p>
                     @endif
                 </x-ui.card>
             @endif

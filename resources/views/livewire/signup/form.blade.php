@@ -231,7 +231,8 @@ new class extends Component
         Auth::login($user);
         session()->regenerate();
 
-        $this->redirectRoute('billing.index');
+        // Straight in on the free trial; a plan without one goes to pay first.
+        $this->redirectRoute(app(\App\Services\Billing\BillingCycle::class)->locked($user->shop) ? 'billing.index' : 'dashboard');
     }
 
     public function with(VerificationCodes $codes): array

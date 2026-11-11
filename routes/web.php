@@ -72,6 +72,16 @@ Route::middleware(['auth'])->group(function () {
             return $file->response();
         })->whereNumber('attachment')->name('support.attachment');
 
+        // Shown to staff while the shop's trial or subscription has ended unpaid (owners go to Plan & Usage).
+        Route::get('subscription-locked', function () {
+            abort_if(auth()->user()->is_owner, 404);
+
+            return app(\App\Services\Billing\BillingCycle::class)->locked(auth()->user()->shop) ? view('billing.locked') : redirect()->route('welcome');
+        })->name('billing.locked');
+
+        // Everything below is paused while the shop's trial or paid period has ended unpaid.
+        // Plan & Usage, support, profile and the pages above stay open so the shop can pay or ask for help.
+        Route::middleware('shop.paid')->group(function () {
         Volt::route('dashboard', 'dashboard.index')->name('dashboard')->middleware('shop.access:dashboard');
 
         Volt::route('products', 'products.index')->name('products.index')->middleware('shop.access:products');
@@ -196,6 +206,7 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('users', 'users.index')->name('users.index')->middleware('shop.access:users');
         Volt::route('branches', 'branches.index')->name('branches.index')->middleware('shop.access:branches');
+        });
     });
 
     Route::middleware('super.admin')->prefix('admin')->name('admin.')->group(function () {
@@ -216,6 +227,7 @@ Route::middleware(['auth'])->group(function () {
             return redirect()->away(\Illuminate\Support\Facades\Storage::disk(config('backup.remote_disk'))->temporaryUrl($run->remote_path, now()->addMinutes(10)));
         })->name('backups.download');
         Volt::route('payments', 'admin.payments')->name('payments');
+        Volt::route('payment-accounts', 'admin.payment-accounts')->name('payment-accounts');
         Volt::route('support', 'admin.support.index')->name('support');
         Volt::route('support/{ticket}', 'admin.support.show')->name('support.show')->whereNumber('ticket');
         Route::get('support/attachments/{attachment}', fn (\App\Models\SupportTicketAttachment $attachment) => $attachment->response())

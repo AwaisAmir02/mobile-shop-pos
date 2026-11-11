@@ -89,7 +89,7 @@ class PhoneLoginTest extends TestCase
         $this->assertNotSame($this->lastCode(), $stored->code_hash);
         $this->assertStringNotContainsString($this->lastCode(), json_encode(session()->all()));
 
-        $component->set('code', $this->lastCode())->call('verify')->assertHasNoErrors()->assertRedirect(route('billing.index'));
+        $component->set('code', $this->lastCode())->call('verify')->assertHasNoErrors()->assertRedirect(route('dashboard'));
 
         $owner = User::sole();
         $this->assertSame('923337654321', $owner->phone);

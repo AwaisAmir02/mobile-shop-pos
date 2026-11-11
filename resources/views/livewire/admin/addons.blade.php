@@ -177,7 +177,7 @@ new #[Layout('layouts.app')] #[Title('Add-ons')] class extends Component
         <x-ui.page-header>Add-ons</x-ui.page-header>
     </x-slot>
 
-    <x-ui.card title="Add-on catalogue" description="Shops on a plan can buy active add-ons from Plan & Usage. Payment goes through the same bank-transfer review as signups, and the add-on switches on when you confirm the payment.">
+    <x-ui.card title="Add-on catalogue" description="Shops on a plan can buy active add-ons from Plan & Usage. On automatic billing the add-on switches on straight away and is billed with the next plan payment (pro-rated for the rest of that cycle). Shops billed by hand pay an invoice of its own, and it switches on when you confirm that payment.">
         <x-slot name="actions">
             <x-ui.button size="sm" wire:click="openCreate">New Add-on</x-ui.button>
         </x-slot>

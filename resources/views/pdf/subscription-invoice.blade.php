@@ -135,13 +135,12 @@
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td class="wrap">
-                    {{ config('branding.name') }} subscription — {{ $invoice->planLabel() }} plan, {{ $invoice->months }} {{ \Illuminate\Support\Str::plural('month', $invoice->months) }}
-                    ({{ $invoice->period_start->format('d M Y') }} – {{ $invoice->period_end->format('d M Y') }})
-                </td>
-                <td class="text-right">Rs {{ number_format($invoice->amount, 2) }}</td>
-            </tr>
+            @foreach ($invoice->lines() as $line)
+                <tr>
+                    <td class="wrap">{{ $line['label'] }}</td>
+                    <td class="text-right">Rs {{ number_format((float) $line['amount'], 2) }}</td>
+                </tr>
+            @endforeach
         </tbody>
     </table>
 

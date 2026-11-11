@@ -79,7 +79,8 @@ class SelfServeSignupTest extends TestCase
         $this->get('/pricing')->assertSee(route('site.signup', ['plan' => $plan->id]), false);
         $this->get(route('site.signup', ['plan' => $plan->id]))->assertOk()->assertSee('Continue');
 
-        $this->signup()->assertHasNoErrors()->assertRedirect(route('billing.index'));
+        // The plan's free trial: straight to the dashboard, payment comes later.
+        $this->signup()->assertHasNoErrors()->assertRedirect(route('dashboard'));
 
         $shop = Shop::sole();
         $this->assertSame('Ali Mobiles', $shop->name);
@@ -110,7 +111,7 @@ class SelfServeSignupTest extends TestCase
         $this->assertNull($payment->submitted_at);
 
         $this->get(route('billing.index'))->assertOk()->assertSee('Rs 4,500.00')->assertSee('PLACEHOLDER BANK DETAILS')->assertSee($invoice->invoice_number);
-        $this->get(route('dashboard'))->assertOk()->assertSee('Payment pending.');
+        $this->get(route('dashboard'))->assertOk()->assertSee('Free trial: 15 days left.');
     }
 
     public function test_a_yearly_plan_bills_twelve_months(): void

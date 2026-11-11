@@ -14,7 +14,10 @@ interface PaymentGateway
     public function start(SubscriptionInvoice $invoice): SubscriptionPayment;
 
     /**
-     * @return array{type: 'instructions'|'redirect', instructions?: string, url?: string}
+     * What the owner does next to pay: follow instructions (pay into one of
+     * `accounts`, then upload the slip) or go to a gateway's `url`.
+     *
+     * @return array{type: 'instructions'|'redirect', instructions?: string, accounts?: \Illuminate\Support\Collection<int, \App\Models\PaymentAccount>, url?: string}
      */
     public function nextStep(SubscriptionPayment $payment): array;
 }

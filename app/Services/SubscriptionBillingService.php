@@ -14,7 +14,10 @@ class SubscriptionBillingService
      * plan_id and plan_type are given only for a plan-change invoice, whose
      * billing interval is the new plan's rather than the shop's current one.
      *
-     * @param  array{period_start: string, months: int, amount: float|string, discount?: float|string|null, notes?: ?string, plan_id?: ?int, plan_type?: ?string}  $data
+     * items is the itemised list (see SubscriptionInvoice::lines()); left
+     * out, the invoice is one line for the whole amount.
+     *
+     * @param  array{period_start: string, months: int, amount: float|string, discount?: float|string|null, notes?: ?string, plan_id?: ?int, plan_type?: ?string, items?: ?array}  $data
      */
     public function create(Shop $shop, array $data, ?int $userId, ?string $paidAt = null): SubscriptionInvoice
     {
@@ -36,6 +39,7 @@ class SubscriptionBillingService
                 'amount' => $amount,
                 'discount' => $discount,
                 'total' => SubscriptionInvoice::totalFor($amount, $discount),
+                'items' => $data['items'] ?? null,
                 'status' => $paid ? SubscriptionInvoiceStatus::Paid : SubscriptionInvoiceStatus::Unpaid,
                 'paid_at' => $paid ? Carbon::parse($paidAt)->toDateString() : null,
                 'notes' => $this->nullable($data['notes'] ?? null),
