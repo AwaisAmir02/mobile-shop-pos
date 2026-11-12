@@ -76,7 +76,14 @@ class VerificationCodes
     protected function deliver(OtpPurpose $purpose, OtpChannel $channel, string $destination, string $code, bool $preferSms): OtpChannel
     {
         if ($channel === OtpChannel::Email) {
-            Mail::to($destination)->send(new VerificationCodeMail($code, $purpose));
+            try {
+                Mail::to($destination)->send(new VerificationCodeMail($code, $purpose));
+            } catch (\Throwable $e) {
+                // A real provider can refuse (bad key, unverified domain, quota): say so instead of a server error.
+                report($e);
+
+                throw new RuntimeException('We couldn’t send the code to this email right now. Please try again shortly.');
+            }
 
             return OtpChannel::Email;
         }

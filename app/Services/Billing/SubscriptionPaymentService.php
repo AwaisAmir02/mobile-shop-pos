@@ -5,14 +5,19 @@ namespace App\Services\Billing;
 use App\Actions\CreateShopWithOwner;
 use App\Enums\SubscriptionPaymentStatus;
 use App\Enums\SubscriptionStatus;
+use App\Mail\NewSignupMail;
+use App\Mail\PaymentReviewedMail;
 use App\Models\Plan;
 use App\Models\Shop;
 use App\Models\ShopAddon;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use App\Services\SubscriptionBillingService;
+use App\Support\ShopOwnerEmail;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
@@ -57,6 +62,8 @@ class SubscriptionPaymentService
             $this->entitlements->syncFeatureFlags($createdShop);
 
             $payment = $this->gateways->current()->start($invoice);
+
+            $this->alertSignup($createdShop, $user);
 
             return [$createdShop, $user, $payment];
         });
@@ -131,7 +138,7 @@ class SubscriptionPaymentService
                 'rejection_reason' => null,
             ]);
 
-            return $payment->fresh();
+            return tap($payment->fresh(), fn (SubscriptionPayment $reviewed) => $this->tellOwner($reviewed));
         });
     }
 
@@ -151,7 +158,34 @@ class SubscriptionPaymentService
                 'rejection_reason' => trim($reason),
             ]);
 
-            return $payment->fresh();
+            return tap($payment->fresh(), fn (SubscriptionPayment $reviewed) => $this->tellOwner($reviewed));
         });
+    }
+
+    /** Queued, and only sent once the surrounding transaction commits. */
+    protected function tellOwner(SubscriptionPayment $payment): void
+    {
+        if (! ($email = ShopOwnerEmail::for($payment->shop_id))) {
+            return;
+        }
+
+        try {
+            Mail::to($email)->queue(new PaymentReviewedMail($payment));
+        } catch (\Throwable $e) {
+            Log::warning('Payment review email could not be queued.', ['payment' => $payment->id, 'error' => $e->getMessage()]);
+        }
+    }
+
+    protected function alertSignup(Shop $shop, User $owner): void
+    {
+        if (blank($to = config('notifications.signup_alert_email'))) {
+            return;
+        }
+
+        try {
+            Mail::to($to)->queue(new NewSignupMail($shop, $owner));
+        } catch (\Throwable $e) {
+            Log::warning('Signup alert email could not be queued.', ['shop' => $shop->id, 'error' => $e->getMessage()]);
+        }
     }
 }

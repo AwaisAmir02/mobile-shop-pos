@@ -23,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(\App\Support\ApiShopContext::class);
         $this->app->scoped(\App\Support\StoreChanges::class);
         $this->app->scoped(\App\Services\Billing\LimitNotices::class);
+        $this->app->scoped(\App\Services\LowStockAlerts::class);
     }
 
     public function boot(): void
@@ -44,6 +45,9 @@ class AppServiceProvider extends ServiceProvider
         foreach ([\App\Models\Product::class, \App\Models\ProductGroup::class, \App\Models\StockIn::class, \App\Models\StoreProduct::class, \App\Models\StoreOrder::class, \App\Models\StoreOrderItem::class, \App\Models\WhatsAppOrder::class] as $model) {
             $model::observe(\App\Observers\StoreChangeObserver::class);
         }
+
+        \App\Models\Product::observe(\App\Observers\LowStockObserver::class);
+        Event::listen(\Illuminate\Database\Events\TransactionRolledBack::class, fn () => $this->app->make(\App\Services\LowStockAlerts::class)->rolledBack());
 
         Event::listen(SocialiteWasCalled::class, [MicrosoftExtendSocialite::class, 'handle']);
 

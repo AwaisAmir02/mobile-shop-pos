@@ -52,7 +52,12 @@ new #[Layout('layouts.guest')] class extends Component
         // Intentionally ignore the broker's status: whether the email matches an
         // account or not, the response to the user must be identical, otherwise
         // this form becomes a way to test which emails have accounts.
-        Password::sendResetLink($this->only('email'));
+        // A mail provider failure is logged, not shown: an error only for real accounts would give the same leak away.
+        try {
+            Password::sendResetLink($this->only('email'));
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         $this->reset('email');
 
