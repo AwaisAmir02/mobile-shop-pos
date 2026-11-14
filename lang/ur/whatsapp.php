@@ -72,6 +72,8 @@ return [
     'reminder_outro' => 'Agli dafa aayein to baraye meharbani ada kar dein. Agar pehle hi ada kar chuke hain to is message ko nazar andaz karein. Shukriya!',
     'due' => [
         'sale' => 'Aapne :label liya tha (:ref) — Rs :amount baaki',
+        'installment_due' => ':label ki qist (:ref) — Rs :amount abhi ada karni hai (kul Rs :left baaki)',
+        'installment_next' => ':label ki agli qist (:ref) — Rs :amount, :date ko',
         'repair' => ':label karwaya tha (:ref) — Rs :amount baaki',
         'bill_payment' => 'Aapka :label jama karwaya tha (:ref) — Rs :amount baaki',
         'wallet_load' => ':label (:ref) — Rs :amount baaki',

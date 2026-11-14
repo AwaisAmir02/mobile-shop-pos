@@ -72,6 +72,8 @@ return [
     'reminder_outro' => 'Please clear it on your next visit. If you have already paid, kindly ignore this message. Thank you!',
     'due' => [
         'sale' => 'You bought :label (:ref) — Rs :amount remaining',
+        'installment_due' => 'Instalment for :label (:ref) — Rs :amount due now (Rs :left left in total)',
+        'installment_next' => 'Next instalment for :label (:ref) — Rs :amount on :date',
         'repair' => 'You had a :label done (:ref) — Rs :amount remaining',
         'bill_payment' => 'We paid your :label (:ref) — Rs :amount remaining',
         'wallet_load' => ':label (:ref) — Rs :amount remaining',
