@@ -127,8 +127,8 @@ class ModuleNavigationTest extends TestCase
     public static function moduleTabs(): array
     {
         return [
-            'sales register' => ['sales.index', ['sales'], ['sales.index', 'sales.history']],
-            'sales history' => ['sales.history', ['sales'], ['sales.index', 'sales.history']],
+            'sales register' => ['sales.index', ['sales'], ['sales.index', 'sales.history', 'sales.installments', 'sales.warranty']],
+            'sales history' => ['sales.history', ['sales'], ['sales.index', 'sales.history', 'sales.installments', 'sales.warranty']],
             'stock receipts' => ['stock-ins.history', ['stock-ins'], ['stock-ins.history', 'stock-ins.expiry', 'stock-ins.write-offs']],
             'stock write-offs' => ['stock-ins.write-offs', ['stock-ins'], ['stock-ins.history', 'stock-ins.expiry', 'stock-ins.write-offs']],
             'purchasing, every role' => ['purchase-orders.index', ['purchase-orders', 'receive-goods', 'vendor-invoices'], ['purchase-orders.index', 'purchase-orders.receipts', 'purchase-orders.invoices']],

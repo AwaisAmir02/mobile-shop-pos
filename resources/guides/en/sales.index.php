@@ -47,6 +47,7 @@ return [
                 ['label' => 'Cash', 'text' => 'The customer pays the full amount now.'],
                 ['label' => 'Partial', 'text' => 'The customer pays part now. Type it in Amount Paid Now. The rest stays due, so pick the customer.'],
                 ['label' => 'Udhaar', 'text' => 'Nothing is paid now. The whole amount goes on the customer\'s account, so a customer is required.'],
+                ['label' => 'Instalments', 'text' => 'Phone and electronics shops: a Down Payment now and the rest in monthly instalments. Set how many and the First Due date; the plan shows before you complete the sale, and a customer is required.'],
                 ['label' => 'Paid by', 'text' => 'How the money came in: Cash or one of your accounts (JazzCash, Easypaisa, bank). + New account adds one. Leave Not recorded if you don\'t keep track.'],
                 ['label' => 'Customer', 'text' => 'Leave it on Walk-in for a fully paid sale. + New Customer adds a customer without leaving the sale.'],
                 ['label' => 'Due After Sale', 'text' => 'How much will still be owed once the sale is saved.'],

@@ -224,6 +224,15 @@ class Shop extends Model
         return in_array(ShopModule::forScreen($value)?->value ?? $value, $this->disabled_screens ?? [], true);
     }
 
+    /**
+     * Warranty tracking and instalment sales: for phone and electronics shops,
+     * and for shops from before business categories (which were mobile shops).
+     */
+    public function sellsDevices(): bool
+    {
+        return $this->business_category === null || $this->business_category === BusinessCategory::MobileElectronics;
+    }
+
     public function isScreenHidden(ShopScreen|string $screen): bool
     {
         $value = $screen instanceof ShopScreen ? $screen->value : $screen;

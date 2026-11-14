@@ -41,10 +41,17 @@ class CustomerDuesStatement
         $customerId = $this->customer->id;
         $rows = collect();
 
-        Sale::where('customer_id', $customerId)->withSum('payments', 'amount')->get()
+        Sale::where('customer_id', $customerId)->withSum('payments', 'amount')->with('installments')->get()
             ->each(function (Sale $sale) use ($rows) {
                 if ($sale->amountDue() > 0) {
-                    $rows->push($this->row('sale', $sale->id, $sale->invoiceNumber(), $this->saleItemsLabel($sale), $sale->created_at, $sale->amountDue()));
+                    $row = $this->row('sale', $sale->id, $sale->invoiceNumber(), $this->saleItemsLabel($sale), $sale->created_at, $sale->amountDue());
+
+                    // Still owed in full (amountDue), but a reminder asks only for what has fallen due.
+                    if (($schedule = InstallmentSchedule::for($sale)) !== null) {
+                        $row['installments'] = ['dueNow' => $schedule->dueNowAmount(), 'next' => $schedule->nextUpcoming(), 'summary' => $schedule->summary()];
+                    }
+
+                    $rows->push($row);
                 }
             });
 

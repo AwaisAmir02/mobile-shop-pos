@@ -33,6 +33,8 @@ class ModuleNav
             'sales' => [
                 ['label' => 'Register', 'route' => 'sales.index', 'show' => true],
                 ['label' => 'History', 'route' => 'sales.history', 'show' => true],
+                ['label' => 'Instalments', 'route' => 'sales.installments', 'show' => (bool) $shop?->sellsDevices()],
+                ['label' => 'Warranty Check', 'route' => 'sales.warranty', 'show' => (bool) $shop?->sellsDevices()],
             ],
             'stock' => [
                 ['label' => 'Receipts', 'route' => 'stock-ins.history', 'show' => true],

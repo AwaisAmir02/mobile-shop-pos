@@ -13,7 +13,9 @@ use App\Models\ProductGroup;
 use App\Models\SaleItem;
 use App\Support\BatchExpiry;
 use App\Support\Quantity;
+use App\Support\InstallmentSchedule;
 use App\Support\SaleCartMath;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -36,10 +38,35 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
     public string $saleDate = '';
     public ?int $pickerGroupId = null;
 
+    // Instalments: amountPaidNow is the down payment; the rest is split monthly.
+    public bool $onInstallments = false;
+    public string $installmentCount = '3';
+    public string $firstDueDate = '';
+
     public function mount(): void
     {
         $this->saleDate = now()->toDateString();
         $this->paymentMethod = 'cash';
+        $this->firstDueDate = now()->addMonthNoOverflow()->toDateString();
+    }
+
+    protected function offersInstallments(): bool
+    {
+        return (bool) Auth::user()->shop?->sellsDevices();
+    }
+
+    /** The plan as it would be saved, or [] while the inputs don't make one yet. */
+    protected function installmentPlan(): array
+    {
+        if (! $this->onInstallments || empty($this->cart) || ! ctype_digit($this->installmentCount) || $this->firstDueDate === '') {
+            return [];
+        }
+
+        try {
+            return InstallmentSchedule::plan($this->total() - (float) ($this->amountPaidNow ?: 0), (int) $this->installmentCount, Carbon::parse($this->firstDueDate));
+        } catch (ValidationException|\Carbon\Exceptions\InvalidFormatException) {
+            return [];
+        }
     }
 
     public function updatedSearch(): void
@@ -181,6 +208,8 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             'barcodeEnabled' => Auth::user()->canUseBarcodes(),
             'quickPicks' => empty($this->cart) && $this->search === '' ? $this->quickPicks() : collect(),
             'promptProduct' => $this->quantityPromptId !== null ? Product::find($this->quantityPromptId) : null,
+            'offersInstallments' => $this->offersInstallments(),
+            'installmentPlan' => $this->installmentPlan(),
         ];
     }
 
@@ -357,8 +386,9 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         }
 
         $total = $this->total();
-        $paidNow = $this->amountPaidNow !== '' ? (float) $this->amountPaidNow : $total;
-        $isFullyPaid = $paidNow >= $total;
+        $onInstallments = $this->onInstallments && $this->offersInstallments();
+        $paidNow = $this->amountPaidNow !== '' ? (float) $this->amountPaidNow : ($onInstallments ? 0.0 : $total);
+        $isFullyPaid = ! $onInstallments && $paidNow >= $total;
 
         $rules = [
             'saleDate' => ['required', 'date', 'before_or_equal:today'],
@@ -377,7 +407,25 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             $rules["cart.$id.custom_price"] = ['nullable', 'numeric', 'min:0', 'max:'.self::MAX_LINE_PRICE];
         }
 
-        $this->validate($rules);
+        if ($onInstallments) {
+            $rules['installmentCount'] = ['required', 'integer', 'min:1', 'max:'.InstallmentSchedule::MAX_COUNT];
+            $rules['firstDueDate'] = ['required', 'date', 'after_or_equal:saleDate'];
+        }
+
+        $this->validate($rules, $onInstallments ? [
+            'customerId.required' => 'Choose the customer who is paying in instalments.',
+            'firstDueDate.after_or_equal' => 'The first instalment must be due on or after the sale date.',
+        ] : [], ['installmentCount' => 'number of instalments', 'firstDueDate' => 'first due date']);
+
+        $installments = [];
+
+        if ($onInstallments) {
+            if ($paidNow >= $total) {
+                throw ValidationException::withMessages(['amountPaidNow' => 'The down payment covers the whole sale, so there is nothing to pay in instalments.']);
+            }
+
+            $installments = InstallmentSchedule::plan($total - $paidNow, (int) $this->installmentCount, Carbon::parse($this->firstDueDate));
+        }
 
         $lines = [];
 
@@ -402,6 +450,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                 amountPaid: $paidNow,
                 paymentMethod: $paymentMethod,
                 shopAccountId: $shopAccountId,
+                installments: $installments,
             );
         } catch (ValidationException $e) {
             $errors = [];
@@ -593,9 +642,11 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                 <div
                     class="space-y-4 border-t border-line p-5"
                     x-data="{
-                        mode: $wire.amountPaidNow === '' || $wire.amountPaidNow === null ? 'cash' : (parseFloat($wire.amountPaidNow) === 0 ? 'udhaar' : 'partial'),
+                        mode: $wire.onInstallments ? 'instalments' : ($wire.amountPaidNow === '' || $wire.amountPaidNow === null ? 'cash' : (parseFloat($wire.amountPaidNow) === 0 ? 'udhaar' : 'partial')),
                         pick(mode) {
                             this.mode = mode;
+                            if ((mode === 'instalments') !== $wire.onInstallments) $wire.$set('onInstallments', mode === 'instalments');
+                            if (mode === 'instalments') this.$nextTick(() => document.getElementById('downPayment')?.focus());
                             if (mode === 'cash') $wire.$set('amountPaidNow', '');
                             if (mode === 'udhaar') $wire.$set('amountPaidNow', '0');
                             if (mode === 'partial') {
@@ -605,17 +656,17 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                         },
                     }"
                 >
-                    {{-- amountPaidNow: blank = paid in full, 0 = all on udhaar. --}}
+                    {{-- amountPaidNow: blank = paid in full, 0 = all on udhaar. On instalments it is the down payment. --}}
                     <div>
                         <p class="mb-1.5 text-sm font-medium text-ink-muted">Payment</p>
-                        <div class="grid grid-cols-3 gap-1 rounded-full border border-line bg-surface-sunken/60 p-1" role="group" aria-label="Payment">
-                            @foreach (['cash' => 'Cash', 'partial' => 'Partial', 'udhaar' => 'Udhaar'] as $value => $label)
+                        <div @class(['grid gap-1 rounded-full border border-line bg-surface-sunken/60 p-1', 'grid-cols-4' => $offersInstallments, 'grid-cols-3' => ! $offersInstallments]) role="group" aria-label="Payment">
+                            @foreach (['cash' => 'Cash', 'partial' => 'Partial', 'udhaar' => 'Udhaar', ...($offersInstallments ? ['instalments' => 'Instalments'] : [])] as $value => $label)
                                 <button
                                     type="button"
                                     x-on:click="pick('{{ $value }}')"
                                     :aria-pressed="(mode === '{{ $value }}').toString()"
                                     data-payment-mode="{{ $value }}"
-                                    class="rounded-full px-3 py-1.5 text-sm font-semibold transition-colors"
+                                    @class(['rounded-full py-1.5 text-sm font-semibold transition-colors', 'px-3' => ! $offersInstallments, 'px-1' => $offersInstallments])
                                     :class="mode === '{{ $value }}' ? 'bg-surface text-ink shadow-soft ring-1 ring-line' : 'text-ink-faint hover:text-ink'"
                                 >{{ $label }}</button>
                             @endforeach
@@ -628,9 +679,35 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                         </x-ui.field>
                     </div>
 
+                    @if ($offersInstallments)
+                        <div x-show="mode === 'instalments'" x-cloak class="space-y-3" data-installment-panel>
+                            <x-ui.field label="Down Payment" name="amountPaidNow" for="downPayment" help="Paid today. Leave blank for none">
+                                <x-ui.input wire:model.live.debounce.400ms="amountPaidNow" id="downPayment" type="number" min="0" step="0.01" placeholder="0" />
+                            </x-ui.field>
+                            <div class="grid grid-cols-2 gap-3">
+                                <x-ui.field label="Instalments" name="installmentCount" for="installmentCount" help="Monthly">
+                                    <x-ui.input wire:model.live.debounce.400ms="installmentCount" id="installmentCount" type="number" min="1" max="{{ \App\Support\InstallmentSchedule::MAX_COUNT }}" step="1" />
+                                </x-ui.field>
+                                <x-ui.field label="First Due" name="firstDueDate" for="firstDueDate">
+                                    <x-ui.input wire:model.live="firstDueDate" id="firstDueDate" type="date" />
+                                </x-ui.field>
+                            </div>
+                            @if ($installmentPlan !== [])
+                                <ol class="divide-y divide-line rounded-xl border border-line text-sm" data-installment-preview>
+                                    @foreach ($installmentPlan as $row)
+                                        <li class="flex items-center justify-between px-3 py-1.5">
+                                            <span class="text-ink-muted">{{ $row['sequence'] }}. {{ \Carbon\Carbon::parse($row['due_date'])->format('d M Y') }}</span>
+                                            <span class="font-semibold tabular-nums text-ink">Rs {{ number_format($row['amount'], 2) }}</span>
+                                        </li>
+                                    @endforeach
+                                </ol>
+                            @endif
+                        </div>
+                    @endif
+
                     <x-sales.payment-method-picker :accounts="$paymentAccounts" :value="$paymentMethod" amount="amountPaidNow" />
 
-                    <x-ui.field label="Customer" name="customerId" for="customerId" :help="$amountPaidNow !== '' && (float) $amountPaidNow < $this->total() ? 'Required — this sale is not being paid in full' : 'Optional — leave blank for a walk-in sale'">
+                    <x-ui.field label="Customer" name="customerId" for="customerId" :help="$onInstallments ? 'Required — the instalments are tracked against this customer' : ($amountPaidNow !== '' && (float) $amountPaidNow < $this->total() ? 'Required — this sale is not being paid in full' : 'Optional — leave blank for a walk-in sale')">
                         <x-ui.select wire:model.live="customerId" id="customerId">
                             <option value="">Walk-in (no customer)</option>
                             <option value="__create__">+ New Customer</option>
@@ -640,9 +717,9 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                         </x-ui.select>
                     </x-ui.field>
 
-                    @if ($amountPaidNow !== '' && (float) $amountPaidNow < $this->total())
+                    @if ($onInstallments || ($amountPaidNow !== '' && (float) $amountPaidNow < $this->total()))
                         <div class="flex items-center justify-between rounded-xl bg-warning-soft px-3 py-2 text-sm">
-                            <span class="font-medium text-warning">Due After Sale</span>
+                            <span class="font-medium text-warning">{{ $onInstallments ? 'On Instalments' : 'Due After Sale' }}</span>
                             <span class="font-bold tabular-nums text-warning">Rs {{ number_format($this->total() - (float) $amountPaidNow, 2) }}</span>
                         </div>
                     @endif

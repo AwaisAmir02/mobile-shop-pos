@@ -123,6 +123,8 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('sales', 'sales.create')->name('sales.index')->middleware('shop.access:sales');
         Volt::route('sales/history', 'sales.history')->name('sales.history')->middleware('shop.access:sales');
+        Volt::route('sales/warranty', 'sales.warranty')->name('sales.warranty')->middleware('shop.access:sales');
+        Volt::route('sales/installments', 'sales.installments')->name('sales.installments')->middleware('shop.access:sales');
         Volt::route('sales/{sale}', 'sales.show')->name('sales.show')->middleware('shop.access:sales');
         Volt::route('sales/{sale}/edit', 'sales.edit')->name('sales.edit')->middleware('shop.access:sales-edit-cancel');
 

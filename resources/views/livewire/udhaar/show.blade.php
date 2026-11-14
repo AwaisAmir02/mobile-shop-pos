@@ -21,6 +21,7 @@ use App\Models\SimSale;
 use App\Models\UdhaarTransaction;
 use App\Models\WalletLoad;
 use App\Services\TableExportService;
+use App\Support\InstallmentSchedule;
 use App\Support\BranchContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -134,14 +135,17 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
         $customerId = $this->customer->id;
         $rows = collect();
 
-        Sale::where('customer_id', $customerId)->withSum('payments', 'amount')->get()
+        Sale::where('customer_id', $customerId)->withSum('payments', 'amount')->with('installments')->get()
             ->each(function (Sale $sale) use ($rows) {
                 if ($sale->amountDue() > 0) {
+                    $schedule = InstallmentSchedule::for($sale);
                     $rows->push([
                         'source' => 'sale',
-                        'sourceLabel' => 'Sale',
+                        'sourceLabel' => $schedule ? 'Instalments' : 'Sale',
                         'id' => $sale->id,
                         'description' => $sale->invoiceNumber(),
+                        'note' => $schedule?->summary(),
+                        'overdue' => $schedule ? $schedule->overdueAmount() > 0 : false,
                         'date' => $sale->created_at,
                         'amountDue' => $sale->amountDue(),
                     ]);
@@ -619,9 +623,14 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
             <x-ui.table stack :headers="['Description', 'Source', 'Date', 'Amount Due', '']">
                 @foreach ($dues as $due)
                     <x-ui.table-row wire:key="due-{{ $due['source'] }}-{{ $due['id'] }}">
-                        <x-ui.table-cell primary class="font-semibold text-ink">{{ $due['description'] }}</x-ui.table-cell>
+                        <x-ui.table-cell primary class="font-semibold text-ink">
+                            {{ $due['description'] }}
+                            @if ($due['note'] ?? null)
+                                <span @class(['ui-sub', 'text-danger' => $due['overdue'] ?? false]) data-installment-note>{{ $due['note'] }}</span>
+                            @endif
+                        </x-ui.table-cell>
                         <x-ui.table-cell label="Source">
-                            <x-ui.badge variant="neutral">{{ $due['sourceLabel'] }}</x-ui.badge>
+                            <x-ui.badge :variant="($due['overdue'] ?? false) ? 'danger' : 'neutral'">{{ $due['sourceLabel'] }}</x-ui.badge>
                         </x-ui.table-cell>
                         <x-ui.table-cell label="Date">{{ $due['date']->format('d M Y') }}</x-ui.table-cell>
                         <x-ui.table-cell label="Amount Due" class="font-semibold text-ink">Rs {{ number_format($due['amountDue'], 2) }}</x-ui.table-cell>

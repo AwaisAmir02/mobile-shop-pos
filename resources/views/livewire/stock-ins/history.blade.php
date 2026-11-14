@@ -100,7 +100,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
         $report = $this->report();
 
         return [
-            'entries' => $report->query()->latest('stock_date')->latest('id')->paginate(15),
+            'entries' => $report->query()->with('grnLine.grn.order')->latest('stock_date')->latest('id')->paginate(15),
             'totalUnits' => $report->totalUnits(),
             'measuredTotals' => QuantityUnit::summarize($report->measuredTotals()),
             'showExpiry' => $report->showsExpiry(),
@@ -292,7 +292,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
 
 <div>
     <x-slot name="header">
-        <x-ui.page-header>
+        <x-ui.page-header subtitle="Every delivery that added stock, including goods received on purchase orders">
             Stock In History
             <x-slot:actions>
                 <x-ui.button href="{{ route('stock-ins.index') }}" wire:navigate size="sm">Add Stock</x-ui.button>
@@ -377,6 +377,15 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                         @endif
                         @if ($entry->note)
                             <span class="ui-sub max-w-[16rem] truncate italic" title="{{ $entry->note }}">{{ $entry->note }}</span>
+                        @endif
+                        @if ($order = $entry->grnLine?->grn?->order)
+                            <span class="ui-sub" data-received-on-po>Received on
+                                @if (auth()->user()->hasAccessTo('purchase-orders') || auth()->user()->hasAccessTo('receive-goods'))
+                                    <a href="{{ route('purchase-orders.show', $order) }}" wire:navigate class="font-semibold text-link hover:underline">{{ $order->number() }}</a>
+                                @else
+                                    {{ $order->number() }}
+                                @endif
+                            </span>
                         @endif
                     </x-ui.table-cell>
                     <x-ui.table-cell label="Date">

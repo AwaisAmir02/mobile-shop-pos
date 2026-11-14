@@ -56,6 +56,12 @@ class Sale extends Model
         return $this->hasMany(SalePayment::class);
     }
 
+    /** The instalment plan, if this sale was sold on one. See App\Support\InstallmentSchedule. */
+    public function installments(): HasMany
+    {
+        return $this->hasMany(SaleInstallment::class)->orderBy('sequence');
+    }
+
     public function revisions(): HasMany
     {
         return $this->hasMany(SaleRevision::class)->latest();

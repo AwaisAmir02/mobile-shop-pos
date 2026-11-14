@@ -28,7 +28,15 @@
     <svg @class(['h-[18px] w-[18px] shrink-0', 'text-sidebar-ink-muted group-hover/link:text-sidebar-ink-strong' => ! $active]) fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
         <path stroke-linecap="round" stroke-linejoin="round" d="{{ $icons[$item['icon']] }}" />
     </svg>
-    <span class="sb-label truncate">{{ $item['label'] }}</span>
+    @if (isset($item['hint']))
+        {{-- A one-line caption where two items are easy to mix up (Stock In / Purchase Orders). --}}
+        <span class="sb-label flex min-w-0 flex-col leading-tight">
+            <span class="truncate">{{ $item['label'] }}</span>
+            <span @class(['truncate text-[11px] font-normal', 'opacity-80' => $active, 'text-sidebar-ink-muted' => ! $active]) data-nav-hint>{{ $item['hint'] }}</span>
+        </span>
+    @else
+        <span class="sb-label truncate">{{ $item['label'] }}</span>
+    @endif
     @if ($badge > 0)
         <span class="sb-label ml-auto min-w-[1.25rem] rounded-full bg-danger-solid px-1.5 text-center text-[11px] font-bold leading-5 text-surface" {{ $item['badgeKey'] ?? 'data-badge' }}="{{ $badge }}" aria-label="{{ $badge }} new">{{ $badge }}</span>
         <span class="sb-dot absolute right-2 top-1.5 hidden h-2 w-2 rounded-full bg-danger-solid" aria-hidden="true"></span>

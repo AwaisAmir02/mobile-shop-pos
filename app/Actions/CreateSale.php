@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Enums\SalePaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Models\SaleItem;
 use App\Support\BatchExpiry;
 use App\Support\Quantity;
 use App\Support\SaleCartMath;
@@ -25,8 +26,9 @@ class CreateSale
         array $attributes = [],
         ?string $paymentMethod = null,
         ?int $shopAccountId = null,
+        array $installments = [],
     ): Sale {
-        return DB::transaction(function () use ($lines, $invoiceDiscount, $customerId, $userId, $saleDate, $amountPaid, $shopId, $attributes, $paymentMethod, $shopAccountId) {
+        return DB::transaction(function () use ($lines, $invoiceDiscount, $customerId, $userId, $saleDate, $amountPaid, $shopId, $attributes, $paymentMethod, $shopAccountId, $installments) {
             $subtotal = 0;
             $allItemsData = [];
 
@@ -58,7 +60,7 @@ class CreateSale
                         'product_name' => $product->name,
                         'product_type' => $product->type,
                         'unit' => $product->unit,
-                    ]);
+                    ], SaleItem::warrantyAttributesFor($product));
                 }
 
                 $product->decrement('stock_quantity', $quantity);
@@ -93,7 +95,43 @@ class CreateSale
                 'payment_date' => now()->toDateString(),
             ], SalePaymentMethod::paymentAttributes($paymentMethod, $shopAccountId, $sale->shop_id, $amountPaid)));
 
+            if ($installments !== []) {
+                self::createInstallments($sale, $installments, $amountPaid);
+            }
+
             return $sale;
         });
+    }
+
+    /**
+     * @param  list<array{sequence: int, due_date: string, amount: float|string}>  $installments
+     */
+    protected static function createInstallments(Sale $sale, array $installments, float $amountPaid): void
+    {
+        if ($sale->customer_id === null) {
+            throw ValidationException::withMessages(['customerId' => 'Choose the customer who is paying in instalments.']);
+        }
+
+        $remaining = round((float) $sale->total - $amountPaid, 2);
+        $scheduled = round(array_sum(array_map(fn ($row) => (float) $row['amount'], $installments)), 2);
+
+        if ($remaining <= 0 || abs($scheduled - $remaining) > 0.009) {
+            throw ValidationException::withMessages(['installmentCount' => 'The instalments (Rs '.number_format($scheduled, 2).') must add up to what is left after the down payment (Rs '.number_format(max(0, $remaining), 2).').']);
+        }
+
+        $saleDay = $sale->created_at->toDateString();
+
+        foreach (array_values($installments) as $i => $row) {
+            if ((float) $row['amount'] <= 0 || Carbon::parse($row['due_date'])->toDateString() < $saleDay) {
+                throw ValidationException::withMessages(['installmentCount' => 'Each instalment needs an amount and a due date on or after the sale date.']);
+            }
+
+            $sale->installments()->create([
+                'shop_id' => $sale->shop_id,
+                'sequence' => $i + 1,
+                'due_date' => Carbon::parse($row['due_date'])->toDateString(),
+                'amount' => round((float) $row['amount'], 2),
+            ]);
+        }
     }
 }

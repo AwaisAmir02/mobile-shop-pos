@@ -88,6 +88,10 @@
             font-size: 9px;
             color: #cbd5e1;
         }
+        .item-note {
+            font-size: 8px;
+            color: #64748b;
+        }
         .overridden-hint {
             display: block;
             font-size: 8px;
@@ -146,7 +150,15 @@
         <tbody>
             @foreach ($sale->items as $item)
                 <tr>
-                    <td>{{ $item->product_name }}</td>
+                    <td>
+                        {{ $item->product_name }}
+                        @if ($item->serial_number)
+                            <div class="item-note">IMEI {{ $item->serial_number }}</div>
+                        @endif
+                        @if ($item->hasWarranty())
+                            <div class="item-note">{{ $item->warranty_months }}-month {{ strtolower($item->warranty_type?->label() ?? 'warranty') }}, until {{ $item->warrantyEndsOn($sale->created_at)->format('d M Y') }}</div>
+                        @endif
+                    </td>
                     <td class="text-right">{{ $item->unit->amount($item->quantity) }}</td>
                     <td class="text-right">
                         Rs {{ number_format($item->unit_price, 2) }}
@@ -189,6 +201,19 @@
             </tr>
         @endif
     </table>
+
+    @php($schedule = $sale->isCancelled() ? null : \App\Support\InstallmentSchedule::for($sale))
+    @if ($schedule)
+        <table class="totals">
+            <tr class="total-row"><td colspan="2">Instalment plan</td></tr>
+            @foreach ($schedule->rows() as $row)
+                <tr>
+                    <td>{{ $row['sequence'] }}. {{ $row['due_date']->format('d M Y') }}{{ $row['status'] === 'paid' ? ' (paid)' : '' }}</td>
+                    <td class="text-right">Rs {{ number_format($row['amount'], 2) }}</td>
+                </tr>
+            @endforeach
+        </table>
+    @endif
 
     <div class="footer">
         Thank you for your business!

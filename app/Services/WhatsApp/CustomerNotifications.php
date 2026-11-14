@@ -83,12 +83,35 @@ class CustomerNotifications
         $udhaar = $statement->udhaarBalance();
         $lines = [];
 
+        $askedFor = 0.0;
+
         foreach ($items as $item) {
-            $lines[] = WhatsAppLanguage::t($contact, 'due.'.$item['source'], [
-                'label' => $item['label'],
-                'ref' => $item['reference'],
-                'amount' => self::money((float) $item['amountDue']),
-            ]);
+            $plan = $item['installments'] ?? null;
+
+            if ($plan === null) {
+                $askedFor += (float) $item['amountDue'];
+                $lines[] = WhatsAppLanguage::t($contact, 'due.'.$item['source'], [
+                    'label' => $item['label'],
+                    'ref' => $item['reference'],
+                    'amount' => self::money((float) $item['amountDue']),
+                ]);
+            } elseif ($plan['dueNow'] > 0) {
+                // On instalments: ask for what has fallen due, not the whole balance.
+                $askedFor += $plan['dueNow'];
+                $lines[] = WhatsAppLanguage::t($contact, 'due.installment_due', [
+                    'label' => $item['label'],
+                    'ref' => $item['reference'],
+                    'amount' => self::money($plan['dueNow']),
+                    'left' => self::money((float) $item['amountDue']),
+                ]);
+            } elseif ($plan['next'] !== null) {
+                $lines[] = WhatsAppLanguage::t($contact, 'due.installment_next', [
+                    'label' => $item['label'],
+                    'ref' => $item['reference'],
+                    'amount' => self::money($plan['next']['left']),
+                    'date' => $plan['next']['due_date']->format('d M Y'),
+                ]);
+            }
         }
 
         if ($udhaar > 0) {
@@ -97,7 +120,7 @@ class CustomerNotifications
             $lines[] = WhatsAppLanguage::t($contact, 'due.udhaar_advance', ['amount' => self::money(abs($udhaar))]);
         }
 
-        $total = $udhaar + (float) $items->sum('amountDue');
+        $total = $udhaar + $askedFor;
 
         return [
             'lines' => $lines,
@@ -125,6 +148,11 @@ class CustomerNotifications
 
         if ($last !== null && $last->sent_at->gt(now()->subHours(self::REMINDER_COOLDOWN_HOURS))) {
             throw new RuntimeException("A reminder was already sent to {$customer->name} ".$last->sent_at->diffForHumans().'.');
+        }
+
+        // Only instalments not yet due: say so before anything else, rather than "nothing outstanding".
+        if ($this->paymentReminderPreview($customer)['total'] <= 0 && CustomerDuesStatement::for($customer)->items()->contains(fn ($item) => isset($item['installments']))) {
+            throw new RuntimeException("Nothing is due yet from {$customer->name}: their next instalment hasn't fallen due.");
         }
 
         $shop = Shop::findOrFail($customer->shop_id);

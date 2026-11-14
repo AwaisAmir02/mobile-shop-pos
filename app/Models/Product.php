@@ -7,6 +7,7 @@ use App\Enums\PurchaseOrderStatus;
 use App\Enums\QuantityUnit;
 use App\Enums\SimForm;
 use App\Enums\SimType;
+use App\Enums\WarrantyType;
 use App\Models\Concerns\BelongsToShop;
 use App\Models\Concerns\HasImage;
 use App\Support\BatchExpiry;
@@ -39,6 +40,8 @@ class Product extends Model
         'stock_quantity',
         'unit',
         'shelf_life_days',
+        'warranty_months',
+        'warranty_type',
         'whatsapp_listed',
         'archived_at',
         'details',
@@ -54,6 +57,8 @@ class Product extends Model
             'stock_quantity' => QuantityCast::class,
             'unit' => QuantityUnit::class,
             'shelf_life_days' => 'integer',
+            'warranty_months' => 'integer',
+            'warranty_type' => WarrantyType::class,
             'whatsapp_listed' => 'boolean',
             'archived_at' => 'datetime',
             'details' => 'array',

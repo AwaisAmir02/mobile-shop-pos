@@ -3,6 +3,7 @@
 use App\Actions\CreateProduct;
 use App\Enums\LimitKey;
 use App\Enums\QuantityUnit;
+use App\Enums\WarrantyType;
 use App\Support\Quantity;
 use App\Exceptions\UsageLimitReached;
 use App\Livewire\Concerns\GuardsExportSize;
@@ -54,6 +55,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public string $unit = 'piece';
     public bool $unitLocked = false;
     public string $shelf_life_days = '';
+    public string $warranty_months = '';
+    public string $warranty_type = 'brand';
 
     public string $brand = '';
     public string $model = '';
@@ -216,6 +219,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             'formUnit' => $this->formUnit(),
             'showUnitField' => $this->showUnitField(),
             'expiryEnabled' => (bool) Auth::user()->shop?->expiry_tracking_enabled,
+            'warrantyEnabled' => (bool) Auth::user()->shop?->sellsDevices(),
             'groupTypeOptions' => $mainCategories->reject(fn (MainCategory $category) => in_array($category->slug, ProductGroup::EXCLUDED_TYPES, true))->values(),
             'groupCategoryOptions' => $this->groupCategoryOptions($mainCategories),
             'generatedLabels' => $this->generatedLabels(),
@@ -716,6 +720,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->unit = $product->unit->value;
         $this->unitLocked = $product->unitIsLocked();
         $this->shelf_life_days = (string) ($product->shelf_life_days ?? '');
+        $this->warranty_months = (string) ($product->warranty_months ?? '');
+        $this->warranty_type = $product->warranty_type?->value ?? 'brand';
 
         $this->brand = $product->details['brand'] ?? '';
         $this->model = $product->details['model'] ?? '';
@@ -762,6 +768,11 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 'unit' => $this->formUnit(),
                 'details' => $this->detailsForType(),
             ]);
+        }
+
+        if (Auth::user()->shop?->sellsDevices()) {
+            $product->warranty_months = $this->warranty_months !== '' && (int) $this->warranty_months > 0 ? (int) $this->warranty_months : null;
+            $product->warranty_type = $product->warranty_months ? $this->warranty_type : null;
         }
 
         if (Auth::user()->shop?->expiry_tracking_enabled) {
@@ -1088,6 +1099,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     {
         $rules = CreateProduct::rules(auth()->user()->shop_id, $this->type, $this->editingId, $this->formUnit());
         $rules['shelf_life_days'] = ['nullable', 'integer', 'min:1', 'max:3650'];
+        $rules['warranty_months'] = ['nullable', 'integer', 'min:0', 'max:120'];
+        $rules['warranty_type'] = ['required', Rule::enum(WarrantyType::class)];
         $groupId = $this->editingId ? Product::whereKey($this->editingId)->value('product_group_id') : null;
 
         if ($groupId === null) {
@@ -1110,7 +1123,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     protected function resetForm(): void
     {
         $this->reset([
-            'editingId', 'editingHasBatches', 'unit', 'unitLocked', 'shelf_life_days', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
+            'editingId', 'editingHasBatches', 'unit', 'unitLocked', 'shelf_life_days', 'warranty_months', 'warranty_type', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
             'brand', 'model', 'imei', 'category', 'barcode', 'variantLabel', 'editingVariantGroupName',
         ]);
 
@@ -1510,6 +1523,24 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                         <x-ui.field label="Shelf Life (days)" name="shelf_life_days" for="shelf_life_days" help="Optional. Pre-fills the expiry date on Stock In">
                             <x-ui.input wire:model="shelf_life_days" id="shelf_life_days" type="number" min="1" max="3650" step="1" />
                         </x-ui.field>
+                    @endif
+
+                    @if ($warrantyEnabled && $type !== 'sim')
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2" data-warranty-fields>
+                            <x-ui.field label="Warranty (months)" name="warranty_months" for="warranty_months" help="Optional. Given on every unit sold from now on">
+                                <x-ui.input wire:model="warranty_months" id="warranty_months" type="number" min="0" max="120" step="1" placeholder="e.g. 12" />
+                            </x-ui.field>
+                            <x-ui.field label="Warranty from" name="warranty_type" for="warranty_type">
+                                {{-- Keyed so opening another product shows its own choice (x-ui.select keeps its label otherwise). --}}
+                                <div wire:key="warranty-type-{{ $editingId ?? 'new' }}-{{ $warranty_type }}">
+                                    <x-ui.select wire:model="warranty_type" id="warranty_type">
+                                        @foreach (WarrantyType::cases() as $option)
+                                            <option value="{{ $option->value }}">{{ $option->label() }}</option>
+                                        @endforeach
+                                    </x-ui.select>
+                                </div>
+                            </x-ui.field>
+                        </div>
                     @endif
 
                     <x-ui.field :label="$formUnit->allowsDecimals() ? 'Stock Qty ('.$formUnit->symbol().')' : 'Stock Qty'" name="stock_quantity" for="stock_quantity" class="sm:max-w-xs">

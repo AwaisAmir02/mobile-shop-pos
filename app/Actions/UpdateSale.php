@@ -6,6 +6,7 @@ use App\Enums\QuantityUnit;
 use App\Enums\SaleRevisionAction;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Models\SaleItem;
 use App\Models\SaleRevision;
 use App\Models\Scopes\ExcludesCancelledSalesScope;
 use App\Support\BatchExpiry;
@@ -54,6 +55,10 @@ class UpdateSale
                 ])->all(),
             ];
 
+            // Warranty and serial stay as sold, per product, through any edit.
+            $previousByProduct = $sale->items->whereNotNull('product_id')->keyBy('product_id');
+            $previousOrphans = $sale->items->whereNull('product_id')->keyBy('product_name');
+
             $alreadyHeld = $sale->items->whereNotNull('stock_in_id')->groupBy('stock_in_id')
                 ->map(fn ($items) => Quantity::sum($items->pluck('quantity')))->all();
 
@@ -84,7 +89,7 @@ class UpdateSale
                         'unit' => $unit,
                         'discount_amount' => $discount,
                         'line_total' => $lineTotal,
-                    ];
+                    ] + (($kept = $previousOrphans->get($line['product_name'])) ? ['serial_number' => $kept->serial_number, 'warranty_months' => $kept->warranty_months, 'warranty_type' => $kept->warranty_type] : []);
 
                     continue;
                 }
@@ -125,7 +130,7 @@ class UpdateSale
                         'unit' => $product->unit,
                         'discount_amount' => $subLine['discount_amount'],
                         'line_total' => $subLine['line_total'],
-                    ];
+                    ] + SaleItem::warrantyAttributesFor($product, $previousByProduct->get($product->id));
                 }
 
                 $product->decrement('stock_quantity', $quantity);

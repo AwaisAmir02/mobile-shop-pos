@@ -23,8 +23,11 @@
             ['label' => 'Repairs', 'route' => 'repairs.history', 'icon' => 'wrench', 'group' => 'sell', 'permission' => 'repairs'],
             ['label' => 'Services', 'route' => 'services.history', 'icon' => 'sparkles', 'group' => 'sell', 'permission' => 'services'],
             ['label' => 'Products', 'route' => 'products.index', 'icon' => 'cube', 'group' => 'stock', 'permission' => 'products'],
-            ['label' => 'Stock In', 'route' => 'stock-ins.history', 'icon' => 'stock-in', 'group' => 'stock', 'permission' => 'stock-ins'],
-            ['label' => 'Purchasing', 'route' => 'purchase-orders.index', 'icon' => 'clipboard', 'group' => 'stock', 'permission' => ['purchase-orders', 'receive-goods', 'vendor-invoices', 'vendor-invoices-approve']],
+            // Two ways stock comes in, named for what each one is: Stock In records goods that have
+            // arrived; Purchase Orders is ordering first and receiving against the order (which then
+            // writes the Stock In entries itself). 'hint' is a caption shown under the label.
+            ['label' => 'Stock In', 'route' => 'stock-ins.history', 'icon' => 'stock-in', 'group' => 'stock', 'permission' => 'stock-ins', 'hint' => 'Goods that have arrived'],
+            ['label' => 'Purchase Orders', 'route' => 'purchase-orders.index', 'icon' => 'clipboard', 'group' => 'stock', 'permission' => ['purchase-orders', 'receive-goods', 'vendor-invoices', 'vendor-invoices-approve'], 'hint' => 'Order first, receive later'],
             ['label' => 'Vendors', 'route' => 'vendors.index', 'icon' => 'vendor', 'group' => 'stock', 'permission' => 'vendors'],
             ['label' => 'Wallet Loads', 'route' => 'wallet-loads.history', 'icon' => 'wallet', 'group' => 'counter', 'permission' => 'wallet-loads'],
             ['label' => 'NADRA Verification', 'route' => 'nadra-verifications.history', 'icon' => 'identification', 'group' => 'counter', 'permission' => 'nadra-verifications'],

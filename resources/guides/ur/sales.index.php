@@ -47,6 +47,7 @@ return [
                 ['label' => 'Cash', 'text' => 'Customer poori raqam abhi de raha hai.'],
                 ['label' => 'Partial', 'text' => 'Customer kuch raqam abhi de raha hai. Woh Amount Paid Now mein likhein. Baqi baqaya rehta hai, is liye customer chunein.'],
                 ['label' => 'Udhaar', 'text' => 'Abhi kuch nahin mila. Poori raqam customer ke khaate mein jati hai, is liye customer chunna zaroori hai.'],
+                ['label' => 'Instalments', 'text' => 'Phone aur electronics shops ke liye: abhi Down Payment aur baqi mahana qiston mein. Kitni qistein aur First Due tareekh likhein; sale complete karne se pehle plan nazar aata hai, aur customer zaroori hai.'],
                 ['label' => 'Paid by', 'text' => 'Paisa kaise aaya: Cash ya aap ka koi account (JazzCash, Easypaisa, bank). + New account se naya account banta hai. Hisaab nahin rakhte to Not recorded rehne dein.'],
                 ['label' => 'Customer', 'text' => 'Poori payment wali sale mein Walk-in rehne dein. + New Customer se sale chhore baghair naya customer ban jata hai.'],
                 ['label' => 'Due After Sale', 'text' => 'Sale save hone ke baad kitni raqam baqi rahegi.'],

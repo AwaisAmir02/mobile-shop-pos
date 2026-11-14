@@ -63,7 +63,7 @@ class SidebarVisibilityGuardTest extends TestCase
 
     private const FLAG_LINKS = [
         'Services' => '/services/history',
-        'Purchasing' => '/purchase-orders',
+        'Purchase Orders' => '/purchase-orders',
         'WhatsApp Orders' => '/whatsapp-orders',
         'Online Store Orders' => '/online-orders',
         'Customer Messages' => '/customer-messages',
@@ -91,7 +91,7 @@ class SidebarVisibilityGuardTest extends TestCase
             'services' => ['services_enabled', 'Services'],
             'ledger' => ['ledger_enabled', 'Accounts'],
             'payroll' => ['payroll_enabled', 'Payroll'],
-            'purchase orders' => ['purchase_orders_enabled', 'Purchasing'],
+            'purchase orders' => ['purchase_orders_enabled', 'Purchase Orders'],
             'whatsapp ordering' => ['whatsapp_ordering_enabled', 'WhatsApp Orders'],
             'online store' => ['online_store_enabled', 'Online Store Orders'],
             'whatsapp messaging' => ['whatsapp_messaging_enabled', 'Customer Messages'],
@@ -172,10 +172,10 @@ class SidebarVisibilityGuardTest extends TestCase
             'marketing-analytics' => [['Marketing' => '/marketing']],
             'marketing-ads' => [['Marketing' => '/marketing/ads']],
             'branches' => [['Branches' => '/branches']],
-            'purchase-orders' => [['Purchasing' => '/purchase-orders']],
-            'receive-goods' => [['Purchasing' => '/purchase-orders']],
-            'vendor-invoices' => [['Purchasing' => '/purchase-orders']],
-            'vendor-invoices-approve' => [['Purchasing' => '/purchase-orders']],
+            'purchase-orders' => [['Purchase Orders' => '/purchase-orders']],
+            'receive-goods' => [['Purchase Orders' => '/purchase-orders']],
+            'vendor-invoices' => [['Purchase Orders' => '/purchase-orders']],
+            'vendor-invoices-approve' => [['Purchase Orders' => '/purchase-orders']],
             'payroll' => [['Payroll' => '/payroll/employees']],
             'payroll-run' => [['Payroll' => '/payroll/run']],
             'ledger-reports' => [['Accounts' => '/ledger/trial-balance']],
@@ -235,7 +235,7 @@ class SidebarVisibilityGuardTest extends TestCase
         $flags = array_values(array_diff(self::FLAGS, ['purchase_orders_enabled']));
 
         // No orders yet: hidden, as before.
-        $this->assertArrayNotHasKey('Purchasing', $this->linksFor($this->staff(['purchase-orders'], $flags)));
+        $this->assertArrayNotHasKey('Purchase Orders', $this->linksFor($this->staff(['purchase-orders'], $flags)));
 
         // With orders, whoever could open them through the old Stock In History link
         // still gets a way back. Other purchasing roles don't.
@@ -243,14 +243,14 @@ class SidebarVisibilityGuardTest extends TestCase
         $vendor = \App\Models\Vendor::forceCreate(['shop_id' => $staff->shop_id, 'name' => 'Old supplier']);
         \App\Models\PurchaseOrder::forceCreate(['shop_id' => $staff->shop_id, 'vendor_id' => $vendor->id, 'order_date' => now()->toDateString()]);
 
-        $this->assertSame('/purchase-orders', $this->linksFor($staff)['Purchasing'] ?? null);
+        $this->assertSame('/purchase-orders', $this->linksFor($staff)['Purchase Orders'] ?? null);
         $this->assertLessThan(400, $this->get('/purchase-orders')->getStatusCode());
 
         $receiver = User::factory()->staff()->create([
             'shop_id' => $staff->shop_id,
             'role_id' => Role::create(['shop_id' => $staff->shop_id, 'name' => 'Receiver', 'permissions' => ['receive-goods']])->id,
         ]);
-        $this->assertArrayNotHasKey('Purchasing', $this->linksFor($receiver));
+        $this->assertArrayNotHasKey('Purchase Orders', $this->linksFor($receiver));
     }
 
     public function test_marketing_ads_permission_with_ads_off_shows_no_marketing_link(): void

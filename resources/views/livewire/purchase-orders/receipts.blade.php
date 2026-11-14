@@ -92,7 +92,7 @@ new #[Layout('layouts.app')] #[Title('Goods Receipts')] class extends Component
         <x-ui.page-header>Goods Receipts</x-ui.page-header>
     </x-slot>
 
-    <x-ui.module-tabs module="purchasing" label="Purchasing sections" />
+    <x-ui.module-tabs module="purchasing" label="Purchase Orders sections" />
 
     <x-ui.filter-bar :active="(int) filled($from) + (int) filled($to)">
         <x-ui.date-range />

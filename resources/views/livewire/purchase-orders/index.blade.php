@@ -50,7 +50,7 @@ new #[Layout('layouts.app')] #[Title('Purchase Orders')] class extends Component
 
 <div>
     <x-slot name="header">
-        <x-ui.page-header>
+        <x-ui.page-header subtitle="Order before the goods arrive, then receive against the order">
             Purchase Orders
             <x-slot:actions>
                 @if ($canCreate)
@@ -60,7 +60,7 @@ new #[Layout('layouts.app')] #[Title('Purchase Orders')] class extends Component
         </x-ui.page-header>
     </x-slot>
 
-    <x-ui.module-tabs module="purchasing" label="Purchasing sections" />
+    <x-ui.module-tabs module="purchasing" label="Purchase Orders sections" />
 
     @unless ($enabled)
         <div class="mb-4 rounded-xl border border-warning/20 bg-warning-soft px-4 py-3 text-sm text-warning">

@@ -2,11 +2,13 @@
 
 use App\Actions\CreateStockIn;
 use App\Enums\PaymentStatus;
+use App\Enums\PurchaseOrderStatus;
 use App\Enums\QuantityUnit;
 use App\Livewire\Concerns\Toasts;
 use App\Models\AccessoryCategoryOption;
 use App\Models\MainCategory;
 use App\Models\Product;
+use App\Models\PurchaseOrder;
 use App\Models\Vendor;
 use App\Support\Quantity;
 use Carbon\Carbon;
@@ -281,6 +283,9 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
             'vendors' => Auth::user()->hasAccessTo('vendors') ? Vendor::query()->orderBy('name')->get() : collect(),
             'selectedUnit' => $this->selectedUnit(),
             'expiryEnabled' => $this->expiryEnabled(),
+            'openOrders' => Auth::user()->shop?->purchase_orders_enabled && Auth::user()->hasAccessTo('receive-goods')
+                ? PurchaseOrder::query()->whereIn('status', [PurchaseOrderStatus::Open->value, PurchaseOrderStatus::PartiallyReceived->value])->count()
+                : 0,
         ];
     }
 
@@ -328,8 +333,15 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
 
 <div>
     <x-slot name="header">
-        <x-ui.page-header back="{{ route('stock-ins.history') }}" back-label="Stock In History">Stock In</x-ui.page-header>
+        <x-ui.page-header back="{{ route('stock-ins.history') }}" back-label="Stock In History" subtitle="Goods that have arrived without a purchase order">Stock In</x-ui.page-header>
     </x-slot>
+
+    @if ($openOrders > 0)
+        <div class="mb-4 rounded-xl border border-info/20 bg-info-soft px-4 py-3 text-sm text-info" data-open-po-notice>
+            {{ $openOrders }} purchase {{ \Illuminate\Support\Str::plural('order', $openOrders) }} {{ $openOrders === 1 ? 'is' : 'are' }} waiting for delivery. If these goods are on one of them,
+            <a href="{{ route('purchase-orders.index') }}" wire:navigate class="font-semibold underline">receive them on the order</a> instead, so the order is matched and the stock isn't added twice.
+        </div>
+    @endif
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div class="min-w-0 space-y-6 lg:col-span-2">

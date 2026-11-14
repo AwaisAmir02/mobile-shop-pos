@@ -24,7 +24,7 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
 
     public function mount(Sale $sale): void
     {
-        $this->sale = $sale->load(['items', 'customer', 'payments.shopAccount']);
+        $this->sale = $sale->load(['items', 'customer', 'payments.shopAccount', 'installments']);
         $this->justCompleted = session('sale-completed') === $sale->id;
     }
 
@@ -53,7 +53,7 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
 
         $result = CancelSale::handle($this->sale, Auth::id(), $this->cancelReason);
 
-        $this->sale = $this->sale->fresh(['items', 'customer', 'payments.shopAccount']);
+        $this->sale = $this->sale->fresh(['items', 'customer', 'payments.shopAccount', 'installments']);
         $this->dispatch('close-modal', name: 'cancel-sale-form');
 
         $message = 'Sale cancelled and stock restored.';
@@ -158,6 +158,16 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                                     · Rs {{ number_format($item->discount_amount, 2) }} off
                                 @endif
                             </p>
+                            @if ($item->serial_number || $item->hasWarranty())
+                                <p class="text-xs text-ink-faint" data-item-warranty>
+                                    @if ($item->serial_number)
+                                        IMEI {{ $item->serial_number }}
+                                    @endif
+                                    @if ($item->hasWarranty())
+                                        {{ $item->serial_number ? '·' : '' }} {{ $item->warranty_months }}-month {{ strtolower($item->warranty_type?->label() ?? 'warranty') }}, until {{ $item->warrantyEndsOn($sale->created_at)->format('d M Y') }}
+                                    @endif
+                                </p>
+                            @endif
                         </div>
                         <span class="whitespace-nowrap text-sm font-bold tabular-nums text-ink">Rs {{ number_format($item->line_total, 2) }}</span>
                     </div>
@@ -213,6 +223,35 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                         </li>
                     @endforeach
                 </ul>
+            @endif
+
+            @php($schedule = $sale->isCancelled() ? null : \App\Support\InstallmentSchedule::for($sale))
+            @if ($schedule)
+                <div class="mt-5 border-t border-line pt-4" data-installment-schedule>
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <h3 class="text-sm font-semibold text-ink">Instalment Plan</h3>
+                        <p class="text-xs text-ink-faint">{{ $schedule->summary() }}</p>
+                    </div>
+                    <ul class="mt-2 divide-y divide-line text-sm">
+                        @foreach ($schedule->rows() as $row)
+                            <li class="flex items-center justify-between gap-3 py-2">
+                                <span class="text-ink-muted">{{ $row['sequence'] }} of {{ $schedule->count() }} · {{ $row['due_date']->format('d M Y') }}</span>
+                                <span class="flex items-center gap-3">
+                                    <span class="font-semibold tabular-nums text-ink">
+                                        Rs {{ number_format($row['amount'], 2) }}
+                                        @if ($row['paid'] > 0 && $row['left'] > 0)
+                                            <span class="block text-right text-xs font-normal text-ink-faint">Rs {{ number_format($row['left'], 2) }} left</span>
+                                        @endif
+                                    </span>
+                                    <x-ui.badge :variant="\App\Support\InstallmentSchedule::statusVariant($row['status'])">{{ \App\Support\InstallmentSchedule::statusLabel($row['status']) }}</x-ui.badge>
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
+                    @if ($sale->customer && auth()->user()->hasAccessTo('udhaar'))
+                        <p class="mt-2 text-xs text-ink-faint">Take a payment from <a href="{{ route('udhaar.show', $sale->customer) }}" wire:navigate class="font-semibold text-link hover:underline">{{ $sale->customer->name }}’s udhaar page</a>; it counts against the earliest instalment first.</p>
+                    @endif
+                </div>
             @endif
         </x-ui.card>
 
