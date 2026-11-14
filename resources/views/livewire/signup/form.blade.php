@@ -1,9 +1,9 @@
 <?php
 
 use App\Actions\CreateShopWithOwner;
-use App\Enums\BusinessCategory;
 use App\Enums\OtpChannel;
 use App\Enums\OtpPurpose;
+use App\Livewire\Concerns\PicksBusinessType;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\Auth\VerificationCodes;
@@ -20,6 +20,8 @@ use Livewire\Volt\Component;
 
 new class extends Component
 {
+    use PicksBusinessType;
+
     public const SESSION_KEY = 'signup.pending';
 
     #[Locked]
@@ -115,7 +117,7 @@ new class extends Component
             'planId' => ['required', 'integer', fn ($attribute, $value, $fail) => Plan::active()->whereKey($value)->exists() ? null : $fail('Please choose an available plan.')],
             'method' => ['required', 'in:email,phone'],
             'shopName' => ['required', 'string', 'min:2', 'max:120'],
-            'businessCategory' => ['required', Rule::enum(BusinessCategory::class)],
+            'businessCategory' => $this->businessCategoryRules(),
             'ownerName' => ['required', 'string', 'min:2', 'max:120'],
             'phone' => ['required', 'string', 'max:20', function ($attribute, $value, $fail) use ($byPhone) {
                 if (! PhoneNumber::isPakistaniMobile($value)) {
@@ -126,7 +128,7 @@ new class extends Component
             }],
             'email' => [$byPhone ? 'nullable' : 'required', 'email:rfc,strict', 'max:255', 'unique:users,email'],
             'password' => CreateShopWithOwner::ownerRules()['password'],
-        ], [], [
+        ], $this->businessCategoryMessages(), [
             'shopName' => 'shop name',
             'businessCategory' => 'kind of business',
             'ownerName' => 'your name',
@@ -297,17 +299,7 @@ new class extends Component
                 <x-ui.field label="Shop name" name="shopName" for="shopName">
                     <x-ui.input wire:model="shopName" id="shopName" autocomplete="organization" maxlength="120" required />
                 </x-ui.field>
-                <div>
-                    <label for="businessCategory" class="block text-sm font-medium text-slate-700">What kind of business?</label>
-                    <select wire:model.live="businessCategory" id="businessCategory" class="mt-1.5 block w-full rounded-lg border-slate-300 py-2.5 pl-3.5 pr-10 text-base text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500">
-                        <option value="">Choose one…</option>
-                        @foreach (BusinessCategory::cases() as $option)
-                            <option value="{{ $option->value }}">{{ $option->label() }}</option>
-                        @endforeach
-                    </select>
-                    <p class="mt-1 text-xs text-slate-500">We’ll set up the screens your kind of shop needs. You can change this later.</p>
-                    <x-ui.error :messages="$errors->get('businessCategory')" class="mt-1" />
-                </div>
+                <x-signup.business-picker :group="$businessGroup" :category="$businessCategory" />
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <x-ui.field label="Your name" name="ownerName" for="ownerName">
                         <x-ui.input wire:model="ownerName" id="ownerName" autocomplete="name" maxlength="120" required />
@@ -344,10 +336,10 @@ new class extends Component
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <x-ui.field label="Password" name="password" for="password" help="At least 8 characters">
-                        <x-ui.input wire:model="password" id="password" type="password" autocomplete="new-password" required />
+                        <x-ui.password-input wire:model="password" id="password" autocomplete="new-password" required />
                     </x-ui.field>
                     <x-ui.field label="Confirm password" name="password_confirmation" for="password_confirmation">
-                        <x-ui.input wire:model="password_confirmation" id="password_confirmation" type="password" autocomplete="new-password" required />
+                        <x-ui.password-input wire:model="password_confirmation" id="password_confirmation" autocomplete="new-password" required />
                     </x-ui.field>
                 </div>
             </fieldset>

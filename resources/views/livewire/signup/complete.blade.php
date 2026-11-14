@@ -1,8 +1,8 @@
 <?php
 
-use App\Enums\BusinessCategory;
 use App\Enums\SocialProvider;
 use App\Http\Controllers\Auth\SocialLoginController;
+use App\Livewire\Concerns\PicksBusinessType;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\UserSocialAccount;
@@ -11,12 +11,13 @@ use App\Support\PhoneNumber;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Volt\Component;
 
 new class extends Component
 {
+    use PicksBusinessType;
+
     public string $planId = '';
     public string $shopName = '';
     public string $businessCategory = '';
@@ -61,10 +62,10 @@ new class extends Component
         $this->validate([
             'planId' => ['required', 'integer', fn ($attribute, $value, $fail) => Plan::active()->whereKey($value)->exists() ? null : $fail('Please choose an available plan.')],
             'shopName' => ['required', 'string', 'min:2', 'max:120'],
-            'businessCategory' => ['required', Rule::enum(BusinessCategory::class)],
+            'businessCategory' => $this->businessCategoryRules(),
             'ownerName' => ['required', 'string', 'min:2', 'max:120'],
             'phone' => ['required', 'string', 'max:20', fn ($attribute, $value, $fail) => PhoneNumber::isPakistaniMobile($value) ? null : $fail('Enter a Pakistani mobile number, e.g. 0300 1234567.')],
-        ], [], ['shopName' => 'shop name', 'businessCategory' => 'kind of business', 'ownerName' => 'your name', 'phone' => 'mobile number']);
+        ], $this->businessCategoryMessages(), ['shopName' => 'shop name', 'businessCategory' => 'kind of business', 'ownerName' => 'your name', 'phone' => 'mobile number']);
 
         $limits = config('billing.signup');
 
@@ -129,17 +130,7 @@ new class extends Component
             <x-ui.field label="Shop name" name="shopName" for="shopName">
                 <x-ui.input wire:model="shopName" id="shopName" autocomplete="organization" maxlength="120" required />
             </x-ui.field>
-            <div>
-                    <label for="businessCategory" class="block text-sm font-medium text-slate-700">What kind of business?</label>
-                    <select wire:model.live="businessCategory" id="businessCategory" class="mt-1.5 block w-full rounded-lg border-slate-300 py-2.5 pl-3.5 pr-10 text-base text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500">
-                        <option value="">Choose one…</option>
-                        @foreach (BusinessCategory::cases() as $option)
-                            <option value="{{ $option->value }}">{{ $option->label() }}</option>
-                        @endforeach
-                    </select>
-                    <p class="mt-1 text-xs text-slate-500">We’ll set up the screens your kind of shop needs. You can change this later.</p>
-                    <x-ui.error :messages="$errors->get('businessCategory')" class="mt-1" />
-                </div>
+            <x-signup.business-picker :group="$businessGroup" :category="$businessCategory" />
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <x-ui.field label="Your name" name="ownerName" for="ownerName">
                     <x-ui.input wire:model="ownerName" id="ownerName" autocomplete="name" maxlength="120" required />

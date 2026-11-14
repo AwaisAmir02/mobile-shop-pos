@@ -89,10 +89,10 @@ class BusinessCategoryTest extends TestCase
 
     public function test_the_owner_can_turn_a_hidden_module_back_on_and_off_again(): void
     {
-        $owner = $this->signUp('bakery');
+        $owner = $this->signUp('pharmacy');
         $this->actingAs($owner->fresh());
 
-        Livewire::test('settings.modules')->assertSee('Bakery & sweets')->call('toggle', 'repairs');
+        Livewire::test('settings.modules')->assertSee('Pharmacy / medical store')->call('toggle', 'repairs');
         $this->get(route('repairs.index'))->assertOk();
         $this->get(route('dashboard'))->assertSee('Repairs Revenue')->assertDontSee('Balance Loaded');
 
@@ -180,11 +180,11 @@ class BusinessCategoryTest extends TestCase
 
         Livewire::test('signup.complete')->set('shopName', 'Sweet Bites')->set('phone', '0321 5556667')->call('submit')->assertHasErrors(['businessCategory']);
 
-        Livewire::test('signup.complete')->set('shopName', 'Sweet Bites')->set('businessCategory', 'bakery')->set('phone', '0321 5556667')->call('submit')->assertHasNoErrors();
+        Livewire::test('signup.complete')->set('shopName', 'Sweet Bites')->set('businessCategory', 'pharmacy')->set('phone', '0321 5556667')->call('submit')->assertHasNoErrors();
 
         $shop = Shop::where('name', 'Sweet Bites')->sole();
-        $this->assertSame(BusinessCategory::Bakery, $shop->business_category);
-        $this->assertContains('Sweets', $this->categoryNames($shop));
+        $this->assertSame(BusinessCategory::Pharmacy, $shop->business_category);
+        $this->assertContains('Medicines', $this->categoryNames($shop));
         $this->assertTrue($shop->isScreenHidden('repairs'));
     }
 }
