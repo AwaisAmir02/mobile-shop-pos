@@ -22,6 +22,7 @@ Schedule::command('billing:expire-addons')->hourly()->withoutOverlapping();
 Schedule::command('billing:renewal-reminders')->hourly()->withoutOverlapping();
 Schedule::command('backup:run')->dailyAt('03:30')->timezone('Asia/Karachi')->withoutOverlapping(120);
 Schedule::command('backup:monitor')->hourly()->withoutOverlapping();
+Schedule::command('couriers:refresh')->everyThirtyMinutes()->withoutOverlapping(25);
 
 // Last on purpose: schedule:run does these one at a time, and a slow store can take
 // about a minute here. Nothing after it means it can't hold up anything else.

@@ -123,6 +123,9 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('sales', 'sales.create')->name('sales.index')->middleware('shop.access:sales');
         Volt::route('sales/history', 'sales.history')->name('sales.history')->middleware('shop.access:sales');
+        Volt::route('shipments', 'shipments.index')->name('shipments.index')->middleware('shop.access:sales');
+        Volt::route('shipments/book/{sale}', 'shipments.book')->name('shipments.book')->middleware('shop.access:sales');
+        Route::get('shipments/{shipment}/label', \App\Http\Controllers\ShipmentLabelController::class)->name('shipments.label')->middleware('shop.access:sales');
         Volt::route('sales/warranty', 'sales.warranty')->name('sales.warranty')->middleware('shop.access:sales');
         Volt::route('sales/installments', 'sales.installments')->name('sales.installments')->middleware('shop.access:sales');
         Volt::route('sales/{sale}', 'sales.show')->name('sales.show')->middleware('shop.access:sales');

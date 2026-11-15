@@ -213,6 +213,10 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                 @endif
             </div>
 
+            @unless ($sale->isCancelled())
+                <x-shipments.order-courier :sale-id="$sale->id" class="mt-3 rounded-xl border border-line px-4 py-3" />
+            @endunless
+
             @php($recordedPayments = $sale->payments->filter(fn ($payment) => (float) $payment->amount != 0.0)->sortBy('id'))
             @if ($recordedPayments->isNotEmpty())
                 <ul class="mt-3 space-y-1 text-sm">

@@ -51,7 +51,7 @@ return [
             'heading' => 'Adding a product',
             'steps' => [
                 'Press Add Product.',
-                'Pick the Main Category and type the Product Name. The other fields change with the category: Brand, Model and IMEI / Serial for mobiles, Sub-Category for accessories.',
+                'Pick the Main Category and type the Product Name. The other fields change with the category: Brand, Model and IMEI for mobiles (15 digits; each IMEI can be on one product only), Sub-Category for accessories.',
                 'Enter the Selling Price. Cost Price is optional, but your profit reports need it.',
                 ['text' => 'Press Next. Choose One product, or Sizes or colours to make a variant for each size and colour in one go.', 'feature' => 'variants'],
                 'Enter Stock Qty, how many you have right now, then press Add Product.',

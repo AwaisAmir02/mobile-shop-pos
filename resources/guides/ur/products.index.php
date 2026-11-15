@@ -51,7 +51,7 @@ return [
             'heading' => 'Naya product banana',
             'steps' => [
                 'Add Product dabayein.',
-                'Main Category chunein aur Product Name likhein. Baqi fields category ke hisaab se badalte hain: mobile ke liye Brand, Model aur IMEI / Serial, accessory ke liye Sub-Category.',
+                'Main Category chunein aur Product Name likhein. Baqi fields category ke hisaab se badalte hain: mobile ke liye Brand, Model aur IMEI (15 digits; har IMEI sirf ek product par), accessory ke liye Sub-Category.',
                 'Selling Price likhein. Cost Price zaroori nahin, lekin munafe ki reports ko chahiye.',
                 ['text' => 'Next dabayein. One product chunein, ya Sizes or colours taake har size aur colour ka variant ek saath ban jaye.', 'feature' => 'variants'],
                 'Stock Qty mein likhein abhi aap ke paas kitne hain, phir Add Product dabayein.',

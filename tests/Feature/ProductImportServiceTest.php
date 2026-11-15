@@ -252,10 +252,10 @@ class ProductImportServiceTest extends TestCase
     public function test_a_row_matching_an_existing_products_name_and_imei_is_skipped_not_overwritten(): void
     {
         $shop = $this->shop();
-        Product::create(['shop_id' => $shop->id, 'type' => 'mobile', 'name' => 'Galaxy A15', 'price' => 20000, 'stock_quantity' => 1, 'details' => ['brand' => 'Samsung', 'model' => 'A15', 'imei' => '351756051523999']]);
+        Product::create(['shop_id' => $shop->id, 'type' => 'mobile', 'name' => 'Galaxy A15', 'price' => 20000, 'stock_quantity' => 1, 'details' => ['brand' => 'Samsung', 'model' => 'A15', 'imei' => '351756051523993']]);
         $brand = Brand::create(['shop_id' => $shop->id, 'name' => 'Samsung']);
 
-        $path = $this->buildSheet([['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523999', '25000', '', '']]);
+        $path = $this->buildSheet([['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523993', '25000', '', '']]);
 
         $preview = $this->service->preview($path, $shop->id);
         $this->assertSame(0, $preview['toCreateCount']);
@@ -270,10 +270,10 @@ class ProductImportServiceTest extends TestCase
     public function test_the_same_name_with_a_different_imei_is_not_a_duplicate(): void
     {
         $shop = $this->shop();
-        Product::create(['shop_id' => $shop->id, 'type' => 'mobile', 'name' => 'Galaxy A15', 'price' => 20000, 'stock_quantity' => 1, 'details' => ['brand' => 'Samsung', 'model' => 'A15', 'imei' => '111111111111111']]);
+        Product::create(['shop_id' => $shop->id, 'type' => 'mobile', 'name' => 'Galaxy A15', 'price' => 20000, 'stock_quantity' => 1, 'details' => ['brand' => 'Samsung', 'model' => 'A15', 'imei' => '490154203237518']]);
         Brand::create(['shop_id' => $shop->id, 'name' => 'Samsung']);
 
-        $path = $this->buildSheet([['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '222222222222222', '25000', '', '']]);
+        $path = $this->buildSheet([['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523993', '25000', '', '']]);
 
         $outcome = $this->service->commit($path, $shop->id);
 
@@ -300,9 +300,9 @@ class ProductImportServiceTest extends TestCase
     {
         $shop = $this->shop();
         $path = $this->buildSheet([
-            ['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523999', '25000', '', ''],
+            ['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523993', '25000', '', ''],
             ['Some Other Row', 'Accessory', 'Cable', '', '', '', '500', '', ''],
-            ['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523999', '26000', '', ''],
+            ['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523993', '26000', '', ''],
         ]);
 
         $preview = $this->service->preview($path, $shop->id);
@@ -367,7 +367,7 @@ class ProductImportServiceTest extends TestCase
 
         // Written as a genuine float cell (no Text format), matching what happens
         // when a shopkeeper types a long number into a General-formatted cell.
-        $path = $this->buildSheet([['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', 351756051523999, '25000', '', '']], imeiColumnLetter: null);
+        $path = $this->buildSheet([['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', 351756051523993, '25000', '', '']], imeiColumnLetter: null);
 
         $outcome = $this->service->commit($path, $shop->id);
 
@@ -458,11 +458,11 @@ class ProductImportServiceTest extends TestCase
         MainCategory::ensureDefaultsExist($shopB->id);
 
         // Shop B already has this exact product/brand — must not affect Shop A's import.
-        Product::create(['shop_id' => $shopB->id, 'type' => 'mobile', 'name' => 'Galaxy A15', 'price' => 20000, 'stock_quantity' => 1, 'details' => ['brand' => 'Samsung', 'model' => 'A15', 'imei' => '351756051523999']]);
+        Product::create(['shop_id' => $shopB->id, 'type' => 'mobile', 'name' => 'Galaxy A15', 'price' => 20000, 'stock_quantity' => 1, 'details' => ['brand' => 'Samsung', 'model' => 'A15', 'imei' => '351756051523993']]);
         Brand::create(['shop_id' => $shopB->id, 'name' => 'Samsung']);
 
         $this->actingAs($ownerA);
-        $path = $this->buildSheet([['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523999', '25000', '', '']]);
+        $path = $this->buildSheet([['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523993', '25000', '', '']]);
 
         $outcome = $this->service->commit($path, $shopA->id);
 

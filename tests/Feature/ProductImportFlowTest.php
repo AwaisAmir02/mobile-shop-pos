@@ -84,7 +84,7 @@ class ProductImportFlowTest extends TestCase
         $this->authorizedShop();
         $file = $this->fakeUpload([
             ['USB Cable', 'Accessory', 'Cable', '', '', '', '500', '300', '10'],
-            ['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523999', '25000', '20000', '2'],
+            ['Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523993', '25000', '20000', '2'],
         ]);
 
         Livewire::test('products.import')

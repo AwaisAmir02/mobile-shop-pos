@@ -1413,8 +1413,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                     @if ($editingVariantGroupName === '')
                     <div @class(['grid grid-cols-1 gap-4', 'sm:grid-cols-2' => $type === 'mobile'])>
                         @if ($type === 'mobile')
-                            <x-ui.field label="IMEI / Serial" name="imei" for="imei" help="Optional">
-                                <x-ui.input wire:model="imei" id="imei" />
+                            <x-ui.field label="IMEI" name="imei" for="imei" help="Optional. 15 digits: dial *#06# or check the box">
+                                <x-ui.input wire:model="imei" id="imei" inputmode="numeric" maxlength="20" />
                             </x-ui.field>
                         @endif
 

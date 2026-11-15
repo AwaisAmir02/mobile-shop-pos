@@ -14,6 +14,7 @@ use App\Models\Product;
 use App\Models\ProductGroup;
 use App\Models\Shop;
 use App\Services\Billing\Entitlements;
+use App\Support\Imei;
 use App\Support\Quantity;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -306,8 +307,12 @@ class ProductImportService
         };
 
         // Compared in PHP: a JSON-column comparison in SQL ignores the app's collation on some MySQL versions.
-        $existingProducts = Product::where('shop_id', $shopId)->get(['name', 'details', 'barcode']);
-        $existingKeys = $existingProducts->map(fn (Product $p) => $this->normalize($p->name).'|'.$this->normalize((string) ($p->details['imei'] ?? '')))->flip();
+        $existingProducts = Product::where('shop_id', $shopId)->get(['name', 'details', 'barcode', 'archived_at', 'stock_quantity', 'unit']);
+        $existingKeys = $existingProducts->map(fn (Product $p) => $this->normalize($p->name).'|'.$this->normalize(Imei::normalize($p->details['imei'] ?? '')))->flip();
+        // IMEI => the product that has it, so a new row can't reuse one (sold or archived included).
+        $existingImeiOwners = $existingProducts
+            ->filter(fn (Product $p) => Imei::normalize($p->details['imei'] ?? '') !== '')
+            ->keyBy(fn (Product $p) => Imei::normalize($p->details['imei']));
 
         $barcodesEnabled = (bool) Shop::whereKey($shopId)->value('barcode_enabled');
         $existingBarcodeOwners = $existingProducts
@@ -350,6 +355,7 @@ class ProductImportService
         $rows = [];
         $seenBarcodes = []; // normalized barcode => first excel row number, rows that will be created only
         $seenInSheet = []; // "name|imei" => first excel row number
+        $seenImeis = []; // IMEI => first excel row number, rows that will be created only
         $pendingMainCategories = []; // normalized name => original-cased name
         $pendingSubCategories = []; // "mainKey|subKey" => ['main' => name, 'sub' => name]
         $pendingBrands = []; // normalized name => original-cased name
@@ -378,7 +384,7 @@ class ProductImportService
             $subCategoryName = trim($cellAt($cells, 'sub-category'));
             $brandName = trim($cellAt($cells, 'brand'));
             $model = trim($cellAt($cells, 'model'));
-            $imei = trim($cellAt($cells, 'imei/serial'));
+            $imei = Imei::normalize($cellAt($cells, 'imei/serial'));
             $barcode = $barcodesEnabled ? trim($cellAt($cells, 'barcode')) : '';
             $groupName = $variantsEnabled ? trim($cellAt($cells, 'variant group')) : '';
             $options = array_values(array_filter([trim($cellAt($cells, 'option 1')), trim($cellAt($cells, 'option 2'))], fn (string $option) => $option !== ''));
@@ -478,6 +484,13 @@ class ProductImportService
                 $brandName = '';
             }
 
+            // A row that matches an existing product (same name and IMEI) is skipped below, so its
+            // IMEI isn't checked again: older products may have been saved before IMEIs were.
+            if ($imei !== '' && ! isset($existingKeys[$this->normalize($name).'|'.$this->normalize($imei)])
+                && ($imeiProblem = Imei::problem($imei)) !== null) {
+                $addError("IMEI \"{$imei}\": {$imeiProblem}");
+            }
+
             if ($groupName !== '') {
                 $groupKey = $this->normalize($groupName);
                 $mainKey = $this->normalize($mainCategoryName);
@@ -514,6 +527,22 @@ class ProductImportService
             $seenInSheet[$dupKey] = $excelRow;
 
             $skip = isset($existingKeys[$dupKey]);
+
+            if (! $skip && $imei !== '') {
+                if (isset($seenImeis[$imei])) {
+                    $rowErrors[] = "Row {$excelRow}: IMEI \"{$imei}\" is also on row {$seenImeis[$imei]}. Each phone has its own IMEI.";
+
+                    continue;
+                }
+
+                if (isset($existingImeiOwners[$imei])) {
+                    $rowErrors[] = "Row {$excelRow}: IMEI \"{$imei}\" is already on ".Imei::describeOwner($existingImeiOwners[$imei]).'.';
+
+                    continue;
+                }
+
+                $seenImeis[$imei] = $excelRow;
+            }
 
             $barcodeKey = $this->normalize($barcode);
             if (! $skip && $barcode !== '') {
@@ -741,7 +770,7 @@ class ProductImportService
             $example->getStyle("{$barcodeColumn}:{$barcodeColumn}")->getNumberFormat()->setFormatCode('@');
         }
         $example->fromArray([
-            'Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523999', '45000', '39000', '5',
+            'Galaxy A15', 'Mobile Phone', '', 'Samsung', 'A15', '351756051523993', '45000', '39000', '1',
             ...($withBarcode ? ['2000000000015'] : []),
         ], null, 'A2');
         $example->fromArray([
@@ -773,7 +802,7 @@ class ProductImportService
             ['Sub-Category', 'Required only when Main Category is Accessory', 'Optional for every other Main Category. Created if it doesn\'t exist yet.'],
             ['Brand', 'Required only when Main Category is Mobile Phone', 'Ignored for every other Main Category. Created if it doesn\'t exist yet.'],
             ['Model', 'Optional, Mobile Phone only', 'Ignored for every other Main Category.'],
-            ['IMEI/Serial', 'Optional, Mobile Phone only', 'Kept as text — do not reformat this column as a number.'],
+            ['IMEI/Serial', 'Optional, Mobile Phone only', 'The 15-digit IMEI of each phone (dial *#06# or check the box), one per row. Each IMEI can be used once. Kept as text — do not reformat this column as a number.'],
             ['Selling Price', 'Required', 'Numbers only ("Rs"/commas are stripped automatically).'],
             ['Cost Price', 'Optional', ''],
             ['Stock Qty', 'Optional', $withUnits ? 'Defaults to 0 if left blank. A whole number for pieces; up to 3 decimals for every other unit.' : 'Whole number. Defaults to 0 if left blank.'],

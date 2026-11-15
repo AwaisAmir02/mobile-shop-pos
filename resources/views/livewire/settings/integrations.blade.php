@@ -50,7 +50,8 @@ new class extends Component
     {
         return ['whatsapp' => 'WhatsApp', 'facebook' => 'Facebook & Instagram']
             + (Auth::user()->shop?->ads_enabled ? ['ads' => 'Meta Ad Account'] : [])
-            + (Auth::user()->shop?->online_store_enabled ? ['online-store' => 'Online Store'] : []);
+            + (Auth::user()->shop?->online_store_enabled ? ['online-store' => 'Online Store'] : [])
+            + (Auth::user()->shop?->couriers_enabled ? ['couriers' => 'Couriers'] : []);
     }
 
     protected function defaultSection(): string
@@ -62,6 +63,7 @@ new class extends Component
             (bool) $shop?->social_enabled => 'facebook',
             (bool) $shop?->ads_enabled => 'ads',
             (bool) $shop?->online_store_enabled => 'online-store',
+            (bool) $shop?->couriers_enabled => 'couriers',
             default => 'whatsapp',
         };
     }
@@ -305,7 +307,9 @@ new class extends Component
         @endforeach
     </div>
 
-    @if ($section === 'online-store')
+    @if ($section === 'couriers')
+        <livewire:settings.couriers key="couriers" />
+    @elseif ($section === 'online-store')
         <livewire:settings.online-store key="online-store" />
     @elseif ($section === 'whatsapp')
         <x-ui.card title="WhatsApp" description="Connect your shop's WhatsApp Business number so customers can browse and order through a chatbot.">

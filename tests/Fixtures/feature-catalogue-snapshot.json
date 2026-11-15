@@ -260,6 +260,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -278,6 +285,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": null,
                 "products_allowed": null,
@@ -545,6 +553,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -563,6 +578,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": null,
                 "products_allowed": 7,
@@ -840,6 +856,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -858,6 +881,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": null,
                 "products_allowed": null,
@@ -1125,6 +1149,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -1143,6 +1174,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": null,
                 "products_allowed": null,
@@ -1410,6 +1442,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -1428,6 +1467,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": {
                     "products": 5,
                     "staff_users": 1,
@@ -1552,6 +1592,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "hisabokitab"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "hisabokitab"
                 }
             ],
             "shop": {
@@ -1570,6 +1617,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": null,
                 "products_allowed": 40,
@@ -1580,7 +1628,7 @@
     },
     "admin_page": {
         "Addons": {
-            "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login addons@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 3 Staff users Plan: unlimited Sales this month Plan: unlimited WhatsApp messages this month Plan: unlimited Marketing posts this month Plan: 0 Branches Plan: unlimited WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / 503 Staff users 0 / Unlimited Sales this month 0 / Unlimited WhatsApp messages this month 0 / Unlimited Marketing posts this month 0 / 0 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Add-ons Ads unlock · until 14 Nov 2026 Active Social unlock · until 25 Nov 2026 Active Pack Active Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Addons addons@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Plan Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Plan Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Plan Includes Accept / Reject Online Store Plan Includes Accept / Reject Customer Messages (reminders, repair ready) Plan Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Plan Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Plan Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Plan Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Plan Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Social Posting Plan Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
+            "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login addons@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 3 Staff users Plan: unlimited Sales this month Plan: unlimited WhatsApp messages this month Plan: unlimited Marketing posts this month Plan: 0 Branches Plan: unlimited WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / 503 Staff users 0 / Unlimited Sales this month 0 / Unlimited WhatsApp messages this month 0 / Unlimited Marketing posts this month 0 / 0 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Add-ons Ads unlock · until 14 Nov 2026 Active Social unlock · until 25 Nov 2026 Active Pack Active Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Addons addons@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Plan Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Plan Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Plan Includes Accept / Reject Online Store Plan Includes Accept / Reject Customer Messages (reminders, repair ready) Plan Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Plan Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Plan Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Plan Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Plan Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Courier Booking Plan Lets the shop connect its own Leopards or PostEx account and book parcels for its sales, with labels, live status and returns. The courier pays the shop directly. When off, booked parcels stay listed but nothing new can be booked. Social Posting Plan Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
             "attributes": [
                 "role=tablist",
                 "aria-label=Shop sections",
@@ -1778,6 +1826,10 @@
                 "aria-label=Enable Expiry Date Tracking",
                 "wire:confirm=Enable Expiry Date Tracking for this shop?",
                 "role=switch",
+                "aria-checked=false",
+                "aria-label=Enable Courier Booking",
+                "wire:confirm=Enable Courier Booking for this shop?",
+                "role=switch",
                 "aria-checked=true",
                 "aria-label=Disable Social Posting",
                 "wire:confirm=Disable Social Posting for this shop?"
@@ -1794,7 +1846,7 @@
             }
         },
         "Legacy only": {
-            "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login legacy-only@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: unlimited Staff users Plan: unlimited Sales this month Plan: unlimited WhatsApp messages this month Plan: unlimited Marketing posts this month Plan: unlimited Branches Plan: unlimited WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / Unlimited Staff users 0 / Unlimited Sales this month 0 / Unlimited WhatsApp messages this month 0 / Unlimited Marketing posts this month 0 / Unlimited WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Legacy only legacy-only@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Plan Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Plan Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Plan Includes Accept / Reject Online Store Plan Includes Accept / Reject Customer Messages (reminders, repair ready) Plan Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Plan Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Plan Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Plan Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Plan Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Social Posting Plan Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
+            "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login legacy-only@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: unlimited Staff users Plan: unlimited Sales this month Plan: unlimited WhatsApp messages this month Plan: unlimited Marketing posts this month Plan: unlimited Branches Plan: unlimited WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / Unlimited Staff users 0 / Unlimited Sales this month 0 / Unlimited WhatsApp messages this month 0 / Unlimited Marketing posts this month 0 / Unlimited WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Legacy only legacy-only@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Plan Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Plan Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Plan Includes Accept / Reject Online Store Plan Includes Accept / Reject Customer Messages (reminders, repair ready) Plan Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Plan Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Plan Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Plan Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Plan Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Courier Booking Plan Lets the shop connect its own Leopards or PostEx account and book parcels for its sales, with labels, live status and returns. The courier pays the shop directly. When off, booked parcels stay listed but nothing new can be booked. Social Posting Plan Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
             "attributes": [
                 "role=tablist",
                 "aria-label=Shop sections",
@@ -1989,6 +2041,10 @@
                 "wire:confirm=Enable Expiry Date Tracking for this shop?",
                 "role=switch",
                 "aria-checked=false",
+                "aria-label=Enable Courier Booking",
+                "wire:confirm=Enable Courier Booking for this shop?",
+                "role=switch",
+                "aria-checked=false",
                 "aria-label=Enable Social Posting",
                 "wire:confirm=Enable Social Posting for this shop?"
             ],
@@ -2004,7 +2060,7 @@
             }
         },
         "On Full": {
-            "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 9 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login on-full@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 10 Staff users Plan: 2 Sales this month Plan: 100 WhatsApp messages this month Plan: 50 Marketing posts this month Plan: 5 Branches Plan: 2 WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 9 / 10 Staff users 1 / 2 Sales this month 0 / 100 WhatsApp messages this month 0 / 50 Marketing posts this month 0 / 5 Branches 2 / 2 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner On Full on-full@example.test Owner Active Deactivate Staff Full staff-full@example.test No role Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Enabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Plan Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Plan Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Plan Includes Accept / Reject Online Store Plan Includes Accept / Reject Customer Messages (reminders, repair ready) Plan Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Plan Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Plan Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Plan Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Plan Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Social Posting Plan Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
+            "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 9 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login on-full@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 10 Staff users Plan: 2 Sales this month Plan: 100 WhatsApp messages this month Plan: 50 Marketing posts this month Plan: 5 Branches Plan: 2 WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 9 / 10 Staff users 1 / 2 Sales this month 0 / 100 WhatsApp messages this month 0 / 50 Marketing posts this month 0 / 5 Branches 2 / 2 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner On Full on-full@example.test Owner Active Deactivate Staff Full staff-full@example.test No role Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Enabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Plan Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Plan Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Plan Includes Accept / Reject Online Store Plan Includes Accept / Reject Customer Messages (reminders, repair ready) Plan Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Plan Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Plan Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Plan Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Plan Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Courier Booking Plan Lets the shop connect its own Leopards or PostEx account and book parcels for its sales, with labels, live status and returns. The courier pays the shop directly. When off, booked parcels stay listed but nothing new can be booked. Social Posting Plan Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
             "attributes": [
                 "role=tablist",
                 "aria-label=Shop sections",
@@ -2212,6 +2268,10 @@
                 "wire:confirm=Enable Expiry Date Tracking for this shop?",
                 "role=switch",
                 "aria-checked=false",
+                "aria-label=Enable Courier Booking",
+                "wire:confirm=Enable Courier Booking for this shop?",
+                "role=switch",
+                "aria-checked=false",
                 "aria-label=Enable Social Posting",
                 "wire:confirm=Enable Social Posting for this shop?"
             ],
@@ -2227,7 +2287,7 @@
             }
         },
         "On Starter": {
-            "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login on-starter@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 500 Staff users Plan: 2 Sales this month Plan: 1,500 WhatsApp messages this month Plan: 0 Marketing posts this month Plan: 0 Branches Plan: 1 WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / 500 Staff users 0 / 2 Sales this month 0 / 1,500 WhatsApp messages this month 0 / 0 Marketing posts this month 0 / 0 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner On Starter on-starter@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Enabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Plan Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Plan Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Plan Includes Accept / Reject Online Store Plan Includes Accept / Reject Customer Messages (reminders, repair ready) Plan Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Plan Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Plan Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Plan Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Plan Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Social Posting Plan Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
+            "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login on-starter@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 500 Staff users Plan: 2 Sales this month Plan: 1,500 WhatsApp messages this month Plan: 0 Marketing posts this month Plan: 0 Branches Plan: 1 WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / 500 Staff users 0 / 2 Sales this month 0 / 1,500 WhatsApp messages this month 0 / 0 Marketing posts this month 0 / 0 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner On Starter on-starter@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Enabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Plan Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Plan Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Plan Includes Accept / Reject Online Store Plan Includes Accept / Reject Customer Messages (reminders, repair ready) Plan Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Plan Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Plan Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Plan Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Plan Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Courier Booking Plan Lets the shop connect its own Leopards or PostEx account and book parcels for its sales, with labels, live status and returns. The courier pays the shop directly. When off, booked parcels stay listed but nothing new can be booked. Social Posting Plan Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
             "attributes": [
                 "role=tablist",
                 "aria-label=Shop sections",
@@ -2432,6 +2492,10 @@
                 "wire:confirm=Enable Expiry Date Tracking for this shop?",
                 "role=switch",
                 "aria-checked=false",
+                "aria-label=Enable Courier Booking",
+                "wire:confirm=Enable Courier Booking for this shop?",
+                "role=switch",
+                "aria-checked=false",
                 "aria-label=Enable Social Posting",
                 "wire:confirm=Enable Social Posting for this shop?"
             ],
@@ -2447,7 +2511,7 @@
             }
         },
         "Overridden": {
-            "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login overridden@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 3 Staff users Plan: unlimited Sales this month Plan: unlimited WhatsApp messages this month Plan: unlimited Marketing posts this month Plan: 0 Branches Plan: unlimited WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / 5 Staff users 0 / 1 Sales this month 0 / 20 WhatsApp messages this month 0 / 0 Marketing posts this month 0 / 0 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Overridden overridden@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Switches marked “Plan” follow the Partial plan. These differ from the plan for this shop only: WhatsApp ordering: off here, plan says on Use plan default WhatsApp messaging: off here, plan says on Use plan default Meta ads: on here, plan says nothing Use plan default Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Plan Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Plan Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Plan Includes Accept / Reject Online Store Plan Includes Accept / Reject Customer Messages (reminders, repair ready) Plan Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Plan Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Plan Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Plan Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Plan Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Social Posting Plan Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
+            "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login overridden@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 3 Staff users Plan: unlimited Sales this month Plan: unlimited WhatsApp messages this month Plan: unlimited Marketing posts this month Plan: 0 Branches Plan: unlimited WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 0 / 5 Staff users 0 / 1 Sales this month 0 / 20 WhatsApp messages this month 0 / 0 Marketing posts this month 0 / 0 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Overridden overridden@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Switches marked “Plan” follow the Partial plan. These differ from the plan for this shop only: WhatsApp ordering: off here, plan says on Use plan default WhatsApp messaging: off here, plan says on Use plan default Meta ads: on here, plan says nothing Use plan default Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Plan Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Plan Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Plan Includes Accept / Reject Online Store Plan Includes Accept / Reject Customer Messages (reminders, repair ready) Plan Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Plan Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Plan Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Plan Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Plan Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Courier Booking Plan Lets the shop connect its own Leopards or PostEx account and book parcels for its sales, with labels, live status and returns. The courier pays the shop directly. When off, booked parcels stay listed but nothing new can be booked. Social Posting Plan Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
             "attributes": [
                 "role=tablist",
                 "aria-label=Shop sections",
@@ -2652,6 +2716,10 @@
                 "wire:confirm=Enable Expiry Date Tracking for this shop?",
                 "role=switch",
                 "aria-checked=false",
+                "aria-label=Enable Courier Booking",
+                "wire:confirm=Enable Courier Booking for this shop?",
+                "role=switch",
+                "aria-checked=false",
                 "aria-label=Enable Social Posting",
                 "wire:confirm=Enable Social Posting for this shop?"
             ],
@@ -2667,7 +2735,7 @@
             }
         },
         "Ungoverned": {
-            "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login ungoverned@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Not enforced — limits only apply to shops on a plan. Products Staff users Sales this month WhatsApp messages this month Marketing posts this month Branches WhatsApp orders this month Online orders this month Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Ungoverned ungoverned@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Includes Accept / Reject Online Store Includes Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
+            "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 0 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login ungoverned@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal N/A Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Not enforced — limits only apply to shops on a plan. Products Staff users Sales this month WhatsApp messages this month Marketing posts this month Branches WhatsApp orders this month Online orders this month Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner Ungoverned ungoverned@example.test Owner Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Disabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Includes Accept / Reject Online Store Includes Accept / Reject Customer Messages (reminders, repair ready) Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Courier Booking Lets the shop connect its own Leopards or PostEx account and book parcels for its sales, with labels, live status and returns. The courier pays the shop directly. When off, booked parcels stay listed but nothing new can be booked. Social Posting Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
             "attributes": [
                 "role=tablist",
                 "aria-label=Shop sections",
@@ -2862,6 +2930,10 @@
                 "wire:confirm=Enable Expiry Date Tracking for this shop?",
                 "role=switch",
                 "aria-checked=false",
+                "aria-label=Enable Courier Booking",
+                "wire:confirm=Enable Courier Booking for this shop?",
+                "role=switch",
+                "aria-checked=false",
                 "aria-label=Enable Social Posting",
                 "wire:confirm=Enable Social Posting for this shop?"
             ],
@@ -2896,6 +2968,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": null,
                 "products_allowed": null,
@@ -2921,6 +2994,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": {
                     "products": 7,
                     "sales_per_month": 30
@@ -2949,6 +3023,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": null,
                 "products_allowed": null,
@@ -2974,6 +3049,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": null,
                 "products_allowed": null,
@@ -2999,6 +3075,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": {
                     "products": 5,
                     "staff_users": 1,
@@ -3033,6 +3110,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": {
                     "products": 40
                 },
@@ -3304,6 +3382,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -3322,6 +3407,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": null,
                 "products_allowed": null,
@@ -3589,6 +3675,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -3607,6 +3700,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": {
                     "products": 7,
                     "sales_per_month": 30
@@ -3887,6 +3981,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -3905,6 +4006,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": null,
                 "products_allowed": null,
@@ -4172,6 +4274,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -4190,6 +4299,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": null,
                 "products_allowed": null,
@@ -4457,6 +4567,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -4475,6 +4592,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": {
                     "products": 5,
                     "staff_users": 1,
@@ -4599,6 +4717,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "hisabokitab"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "hisabokitab"
                 }
             ],
             "shop": {
@@ -4617,6 +4742,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": {
                     "products": 40
                 },
@@ -4647,6 +4773,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": null,
                     "feature_overrides": null,
                     "products_allowed": null,
@@ -4672,6 +4799,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "products": 0
                     },
@@ -4699,6 +4827,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "products": 5
                     },
@@ -4728,6 +4857,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": null,
                     "feature_overrides": null,
                     "products_allowed": null,
@@ -4753,6 +4883,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "staff_users": 0
                     },
@@ -4780,6 +4911,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "staff_users": 5
                     },
@@ -4809,6 +4941,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": null,
                     "feature_overrides": null,
                     "products_allowed": null,
@@ -4834,6 +4967,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "sales_per_month": 0
                     },
@@ -4861,6 +4995,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "sales_per_month": 5
                     },
@@ -4890,6 +5025,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": null,
                     "feature_overrides": null,
                     "products_allowed": null,
@@ -4915,6 +5051,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "whatsapp_messages_per_month": 0
                     },
@@ -4942,6 +5079,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "whatsapp_messages_per_month": 5
                     },
@@ -4971,6 +5109,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": null,
                     "feature_overrides": null,
                     "products_allowed": null,
@@ -4996,6 +5135,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "marketing_posts_per_month": 0
                     },
@@ -5023,6 +5163,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "marketing_posts_per_month": 5
                     },
@@ -5052,6 +5193,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": null,
                     "feature_overrides": null,
                     "products_allowed": null,
@@ -5077,6 +5219,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": null,
                     "feature_overrides": null,
                     "products_allowed": null,
@@ -5102,6 +5245,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "branches": 5
                     },
@@ -5131,6 +5275,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": null,
                     "feature_overrides": null,
                     "products_allowed": null,
@@ -5156,6 +5301,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "whatsapp_orders_per_month": 0
                     },
@@ -5183,6 +5329,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "whatsapp_orders_per_month": 5
                     },
@@ -5212,6 +5359,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": null,
                     "feature_overrides": null,
                     "products_allowed": null,
@@ -5237,6 +5385,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "online_orders_per_month": 0
                     },
@@ -5264,6 +5413,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "online_orders_per_month": 5
                     },
@@ -5301,6 +5451,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "whatsapp_ordering": false
@@ -5333,6 +5484,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "whatsapp_ordering": true
@@ -5367,6 +5519,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "whatsapp_ordering": true,
@@ -5400,6 +5553,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "whatsapp_ordering": true,
@@ -5435,6 +5589,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "social": true,
@@ -5469,6 +5624,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "social": false,
@@ -5505,6 +5661,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": true,
@@ -5540,6 +5697,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -5577,6 +5735,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -5613,6 +5772,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -5651,6 +5811,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -5688,6 +5849,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -5727,6 +5889,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -5765,6 +5928,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -5805,6 +5969,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -5844,6 +6009,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -5885,6 +6051,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -5924,6 +6091,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -5965,6 +6133,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -6004,6 +6173,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -6045,6 +6215,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -6084,6 +6255,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -6125,6 +6297,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -6165,6 +6338,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -6207,6 +6381,7 @@
                         "payroll_enabled": true,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -6248,6 +6423,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -6291,6 +6467,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": true,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -6332,6 +6509,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -6375,6 +6553,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": true,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -6417,6 +6596,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": null,
                         "feature_overrides": {
                             "ads": false,
@@ -6425,6 +6605,96 @@
                             "barcode": true,
                             "payroll": false,
                             "branding": false,
+                            "services": true,
+                            "online_store": false,
+                            "purchase_orders": false,
+                            "whatsapp_ordering": true,
+                            "whatsapp_messaging": true
+                        },
+                        "products_allowed": null,
+                        "sales_allowed": null,
+                        "plan": "Full"
+                    }
+                }
+            },
+            "couriers": {
+                "first": {
+                    "toasts": [
+                        {
+                            "message": "Courier booking enabled for this shop.",
+                            "type": "success"
+                        }
+                    ],
+                    "shop": {
+                        "whatsapp_ordering_enabled": true,
+                        "whatsapp_messaging_enabled": true,
+                        "social_enabled": false,
+                        "ads_enabled": false,
+                        "import_enabled": true,
+                        "barcode_enabled": true,
+                        "branding_enabled": false,
+                        "services_enabled": true,
+                        "variants_enabled": false,
+                        "measured_units_enabled": false,
+                        "expiry_tracking_enabled": false,
+                        "purchase_orders_enabled": false,
+                        "payroll_enabled": false,
+                        "ledger_enabled": false,
+                        "online_store_enabled": false,
+                        "couriers_enabled": true,
+                        "limit_overrides": null,
+                        "feature_overrides": {
+                            "ads": false,
+                            "import": true,
+                            "social": false,
+                            "barcode": true,
+                            "payroll": false,
+                            "branding": false,
+                            "couriers": true,
+                            "services": true,
+                            "online_store": false,
+                            "purchase_orders": false,
+                            "whatsapp_ordering": true,
+                            "whatsapp_messaging": true
+                        },
+                        "products_allowed": null,
+                        "sales_allowed": null,
+                        "plan": "Full"
+                    }
+                },
+                "second": {
+                    "toasts": [
+                        {
+                            "message": "Courier booking disabled for this shop.",
+                            "type": "success"
+                        }
+                    ],
+                    "shop": {
+                        "whatsapp_ordering_enabled": true,
+                        "whatsapp_messaging_enabled": true,
+                        "social_enabled": false,
+                        "ads_enabled": false,
+                        "import_enabled": true,
+                        "barcode_enabled": true,
+                        "branding_enabled": false,
+                        "services_enabled": true,
+                        "variants_enabled": false,
+                        "measured_units_enabled": false,
+                        "expiry_tracking_enabled": false,
+                        "purchase_orders_enabled": false,
+                        "payroll_enabled": false,
+                        "ledger_enabled": false,
+                        "online_store_enabled": false,
+                        "couriers_enabled": false,
+                        "limit_overrides": null,
+                        "feature_overrides": {
+                            "ads": false,
+                            "import": true,
+                            "social": false,
+                            "barcode": true,
+                            "payroll": false,
+                            "branding": false,
+                            "couriers": false,
                             "services": true,
                             "online_store": false,
                             "purchase_orders": false,
@@ -6463,6 +6733,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6495,6 +6766,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6529,6 +6801,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6561,6 +6834,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6595,6 +6869,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6627,6 +6902,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6661,6 +6937,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6693,6 +6970,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6727,6 +7005,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6759,6 +7038,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6793,6 +7073,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6825,6 +7106,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6859,6 +7141,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6891,6 +7174,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6925,6 +7209,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6957,6 +7242,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -6991,6 +7277,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7023,6 +7310,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7057,6 +7345,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7089,6 +7378,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7123,6 +7413,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7155,6 +7446,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7189,6 +7481,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7221,6 +7514,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7255,6 +7549,7 @@
                         "payroll_enabled": true,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7287,6 +7582,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7321,6 +7617,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": true,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7353,6 +7650,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7387,6 +7685,7 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": true,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7419,6 +7718,75 @@
                         "payroll_enabled": false,
                         "ledger_enabled": false,
                         "online_store_enabled": false,
+                        "couriers_enabled": false,
+                        "limit_overrides": {
+                            "products": 40
+                        },
+                        "feature_overrides": null,
+                        "products_allowed": 40,
+                        "sales_allowed": null,
+                        "plan": null
+                    }
+                }
+            },
+            "couriers": {
+                "first": {
+                    "toasts": [
+                        {
+                            "message": "Courier booking enabled for this shop.",
+                            "type": "success"
+                        }
+                    ],
+                    "shop": {
+                        "whatsapp_ordering_enabled": true,
+                        "whatsapp_messaging_enabled": true,
+                        "social_enabled": false,
+                        "ads_enabled": false,
+                        "import_enabled": false,
+                        "barcode_enabled": true,
+                        "branding_enabled": false,
+                        "services_enabled": false,
+                        "variants_enabled": false,
+                        "measured_units_enabled": false,
+                        "expiry_tracking_enabled": false,
+                        "purchase_orders_enabled": false,
+                        "payroll_enabled": false,
+                        "ledger_enabled": false,
+                        "online_store_enabled": false,
+                        "couriers_enabled": true,
+                        "limit_overrides": {
+                            "products": 40
+                        },
+                        "feature_overrides": null,
+                        "products_allowed": 40,
+                        "sales_allowed": null,
+                        "plan": null
+                    }
+                },
+                "second": {
+                    "toasts": [
+                        {
+                            "message": "Courier booking disabled for this shop.",
+                            "type": "success"
+                        }
+                    ],
+                    "shop": {
+                        "whatsapp_ordering_enabled": true,
+                        "whatsapp_messaging_enabled": true,
+                        "social_enabled": false,
+                        "ads_enabled": false,
+                        "import_enabled": false,
+                        "barcode_enabled": true,
+                        "branding_enabled": false,
+                        "services_enabled": false,
+                        "variants_enabled": false,
+                        "measured_units_enabled": false,
+                        "expiry_tracking_enabled": false,
+                        "purchase_orders_enabled": false,
+                        "payroll_enabled": false,
+                        "ledger_enabled": false,
+                        "online_store_enabled": false,
+                        "couriers_enabled": false,
                         "limit_overrides": {
                             "products": 40
                         },
@@ -7432,7 +7800,7 @@
         }
     },
     "admin_overrides_shown": {
-        "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 9 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login on-full@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal 15 Dec 2026 Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 10 Staff users Plan: 2 Sales this month Plan: 100 WhatsApp messages this month Plan: 50 Marketing posts this month Plan: 5 Branches Plan: 2 WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 9 / 10 Staff users 1 / 2 Sales this month 0 / 100 WhatsApp messages this month 0 / 50 Marketing posts this month 0 / 5 Branches 2 / 2 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner On Full on-full@example.test Owner Active Deactivate Staff Full staff-full@example.test No role Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Enabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Switches marked “Plan” follow the Full plan. These differ from the plan for this shop only: WhatsApp ordering: on here, plan says on Use plan default WhatsApp messaging: on here, plan says on Use plan default Facebook & Instagram posting: off here, plan says off Use plan default Meta ads: on here, plan says off Use plan default Excel product import: on here, plan says on Use plan default Barcodes: off here, plan says on Use plan default Invoice branding: off here, plan says off Use plan default Services module: on here, plan says on Use plan default Purchase orders & goods receipts: off here, plan says nothing Use plan default Payroll: off here, plan says nothing Use plan default Online store connection: off here, plan says nothing Use plan default Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Plan Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Plan Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Plan Includes Accept / Reject Online Store Plan Includes Accept / Reject Customer Messages (reminders, repair ready) Plan Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Plan Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Plan Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Plan Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Plan Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Social Posting Plan Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
+        "text": "Overview Subscription & BillingBilling Activity Team & AccessTeam Shop Information Shop Name Phone Email Address Business category Not set — every module visible Mobile & electronics shop Kiryana / general store Pharmacy / medical store Clothing & shoes Other shop Wholesaler Trader Distributor Facebook / Instagram / WhatsApp seller Daraz seller Small online brand Bakery & sweets Online seller (Daraz / social media) No matches. Saving a new category does not change anything by itself — use “Apply category defaults” below. Hidden by category / owner: nothing Save Info Subscription Status Inactive Product Count 9 Customer Count 0 Udhaar Outstanding Rs 0.00 Current, across all customers Login on-full@example.test Reset Login Password Sets a new password without needing the current one. New Password Confirm Password Reset Password Subscription Renew Now Plan No plan Full — Rs 1,000 / month Partial — Rs 1,000 / month Empty — Rs 1,000 / month Starter — Rs 2,500 / month Growth — Rs 4,500 / month Commerce — Rs 7,500 / month No matches. Plan Type Monthly Yearly No matches. Status Active Inactive No matches. Start Date Expected Renewal 15 Dec 2026 Automatic billing Free trial, a renewal invoice 2 days before each period ends, and every screen locked (login still works) while the trial or period has ended unpaid. Self-serve signups start on it. Off: billed by hand here, never locked. Turning it on locks the shop straight away if its renewal date above has passed. Usage limits Leave blank to use the plan’s limit. A number here replaces it for this shop only. Products Plan: 10 Staff users Plan: 2 Sales this month Plan: 100 WhatsApp messages this month Plan: 50 Marketing posts this month Plan: 5 Branches Plan: 2 WhatsApp orders this month Plan: unlimited Online orders this month Plan: unlimited Save Subscription Billing Subscription records for this shop — kept separate from the Subscription card above, which is not changed by anything recorded here. Add Record Total Billed Rs 0.00 Excludes cancelled records Total Paid Rs 0.00 Outstanding Rs 0.00 Unpaid records No billing records yet Add a record to bill this shop for a period. Records are never deleted, so numbering stays intact. Add Billing Record Period Start Months Covered Amount (Rs) Discount (Rs) Optional Notes Optional — shown on the invoice Mark as paid Cancel Add Record Cancel This Billing Record? It will be marked Cancelled and removed from the totals. Its invoice number stays on record and is never reused. Nothing is deleted. Reason Keep Record Cancel Record Usage this month Pakistan calendar month. Sales are never blocked — a shop over its sales limit is only flagged. Products 9 / 10 Staff users 1 / 2 Sales this month 0 / 100 WhatsApp messages this month 0 / 50 Marketing posts this month 0 / 5 Branches 2 / 2 WhatsApp orders this month 0 / Unlimited Online orders this month 0 / Unlimited Period Day Month Date Total Sales Revenue Rs 0.00 Total Discount Given Rs 0.00 Total Balance Loaded Rs 0.00 Balance Load Fees Rs 0.00 Net service revenue Total Wallet Cash In Rs 0.00 Total Wallet Cash Out Rs 0.00 Total Expenses Rs 0.00 Stock-In Units 0 Net (Revenue − Expenses) 15 Nov 2026 Rs 0.00 Team Every user at this shop. Deactivating a user blocks them from logging in entirely, regardless of their role. Name Email Role Status Owner On Full on-full@example.test Owner Active Deactivate Staff Full staff-full@example.test No role Active Deactivate Products Import A separate, opt-in capability — off by default for every shop, and no one at the shop (owner included) can turn it on for themselves. Lets the Products screen import a catalogue from an Excel/CSV sheet. Enabled for this shop Module Access One switch per module. Off means no one at this shop, the owner included, can reach any part of it, whatever their role allows. Switches marked “Plan” follow the Full plan. These differ from the plan for this shop only: WhatsApp ordering: on here, plan says on Use plan default WhatsApp messaging: on here, plan says on Use plan default Facebook & Instagram posting: off here, plan says off Use plan default Meta ads: on here, plan says off Use plan default Excel product import: on here, plan says on Use plan default Barcodes: off here, plan says on Use plan default Invoice branding: off here, plan says off Use plan default Services module: on here, plan says on Use plan default Purchase orders & goods receipts: off here, plan says nothing Use plan default Payroll: off here, plan says nothing Use plan default Online store connection: off here, plan says nothing Use plan default Courier booking: off here, plan says nothing Use plan default Core Dashboard Products Customers Reports Party Ledger Inventory & Sales Stock In Includes Edit / Cancel Purchase Orders, Goods Receipts & Vendor Invoices Plan Includes Receive Goods, Vendor Invoices: Record, Vendor Invoices: Approve, Dispute & Pay Vendors Sales Includes Edit / Cancel, View Cost Price SIM Sale Includes Edit / Cancel, Networks settings Financial Services Balance Loads Includes Edit / Cancel Wallet Loads Includes Edit / Cancel Bills Includes Edit / Cancel, Bill Providers settings Repairs Includes Edit / Cancel NADRA Verification Includes Edit / Cancel Udhaar Expenses Includes Edit / Cancel Services Plan Includes Edit / Cancel, Services settings Online Selling WhatsApp Orders Plan Includes Accept / Reject Online Store Plan Includes Accept / Reject Customer Messages (reminders, repair ready) Plan Marketing: Posts, Reviews & QR codes Includes Overview & analytics Meta Ads (spends money) Plan Administration Users & Roles Shop Accounts Cash & Balances (shows the shop's cash and account balances) Branches Payroll (shows salaries) Plan Includes Run Payroll (pays salaries) Double-Entry Ledger Settings Settings Settings: Categories Settings: Brands Settings: Percentage Branding (own logo on receipts) Plan Settings: Integrations Other features Capabilities inside existing screens, with no screen of their own. Barcodes Plan Barcode field, generation, label printing and sale scanning. Stored barcodes are kept while off. Product Variants Sell one product in several sizes or colours, each with its own stock, barcode and price. A group counts as one product on the plan. Free, off by default. Existing groups keep selling while off. Weighed & Measured Items Sell products by kg, litre, metre, yard or gaz, with quantities like 1.5. Free, off by default. Products already using a unit keep selling while off. Not offered in the WhatsApp chatbot. Expiry Date Tracking Record expiry dates on stock. The batch closest to expiry sells first, its price and cost follow that batch, and expired stock can no longer be sold. Free, off by default. While off, stock sells oldest first and any dates are ignored. Courier Booking Plan Lets the shop connect its own Leopards or PostEx account and book parcels for its sales, with labels, live status and returns. The courier pays the shop directly. When off, booked parcels stay listed but nothing new can be booked. Social Posting Plan Post products to the shop's own Facebook Page and Instagram, and run Meta ads. Off by default.",
         "attributes": [
             "role=tablist",
             "aria-label=Shop sections",
@@ -7640,6 +8008,10 @@
             "wire:confirm=Enable Expiry Date Tracking for this shop?",
             "role=switch",
             "aria-checked=false",
+            "aria-label=Enable Courier Booking",
+            "wire:confirm=Enable Courier Booking for this shop?",
+            "role=switch",
+            "aria-checked=false",
             "aria-label=Enable Social Posting",
             "wire:confirm=Enable Social Posting for this shop?"
         ]
@@ -7667,6 +8039,7 @@
             "payroll_enabled": false,
             "ledger_enabled": false,
             "online_store_enabled": false,
+            "couriers_enabled": false,
             "limit_overrides": null,
             "feature_overrides": {
                 "import": true,
@@ -7674,6 +8047,7 @@
                 "barcode": false,
                 "payroll": false,
                 "branding": false,
+                "couriers": false,
                 "services": true,
                 "online_store": false,
                 "purchase_orders": false,
@@ -7709,7 +8083,8 @@
                     "services": true,
                     "purchase_orders": false,
                     "payroll": false,
-                    "online_store": false
+                    "online_store": false,
+                    "couriers": false
                 }
             },
             "errors": [],
@@ -7737,6 +8112,7 @@
                     "barcode": true,
                     "payroll": false,
                     "branding": false,
+                    "couriers": false,
                     "services": true,
                     "online_store": false,
                     "purchase_orders": false,
@@ -7772,6 +8148,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": null,
                     "feature_overrides": {
                         "import": true,
@@ -7779,6 +8156,7 @@
                         "barcode": false,
                         "payroll": false,
                         "branding": false,
+                        "couriers": false,
                         "services": true,
                         "online_store": false,
                         "purchase_orders": false,
@@ -7814,7 +8192,8 @@
                     "services": false,
                     "purchase_orders": false,
                     "payroll": false,
-                    "online_store": false
+                    "online_store": false,
+                    "couriers": false
                 }
             },
             "errors": [],
@@ -7842,6 +8221,7 @@
                     "barcode": false,
                     "payroll": false,
                     "branding": false,
+                    "couriers": false,
                     "services": false,
                     "online_store": false,
                     "purchase_orders": false,
@@ -7877,6 +8257,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": null,
                     "feature_overrides": null,
                     "products_allowed": null,
@@ -7899,6 +8280,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "products": 5,
                         "staff_users": 1,
@@ -7939,7 +8321,8 @@
                     "services": false,
                     "purchase_orders": false,
                     "payroll": false,
-                    "online_store": false
+                    "online_store": false,
+                    "couriers": false
                 }
             },
             "errors": [],
@@ -7967,6 +8350,7 @@
                     "barcode": false,
                     "payroll": false,
                     "branding": false,
+                    "couriers": false,
                     "services": false,
                     "online_store": false,
                     "purchase_orders": false,
@@ -8002,6 +8386,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": {
                         "products": 7,
                         "sales_per_month": 30
@@ -8036,7 +8421,8 @@
                     "services": true,
                     "purchase_orders": false,
                     "payroll": false,
-                    "online_store": false
+                    "online_store": false,
+                    "couriers": false
                 }
             },
             "errors": [],
@@ -8064,6 +8450,7 @@
                     "barcode": true,
                     "payroll": false,
                     "branding": true,
+                    "couriers": false,
                     "services": true,
                     "online_store": false,
                     "purchase_orders": false,
@@ -8119,6 +8506,7 @@
                     "payroll_enabled": false,
                     "ledger_enabled": false,
                     "online_store_enabled": false,
+                    "couriers_enabled": false,
                     "limit_overrides": null,
                     "feature_overrides": null,
                     "products_allowed": null,
@@ -8150,7 +8538,8 @@
                     "services": true,
                     "purchase_orders": false,
                     "payroll": true,
-                    "online_store": false
+                    "online_store": false,
+                    "couriers": false
                 }
             },
             "errors": [],
@@ -8178,6 +8567,7 @@
                     "barcode": true,
                     "payroll": true,
                     "branding": true,
+                    "couriers": false,
                     "services": true,
                     "online_store": false,
                     "purchase_orders": false,
@@ -8241,7 +8631,8 @@
                     "services": true,
                     "purchase_orders": true,
                     "payroll": true,
-                    "online_store": true
+                    "online_store": true,
+                    "couriers": true
                 }
             },
             "errors": [],
@@ -8269,6 +8660,7 @@
                     "barcode": true,
                     "payroll": true,
                     "branding": true,
+                    "couriers": true,
                     "services": true,
                     "online_store": true,
                     "purchase_orders": true,
@@ -8332,7 +8724,8 @@
             "services": false,
             "purchase_orders": false,
             "payroll": false,
-            "online_store": false
+            "online_store": false,
+            "couriers": false
         }
     },
     "plan_create": {
@@ -8355,6 +8748,7 @@
                 "barcode": false,
                 "payroll": false,
                 "branding": true,
+                "couriers": false,
                 "services": false,
                 "online_store": false,
                 "purchase_orders": false,
@@ -8656,6 +9050,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -8674,6 +9075,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": null,
                 "products_allowed": null,
@@ -8941,6 +9343,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -8959,6 +9368,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": {
                     "products": 7,
                     "sales_per_month": 30
@@ -9239,6 +9649,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "hisabokitab"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "hisabokitab"
                 }
             ],
             "shop": {
@@ -9257,6 +9674,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": {
                     "import": true,
@@ -9264,6 +9682,7 @@
                     "barcode": false,
                     "payroll": false,
                     "branding": false,
+                    "couriers": false,
                     "services": true,
                     "online_store": false,
                     "purchase_orders": false,
@@ -9535,6 +9954,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -9553,6 +9979,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": null,
                 "feature_overrides": null,
                 "products_allowed": null,
@@ -9820,6 +10247,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "plan"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "plan"
                 }
             ],
             "shop": {
@@ -9838,6 +10272,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": {
                     "products": 5,
                     "staff_users": 1,
@@ -9962,6 +10397,13 @@
                     "label": "Online store connection",
                     "on": false,
                     "source": "hisabokitab"
+                },
+                {
+                    "key": "couriers",
+                    "until": null,
+                    "label": "Courier booking",
+                    "on": false,
+                    "source": "hisabokitab"
                 }
             ],
             "shop": {
@@ -9980,6 +10422,7 @@
                 "payroll_enabled": false,
                 "ledger_enabled": false,
                 "online_store_enabled": false,
+                "couriers_enabled": false,
                 "limit_overrides": {
                     "products": 40
                 },

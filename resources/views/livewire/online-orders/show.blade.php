@@ -355,6 +355,7 @@ new #[Layout('layouts.app')] #[Title('Online Store Order')] class extends Compon
                         @endif
                         @if ($order->sale_id && $canViewSale)
                             <div class="flex justify-between gap-3"><dt class="text-ink-faint">Sale</dt><dd><a href="{{ route('sales.show', $order->sale_id) }}" wire:navigate class="font-medium text-link hover:underline">View sale →</a></dd></div>
+                            <x-shipments.order-courier :sale-id="$order->sale_id" />
                         @endif
                         @if ($order->status === StoreOrderStatus::Accepted)
                             <div class="flex justify-between gap-3"><dt class="text-ink-faint">Fulfilment</dt><dd class="text-ink">{{ $order->fulfillment_status?->label() ?? 'Not started' }}</dd></div>

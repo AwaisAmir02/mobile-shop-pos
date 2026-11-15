@@ -36,6 +36,7 @@
             ['label' => 'Bills', 'route' => 'bills.history', 'icon' => 'bolt', 'group' => 'counter', 'permission' => 'bills'],
             ['label' => 'WhatsApp Orders', 'route' => 'whatsapp-orders.index', 'icon' => 'chat', 'group' => 'online', 'permission' => 'whatsapp-orders'],
             ['label' => 'Online Store Orders', 'route' => 'online-orders.index', 'icon' => 'link', 'group' => 'online', 'permission' => 'online-orders'],
+            ['label' => 'Shipments', 'route' => 'shipments.index', 'icon' => 'truck', 'group' => 'online', 'permission' => 'sales'],
             ['label' => 'Customer Messages', 'route' => 'whatsapp-messages.index', 'icon' => 'bell', 'group' => 'online', 'permission' => 'whatsapp-messages'],
             ['label' => 'Marketing', 'route' => 'marketing.posts', 'icon' => 'megaphone', 'group' => 'online', 'permission' => ['marketing', 'marketing-analytics', 'marketing-ads']],
             ['label' => 'Expenses', 'route' => 'expenses.index', 'icon' => 'banknote', 'group' => 'money', 'permission' => 'expenses'],
@@ -65,6 +66,7 @@
                 && ! ($user?->hasAccessTo('purchase-orders') && \App\Models\PurchaseOrder::query()->exists()))
             ->reject(fn ($item) => $item['route'] === 'whatsapp-orders.index' && ! $user?->shop?->whatsapp_ordering_enabled)
             ->reject(fn ($item) => $item['route'] === 'online-orders.index' && ! $user?->shop?->online_store_enabled)
+            ->reject(fn ($item) => $item['route'] === 'shipments.index' && ! $user?->shop?->couriers_enabled)
             ->reject(fn ($item) => $item['route'] === 'whatsapp-messages.index' && ! $user?->shop?->whatsapp_messaging_enabled)
             ->reject(fn ($item) => $item['route'] === 'marketing.posts' && ! ($user?->shop?->usesWhatsApp() || $user?->shop?->social_enabled))
             ->map(fn ($item) => $item['route'] === 'marketing.posts' && $user?->hasAccessTo('marketing-analytics') ? array_merge($item, ['route' => 'marketing.index']) : $item)
@@ -106,6 +108,7 @@
         'scale' => 'M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.031.352 5.988 5.988 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 01-2.031.352 5.989 5.989 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971z',
         'lifebuoy' => 'M16.712 4.33a9.027 9.027 0 011.652 1.306c.51.51.944 1.064 1.306 1.652M16.712 4.33l-3.448 4.138m3.448-4.138a9.014 9.014 0 00-9.424 0M19.67 7.288l-4.138 3.448m4.138-3.448a9.014 9.014 0 010 9.424m-4.138-5.976a3.736 3.736 0 00-.88-1.388 3.737 3.737 0 00-1.388-.88m2.268 2.268a3.765 3.765 0 010 2.528m-2.268-4.796a3.765 3.765 0 00-2.528 0m4.796 4.796c-.181.506-.475.982-.88 1.388a3.736 3.736 0 01-1.388.88m2.268-2.268l4.138 3.448m0 0a9.027 9.027 0 01-1.306 1.652c-.51.51-1.064.944-1.652 1.306m0 0l-3.448-4.138m3.448 4.138a9.014 9.014 0 01-9.424 0m5.976-4.138a3.765 3.765 0 01-2.528 0m0 0a3.736 3.736 0 01-1.388-.88 3.737 3.737 0 01-.88-1.388m2.268 2.268L7.288 19.67m0 0a9.024 9.024 0 01-1.652-1.306 9.027 9.027 0 01-1.306-1.652m0 0l4.138-3.448M4.33 16.712a9.014 9.014 0 010-9.424m4.138 5.976a3.765 3.765 0 010-2.528m0 0c.181-.506.475-.982.88-1.388a3.736 3.736 0 011.388-.88m-2.268 2.268L4.33 7.288m6.406 1.18L7.288 4.33m0 0a9.024 9.024 0 00-1.652 1.306A9.025 9.025 0 004.33 7.288',
         'search' => 'M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z',
+        'truck' => 'M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12',
     ];
 
     $groupLabels = [

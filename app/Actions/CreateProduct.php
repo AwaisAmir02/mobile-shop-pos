@@ -7,6 +7,7 @@ use App\Models\MainCategory;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Services\BarcodeService;
+use App\Support\Imei;
 use Closure;
 use Illuminate\Validation\Rule;
 
@@ -33,7 +34,8 @@ class CreateProduct
         if ($type === 'mobile') {
             $rules['brand'] = ['required', 'string', 'max:255', Rule::exists('brands', 'name')->where('shop_id', $shopId)];
             $rules['model'] = ['nullable', 'string', 'max:255'];
-            $rules['imei'] = ['nullable', 'string', 'max:50'];
+            $currentImei = $ignoreProductId ? (Product::whereKey($ignoreProductId)->first()?->details['imei'] ?? null) : null;
+            $rules['imei'] = ['nullable', 'string', 'max:50', Imei::rule($shopId, $ignoreProductId, $currentImei)];
         }
 
         if (Shop::whereKey($shopId)->value('barcode_enabled')) {
@@ -72,7 +74,7 @@ class CreateProduct
             $details = [
                 'brand' => $brand,
                 'model' => $model !== '' ? $model : null,
-                'imei' => $imei !== '' ? $imei : null,
+                'imei' => Imei::normalize($imei) !== '' ? Imei::normalize($imei) : null,
                 ...$details,
             ];
         }
