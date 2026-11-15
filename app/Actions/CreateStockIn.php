@@ -66,6 +66,9 @@ class CreateStockIn
                     'user_id' => $userId,
                     'quantity' => Quantity::normalize($line['quantity']),
                     'unit' => $product->unit,
+                    'pack_name' => ! empty($line['packs']) ? $line['pack_name'] : null,
+                    'pack_size' => ! empty($line['packs']) ? (int) $line['pack_size'] : null,
+                    'packs' => ! empty($line['packs']) ? (int) $line['packs'] : null,
                     'cost_price' => $line['cost_price'],
                     'selling_price' => $line['selling_price'],
                     'quantity_remaining' => Quantity::normalize($line['quantity']),
@@ -100,10 +103,19 @@ class CreateStockIn
         });
     }
 
-    /** @param array{quantity: mixed, cost_price: ?float} $line */
+    /**
+     * A line bought in packs carries its exact total (packs x pack cost), since
+     * its per-piece cost is rounded; anything else is quantity x cost.
+     *
+     * @param array{quantity: mixed, cost_price: ?float, total_cost?: ?float} $line
+     */
     public static function lineTotalCost(array $line): float
     {
-        return $line['cost_price'] !== null ? Quantity::money($line['cost_price'], $line['quantity']) : 0.0;
+        if ($line['cost_price'] === null) {
+            return 0.0;
+        }
+
+        return isset($line['total_cost']) ? round((float) $line['total_cost'], 2) : Quantity::money($line['cost_price'], $line['quantity']);
     }
 
     public static function grandTotalCost(array $lines): float

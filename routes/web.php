@@ -28,13 +28,18 @@ Route::middleware('throttle:site')->group(function () {
     Route::get('robots.txt', fn () => response(implode("
 ", [
         'User-agent: *',
-        ...array_map(fn ($path) => 'Disallow: '.$path, ['/admin', '/api/', '/webhooks/', '/auth/', '/signup/complete', '/billing', '/support']),
+        ...array_map(fn ($path) => 'Disallow: '.$path, ['/admin', '/api/', '/webhooks/', '/auth/', '/signup/complete', '/billing', '/support', '/k/']),
         '',
         'Sitemap: '.route('site.sitemap'),
     ])."
 ", 200, ['Content-Type' => 'text/plain; charset=UTF-8']))->name('site.robots');
     Route::get('sitemap.xml', fn () => response()->view('site.sitemap')->header('Content-Type', 'application/xml'))->name('site.sitemap');
 });
+
+// A customer's own ledger at a private link (no login), and paying it with the shop's own JazzCash.
+Route::get('k/{token}', [\App\Http\Controllers\CustomerLedgerController::class, 'show'])->middleware('throttle:60,1')->name('customer-ledger.show');
+Route::post('k/{token}/pay', [\App\Http\Controllers\CustomerLedgerController::class, 'pay'])->middleware('throttle:10,1')->name('customer-ledger.pay');
+Route::post('webhooks/payments/jazzcash', [\App\Http\Controllers\CustomerLedgerController::class, 'jazzcashReturn'])->middleware('throttle:60,1')->name('payments.jazzcash.return');
 
 Route::view('signup', 'site.signup')->middleware(['guest', 'throttle:30,1'])->name('site.signup');
 Route::view('signup/complete', 'site.signup-complete')->middleware(['guest', 'throttle:30,1'])->name('site.signup.complete');

@@ -70,6 +70,8 @@ return [
     'reminder_intro' => 'Assalam o Alaikum :name, :shop ki taraf se aapke baaki hisaab ki yaad dehani:',
     'reminder_total' => '*Kul baaki: Rs :total*',
     'reminder_outro' => 'Agli dafa aayein to baraye meharbani ada kar dein. Agar pehle hi ada kar chuke hain to is message ko nazar andaz karein. Shukriya!',
+    'reminder_link_pay' => 'Apna hisaab dekhein aur yahan ada karein: :link',
+    'reminder_link_view' => 'Apna hisaab yahan dekhein: :link',
     'due' => [
         'sale' => 'Aapne :label liya tha (:ref) — Rs :amount baaki',
         'installment_due' => ':label ki qist (:ref) — Rs :amount abhi ada karni hai (kul Rs :left baaki)',

@@ -42,6 +42,9 @@ class Product extends Model
         'shelf_life_days',
         'warranty_months',
         'warranty_type',
+        'pack_name',
+        'pack_size',
+        'pack_price',
         'whatsapp_listed',
         'archived_at',
         'details',
@@ -59,6 +62,8 @@ class Product extends Model
             'shelf_life_days' => 'integer',
             'warranty_months' => 'integer',
             'warranty_type' => WarrantyType::class,
+            'pack_size' => 'integer',
+            'pack_price' => 'decimal:2',
             'whatsapp_listed' => 'boolean',
             'archived_at' => 'datetime',
             'details' => 'array',
@@ -129,6 +134,42 @@ class Product extends Model
             ->where('product_id', $this->id)
             ->whereHas('order', fn ($query) => $query->withoutGlobalScopes()->whereIn('status', collect(PurchaseOrderStatus::cases())->filter->locksProductUnit()->pluck('value')))
             ->exists();
+    }
+
+    /**
+     * Whether this product can have a pack (carton, dozen…): only things
+     * counted in whole pieces, and not one-off units like IMEI phones or SIMs.
+     */
+    public function canHavePack(): bool
+    {
+        return ! ($this->unit ?? QuantityUnit::Piece)->allowsDecimals()
+            && ! in_array($this->type, QuantityUnit::PIECE_ONLY_TYPES, true)
+            && empty($this->details['imei']);
+    }
+
+    public function hasPack(): bool
+    {
+        return $this->pack_name !== null && (int) $this->pack_size > 1 && $this->canHavePack();
+    }
+
+    /** What one pack sells for: its own price if set, else that many pieces. */
+    public function packSellingPrice(): float
+    {
+        return $this->pack_price !== null ? (float) $this->pack_price : round((float) $this->price * (int) $this->pack_size, 2);
+    }
+
+    /** "2 cartons" / "1 dozen". */
+    public function packLabel(int $packs = 1): string
+    {
+        $name = mb_strtolower((string) $this->pack_name);
+
+        return $packs.' '.($packs === 1 || $name === 'dozen' ? $name : \Illuminate\Support\Str::plural($name));
+    }
+
+    /** "Carton of 24". */
+    public function packDescription(): string
+    {
+        return ucfirst((string) $this->pack_name).' of '.(int) $this->pack_size;
     }
 
     public function canUseMeasuredUnits(): bool

@@ -33,6 +33,16 @@ class TemplateLibrary
                 ],
                 'examples' => ['Bilal', 'Ali Mobiles', 'You bought iPhone 13 (INV-00012) - Rs 5,000 remaining; Udhaar - Rs 2,000 remaining', '7,000'],
             ],
+            // The reminder with the customer's own ledger link ({{5}}). A separate template so the
+            // approved one above keeps working until Meta approves this one.
+            'payment_reminder_link' => [
+                'category' => 'UTILITY',
+                'body' => [
+                    'en' => "Hi {{1}}, a friendly reminder from {{2}} about your pending balance: {{3}}.\n\nTotal due: Rs {{4}}\n\nSee your account and pay here: {{5}}\n\nIf you have already paid, please ignore this message. Thank you!",
+                    'ur' => "Assalam o Alaikum {{1}}, {{2}} ki taraf se aapke baaki hisaab ki yaad dehani: {{3}}.\n\nKul baaki: Rs {{4}}\n\nApna hisaab dekhein aur yahan ada karein: {{5}}\n\nAgar pehle hi ada kar chuke hain to is message ko nazar andaz karein. Shukriya!",
+                ],
+                'examples' => ['Bilal', 'Ali Mobiles', 'You bought iPhone 13 (INV-00012) - Rs 5,000 remaining; Udhaar - Rs 2,000 remaining', '7,000', 'https://hisabokitab.com/k/Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4z'],
+            ],
             'restock_alert' => [
                 'category' => 'UTILITY',
                 'body' => [

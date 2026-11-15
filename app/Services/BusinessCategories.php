@@ -53,6 +53,10 @@ class BusinessCategories
 
         $this->setHiddenModules($shop, $category->showsMobileModules() ? [] : array_keys(self::modules()));
         $this->createStarterCategories($shop, $category);
+
+        if ($category->tracksExpiryByDefault() && ! $shop->expiry_tracking_enabled) {
+            $shop->update(['expiry_tracking_enabled' => true]);
+        }
     }
 
     protected function createStarterCategories(Shop $shop, BusinessCategory $category): void

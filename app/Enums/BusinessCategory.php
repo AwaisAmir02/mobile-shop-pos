@@ -60,6 +60,16 @@ enum BusinessCategory: string
         return $this === self::MobileElectronics;
     }
 
+    /**
+     * Grocers and pharmacies sell goods that expire, so they start with expiry
+     * tracking on (soonest-expiry sells first, expired stock can't be sold).
+     * Only ever switched on by the defaults, never off.
+     */
+    public function tracksExpiryByDefault(): bool
+    {
+        return in_array($this, [self::Kiryana, self::Pharmacy], true);
+    }
+
     public function starterCategories(): array
     {
         return match ($this) {

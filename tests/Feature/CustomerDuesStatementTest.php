@@ -107,13 +107,23 @@ class CustomerDuesStatementTest extends TestCase
         $this->assertTrue($notification->wasSent());
         $this->assertSame('template', $notification->delivery_mode);
         $template = collect($this->sentBodies())->last()['template'];
-        $this->assertSame('hok_payment_reminder_v1', $template['name']);
+        // With the link template approved, the reminder carries the customer's own ledger link.
+        $this->assertSame('hok_payment_reminder_link_v1', $template['name']);
         $params = array_column($template['components'][0]['parameters'], 'text');
         $this->assertSame(['Bilal Khan', 'Dues Shop'], array_slice($params, 0, 2));
         $this->assertStringNotContainsString("\n", $params[2]);
         $this->assertStringContainsString('You bought iPhone 13', $params[2]);
         $this->assertSame('11,350', $params[3]);
+        $this->assertSame($bilal->fresh()->ledgerUrl(), $params[4]);
         $this->assertSame('923001112223', collect($this->sentBodies())->last()['to']);
+
+        // Until Meta approves it, the original four-part template still goes out.
+        \App\Models\WhatsAppTemplate::where('key', 'payment_reminder_link')->delete();
+        \App\Models\CustomerNotification::query()->delete();
+        app(CustomerNotifications::class)->paymentReminder($bilal, $owner->id);
+        $template = collect($this->sentBodies())->last()['template'];
+        $this->assertSame('hok_payment_reminder_v1', $template['name']);
+        $this->assertCount(4, $template['components'][0]['parameters']);
 
         $sana = Customer::where('name', 'Sana')->first();
         WhatsAppContact::create(['shop_id' => $shop->id, 'wa_id' => '923214445556', 'customer_id' => $sana->id, 'last_inbound_at' => now()]);

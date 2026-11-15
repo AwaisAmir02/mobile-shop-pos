@@ -1409,6 +1409,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                 </x-ui.table>
             @endif
         </x-ui.card>
+        <livewire:settings.customer-payments key="customer-payments" />
     @elseif ($tab === 'bills')
         <div class="space-y-6">
             <x-ui.card title="Bill Categories" description="Manage the types of bills your shop accepts payment for (Electricity, Gas, Water, Telephone, etc.).">

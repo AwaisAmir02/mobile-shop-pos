@@ -34,6 +34,9 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
     public string $sellingPrice = '';
     public string $expiryDate = '';
 
+    // 'piece', or 'pack' when the product has one: quantity and cost are then per pack.
+    public string $buyIn = 'piece';
+
     /** @var array<int|string, array<string, mixed>> keyed by line, since one product can have several batches on a receipt */
     public array $cart = [];
 
@@ -110,12 +113,35 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
 
         if ($this->productId !== '') {
             $product = Product::find($this->productId);
-            $this->costPrice = $product?->cost_price !== null ? (string) $product->cost_price : '';
+            $this->buyIn = $product?->hasPack() ? 'pack' : 'piece';
+            $this->costPrice = $product?->cost_price !== null ? (string) ($this->buyIn === 'pack' ? round((float) $product->cost_price * $product->pack_size, 2) : $product->cost_price) : '';
             $this->sellingPrice = $product !== null ? (string) $product->price : '';
             $this->expiryDate = $this->expiryEnabled() && $product?->shelf_life_days
                 ? Carbon::parse($this->stock_date)->addDays($product->shelf_life_days)->toDateString()
                 : '';
         }
+    }
+
+    public function updatedBuyIn(): void
+    {
+        $product = is_numeric($this->productId) ? Product::find($this->productId) : null;
+
+        if (! $product?->hasPack()) {
+            $this->buyIn = 'piece';
+
+            return;
+        }
+
+        if ($this->costPrice !== '') {
+            $this->costPrice = (string) ($this->buyIn === 'pack'
+                ? round((float) $this->costPrice * $product->pack_size, 2)
+                : round((float) $this->costPrice / $product->pack_size, 2));
+        }
+    }
+
+    protected function buyingPacks(?Product $product): bool
+    {
+        return $this->buyIn === 'pack' && (bool) $product?->hasPack();
     }
 
     protected function expiryEnabled(): bool
@@ -190,6 +216,35 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
         $costPrice = $this->costPrice !== '' ? (float) $this->costPrice : null;
         $sellingPrice = (float) $this->sellingPrice;
         $expiryDate = $this->expiryEnabled() && $this->expiryDate !== '' ? $this->expiryDate : null;
+
+        if ($this->buyingPacks($product)) {
+            // Stock is kept in pieces. The cost per piece is rounded; the amount owed is the exact pack total.
+            $packs = (int) $quantity;
+            $key = $this->lineKeyFor($product->id, -1.0, $sellingPrice, $expiryDate);
+            $this->cart[$key] = [
+                'product_id' => $product->id,
+                'name' => $product->name,
+                'category' => $product->typeLabel(),
+                'quantity' => $packs * $product->pack_size,
+                'unit' => $product->unit->value,
+                'cost_price' => $costPrice !== null ? round($costPrice / $product->pack_size, 2) : null,
+                'total_cost' => $costPrice !== null ? round($costPrice * $packs, 2) : null,
+                'selling_price' => $sellingPrice,
+                'expiry_date' => $expiryDate,
+                'pack_name' => $product->pack_name,
+                'pack_size' => $product->pack_size,
+                'packs' => $packs,
+                'pack_label' => $product->packLabel($packs).' of '.$product->pack_size,
+                'pack_cost' => $costPrice,
+            ];
+
+            $this->reset(['productId', 'quantity', 'costPrice', 'sellingPrice', 'expiryDate']);
+            $this->buyIn = 'piece';
+            $this->refreshAmountPaidForTotalChange();
+
+            return;
+        }
+
         $key = $this->lineKeyFor($product->id, $costPrice, $sellingPrice, $expiryDate);
 
         if (isset($this->cart[$key])) {
@@ -220,7 +275,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
     {
         foreach ($this->cart as $key => $line) {
             // Loose on purpose: a float like 250.0 comes back from the browser as the integer 250.
-            if ($line['product_id'] === $productId && $line['cost_price'] == $costPrice && ($line['cost_price'] === null) === ($costPrice === null) && $line['selling_price'] == $sellingPrice && ($line['expiry_date'] ?? null) === $expiryDate) {
+            if (empty($line['packs']) && $line['product_id'] === $productId && $line['cost_price'] == $costPrice && ($line['cost_price'] === null) === ($costPrice === null) && $line['selling_price'] == $sellingPrice && ($line['expiry_date'] ?? null) === $expiryDate) {
                 return $key;
             }
         }
@@ -282,6 +337,8 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
             'paymentStatuses' => PaymentStatus::cases(),
             'vendors' => Auth::user()->hasAccessTo('vendors') ? Vendor::query()->orderBy('name')->get() : collect(),
             'selectedUnit' => $this->selectedUnit(),
+            'selectedProduct' => $selectedProduct = (is_numeric($this->productId) ? Product::find($this->productId) : null),
+            'packMode' => $this->buyingPacks($selectedProduct),
             'expiryEnabled' => $this->expiryEnabled(),
             'openOrders' => Auth::user()->shop?->purchase_orders_enabled && Auth::user()->hasAccessTo('receive-goods')
                 ? PurchaseOrder::query()->whereIn('status', [PurchaseOrderStatus::Open->value, PurchaseOrderStatus::PartiallyReceived->value])->count()
@@ -378,12 +435,22 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                     </x-ui.field>
                 </div>
 
+                @if ($selectedProduct?->hasPack())
+                    <div class="mt-4 inline-flex gap-1 rounded-full border border-line bg-surface-sunken/60 p-1 text-sm font-semibold" role="group" aria-label="Bought as" data-buy-in>
+                        @foreach (['pack' => 'By the '.mb_strtolower($selectedProduct->pack_name).' ('.$selectedProduct->pack_size.')', 'piece' => 'Loose pieces'] as $value => $label)
+                            <label @class(['cursor-pointer rounded-full px-3 py-1.5 transition-colors', 'bg-surface text-ink shadow-soft ring-1 ring-line' => $buyIn === $value, 'text-ink-faint hover:text-ink' => $buyIn !== $value])>
+                                <input type="radio" wire:model.live="buyIn" value="{{ $value }}" class="sr-only"> {{ $label }}
+                            </label>
+                        @endforeach
+                    </div>
+                @endif
+
                 <div @class(['mt-4 grid grid-cols-1 gap-4', 'sm:grid-cols-3' => ! $expiryEnabled, 'sm:grid-cols-2 lg:grid-cols-4' => $expiryEnabled])>
-                    <x-ui.field :label="$selectedUnit->allowsDecimals() ? 'Quantity ('.$selectedUnit->symbol().')' : 'Quantity'" name="quantity" for="quantity" required>
+                    <x-ui.field :label="$packMode ? 'How many '.\Illuminate\Support\Str::plural(mb_strtolower($selectedProduct->pack_name)) : ($selectedUnit->allowsDecimals() ? 'Quantity ('.$selectedUnit->symbol().')' : 'Quantity')" name="quantity" for="quantity" required :help="$packMode ? 'Each is '.$selectedProduct->pack_size.' pieces' : null">
                         <x-ui.input wire:model="quantity" id="quantity" type="number" :min="$selectedUnit->inputMin()" :step="$selectedUnit->inputStep()" />
                     </x-ui.field>
 
-                    <x-ui.field :label="'Cost Price (per '.($selectedUnit->allowsDecimals() ? $selectedUnit->symbol() : 'unit').')'" name="costPrice" for="costPrice">
+                    <x-ui.field :label="$packMode ? 'Cost Price (per '.mb_strtolower($selectedProduct->pack_name).')' : 'Cost Price (per '.($selectedUnit->allowsDecimals() ? $selectedUnit->symbol() : 'unit').')'" name="costPrice" for="costPrice">
                         <x-ui.input wire:model="costPrice" id="costPrice" type="number" min="0" step="0.01" />
                     </x-ui.field>
 
@@ -424,8 +491,13 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                                     <div class="min-w-0">
                                         <p class="text-sm font-semibold text-ink">{{ $line['name'] }}</p>
                                         <p class="text-xs text-ink-faint">
-                                            {{ $line['category'] }} · Qty {{ QuantityUnit::fromValue($line['unit'] ?? 'piece')->groupedAmount($line['quantity']) }}
-                                            · Cost {{ $line['cost_price'] !== null ? 'Rs '.number_format($line['cost_price'], 2) : '—' }}
+                                            @if (! empty($line['packs']))
+                                                {{ $line['category'] }} · {{ $line['pack_label'] }} = {{ number_format($line['quantity']) }} pieces
+                                                · Cost {{ $line['pack_cost'] !== null ? 'Rs '.number_format($line['pack_cost'], 2).' each' : '—' }}
+                                            @else
+                                                {{ $line['category'] }} · Qty {{ QuantityUnit::fromValue($line['unit'] ?? 'piece')->groupedAmount($line['quantity']) }}
+                                                · Cost {{ $line['cost_price'] !== null ? 'Rs '.number_format($line['cost_price'], 2) : '—' }}
+                                            @endif
                                             · Sell Rs {{ number_format($line['selling_price'], 2) }}
                                             @if (! empty($line['expiry_date']))
                                                 · Expires {{ Carbon::parse($line['expiry_date'])->format('d M Y') }}

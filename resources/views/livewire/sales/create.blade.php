@@ -234,8 +234,10 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         if (isset($this->cart[$productId])) {
             $newQuantity = Quantity::add($this->cart[$productId]['quantity'], 1);
 
-            if ($newQuantity > $product->stock_quantity) {
-                $this->toastError("Only {$product->stock_quantity} of {$product->name} in stock.");
+            if ($newQuantity > $this->cart[$productId]['max_stock']) {
+                $this->toastError(! empty($this->cart[$productId]['by_pack'])
+                    ? 'Only '.$product->packLabel((int) $this->cart[$productId]['max_stock'])." of {$product->name} in stock."
+                    : "Only {$product->stock_quantity} of {$product->name} in stock.");
 
                 return;
             }
@@ -267,7 +269,79 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             'unit' => $product->unit->value,
             'discount' => '0',
             'max_stock' => $product->stock_quantity,
+            // A product with a pack (carton, dozen…) can be sold a whole pack at a time.
+            'pack' => $product->hasPack() ? ['name' => $product->pack_name, 'size' => $product->pack_size, 'price' => $product->packSellingPrice(), 'has_price' => $product->pack_price !== null] : null,
+            'by_pack' => false,
         ];
+    }
+
+    /** Switches a cart line between loose pieces and whole packs. */
+    public function sellAs(int $productId, string $mode): void
+    {
+        $item = $this->cart[$productId] ?? null;
+        $product = Product::find($productId);
+
+        if ($item === null || $product === null || empty($item['pack']) || ($mode === 'pack') === (bool) $item['by_pack']) {
+            return;
+        }
+
+        $size = (int) $item['pack']['size'];
+
+        if ($mode === 'pack') {
+            if ($product->stock_quantity < $size) {
+                $this->toastError("Less than one {$item['pack']['name']} of {$product->name} in stock.");
+
+                return;
+            }
+
+            $this->cart[$productId] = array_merge($item, [
+                'by_pack' => true,
+                'quantity' => max(1, min(intdiv((int) $item['quantity'], $size), intdiv((int) $product->stock_quantity, $size))),
+                'max_stock' => intdiv((int) $product->stock_quantity, $size),
+                'list_price' => (string) $item['pack']['price'],
+                'custom_price' => '',
+            ]);
+        } else {
+            $this->cart[$productId] = array_merge($item, [
+                'by_pack' => false,
+                'quantity' => min((int) $item['quantity'] * $size, (int) $product->stock_quantity),
+                'max_stock' => $product->stock_quantity,
+                'list_price' => (string) $product->currentSellingPrice(),
+                'custom_price' => '',
+            ]);
+        }
+    }
+
+    /**
+     * A cart line as CreateSale takes it: always in pieces. A line of whole
+     * packs at the pack's own price becomes pieces at that price per piece,
+     * rounded up to the paisa, with the rounding given back as discount, so
+     * the line totals exactly packs x pack price.
+     *
+     * @return array{quantity: mixed, discount: float, custom_price: ?float}
+     */
+    public function saleLine(array $item): array
+    {
+        $custom = $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null;
+
+        if (empty($item['by_pack']) || empty($item['pack'])) {
+            return ['quantity' => $item['quantity'], 'discount' => (float) $item['discount'], 'custom_price' => $custom];
+        }
+
+        $packs = (int) $item['quantity'];
+        $size = (int) $item['pack']['size'];
+        $pieces = $packs * $size;
+
+        // No price of its own and none typed: just that many pieces at their normal prices.
+        if ($custom === null && empty($item['pack']['has_price'])) {
+            return ['quantity' => $pieces, 'discount' => (float) $item['discount'], 'custom_price' => null];
+        }
+
+        $packPrice = $custom ?? (float) $item['pack']['price'];
+        $perPiece = ceil(round($packPrice / $size * 100, 6)) / 100;
+        $rounding = round($perPiece * $pieces - $packPrice * $packs, 2);
+
+        return ['quantity' => $pieces, 'discount' => round((float) $item['discount'] + $rounding, 2), 'custom_price' => $perPiece];
     }
 
     public function scanBarcode(string $raw): void
@@ -350,9 +424,9 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             return 0.0;
         }
 
-        $allocations = ConsumeStockFifo::preview($product, Quantity::normalize($item['quantity']));
-        $overridePrice = $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null;
-        $subLines = SaleCartMath::allocateLines($overridePrice, (float) $item['discount'], $allocations);
+        $line = $this->saleLine($item);
+        $allocations = ConsumeStockFifo::preview($product, Quantity::normalize($line['quantity']));
+        $subLines = SaleCartMath::allocateLines($line['custom_price'], $line['discount'], $allocations);
 
         return array_sum(array_column($subLines, 'line_total'));
     }
@@ -362,7 +436,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
     {
         $product = Product::find($item['product_id']);
 
-        return $product ? BatchExpiry::noteFor($product, ConsumeStockFifo::preview($product, Quantity::normalize($item['quantity']))) : null;
+        return $product ? BatchExpiry::noteFor($product, ConsumeStockFifo::preview($product, Quantity::normalize($this->saleLine($item)['quantity']))) : null;
     }
 
     public function subtotal(): float
@@ -430,12 +504,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         $lines = [];
 
         foreach ($this->cart as $productId => $item) {
-            $lines[] = [
-                'product_id' => (int) $productId,
-                'quantity' => $item['quantity'],
-                'discount' => (float) $item['discount'],
-                'custom_price' => $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null,
-            ];
+            $lines[] = ['product_id' => (int) $productId] + $this->saleLine($item);
         }
 
         [$paymentMethod, $shopAccountId] = $this->chosenPaymentMethod();

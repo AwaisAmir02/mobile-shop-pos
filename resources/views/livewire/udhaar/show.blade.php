@@ -565,6 +565,8 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
         </div>
     </div>
 
+    <livewire:customers.share-and-remind :customer="$customer" :key="'share-'.$customer->id" />
+
     <h2 class="mb-3 text-base font-bold tracking-tight text-ink">Udhaar loans</h2>
 
     @if ($rows->isEmpty())

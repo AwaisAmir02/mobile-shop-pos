@@ -35,6 +35,8 @@ class Customer extends Model
         'address',
     ];
 
+    protected $hidden = ['ledger_token'];
+
     public function udhaarTransactions(): HasMany
     {
         return $this->hasMany(UdhaarTransaction::class)->withoutGlobalScope(BranchScope::class)->orderBy('transaction_date')->orderBy('id');
@@ -78,6 +80,30 @@ class Customer extends Model
     public function servicePayments(): HasMany
     {
         return $this->hasMany(ServicePayment::class)->withoutGlobalScope(BranchScope::class)->latest();
+    }
+
+    /**
+     * The private link to this customer's own read-only ledger, made the first
+     * time it's needed. Anyone with the link can see the balance, so it's long
+     * and random, and the shop can replace it (rotateLedgerToken).
+     */
+    public function ledgerUrl(): string
+    {
+        if ($this->ledger_token === null) {
+            $this->forceFill(['ledger_token' => self::newLedgerToken()])->saveQuietly();
+        }
+
+        return route('customer-ledger.show', $this->ledger_token);
+    }
+
+    public function rotateLedgerToken(): void
+    {
+        $this->forceFill(['ledger_token' => self::newLedgerToken()])->saveQuietly();
+    }
+
+    protected static function newLedgerToken(): string
+    {
+        return \Illuminate\Support\Str::random(32);
     }
 
     public function udhaarBalance(): float

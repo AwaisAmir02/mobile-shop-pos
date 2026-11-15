@@ -70,6 +70,8 @@ return [
     'reminder_intro' => "Hi :name, this is a friendly reminder from :shop about your pending balance:",
     'reminder_total' => '*Total due: Rs :total*',
     'reminder_outro' => 'Please clear it on your next visit. If you have already paid, kindly ignore this message. Thank you!',
+    'reminder_link_pay' => 'See your account and pay here: :link',
+    'reminder_link_view' => 'See your account here: :link',
     'due' => [
         'sale' => 'You bought :label (:ref) — Rs :amount remaining',
         'installment_due' => 'Instalment for :label (:ref) — Rs :amount due now (Rs :left left in total)',

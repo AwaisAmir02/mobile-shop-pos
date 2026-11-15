@@ -18,6 +18,9 @@
     $priceError = $errors->has("cart.$productId.custom_price") || $errors->has("cart.$productId.discount");
     $quantity = \App\Support\Quantity::normalize($item['quantity'] === '' ? 0 : $item['quantity']);
     $numberInput = 'rounded-lg border-line-strong bg-surface py-1.5 text-right text-sm text-ink focus:border-link focus:ring-link';
+    $pack = $item['pack'] ?? null;
+    $byPack = $pack && ! empty($item['by_pack']);
+    $perSuffix = $byPack ? ' per '.mb_strtolower($pack['name']) : $unit->perSuffix();
 @endphp
 
 <li
@@ -36,7 +39,10 @@
                 @endif
             </div>
             <p class="text-xs text-ink-faint">
-                {{ $item['category'] }} · Rs {{ number_format($unitPrice, 2) }}{{ $unit->perSuffix() }}
+                {{ $item['category'] }} · Rs {{ number_format($unitPrice, 2) }}{{ $perSuffix }}
+                @if ($byPack)
+                    · {{ number_format($quantity * $pack['size']) }} pieces
+                @endif
                 @if ($discount > 0)
                     · Rs {{ number_format($discount, 2) }} off
                 @endif
@@ -48,6 +54,17 @@
                 @endif
             @endif
             <x-sales.expiry-note :note="$expiryNote" :unit="$unit" />
+            @if ($pack)
+                <div class="mt-1.5 inline-flex gap-0.5 rounded-full border border-line bg-surface-sunken/60 p-0.5 text-xs font-semibold" role="group" aria-label="Sell {{ $item['name'] }} as" data-sell-as>
+                    @foreach (['piece' => 'Pieces', 'pack' => ucfirst($pack['name']).' of '.$pack['size']] as $mode => $label)
+                        <button type="button" wire:click="sellAs({{ $productId }}, '{{ $mode }}')" aria-pressed="{{ ($mode === 'pack') === $byPack ? 'true' : 'false' }}" @class([
+                            'rounded-full px-2.5 py-1 transition-colors',
+                            'bg-surface text-ink shadow-soft ring-1 ring-line' => ($mode === 'pack') === $byPack,
+                            'text-ink-faint hover:text-ink' => ($mode === 'pack') !== $byPack,
+                        ])>{{ $label }}</button>
+                    @endforeach
+                </div>
+            @endif
             <button type="button" x-on:click="adjust = ! adjust" :aria-expanded="adjust.toString()" class="mt-1 text-xs font-semibold text-link hover:underline">
                 Price &amp; discount
             </button>
@@ -114,7 +131,7 @@
 
     <div x-show="adjust" x-cloak class="mt-3 grid max-w-sm grid-cols-2 gap-3">
         <label class="block text-xs font-semibold text-ink-muted">
-            Price each
+            {{ $byPack ? 'Price per '.mb_strtolower($pack['name']) : 'Price each' }}
             <input
                 type="number"
                 min="0"

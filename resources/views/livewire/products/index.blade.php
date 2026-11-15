@@ -58,6 +58,11 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public string $warranty_months = '';
     public string $warranty_type = 'brand';
 
+    // A pack (carton, dozen…) of this product; stock stays in pieces.
+    public string $pack_name = '';
+    public string $pack_size = '';
+    public string $pack_price = '';
+
     public string $brand = '';
     public string $model = '';
     public string $imei = '';
@@ -702,6 +707,13 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->resetPage();
     }
 
+    public function updatedPackName(): void
+    {
+        if (strcasecmp(trim($this->pack_name), 'dozen') === 0 && $this->pack_size === '') {
+            $this->pack_size = '12';
+        }
+    }
+
     public function openEdit(int $id): void
     {
         $product = Product::findOrFail($id);
@@ -722,6 +734,9 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->shelf_life_days = (string) ($product->shelf_life_days ?? '');
         $this->warranty_months = (string) ($product->warranty_months ?? '');
         $this->warranty_type = $product->warranty_type?->value ?? 'brand';
+        $this->pack_name = (string) ($product->pack_name ?? '');
+        $this->pack_size = (string) ($product->pack_size ?? '');
+        $this->pack_price = $product->pack_price !== null ? (string) $product->pack_price : '';
 
         $this->brand = $product->details['brand'] ?? '';
         $this->model = $product->details['model'] ?? '';
@@ -769,6 +784,11 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                 'details' => $this->detailsForType(),
             ]);
         }
+
+        $hasPack = trim($this->pack_name) !== '' && $product->canHavePack();
+        $product->pack_name = $hasPack ? mb_substr(trim($this->pack_name), 0, 20) : null;
+        $product->pack_size = $hasPack ? (int) $this->pack_size : null;
+        $product->pack_price = $hasPack && $this->pack_price !== '' ? $this->pack_price : null;
 
         if (Auth::user()->shop?->sellsDevices()) {
             $product->warranty_months = $this->warranty_months !== '' && (int) $this->warranty_months > 0 ? (int) $this->warranty_months : null;
@@ -1100,6 +1120,9 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $rules = CreateProduct::rules(auth()->user()->shop_id, $this->type, $this->editingId, $this->formUnit());
         $rules['shelf_life_days'] = ['nullable', 'integer', 'min:1', 'max:3650'];
         $rules['warranty_months'] = ['nullable', 'integer', 'min:0', 'max:120'];
+        $rules['pack_name'] = ['nullable', 'string', 'max:20'];
+        $rules['pack_size'] = ['nullable', 'required_with:pack_name', 'integer', 'min:2', 'max:10000'];
+        $rules['pack_price'] = ['nullable', 'numeric', 'min:0', 'max:99999999'];
         $rules['warranty_type'] = ['required', Rule::enum(WarrantyType::class)];
         $groupId = $this->editingId ? Product::whereKey($this->editingId)->value('product_group_id') : null;
 
@@ -1123,7 +1146,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     protected function resetForm(): void
     {
         $this->reset([
-            'editingId', 'editingHasBatches', 'unit', 'unitLocked', 'shelf_life_days', 'warranty_months', 'warranty_type', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
+            'editingId', 'editingHasBatches', 'unit', 'unitLocked', 'shelf_life_days', 'warranty_months', 'warranty_type', 'pack_name', 'pack_size', 'pack_price', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
             'brand', 'model', 'imei', 'category', 'barcode', 'variantLabel', 'editingVariantGroupName',
         ]);
 
@@ -1523,6 +1546,25 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                         <x-ui.field label="Shelf Life (days)" name="shelf_life_days" for="shelf_life_days" help="Optional. Pre-fills the expiry date on Stock In">
                             <x-ui.input wire:model="shelf_life_days" id="shelf_life_days" type="number" min="1" max="3650" step="1" />
                         </x-ui.field>
+                    @endif
+
+                    @if ($type !== 'sim' && ! $formUnit->allowsDecimals() && trim($imei) === '')
+                        <div class="space-y-2" data-pack-fields>
+                            <p class="text-sm font-medium text-ink-muted">Bought or sold by the carton?</p>
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                <x-ui.field label="Pack" name="pack_name" for="pack_name" help="e.g. Carton, Dozen, Box. Leave blank if none">
+                                    <x-ui.input wire:model.live.debounce.400ms="pack_name" id="pack_name" list="pack-names" maxlength="20" />
+                                    <datalist id="pack-names"><option value="Carton"><option value="Dozen"><option value="Box"><option value="Pack"><option value="Bundle"><option value="Tray"></datalist>
+                                </x-ui.field>
+                                <x-ui.field label="Pieces in one pack" name="pack_size" for="pack_size">
+                                    <x-ui.input wire:model="pack_size" id="pack_size" type="number" min="2" step="1" :placeholder="strcasecmp(trim($pack_name), 'dozen') === 0 ? '12' : 'e.g. 24'" />
+                                </x-ui.field>
+                                <x-ui.field label="Price for a whole pack" name="pack_price" for="pack_price" help="Optional. Blank sells it at the piece price">
+                                    <x-ui.input wire:model="pack_price" id="pack_price" type="number" min="0" step="0.01" />
+                                </x-ui.field>
+                            </div>
+                            <p class="text-xs text-ink-faint">Stock is always counted in pieces. Stock In and the sales register can then take whole packs and turn them into pieces.</p>
+                        </div>
                     @endif
 
                     @if ($warrantyEnabled && $type !== 'sim')

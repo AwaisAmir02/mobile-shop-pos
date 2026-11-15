@@ -394,6 +394,9 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                     </x-ui.table-cell>
                     <x-ui.table-cell label="Quantity">
                         <span class="font-semibold text-success">+{{ $entry->unit->groupedAmount($entry->quantity) }}</span>
+                        @if ($entry->packs)
+                            <span class="ui-sub" data-stock-in-packs>{{ $entry->packs }} × {{ mb_strtolower($entry->pack_name) }} of {{ $entry->pack_size }}</span>
+                        @endif
                         @unless ($entry->isCancelled())
                             <span class="ui-sub">{{ $entry->unit->groupedAmount($entry->quantity_remaining) }} left</span>
                         @endunless

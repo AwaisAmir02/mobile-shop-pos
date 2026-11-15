@@ -15,6 +15,9 @@ use App\Models\Shop;
 use App\Models\WhatsAppContact;
 use App\Models\WhatsAppOrder;
 use App\Support\CustomerDuesStatement;
+use App\Models\PaymentGatewayConnection;
+use App\Services\Sms\PlivoSms;
+use App\Support\PhoneNumber;
 use RuntimeException;
 
 class CustomerNotifications
@@ -121,13 +124,17 @@ class CustomerNotifications
         }
 
         $total = $udhaar + $askedFor;
+        $link = $customer->ledgerUrl();
+        $canPay = PaymentGatewayConnection::activeFor($customer->shop_id) !== null;
 
         return [
             'lines' => $lines,
             'total' => $total,
+            'link' => $link,
             'text' => WhatsAppLanguage::t($contact, 'reminder_intro', ['name' => $customer->name, 'shop' => Shop::find($customer->shop_id)?->invoiceDisplayName()])
                 ."\n\n".collect($lines)->map(fn ($l) => '• '.$l)->implode("\n")
                 ."\n\n".WhatsAppLanguage::t($contact, 'reminder_total', ['total' => self::money($total)])
+                ."\n\n".WhatsAppLanguage::t($contact, $canPay ? 'reminder_link_pay' : 'reminder_link_view', ['link' => $link])
                 ."\n\n".WhatsAppLanguage::t($contact, 'reminder_outro'),
         ];
     }
@@ -166,12 +173,101 @@ class CustomerNotifications
             throw new RuntimeException("{$customer->name} has nothing outstanding.");
         }
 
+        $params = [$customer->name, $shop->invoiceDisplayName(), implode('; ', $preview['lines']), self::money($preview['total'])];
+
+        // Outside WhatsApp's 24-hour window a template is needed: the one with the link once Meta has approved it.
+        $withLink = TemplateManager::approved($connection, 'payment_reminder_link', WhatsAppLanguage::for($contact)) !== null;
+
         return $this->messenger->deliver(
             $connection, $contact, NotificationType::PaymentReminder, $customer,
             $preview['text'], [],
-            'payment_reminder', [$customer->name, $shop->invoiceDisplayName(), implode('; ', $preview['lines']), self::money($preview['total'])],
+            $withLink ? 'payment_reminder_link' : 'payment_reminder', $withLink ? [...$params, $preview['link']] : $params,
             $userId,
         );
+    }
+
+    public function smsRemindersAvailable(): bool
+    {
+        return (bool) config('reminders.sms.enabled') && app(PlivoSms::class)->configured();
+    }
+
+    public function smsSentThisMonth(int $shopId): int
+    {
+        return CustomerNotification::withoutGlobalScope(ShopScope::class)
+            ->where('shop_id', $shopId)
+            ->where('delivery_mode', 'sms')
+            ->where('status', NotificationStatus::Sent->value)
+            ->where('sent_at', '>=', now()->startOfMonth())
+            ->count();
+    }
+
+    /**
+     * The same reminder by SMS, for customers without WhatsApp. Sent from the
+     * platform's Plivo account, which costs real money per message, so it's
+     * off unless switched on (config reminders.sms) and capped per shop per
+     * month. Kept short enough for one SMS: the total and the ledger link.
+     */
+    public function paymentReminderSms(Customer $customer, ?int $userId): CustomerNotification
+    {
+        if (! $this->smsRemindersAvailable()) {
+            throw new RuntimeException('SMS reminders aren\'t switched on.');
+        }
+
+        $last = $this->lastReminder($customer);
+
+        if ($last !== null && $last->sent_at->gt(now()->subHours(self::REMINDER_COOLDOWN_HOURS))) {
+            throw new RuntimeException("A reminder was already sent to {$customer->name} ".$last->sent_at->diffForHumans().'.');
+        }
+
+        if ($this->smsSentThisMonth($customer->shop_id) >= (int) config('reminders.sms.monthly_cap_per_shop')) {
+            throw new RuntimeException('This month\'s SMS reminders are used up ('.config('reminders.sms.monthly_cap_per_shop').'). Send by WhatsApp, or wait for next month.');
+        }
+
+        if (! $customer->phone || ! PhoneNumber::isPakistaniMobile($customer->phone)) {
+            throw new RuntimeException("{$customer->name} has no Pakistani mobile number.");
+        }
+
+        $preview = $this->paymentReminderPreview($customer);
+
+        if ($preview['total'] <= 0) {
+            throw new RuntimeException("{$customer->name} has nothing due right now.");
+        }
+
+        $shop = Shop::findOrFail($customer->shop_id);
+        $canPay = PaymentGatewayConnection::activeFor($customer->shop_id) !== null;
+        $text = self::smsText(mb_strimwidth($shop->invoiceDisplayName(), 0, 25, ''), mb_strimwidth($customer->name, 0, 20, ''), self::money($preview['total']), $preview['link'], $canPay);
+
+        $notification = new CustomerNotification([
+            'shop_id' => $customer->shop_id,
+            'customer_id' => $customer->id,
+            'type' => NotificationType::PaymentReminder,
+            'notifiable_type' => $customer->getMorphClass(),
+            'notifiable_id' => $customer->id,
+            'delivery_mode' => 'sms',
+            'body' => $text,
+            'sent_by' => $userId,
+        ]);
+
+        try {
+            $notification->wamid = app(PlivoSms::class)->send($customer->phone, $text) ?: null;
+            $notification->status = NotificationStatus::Sent;
+            $notification->sent_at = now();
+        } catch (RuntimeException $e) {
+            $notification->status = NotificationStatus::Failed;
+            $notification->error = mb_substr($e->getMessage(), 0, 500);
+        }
+
+        $notification->save();
+
+        return $notification;
+    }
+
+    /** Plain characters only, so it stays one SMS. */
+    public static function smsText(string $shop, string $name, string $total, string $link, bool $canPay): string
+    {
+        $clean = fn (string $s) => trim(preg_replace('/[^A-Za-z0-9 .,&\-]/', '', $s) ?? '');
+
+        return $clean($shop).': '.$clean($name).', Rs '.$total.' is due. '.($canPay ? 'See and pay' : 'See your account').': '.$link;
     }
 
     public function restock(RestockSubscription $subscription): CustomerNotification
