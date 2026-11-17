@@ -108,7 +108,7 @@ class MarketingSiteTest extends TestCase
         }
 
         $this->assertStringContainsString('<a href="https://wa.me/923033103363" class="hover:text-brand-700" rel="noopener">WhatsApp us</a>', $footer);
-        $this->assertStringContainsString('<a href="https://wa.me/923033103363" class="hover:text-brand-700" rel="noopener">+92 328 2827085</a>', $footer);
+        $this->assertStringContainsString('<a href="https://wa.me/923033103363" class="hover:text-brand-700" rel="noopener">+92 303 3103363</a>', $footer);
         $this->assertStringContainsString('<a href="mailto:info@hisabokitab.com" class="hover:text-brand-700">info@hisabokitab.com</a>', $footer);
         $this->assertStringNotContainsString('placeholder@', $footer);
     }
