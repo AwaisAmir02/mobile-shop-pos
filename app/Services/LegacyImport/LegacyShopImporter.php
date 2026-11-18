@@ -47,8 +47,13 @@ class LegacyShopImporter
     /** Owner's decision (2026-11-18): turn these off, as on the old shop. Networks is part of SIM sales. */
     public const MODULES_TO_DISABLE = ['bills', 'wallet-loads', 'balance-loads', 'nadra-verifications', 'sim-sales', 'shop-accounts'];
 
-    /** The target must have none of these yet. Categories, options and brands may already hold its defaults. */
-    public const MUST_BE_EMPTY = ['products', 'customers', 'vendors', 'sales', 'stock_ins', 'stock_in_payments', 'expenses', 'repairs', 'udhaar_transactions', 'sale_revisions', 'module_revisions'];
+    /**
+     * The target must have none of these yet: they would change the stock
+     * replay or the money totals the import is checked against. Customers and
+     * repairs the owner already entered may stay (owner's decision,
+     * 2026-11-18), as may categories, options and brands.
+     */
+    public const MUST_BE_EMPTY = ['products', 'vendors', 'sales', 'stock_ins', 'stock_in_payments', 'expenses', 'udhaar_transactions', 'sale_revisions', 'module_revisions'];
 
     /** The app's own names for the two built-in categories. */
     protected const BUILTIN_NAMES = ['mobile' => 'Mobile Phone', 'accessory' => 'Accessory'];

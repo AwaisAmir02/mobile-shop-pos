@@ -13,7 +13,8 @@ use Illuminate\Console\Command;
  */
 class LegacyShopCheck extends Command
 {
-    protected $signature = 'legacy:check {--shop= : The shop to check} {--against= : A legacy:extract file to compare totals with}';
+    protected $signature = 'legacy:check {--shop= : The shop to check} {--against= : A legacy:extract file to compare totals with}
+        {--ignore=* : table:id of a row that was in the shop before the import (legacy:import prints these)}';
 
     protected $description = 'Read-only: check an imported shop\'s stock, payments and dues, and compare totals with the old data';
 
@@ -30,7 +31,21 @@ class LegacyShopCheck extends Command
         $this->line('Connected to: '.config('database.connections.'.config('database.default').'.database')." - shop {$shop->id} ({$shop->name})");
 
         $audit = new LegacyShopAudit($shop->id);
-        $after = LegacyShopAudit::totals($audit->tables());
+        $exclude = [];
+
+        foreach ((array) $this->option('ignore') as $item) {
+            [$table, $id] = array_pad(explode(':', (string) $item, 2), 2, null);
+
+            if (! in_array($table, [...LegacyShopAudit::TABLES, 'stock_in_payments'], true) || ! ctype_digit((string) $id)) {
+                $this->error("--ignore must look like customers:4, not {$item}.");
+
+                return self::FAILURE;
+            }
+
+            $exclude[$table][] = (int) $id;
+        }
+
+        $after = LegacyShopAudit::totals($audit->tables($exclude));
         $passed = true;
 
         if ($file = $this->option('against')) {
@@ -38,7 +53,12 @@ class LegacyShopCheck extends Command
             $rows = collect($before)->map(fn ($value, $label) => [$label, $value, $after[$label] ?? '-', ($after[$label] ?? null) === $value ? 'same' : 'DIFFERENT'])->values()
                 ->merge(collect($after)->diffKeys($before)->map(fn ($value, $label) => [$label, '-', $value, 'only after']))->all();
             $passed = collect($before)->every(fn ($value, $label) => ($after[$label] ?? null) === $value);
-            $this->table(['', 'Old shop', 'This shop', ''], $rows);
+            $this->table(['', 'Old shop', $exclude === [] ? 'This shop' : 'This shop, less ignored rows', ''], $rows);
+
+            if ($exclude !== []) {
+                $this->info('Whole shop, ignored rows included');
+                $this->table(['', 'Whole shop'], collect(LegacyShopAudit::totals($audit->tables()))->map(fn ($value, $label) => [$label, $value])->values()->all());
+            }
         } else {
             $this->table(['', 'This shop'], collect($after)->map(fn ($value, $label) => [$label, $value])->values()->all());
         }

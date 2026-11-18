@@ -14,8 +14,10 @@ use App\Models\User;
 use App\Models\Vendor;
 use App\Services\LegacyImport\LegacyShopImporter;
 use App\Support\ApiShopContext;
+use App\Support\BranchContext;
 use App\Support\CustomerDuesStatement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\PendingCommand;
 use Tests\TestCase;
@@ -197,6 +199,70 @@ class LegacyShopImportTest extends TestCase
         $other = Shop::create(['name' => 'Other', 'email' => 'someone@example.com']);
         User::factory()->create(['shop_id' => $other->id, 'is_owner' => true]);
         $this->import($this->legacy(), options: ['--shop' => $other->id])->expectsOutputToContain('email is not old@example.com')->assertFailed();
+    }
+
+    /** A customer and an unpaid repair the owner entered before the import, as on the live shop. */
+    protected function ownersOwnEntries(): array
+    {
+        $branchId = BranchContext::current()->mainBranchIdFor($this->shop->id);
+        $customerId = DB::table('customers')->insertGetId(['shop_id' => $this->shop->id, 'name' => 'Zain', 'phone' => '03312005909', 'phone_normalized' => '923312005909', 'created_at' => '2026-11-16 16:43:05', 'updated_at' => '2026-11-16 16:43:05']);
+        $repairId = DB::table('repairs')->insertGetId(['shop_id' => $this->shop->id, 'branch_id' => $branchId, 'user_id' => $this->owner->id, 'customer_id' => $customerId, 'category' => 'laptop', 'description' => 'Charging Jack Repair',
+            'amount' => 3000, 'service_charges' => 3000, 'products_charges' => 0, 'discount' => 0, 'total' => 3000, 'payment_status' => 'unpaid', 'amount_paid' => 0, 'status' => 'active', 'created_at' => '2026-11-16 16:43:13', 'updated_at' => '2026-11-16 16:43:13']);
+
+        return [$customerId, $repairId];
+    }
+
+    public function test_it_imports_alongside_customers_and_repairs_the_owner_already_entered(): void
+    {
+        [$zainId, $repairId] = $this->ownersOwnEntries();
+        $zainBefore = (array) DB::table('customers')->find($zainId);
+        $repairBefore = (array) DB::table('repairs')->find($repairId);
+
+        $this->import($this->legacy())
+            ->expectsOutputToContain('Already in the shop before the import')
+            ->expectsOutputToContain("--ignore=customers:{$zainId} --ignore=repairs:{$repairId}")
+            ->expectsOutputToContain('Committed')
+            ->assertSuccessful();
+
+        // Untouched, and nothing else of the owner's was merged into the import.
+        $this->assertSame($zainBefore, (array) DB::table('customers')->find($zainId));
+        $this->assertSame($repairBefore, (array) DB::table('repairs')->find($repairId));
+        $this->assertSame(2, DB::table('customers')->where('shop_id', $this->shop->id)->count());
+        $this->assertSame(2, DB::table('repairs')->where('shop_id', $this->shop->id)->count());
+        $this->assertSame(0, DB::table('sales')->where('customer_id', $zainId)->count());
+
+        $this->inShop(function () use ($zainId) {
+            $this->assertSame(3000.0, CustomerDuesStatement::for(Customer::findOrFail($zainId))->total());
+            $this->assertSame(2000.0, CustomerDuesStatement::for(Customer::where('name', 'Suleman')->firstOrFail())->total());
+        });
+
+        // The comparison leaves out the owner's own rows only when told which they are.
+        $file = $this->file($this->legacy());
+        $this->artisan('legacy:check', ['--shop' => $this->shop->id, '--against' => $file, '--ignore' => ["customers:{$zainId}", "repairs:{$repairId}"]])->assertSuccessful();
+        $this->artisan('legacy:check', ['--shop' => $this->shop->id, '--against' => $file])->assertFailed();
+    }
+
+    public function test_a_dry_run_alongside_existing_entries_keeps_them_and_adds_nothing(): void
+    {
+        [$zainId, $repairId] = $this->ownersOwnEntries();
+
+        $this->import($this->legacy(), commit: false)->expectsOutputToContain('Dry run')->assertSuccessful();
+
+        $this->assertSame([$zainId], DB::table('customers')->where('shop_id', $this->shop->id)->pluck('id')->all());
+        $this->assertSame([$repairId], DB::table('repairs')->where('shop_id', $this->shop->id)->pluck('id')->all());
+        $this->assertSame(0, DB::table('products')->where('shop_id', $this->shop->id)->count());
+    }
+
+    public function test_it_still_refuses_a_shop_with_its_own_vendor_or_expense(): void
+    {
+        $vendorId = DB::table('vendors')->insertGetId(['shop_id' => $this->shop->id, 'name' => 'Owner vendor', 'created_at' => now(), 'updated_at' => now()]);
+        $this->import($this->legacy())->expectsOutputToContain('already has 1 vendors rows')->assertFailed();
+
+        DB::table('vendors')->delete($vendorId);
+        DB::table('expenses')->insert(['shop_id' => $this->shop->id, 'description' => 'Tea', 'amount' => 100, 'expense_date' => '2026-11-16', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $this->import($this->legacy())->expectsOutputToContain('already has 1 expenses rows')->assertFailed();
+
+        $this->assertSame(0, DB::table('products')->where('shop_id', $this->shop->id)->count());
     }
 
     public function test_it_refuses_when_the_database_named_is_not_the_one_connected(): void

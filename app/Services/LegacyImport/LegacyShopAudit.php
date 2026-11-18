@@ -23,16 +23,61 @@ class LegacyShopAudit
 
     public function __construct(protected int $shopId) {}
 
-    /** @return array<string, array<int, array<string, mixed>>> */
-    public function tables(): array
+    /**
+     * The shop's rows, less any listed in $exclude (rows that were there
+     * before the import), so the totals compare only what the import added.
+     *
+     * @param  array<string, array<int, int>>  $exclude  table => ids
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    public function tables(array $exclude = []): array
     {
         $tables = [];
 
         foreach ([...self::TABLES, 'stock_in_payments'] as $table) {
-            $tables[$table] = DB::table($table)->where('shop_id', $this->shopId)->orderBy('id')->get()->map(fn ($row) => (array) $row)->all();
+            $tables[$table] = DB::table($table)->where('shop_id', $this->shopId)
+                ->when(! empty($exclude[$table]), fn ($query) => $query->whereNotIn('id', $exclude[$table]))
+                ->orderBy('id')->get()->map(fn ($row) => (array) $row)->all();
         }
 
         return $tables;
+    }
+
+    /**
+     * @param  array<string, array<int, array<string, mixed>>>  $tables  from tables()
+     * @return array<string, array<int, int>> table => ids, only tables with rows
+     */
+    public static function idsOf(array $tables): array
+    {
+        return array_filter(array_map(fn (array $rows) => array_map(fn (array $row) => (int) $row['id'], $rows), $tables));
+    }
+
+    /**
+     * Rows that were in the shop before the import are all still there, unchanged.
+     *
+     * @param  array<string, array<int, array<string, mixed>>>  $before  tables() taken before the import
+     * @return array{0: string, 1: bool, 2: string}
+     */
+    public function existingRowsUnchanged(array $before): array
+    {
+        $now = $this->tables();
+        $changed = [];
+        $count = 0;
+
+        foreach ($before as $table => $rows) {
+            $current = collect($now[$table])->keyBy('id');
+
+            foreach ($rows as $row) {
+                $count++;
+
+                if ($current->get($row['id']) !== $row) {
+                    $changed[] = "{$table} #{$row['id']}";
+                }
+            }
+        }
+
+        return ['Rows already in the shop before the import are unchanged', $changed === [],
+            $changed === [] ? $count.' rows checked'.($count ? ': '.collect($before)->filter()->map(fn ($rows, $table) => count($rows).' '.$table)->implode(', ') : '') : 'changed or missing: '.implode(', ', $changed)];
     }
 
     /**
