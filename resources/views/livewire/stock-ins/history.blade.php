@@ -54,6 +54,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
     public string $editCostPrice = '';
     public string $editSellingPrice = '';
     public string $editExpiryDate = '';
+    public string $editBatchNumber = '';
 
     public ?int $cancelingId = null;
     public string $cancelReason = '';
@@ -103,7 +104,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'entries' => $report->query()->with('grnLine.grn.order')->latest('stock_date')->latest('id')->paginate(15),
             'totalUnits' => $report->totalUnits(),
             'measuredTotals' => QuantityUnit::summarize($report->measuredTotals()),
-            'showExpiry' => $report->showsExpiry(),
+            'showExpiry' => $report->showsExpiry() || $report->showsBatch(),
             'expiryEnabled' => $this->expiryEnabled(),
             'totalOwed' => $report->totalOwed(),
             'products' => Product::query()->orderBy('name')->get(),
@@ -213,6 +214,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
         $this->editCostPrice = $entry->cost_price !== null ? (string) $entry->cost_price : '';
         $this->editSellingPrice = $entry->selling_price !== null ? (string) $entry->selling_price : '';
         $this->editExpiryDate = $entry->expiry_date?->toDateString() ?? '';
+        $this->editBatchNumber = $entry->batch_number ?? '';
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'edit-stock-in-form');
     }
@@ -231,6 +233,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'editCostPrice' => ['nullable', 'numeric', 'min:0'],
             'editSellingPrice' => ['nullable', 'numeric', 'min:0'],
             'editExpiryDate' => ['nullable', 'date'],
+            'editBatchNumber' => ['nullable', 'string', 'max:50'],
         ]);
 
         UpdateStockIn::handle($entry, [
@@ -240,18 +243,18 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
             'note' => $this->editNote !== '' ? $this->editNote : null,
             'cost_price' => $this->editCostPrice !== '' ? (float) $this->editCostPrice : null,
             'selling_price' => $this->editSellingPrice !== '' ? (float) $this->editSellingPrice : null,
-            ...($this->expiryEnabled() ? ['expiry_date' => $this->editExpiryDate !== '' ? $this->editExpiryDate : null] : []),
+            ...($this->expiryEnabled() ? ['expiry_date' => $this->editExpiryDate !== '' ? $this->editExpiryDate : null, 'batch_number' => $this->editBatchNumber] : []),
         ], Auth::id());
 
         $this->toastSuccess('Stock-in entry updated.');
         $this->dispatch('close-modal', name: 'edit-stock-in-form');
-        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editFromGrn', 'editCostLocked', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate']);
+        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editFromGrn', 'editCostLocked', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate', 'editBatchNumber']);
     }
 
     public function closeEditForm(): void
     {
         $this->dispatch('close-modal', name: 'edit-stock-in-form');
-        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editFromGrn', 'editCostLocked', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate']);
+        $this->reset(['editingId', 'editQuantity', 'editUnit', 'editFromGrn', 'editCostLocked', 'editVendorId', 'editStockDate', 'editNote', 'editCostPrice', 'editSellingPrice', 'editExpiryDate', 'editBatchNumber']);
     }
 
     public function openCancel(int $entryId): void
@@ -402,7 +405,7 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                         @endunless
                     </x-ui.table-cell>
                     @if ($showExpiry)
-                        <x-ui.table-cell label="Expires"><span @class(['font-semibold text-danger' => $entry->isExpired() && $entry->quantity_remaining > 0])>{{ $entry->expiry_date?->format('d M Y') ?? '—' }}</span></x-ui.table-cell>
+                        <x-ui.table-cell label="Expires"><span @class(['font-semibold text-danger' => $entry->isExpired() && $entry->quantity_remaining > 0])>{{ $entry->expiry_date?->format('d M Y') ?? '—' }}</span>@if ($entry->batch_number)<span class="ui-sub" data-batch-number>Batch {{ $entry->batch_number }}</span>@endif</x-ui.table-cell>
                     @endif
                     <x-ui.table-cell label="Cost / Sell">
                         {{ $entry->cost_price !== null ? 'Rs '.number_format($entry->cost_price, 2) : '—' }}
@@ -512,6 +515,9 @@ new #[Layout('layouts.app')] #[Title('Stock In History')] class extends Componen
                 @if ($expiryEnabled)
                     <x-ui.field label="Expiry Date" name="editExpiryDate" for="editExpiryDate" help="Optional. The last day it can be sold">
                         <x-ui.input wire:model="editExpiryDate" id="editExpiryDate" type="date" />
+                    </x-ui.field>
+                    <x-ui.field label="Batch No." name="editBatchNumber" for="editBatchNumber" help="Optional. As printed on the pack">
+                        <x-ui.input wire:model="editBatchNumber" id="editBatchNumber" maxlength="50" />
                     </x-ui.field>
                 @endif
 

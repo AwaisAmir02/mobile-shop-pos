@@ -135,6 +135,22 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('sales/installments', 'sales.installments')->name('sales.installments')->middleware('shop.access:sales');
         Volt::route('sales/{sale}', 'sales.show')->name('sales.show')->middleware('shop.access:sales');
         Volt::route('sales/{sale}/edit', 'sales.edit')->name('sales.edit')->middleware('shop.access:sales-edit-cancel');
+        Volt::route('sales/{sale}/return', 'sales.return')->name('sales.return')->middleware('shop.access:sales-returns');
+        // A prescription photo: private, only for the shop's own signed-in users who can open sales.
+        Route::get('prescriptions/{prescription}/photo', function (\App\Models\SalePrescription $prescription, \Illuminate\Http\Request $request) {
+            // Route binding already limits {prescription} to the viewer's shop; checked again here.
+            abort_unless($prescription->shop_id === auth()->user()->shop_id, 404);
+            $disk = \Illuminate\Support\Facades\Storage::disk(\App\Actions\Prescriptions::DISK);
+            abort_if($prescription->photo_path === null || ! $disk->exists($prescription->photo_path), 404);
+
+            $name = 'prescription-'.$prescription->serial_number.'.'.pathinfo($prescription->photo_path, PATHINFO_EXTENSION);
+            $headers = ['X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store'];
+
+            return $request->boolean('download')
+                ? $disk->download($prescription->photo_path, $name, $headers)
+                : $disk->response($prescription->photo_path, $name, $headers);
+        })->name('prescriptions.photo')->whereNumber('prescription')->middleware('shop.access:sales');
+        Volt::route('promotions', 'promotions.index')->name('promotions.index')->middleware('shop.access:promotions');
 
         Volt::route('sim-sales', 'sim-sales.create')->name('sim-sales.index')->middleware('shop.access:sim-sales');
         Volt::route('sim-sales/history', 'sim-sales.history')->name('sim-sales.history')->middleware('shop.access:sim-sales');
@@ -153,6 +169,8 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('repairs', 'repairs.create')->name('repairs.index')->middleware('shop.access:repairs');
         Volt::route('repairs/history', 'repairs.history')->name('repairs.history')->middleware('shop.access:repairs');
+
+        Volt::route('buybacks', 'buybacks.index')->name('buybacks.index')->middleware('shop.access:buybacks');
 
         Volt::route('services', 'services.create')->name('services.index')->middleware('shop.access:services');
         Volt::route('services/history', 'services.history')->name('services.history')->middleware('shop.access:services');
@@ -208,6 +226,8 @@ Route::middleware(['auth'])->group(function () {
         Volt::route('reports', 'reports.hub')->name('reports.index')->middleware('shop.access:reports');
         Volt::route('reports/screens', 'reports.index')->name('reports.screens')->middleware('shop.access:reports');
         Volt::route('gross-profit', 'reports.profit')->name('profit.index')->middleware('shop.access:reports');
+        Volt::route('store-credit', 'store-credit.index')->name('store-credit.index')->middleware('shop.access:reports');
+        Volt::route('prescriptions', 'prescriptions.index')->name('prescriptions.index')->middleware('shop.access:reports');
 
         Volt::route('party-ledger', 'party-ledger.index')->name('party-ledger.index')->middleware('shop.access:party-ledger');
         Volt::route('cash-balances', 'cash-balances.index')->name('cash-balances.index')->middleware('shop.access:cash-balances');

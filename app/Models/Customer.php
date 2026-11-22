@@ -121,7 +121,7 @@ class Customer extends Model
     {
         return Sale::withoutGlobalScope(BranchScope::class)
             ->where('customer_id', $this->id)
-            ->withSum('payments', 'amount')
+            ->withSum('payments', 'amount')->withSum('returns', 'due_reduction')
             ->get()
             ->sum(fn (Sale $sale) => $sale->amountDue());
     }
@@ -156,6 +156,7 @@ class Customer extends Model
             || $this->nadraVerifications()->exists()
             || $this->simSales()->exists()
             || $this->servicePayments()->exists()
+            || StoreCreditEntry::withoutGlobalScopes()->where('customer_id', $this->id)->exists()
             || PartyLedgerEntry::withoutGlobalScope(ExcludesCancelledScope::class)->where('customer_id', $this->id)->exists();
     }
 }

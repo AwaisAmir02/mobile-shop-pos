@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 class CreateStockIn
 {
     /**
-     * @param  array<int, array{product_id: int, quantity: int|float|string, cost_price: ?float, selling_price: float, expiry_date?: ?string, grn_line_id?: int}>  $lines
+     * @param  array<int, array{product_id: int, quantity: int|float|string, cost_price: ?float, selling_price: float, expiry_date?: ?string, batch_number?: ?string, grn_line_id?: int}>  $lines
      * @return Collection<int, StockIn> one per line, in order
      */
     public static function handle(array $lines, ?int $vendorId, string $paymentStatus, ?float $amountPaid, string $stockDate, ?string $note, ?int $userId, ?int $branchId = null, ?string $paymentMethod = null, ?int $shopAccountId = null): Collection
@@ -77,6 +77,7 @@ class CreateStockIn
                     'amount_paid' => $lineAmountPaid,
                     'stock_date' => $stockDate,
                     'expiry_date' => $product->sellsByExpiry() ? ($line['expiry_date'] ?? null) : null,
+                    'batch_number' => self::batchNumber($line['batch_number'] ?? null),
                     'note' => $note !== null && $note !== '' ? $note : null,
                     'grn_line_id' => $line['grn_line_id'] ?? null,
                     // Otherwise the branch the person is working in.
@@ -116,6 +117,14 @@ class CreateStockIn
         }
 
         return isset($line['total_cost']) ? round((float) $line['total_cost'], 2) : Quantity::money($line['cost_price'], $line['quantity']);
+    }
+
+    /** The batch or lot number printed on the pack, tidied; blank is none. */
+    public static function batchNumber(?string $value): ?string
+    {
+        $value = trim(preg_replace('/\s+/u', ' ', (string) $value));
+
+        return $value === '' ? null : mb_substr($value, 0, 50);
     }
 
     public static function grandTotalCost(array $lines): float

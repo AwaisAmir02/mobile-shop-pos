@@ -155,11 +155,19 @@
                         @if ($item->serial_number)
                             <div class="item-note">IMEI {{ $item->serial_number }}</div>
                         @endif
+                        @if ($promotionNote = $item->promotionNote())
+                            <div class="item-note">{{ $promotionNote }}</div>
+                        @endif
                         @if ($item->hasWarranty())
                             <div class="item-note">{{ $item->warranty_months }}-month {{ strtolower($item->warranty_type?->label() ?? 'warranty') }}, until {{ $item->warrantyEndsOn($sale->created_at)->format('d M Y') }}</div>
                         @endif
                     </td>
-                    <td class="text-right">{{ $item->unit->amount($item->quantity) }}</td>
+                    <td class="text-right">
+                        {{ $item->unit->amount($item->quantity) }}
+                        @if ($packLabel = $item->packLabel())
+                            <div class="item-note">{{ $packLabel }}</div>
+                        @endif
+                    </td>
                     <td class="text-right">
                         Rs {{ number_format($item->unit_price, 2) }}
                         @if ($item->wasPriceOverridden())
@@ -190,6 +198,12 @@
             <td>Total</td>
             <td class="text-right">Rs {{ number_format($sale->total, 2) }}</td>
         </tr>
+        @if (! $sale->isCancelled() && ($returned = $sale->returnedValue()) > 0)
+            <tr>
+                <td>Returned</td>
+                <td class="text-right">− Rs {{ number_format($returned, 2) }}</td>
+            </tr>
+        @endif
         <tr>
             <td>Paid</td>
             <td class="text-right">Rs {{ number_format($sale->amountPaid(), 2) }}</td>

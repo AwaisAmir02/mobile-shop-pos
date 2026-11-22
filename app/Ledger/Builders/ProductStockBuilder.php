@@ -50,7 +50,16 @@ class ProductStockBuilder implements EntryBuilder, PostsOnChangeDate
             ->get()
             ->sum(fn (StockWriteOffItem $item) => $item->cost_price !== null ? Quantity::money($item->cost_price, $item->quantity) : 0.0);
 
-        $value = round($worthNow + $sold + $writtenOff, 2);
+        // Came back on a return: the return itself puts that cost back into Inventory.
+        $returned = \App\Models\SaleReturnItem::withoutGlobalScopes()
+            ->where('product_id', $document->id)
+            ->whereNull('stock_in_id')
+            ->where('restocked', true)
+            ->whereIn('sale_return_id', \App\Models\SaleReturn::withoutGlobalScopes()->where('shop_id', $document->shop_id)->where('status', '!=', RecordStatus::Cancelled->value)->select('id'))
+            ->get()
+            ->sum(fn ($item) => $item->cost_price !== null ? Quantity::money($item->cost_price, $item->quantity) : 0.0);
+
+        $value = round($worthNow + $sold - $returned + $writtenOff, 2);
 
         if ($value == 0.0) {
             return [];

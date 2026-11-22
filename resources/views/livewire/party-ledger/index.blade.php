@@ -235,7 +235,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
         } else {
             $ids = $ids
                 ->concat(
-                    Sale::whereNotNull('customer_id')->withSum('payments', 'amount')->get()
+                    Sale::whereNotNull('customer_id')->withSum('payments', 'amount')->withSum('returns', 'due_reduction')->get()
                         ->filter(fn (Sale $sale) => $sale->amountDue() > 0)
                         ->pluck('customer_id')
                 )
@@ -368,7 +368,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
     {
         $canOpen = Auth::user()->hasAccessTo('sales');
 
-        return Sale::where('customer_id', $customer->id)->with('payments')->get()
+        return Sale::where('customer_id', $customer->id)->with(['payments', 'returns'])->get()
             ->flatMap(function (Sale $sale) use ($canOpen) {
                 $url = $canOpen ? route('sales.show', $sale) : null;
 
@@ -380,6 +380,15 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                     }
 
                     $movements[] = $this->movement('sale-payment-'.$payment->id, $payment->payment_date, $this->sortKey($payment->payment_date, $sale->id, 1, $payment->id), 'Payment received', $sale->invoiceNumber(), $url, 'credit', (float) $payment->amount);
+                }
+
+                // A return gives the goods' value back; money handed back on it is paid out again.
+                foreach ($sale->returns as $return) {
+                    $movements[] = $this->movement('sale-return-'.$return->id, $return->return_date, $this->sortKey($return->return_date, $sale->id, 2, $return->id), 'Return '.$return->number(), $sale->invoiceNumber(), $url, 'credit', (float) $return->value_total);
+
+                    if ((float) $return->refund_cash > 0) {
+                        $movements[] = $this->movement('sale-refund-'.$return->id, $return->return_date, $this->sortKey($return->return_date, $sale->id, 3, $return->id), 'Refund paid', $return->number(), $url, 'debit', (float) $return->refund_cash);
+                    }
                 }
 
                 return $movements;
@@ -529,7 +538,32 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
             'sales' => $this->section($this->salesMovements($party)),
             'udhaar' => $this->section($this->udhaarMovements($party)),
             'manual' => $this->section($this->manualMovements($party)),
+            ...($this->hasStoreCredit($party) ? ['store_credit' => $this->section($this->storeCreditMovements($party), -1)] : []),
         ];
+    }
+
+    protected function hasStoreCredit(?Customer $customer): bool
+    {
+        return $customer !== null && \App\Models\StoreCreditEntry::where('customer_id', $customer->id)->exists();
+    }
+
+    /**
+     * Store credit: given on a return (credit, the shop owes more), then spent,
+     * paid out or expired (debit). Its own balance, never netted with the rest.
+     */
+    protected function storeCreditMovements(Customer $customer): Collection
+    {
+        return \App\Models\StoreCreditEntry::where('customer_id', $customer->id)->get()
+            ->map(fn (\App\Models\StoreCreditEntry $entry) => $this->movement(
+                'credit-'.$entry->id,
+                $entry->entry_date,
+                $this->sortKey($entry->entry_date, $entry->id),
+                $entry->describe(),
+                $entry->note,
+                null,
+                (float) $entry->amount > 0 ? 'credit' : 'debit',
+                abs((float) $entry->amount),
+            ));
     }
 
     protected function sectionMeta(): array
@@ -545,6 +579,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
             'sales' => ['title' => 'Sales', 'description' => 'Sales on credit and the payments received against them.'],
             'udhaar' => ['title' => 'Udhaar', 'description' => 'Udhaar given and repaid. Recorded on the Udhaar screen.'],
             'manual' => ['title' => 'Opening & adjustments', 'description' => 'Entered by hand on this screen. Kept separate from Sales and Udhaar.'],
+            ...($this->hasStoreCredit($this->party() instanceof Customer ? $this->party() : null) ? ['store_credit' => ['title' => 'Store credit', 'description' => 'Given on returns (credit) and spent, paid out or expired (debit). What the shop holds for this customer, kept apart from the rest.']] : []),
         ];
     }
 

@@ -43,7 +43,10 @@ class SaleBuilder implements EntryBuilder
         $lines[] = Line::credit(Chart::INVENTORY, $cost, $date, $branch);
 
         foreach (SalePayment::withoutGlobalScopes()->where('sale_id', $document->id)->get() as $payment) {
-            $lines[] = Line::debit(self::paidInto($payment), $payment->amount, $payment->payment_date, $branch);
+            // Store credit is owed to one customer, so it keeps their name on the line.
+            $lines[] = $payment->payment_method === SalePaymentMethod::StoreCredit
+                ? Line::debit(Chart::CUSTOMER_CREDIT, $payment->amount, $payment->payment_date, $branch, 'customer', $customer)
+                : Line::debit(self::paidInto($payment), $payment->amount, $payment->payment_date, $branch);
             $lines[] = Line::credit(Chart::RECEIVABLE, $payment->amount, $payment->payment_date, $branch, 'customer', $customer);
         }
 
@@ -70,6 +73,8 @@ class SaleBuilder implements EntryBuilder
             $payment->shop_account_id !== null => Chart::bankCode($payment->shop_account_id),
             $payment->payment_method === SalePaymentMethod::Cash => Chart::CASH,
             $payment->payment_method === SalePaymentMethod::Account => Chart::BANK,
+            $payment->payment_method === SalePaymentMethod::TradeIn => Chart::TRADE_IN,
+            $payment->payment_method === SalePaymentMethod::Exchange => Chart::EXCHANGE_CLEARING,
             default => Chart::NOT_CLASSIFIED,
         };
     }

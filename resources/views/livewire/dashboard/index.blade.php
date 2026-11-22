@@ -133,7 +133,7 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
         // not scoped to the dashboard's period selector, which describes sales
         // activity in a window, not which sales still owe money right now.
         $totalSalesOutstanding = Sale::query()
-            ->withSum('payments', 'amount')
+            ->withSum('payments', 'amount')->withSum('returns', 'due_reduction')
             ->get()
             ->sum(fn (Sale $sale) => $sale->amountDue());
 
@@ -189,8 +189,8 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
     </div>
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <x-ui.stat tone="brand" label="Net (Revenue − Expenses)" value="Rs {{ number_format($netSummary, 2) }}" :sub="$periodLabel" />
-        <x-ui.stat label="Sales Revenue" value="Rs {{ number_format($totalRevenue, 2) }}" :sub="$periodLabel" />
+        <x-ui.stat tone="brand" :label="$totalReturns > 0 ? 'Net (Revenue − Returns − Expenses)' : 'Net (Revenue − Expenses)'" value="Rs {{ number_format($netSummary, 2) }}" :sub="$periodLabel" />
+        <x-ui.stat label="Sales Revenue" value="Rs {{ number_format($totalRevenue, 2) }}" :sub="$totalReturns > 0 ? 'Returns Rs '.number_format($totalReturns, 2).' · Net Rs '.number_format($netSales, 2) : $periodLabel" />
         <x-ui.stat label="Sales Outstanding" value="Rs {{ number_format($totalSalesOutstanding, 2) }}" sub="Across all unpaid/partial sales" />
         <x-ui.stat label="Expenses" value="Rs {{ number_format($totalExpenses, 2) }}" :sub="$periodLabel" />
     </div>

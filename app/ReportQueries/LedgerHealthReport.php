@@ -40,6 +40,7 @@ class LedgerHealthReport
             $this->costOfSales(),
             $this->employeeAdvances(),
             $this->withholdings(),
+            $this->storeCredit(),
         ];
     }
 
@@ -110,11 +111,12 @@ class LedgerHealthReport
     protected function receivable(): array
     {
         $paidBySale = DB::table('sale_payments')->where('shop_id', $this->shop->id)->groupBy('sale_id')->selectRaw('sale_id, SUM(amount) as paid')->pluck('paid', 'sale_id');
+        $returnedBySale = DB::table('sale_returns')->where('shop_id', $this->shop->id)->where('status', '!=', RecordStatus::Cancelled->value)->groupBy('sale_id')->selectRaw('sale_id, SUM(due_reduction) as returned')->pluck('returned', 'sale_id');
         $owed = 0.0;
         $overpaid = 0.0;
 
         foreach (DB::table('sales')->where('shop_id', $this->shop->id)->where('status', '!=', SaleStatus::Cancelled->value)->get(['id', 'total']) as $sale) {
-            $balance = (float) $sale->total - (float) ($paidBySale[$sale->id] ?? 0);
+            $balance = (float) $sale->total - (float) ($paidBySale[$sale->id] ?? 0) - (float) ($returnedBySale[$sale->id] ?? 0);
             $balance > 0 ? $owed += $balance : $overpaid += $balance;
         }
 
@@ -172,7 +174,23 @@ class LedgerHealthReport
             ->get()
             ->sum(fn (LedgerBaseline $baseline) => collect($baseline->lines)->where('account', Chart::COGS)->sum('paise'));
 
-        return $this->check('Cost of goods sold since the start', $this->ledgerBalance(Chart::COGS), $cost - $alreadyInOpening / 100, 0.0, 'The same cost the Gross Profit report uses, frozen on each sale line.');
+        // Goods back on the shelf from a return take their cost back out.
+        $returned = DB::table('sale_return_items')
+            ->join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+            ->where('sale_returns.shop_id', $this->shop->id)
+            ->where('sale_returns.status', '!=', RecordStatus::Cancelled->value)
+            ->where('sale_returns.return_date', '>=', $startDate)
+            ->where('sale_return_items.restocked', true)
+            ->whereNotNull('sale_return_items.cost_price')
+            ->get(['sale_return_items.cost_price', 'sale_return_items.quantity'])
+            ->sum(fn ($item) => Quantity::money($item->cost_price, $item->quantity));
+
+        $returnedInOpening = LedgerBaseline::where('shop_id', $this->shop->id)->where('epoch', $this->shop->ledger_epoch)->where('source_type', 'sale_return')
+            ->whereIn('source_id', DB::table('sale_returns')->where('shop_id', $this->shop->id)->where('return_date', '>=', $startDate)->select('id'))
+            ->get()
+            ->sum(fn (LedgerBaseline $baseline) => collect($baseline->lines)->where('account', Chart::COGS)->sum('paise'));
+
+        return $this->check('Cost of goods sold since the start', $this->ledgerBalance(Chart::COGS), $cost - $returned - ($alreadyInOpening + $returnedInOpening) / 100, 0.0, 'The same cost the Gross Profit report uses, frozen on each sale line, less what returns put back on the shelf.');
     }
 
     protected function employeeAdvances(): array
@@ -188,6 +206,13 @@ class LedgerHealthReport
         $held = OwnerMoney::withheldBalance($this->shop->id);
 
         return $this->check('Salary amounts held', -$this->ledgerBalance(Chart::WITHHOLDINGS), $held, 0.0, 'Held for someone else on paid payslips, less what has been paid over.');
+    }
+
+    protected function storeCredit(): array
+    {
+        $held = (float) DB::table('store_credit_entries')->where('shop_id', $this->shop->id)->where('status', '!=', RecordStatus::Cancelled->value)->sum('amount');
+
+        return $this->check('Store credit customers hold', -$this->ledgerBalance(Chart::CUSTOMER_CREDIT), $held, 0.0, 'Issued on returns, less what was spent, cashed out or expired.');
     }
 
     protected function netSales(): array

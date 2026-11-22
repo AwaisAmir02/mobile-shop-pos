@@ -12,6 +12,8 @@ enum ShopScreen: string
     case Sales = 'sales';
     case SalesEditCancel = 'sales-edit-cancel';
     case SalesViewCostPrice = 'sales-view-cost-price';
+    case SalesReturns = 'sales-returns';
+    case Promotions = 'promotions';
     case SimSales = 'sim-sales';
     case Udhaar = 'udhaar';
     case BalanceLoads = 'balance-loads';
@@ -60,6 +62,8 @@ enum ShopScreen: string
     case OnlineOrders = 'online-orders';
     case OnlineOrdersDecide = 'online-orders-decide';
     case CashBalances = 'cash-balances';
+    case Buybacks = 'buybacks';
+    case BuybacksCancel = 'buybacks-cancel';
 
     public function label(): string
     {
@@ -71,6 +75,8 @@ enum ShopScreen: string
             self::Customers => 'Customers',
             self::Sales => 'Sales',
             self::SalesEditCancel => 'Sales: Edit / Cancel',
+            self::SalesReturns => 'Sales: Returns',
+            self::Promotions => 'Promotions',
             self::SalesViewCostPrice => 'Sales: View Cost Price',
             self::SimSales => 'SIM Sale',
             self::Udhaar => 'Udhaar',
@@ -120,6 +126,8 @@ enum ShopScreen: string
             self::OnlineOrders => 'Online Store Orders',
             self::OnlineOrdersDecide => 'Online Store Orders: Accept / Reject',
             self::CashBalances => 'Cash & Balances (shows the shop\'s cash and account balances)',
+            self::Buybacks => 'Used Phone Buyback',
+            self::BuybacksCancel => 'Used Phone Buyback: Cancel',
         };
     }
 
@@ -134,6 +142,8 @@ enum ShopScreen: string
             self::Sales => 'sales.index',
             self::SalesEditCancel => 'sales.index',
             self::SalesViewCostPrice => 'sales.index',
+            self::SalesReturns => 'sales.history',
+            self::Promotions => 'promotions.index',
             self::SimSales => 'sim-sales.index',
             self::Udhaar => 'udhaar.index',
             self::BalanceLoads => 'balance-loads.index',
@@ -182,6 +192,8 @@ enum ShopScreen: string
             self::LedgerReports => 'ledger.trial-balance',
             self::OnlineOrders => 'online-orders.index',
             self::OnlineOrdersDecide => 'online-orders.index',
+            self::Buybacks => 'buybacks.index',
+            self::BuybacksCancel => 'buybacks.index',
         };
     }
 
@@ -197,7 +209,7 @@ enum ShopScreen: string
     {
         return [
             'Core' => [self::Dashboard, self::Products, self::Customers, self::Reports, self::PartyLedger],
-            'Inventory & Sales' => [self::StockIns, self::StockInsEditCancel, self::PurchaseOrders, self::ReceiveGoods, self::VendorInvoices, self::VendorInvoicesApprove, self::Vendors, self::Sales, self::SalesEditCancel, self::SalesViewCostPrice, self::SimSales, self::SimSalesEditCancel],
+            'Inventory & Sales' => [self::StockIns, self::StockInsEditCancel, self::Buybacks, self::BuybacksCancel, self::PurchaseOrders, self::ReceiveGoods, self::VendorInvoices, self::VendorInvoicesApprove, self::Vendors, self::Sales, self::SalesEditCancel, self::SalesReturns, self::SalesViewCostPrice, self::Promotions, self::SimSales, self::SimSalesEditCancel],
             'Financial Services' => [self::BalanceLoads, self::BalanceLoadsEditCancel, self::WalletLoads, self::WalletLoadsEditCancel, self::Bills, self::BillsEditCancel, self::Repairs, self::RepairsEditCancel, self::NadraVerifications, self::NadraVerificationsEditCancel, self::Udhaar, self::Expenses, self::ExpensesEditCancel, self::Services, self::ServicesEditCancel],
             'Online Selling' => [self::WhatsAppOrders, self::WhatsAppOrdersDecide, self::OnlineOrders, self::OnlineOrdersDecide, self::WhatsAppMessages, self::Marketing, self::MarketingAnalytics, self::MarketingAds],
             'Administration' => [self::Users, self::ShopAccounts, self::CashBalances, self::Branches, self::Payroll, self::PayrollRun, self::LedgerReports],

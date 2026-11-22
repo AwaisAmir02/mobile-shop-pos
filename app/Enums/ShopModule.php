@@ -20,6 +20,7 @@ enum ShopModule: string
     case Reports = 'reports';
     case PartyLedger = 'party-ledger';
     case StockIns = 'stock-ins';
+    case Buybacks = 'buybacks';
     case PurchaseOrders = 'purchase-orders';
     case Vendors = 'vendors';
     case Sales = 'sales';
@@ -55,8 +56,9 @@ enum ShopModule: string
     {
         return match ($this) {
             self::StockIns => [ShopScreen::StockIns, ShopScreen::StockInsEditCancel],
+            self::Buybacks => [ShopScreen::Buybacks, ShopScreen::BuybacksCancel],
             self::PurchaseOrders => [ShopScreen::PurchaseOrders, ShopScreen::ReceiveGoods, ShopScreen::VendorInvoices, ShopScreen::VendorInvoicesApprove],
-            self::Sales => [ShopScreen::Sales, ShopScreen::SalesEditCancel, ShopScreen::SalesViewCostPrice],
+            self::Sales => [ShopScreen::Sales, ShopScreen::SalesEditCancel, ShopScreen::SalesReturns, ShopScreen::SalesViewCostPrice, ShopScreen::Promotions],
             self::SimSales => [ShopScreen::SimSales, ShopScreen::SimSalesEditCancel, ShopScreen::SettingsNetworks],
             self::BalanceLoads => [ShopScreen::BalanceLoads, ShopScreen::BalanceLoadsEditCancel],
             self::WalletLoads => [ShopScreen::WalletLoads, ShopScreen::WalletLoadsEditCancel],
@@ -97,6 +99,40 @@ enum ShopModule: string
             self::Payroll => FeatureKey::Payroll,
             self::LedgerReports => FeatureKey::Ledger,
             self::SettingsBranding => FeatureKey::Branding,
+            default => null,
+        };
+    }
+
+    /**
+     * Features of which at least one must be on before anyone can reach this
+     * module, on top of its own switch. Mirrors the checks in the screens
+     * themselves: Marketing needs WhatsApp or Social posting
+     * (marketing.* abort_unless), Integrations any feature it connects
+     * (settings.index tab list).
+     *
+     * @return array<int, FeatureKey>
+     */
+    public function needsAnyOf(): array
+    {
+        return match ($this) {
+            self::Marketing => [FeatureKey::WhatsAppOrdering, FeatureKey::WhatsAppMessaging, FeatureKey::Social],
+            self::SettingsIntegrations => [FeatureKey::WhatsAppOrdering, FeatureKey::WhatsAppMessaging, FeatureKey::Social, FeatureKey::Ads, FeatureKey::OnlineStore, FeatureKey::Couriers],
+            default => [],
+        };
+    }
+
+    /** Only phone and electronics shops (Shop::sellsDevices()) can use it, whatever its switch says. */
+    public function devicesOnly(): bool
+    {
+        return $this === self::Buybacks;
+    }
+
+    public function needsLabel(): ?string
+    {
+        return match ($this) {
+            self::Buybacks => 'Only for Mobile & Electronics shops',
+            self::Marketing => 'Needs WhatsApp or Social posting',
+            self::SettingsIntegrations => 'Needs WhatsApp, Social posting, Meta ads, Online store or Courier booking',
             default => null,
         };
     }
@@ -146,7 +182,7 @@ enum ShopModule: string
     {
         return [
             'Core' => [self::Dashboard, self::Products, self::Customers, self::Reports, self::PartyLedger],
-            'Inventory & Sales' => [self::StockIns, self::PurchaseOrders, self::Vendors, self::Sales, self::SimSales],
+            'Inventory & Sales' => [self::StockIns, self::Buybacks, self::PurchaseOrders, self::Vendors, self::Sales, self::SimSales],
             'Financial Services' => [self::BalanceLoads, self::WalletLoads, self::Bills, self::Repairs, self::NadraVerifications, self::Udhaar, self::Expenses, self::Services],
             'Online Selling' => [self::WhatsAppOrders, self::OnlineOrders, self::WhatsAppMessages, self::Marketing, self::MarketingAds],
             'Administration' => [self::Users, self::ShopAccounts, self::CashBalances, self::Branches, self::Payroll, self::LedgerReports],

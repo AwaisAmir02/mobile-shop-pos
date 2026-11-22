@@ -20,18 +20,24 @@ class ChartOfAccounts
     public const RECEIVABLE = '1200';
     public const EMPLOYEE_ADVANCES = '1250';
     public const INVENTORY = '1300';
+    /** A traded-in phone: the sale's Trade-in payment and the buyback's payment meet here and net to zero. */
+    public const TRADE_IN = '1350';
+    public const EXCHANGE_CLEARING = '1360';
     public const CLEARING = '1400';
     public const CANCELLED_UNCONFIRMED = '1450';
     public const PAYABLE = '2000';
     public const WITHHOLDINGS = '2100';
+    public const CUSTOMER_CREDIT = '2200';
     public const CAPITAL = '3000';
     public const DRAWINGS = '3100';
     public const OPENING = '3200';
     public const PRIOR_PERIOD = '3300';
     public const SALES = '4000';
+    public const SALES_RETURNS = '4050';
     public const DISCOUNTS = '4100';
     public const SERVICE_INCOME = '4200';
     public const REPAIR_INCOME = '4300';
+    public const EXPIRED_CREDIT = '4400';
     public const COGS = '5000';
     public const WRITE_OFFS = '5100';
     public const ADJUSTMENTS = '5200';
@@ -46,24 +52,36 @@ class ChartOfAccounts
         self::RECEIVABLE => ['Accounts Receivable', LedgerAccount::ASSET],
         self::EMPLOYEE_ADVANCES => ['Employee Advances', LedgerAccount::ASSET],
         self::INVENTORY => ['Inventory', LedgerAccount::ASSET],
+        self::TRADE_IN => ['Trade-in Clearing', LedgerAccount::ASSET],
+        self::EXCHANGE_CLEARING => ['Exchange Clearing', LedgerAccount::ASSET],
         self::CLEARING => ['Agent Float & Clearing', LedgerAccount::ASSET],
         self::CANCELLED_UNCONFIRMED => ['Cancelled, Cash Unconfirmed', LedgerAccount::ASSET],
         self::PAYABLE => ['Accounts Payable', LedgerAccount::LIABILITY],
         self::WITHHOLDINGS => ['Withholdings Payable', LedgerAccount::LIABILITY],
+        self::CUSTOMER_CREDIT => ['Customer Store Credit', LedgerAccount::LIABILITY],
         self::CAPITAL => ["Owner's Capital", LedgerAccount::EQUITY],
         self::DRAWINGS => ["Owner's Drawings", LedgerAccount::EQUITY],
         self::OPENING => ['Opening Balances', LedgerAccount::EQUITY],
         self::PRIOR_PERIOD => ['Prior Period Adjustments', LedgerAccount::EQUITY],
         self::SALES => ['Sales', LedgerAccount::INCOME],
+        self::SALES_RETURNS => ['Sales Returns', LedgerAccount::INCOME],
         self::DISCOUNTS => ['Discounts Given', LedgerAccount::INCOME],
         self::SERVICE_INCOME => ['Service & Commission Income', LedgerAccount::INCOME],
         self::REPAIR_INCOME => ['Repair Income', LedgerAccount::INCOME],
+        self::EXPIRED_CREDIT => ['Expired Store Credit', LedgerAccount::INCOME],
         self::COGS => ['Cost of Goods Sold', LedgerAccount::EXPENSE],
         self::WRITE_OFFS => ['Inventory Write-offs', LedgerAccount::EXPENSE],
         self::ADJUSTMENTS => ['Inventory Adjustments', LedgerAccount::EXPENSE],
         self::SALARIES => ['Salaries & Wages', LedgerAccount::EXPENSE],
         self::EXPENSES => ['General Expenses', LedgerAccount::EXPENSE],
     ];
+
+    /**
+     * Accounts added to the chart after shops had already started their
+     * ledger: created the first time one is posted to. Any other missing
+     * account is a fault and fails the posting.
+     */
+    public const ADDED_LATER = [self::TRADE_IN, self::SALES_RETURNS, self::CUSTOMER_CREDIT, self::EXPIRED_CREDIT, self::EXCHANGE_CLEARING];
 
     public static function ensureFor(Shop $shop): void
     {
@@ -100,6 +118,9 @@ class ChartOfAccounts
             $shopAccountId !== null => self::bankCode($shopAccountId),
             $method === 'cash' => self::CASH,
             $method === 'account' => self::BANK,
+            $method === 'trade_in' => self::TRADE_IN,
+            $method === 'store_credit' => self::CUSTOMER_CREDIT,
+            $method === 'exchange' => self::EXCHANGE_CLEARING,
             default => $unrecorded,
         };
     }

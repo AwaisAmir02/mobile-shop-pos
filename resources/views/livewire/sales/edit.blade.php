@@ -1,6 +1,8 @@
 <?php
 
 use App\Actions\ConsumeStockFifo;
+use App\Actions\Promotions;
+use App\Models\Promotion;
 use App\Actions\UpdateSale;
 use App\Enums\QuantityUnit;
 use App\Livewire\Concerns\PromptsForMeasuredQuantity;
@@ -38,6 +40,13 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
     {
         abort_unless(Auth::user()->hasAccessTo('sales-edit-cancel'), 403);
         abort_if($sale->isCancelled(), 403, 'A cancelled sale cannot be edited.');
+
+        if ($sale->hasReturns()) {
+            session()->flash('status', 'This sale has a return ('.\App\Actions\SaleReturns::numbersFor($sale).'), so it can\'t be edited. Cancel the return first.');
+            $this->redirectRoute('sales.show', $sale, navigate: true);
+
+            return;
+        }
 
         $sale->loadMissing(['items', 'payments']);
 
@@ -84,7 +93,8 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
                 'custom_price' => $wasOverridden ? (string) $firstItem->unit_price : '',
                 'quantity' => $totalQuantity,
                 'unit' => $product->unit->value,
-                'discount' => (string) $itemsForProduct->sum('discount_amount'),
+                // The line's own discount; a promotion it was sold with is kept and worked out again.
+                'discount' => (string) round($itemsForProduct->sum('discount_amount') - $itemsForProduct->sum('promotion_discount'), 2),
                 'max_stock' => Quantity::add($product->stock_quantity, $totalQuantity),
             ];
         }
@@ -189,11 +199,33 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
             return 0.0;
         }
 
-        $allocations = $this->previewAllocations($product, $item);
-        $overridePrice = $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null;
-        $subLines = SaleCartMath::allocateLines($overridePrice, (float) $item['discount'], $allocations);
+        return array_sum(array_column($this->pricedLine($product, $item), 'line_total'));
+    }
 
-        return array_sum(array_column($subLines, 'line_total'));
+    /** The promotion this line was sold with, which an edit keeps (UpdateSale). */
+    protected function keptPromotion(int $productId): ?Promotion
+    {
+        $id = $this->sale->items->where('product_id', $productId)->whereNotNull('promotion_id')->first()?->promotion_id;
+
+        return $id !== null ? Promotion::withoutGlobalScopes()->find($id) : null;
+    }
+
+    protected function pricedLine(Product $product, array $item): array
+    {
+        $overridePrice = $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null;
+
+        return Promotions::priceLine($product, $overridePrice, (float) $item['discount'], $this->previewAllocations($product, $item), null, $this->keptPromotion($product->id));
+    }
+
+    /** @return array{name: string, offer: string, amount: float}|null */
+    public function promotionFor(array $item): ?array
+    {
+        $product = Product::find($item['product_id']);
+        $promotion = $product !== null ? $this->keptPromotion($product->id) : null;
+
+        return $promotion !== null
+            ? ['name' => $promotion->name, 'offer' => $promotion->offerLabel(), 'amount' => round(array_sum(array_column($this->pricedLine($product, $item), 'promotion_discount')), 2)]
+            : null;
     }
 
     protected function previewAllocations(Product $product, array $item): array
@@ -404,7 +436,7 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
                             </li>
                         @endforeach
                         @foreach ($cart as $productId => $item)
-                            <x-sales.cart-line :product-id="$productId" :item="$item" :line-total="$this->lineTotal($item)" :expiry-note="$this->expiryNote($item)" />
+                            <x-sales.cart-line :product-id="$productId" :item="$item" :line-total="$this->lineTotal($item)" :expiry-note="$this->expiryNote($item)" :promotion="$this->promotionFor($item)" />
                         @endforeach
                     </ul>
                 @endif

@@ -102,6 +102,27 @@ class BillingCycle
         };
     }
 
+    /**
+     * When the shop is next charged, for the admin screens: the trial's end
+     * (the first payment) while on or just past a trial, the end of the paid
+     * period once active, and start date + one period for a shop billed by
+     * hand. A trial shop's subscription_start_date is its signup day, so
+     * Shop::expectedRenewalDate() alone would put its renewal a month out.
+     */
+    public function nextChargeDate(Shop $shop): ?Carbon
+    {
+        return match ($this->phase($shop)) {
+            BillingPhase::Trial, BillingPhase::TrialEnded => $shop->trial_ends_at?->copy(),
+            BillingPhase::Active, BillingPhase::EndingSoon, BillingPhase::Lapsed => $this->renewsAt($shop),
+            BillingPhase::Manual => $shop->expectedRenewalDate(),
+        };
+    }
+
+    public function onTrial(Shop $shop): bool
+    {
+        return in_array($this->phase($shop), [BillingPhase::Trial, BillingPhase::TrialEnded], true);
+    }
+
     /** Whole days left, rounded up: 1 on the last day, 0 once it has ended. */
     public function daysLeft(Shop $shop): int
     {

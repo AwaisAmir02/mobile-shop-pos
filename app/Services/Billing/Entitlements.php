@@ -141,6 +141,8 @@ class Entitlements
         }
 
         $build = fn () => collect(LimitKey::cases())
+            // A limit whose feature the shop can't use has nothing to count: no "0 / Unlimited" for it.
+            ->filter(fn (LimitKey $key) => $this->limitInUse($shop, $key))
             ->map(fn (LimitKey $key) => $this->meter($shop, $key))
             // A single-branch shop gets no branch meter, banner or admin alert.
             ->reject(fn (array $meter) => $meter['key'] === LimitKey::Branches->value && $meter['used'] <= 1 && ! $everyLimit)
@@ -148,6 +150,24 @@ class Entitlements
             ->all();
 
         return $fresh || $everyLimit ? $build() : Cache::remember('entitlement-meters:'.$shop->id, 60, $build);
+    }
+
+    /**
+     * Whether the shop can use what this limit counts right now. Core limits
+     * always; a feature's limit only while that feature is on for the shop
+     * (plan, add-on or admin override, as the shop's column already says).
+     * Marketing posts can be made with WhatsApp alone as well as with
+     * Facebook & Instagram posting, the same rule the Marketing screens use.
+     */
+    public function limitInUse(Shop $shop, LimitKey $key): bool
+    {
+        if ($key === LimitKey::MarketingPostsPerMonth) {
+            return $shop->usesWhatsApp() || (bool) $shop->social_enabled;
+        }
+
+        $feature = $key->feature();
+
+        return $feature === null || (bool) $shop->{$feature->column()};
     }
 
     /** One limit's meter, always fresh (meters() lists them all, cached). */

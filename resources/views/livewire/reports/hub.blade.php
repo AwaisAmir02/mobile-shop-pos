@@ -25,6 +25,9 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
                 ['title' => 'Screen reports', 'text' => 'Filter, total and export the records of any screen: sales, stock in, loads, bills, repairs and more.', 'route' => 'reports.screens', 'icon' => 'table', 'show' => true],
                 ['title' => 'Gross profit', 'text' => 'Revenue against the cost of goods sold, product by product.', 'route' => 'profit.index', 'icon' => 'trend', 'show' => $user->hasAccessTo('sales-view-cost-price')],
                 ['title' => 'Sales history', 'text' => 'Every sale with its payment status, customer and invoice.', 'route' => 'sales.history', 'icon' => 'cart', 'show' => $user->hasAccessTo('sales')],
+                // Pharmacies, and any shop that has marked a medicine or has entries.
+                ['title' => 'Prescription register', 'text' => 'Every sale of a Prescription only or Controlled medicine, with the prescriber or emergency reason.', 'route' => 'prescriptions.index', 'icon' => 'table', 'show' => $user->hasAccessTo('sales') && ((bool) $shop?->business_category?->usesMedicineFields()
+                    || \App\Models\Product::query()->whereNotNull('rx_control')->exists() || \App\Models\SalePrescription::query()->exists())],
             ],
             'Stock' => [
                 ['title' => 'Stock In receipts', 'text' => 'Goods received, what they cost and what is still owed to vendors.', 'route' => 'stock-ins.history', 'icon' => 'box', 'show' => $user->hasAccessTo('stock-ins')],
@@ -34,6 +37,7 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
             'People' => [
                 ['title' => 'Party ledger', 'text' => 'A running statement for any customer or vendor.', 'route' => 'party-ledger.index', 'icon' => 'book', 'show' => $user->hasAccessTo('party-ledger')],
                 ['title' => 'Udhaar', 'text' => 'Who owes the shop, and how much.', 'route' => 'udhaar.index', 'icon' => 'coins', 'show' => $user->hasAccessTo('udhaar')],
+                ['title' => 'Store credit', 'text' => 'Credit given on returns, what has been used and who still holds it.', 'route' => 'store-credit.index', 'icon' => 'coins', 'show' => $user->hasAccessTo('sales-returns')],
                 ['title' => 'Payroll history', 'text' => 'Payslips and salaries paid, month by month.', 'route' => 'payroll.history', 'icon' => 'briefcase', 'show' => ModuleNav::payrollHistoryVisible($user)],
             ],
             'Accounts' => [

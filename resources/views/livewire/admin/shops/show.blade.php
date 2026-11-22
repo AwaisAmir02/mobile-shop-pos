@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\DeleteShop;
 use App\Enums\BusinessCategory;
 use App\Enums\FeatureKey;
 use App\Enums\LimitKey;
@@ -42,6 +43,8 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
     public string $extendDays = '7';
     /** @var array<string, string> per LimitKey value; blank = use the plan's limit */
     public array $limitOverrides = [];
+
+    public string $deleteConfirmName = '';
 
     public string $newPassword = '';
     public string $newPassword_confirmation = '';
@@ -154,8 +157,15 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $this->toastSuccess('Trial extended to '.$this->shop->trial_ends_at->format('d M Y, g:i a').'.');
     }
 
-    public function renewSubscription(): void
+    public function renewSubscription(BillingCycle $cycle): void
     {
+        // On a trial the first payment starts the paid period; renewing here would skip it and leave the signup invoice open.
+        if ($cycle->onTrial($this->shop)) {
+            $this->toastError('This shop is on its free trial. Its paid period starts when the first payment is confirmed.');
+
+            return;
+        }
+
         $this->shop->update([
             'subscription_start_date' => now()->toDateString(),
             'subscription_status' => SubscriptionStatus::Active->value,
@@ -166,6 +176,25 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $this->subscriptionStatus = $this->shop->subscription_status->value;
 
         $this->toastSuccess('Subscription renewed.');
+    }
+
+    /** Permanent; DeleteShop checks the typed name, the admin and that a backup has succeeded recently. */
+    public function deleteShop(): void
+    {
+        abort_unless(auth()->user()?->is_super_admin, 403);
+
+        $name = $this->shop->name;
+
+        try {
+            $result = DeleteShop::handle($this->shop, $this->deleteConfirmName, auth()->user());
+        } catch (\RuntimeException $e) {
+            $this->toastError($e->getMessage());
+
+            return;
+        }
+
+        $this->toastSuccess($name.' was deleted permanently ('.number_format(array_sum($result['tables'])).' records, '.$result['files'].' files).');
+        $this->redirectRoute('admin.dashboard', navigate: true);
     }
 
     public function resetPassword(): void
@@ -204,6 +233,18 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             && ($module->feature() === null || (bool) $this->shop->{$module->feature()->column()});
     }
 
+    /** Whether the features this module depends on let anyone reach it; its own switch is moduleOn(). */
+    public function moduleAvailable(ShopModule $module): bool
+    {
+        if ($module->devicesOnly() && ! $this->shop->sellsDevices()) {
+            return false;
+        }
+
+        $needs = $module->needsAnyOf();
+
+        return $needs === [] || collect($needs)->contains(fn (FeatureKey $feature) => (bool) $this->shop->{$feature->column()});
+    }
+
     /**
      * The one switch for a module and everything in it. A module backed by a
      * feature is switched by that feature (following the plan unless it is
@@ -214,6 +255,13 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
     public function toggleModule(string $module): void
     {
         $module = ShopModule::from($module);
+
+        if (! $this->moduleAvailable($module)) {
+            $this->toastError($module->label().': '.lcfirst($module->needsLabel()).' first.');
+
+            return;
+        }
+
         $turnOn = ! $this->moduleOn($module);
 
         $disabled = array_values(array_diff($this->shop->disabled_screens ?? [], $module->screenValues()));
@@ -322,7 +370,9 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             'customerCount' => $this->shop->customers()->count(),
             'udhaarOutstanding' => max(0.0, (float) $udhaarBalances),
             'loginEmail' => $this->shop->user?->loginLabel(),
-            'expectedRenewalDate' => $this->shop->expectedRenewalDate(),
+            'nextChargeDate' => app(BillingCycle::class)->nextChargeDate($this->shop),
+            'onTrial' => app(BillingCycle::class)->onTrial($this->shop),
+            'backupStale' => \App\Models\BackupRun::isStale(),
             'phase' => app(BillingCycle::class)->phase($this->shop),
             'cycleEndsAt' => app(BillingCycle::class)->endsAt($this->shop),
             'cycleDaysLeft' => app(BillingCycle::class)->daysLeft($this->shop),
@@ -331,6 +381,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             'governed' => app(Entitlements::class)->governed($this->shop),
             'hiddenModules' => BusinessCategories::hiddenModules($this->shop),
             'planLimits' => $this->shop->plan?->limits ?? [],
+            'limitsInUse' => collect(LimitKey::cases())->mapWithKeys(fn (LimitKey $key) => [$key->value => app(Entitlements::class)->limitInUse($this->shop, $key)])->all(),
             'meters' => app(Entitlements::class)->meters($this->shop, fresh: true),
             'shopAddons' => $this->shop->addons()->latest('id')->limit(10)->get(),
             'featureOverrides' => collect(FeatureKey::cases())
@@ -478,6 +529,23 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                 </x-ui.card>
                 </div>
             </div>
+
+            @if (auth()->user()?->is_super_admin)
+                <div class="mt-6 rounded-xl border border-danger/20 bg-surface p-5" data-danger-zone>
+                    <h3 class="text-sm font-semibold text-danger">Danger zone: delete this shop</h3>
+                    <p class="mt-1 text-sm text-ink-muted">Permanently deletes {{ $shop->name }} and everything in it: every user and login, product, sale, customer, payment, invoice and uploaded file. This can't be undone; only a backup can bring it back.</p>
+                    @if ($backupStale)
+                        <p class="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger" data-delete-blocked>No backup has succeeded in the last {{ config('backup.stale_after_hours') }} hours, so deleting is switched off. <a href="{{ route('admin.backups') }}" wire:navigate class="font-semibold underline">Fix backups first</a>.</p>
+                    @else
+                        <form wire:submit="deleteShop" class="mt-4 flex flex-wrap items-end gap-3">
+                            <x-ui.field label="Type the shop's name to confirm" name="deleteConfirmName" for="deleteConfirmName" class="min-w-0 flex-1">
+                                <x-ui.input wire:model="deleteConfirmName" id="deleteConfirmName" autocomplete="off" placeholder="{{ $shop->name }}" />
+                            </x-ui.field>
+                            <x-ui.button type="submit" variant="danger" size="sm" confirm="Permanently delete {{ $shop->name }} and all its data? This cannot be undone." wire:loading.attr="disabled" wire:target="deleteShop">Delete shop permanently</x-ui.button>
+                        </form>
+                    @endif
+                </div>
+            @endif
         </div>
 
         <div id="shop-panel-billing" role="tabpanel" aria-labelledby="shop-tab-billing" tabindex="0" x-show="tab === 'billing'" x-cloak>
@@ -485,11 +553,13 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                 {{-- Full width when there are no meters to show beside it (shop not on a plan). --}}
                 <div @class(['space-y-6', 'lg:col-span-2' => $meters !== [], 'lg:col-span-3' => $meters === []])>
                 <x-ui.card title="Subscription">
-                    <x-slot name="actions">
-                        <x-ui.button type="button" size="sm" variant="secondary" wire:click="renewSubscription">
-                            Renew Now
-                        </x-ui.button>
-                    </x-slot>
+                    @unless ($onTrial)
+                        <x-slot name="actions">
+                            <x-ui.button type="button" size="sm" variant="secondary" wire:click="renewSubscription">
+                                Renew Now
+                            </x-ui.button>
+                        </x-slot>
+                    @endunless
 
                     <form wire:submit="saveSubscription" class="space-y-4">
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -522,9 +592,9 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                                 <x-ui.input wire:model="subscriptionStartDate" id="subscriptionStartDate" type="date" />
                             </x-ui.field>
 
-                            <x-ui.field label="Expected Renewal">
-                                <p class="py-2.5 text-sm text-ink-muted">
-                                    {{ $expectedRenewalDate?->format('d M Y') ?? 'N/A' }}
+                            <x-ui.field :label="$onTrial ? 'Trial ends / first payment' : 'Expected Renewal'">
+                                <p class="py-2.5 text-sm text-ink-muted" data-next-charge>
+                                    {{ $nextChargeDate?->format('d M Y') ?? 'N/A' }}
                                 </p>
                             </x-ui.field>
 
@@ -554,7 +624,13 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                             <p class="mt-0.5 text-xs text-ink-faint">{{ $governed ? 'Leave blank to use the plan’s limit. A number here replaces it for this shop only.' : 'Not enforced — limits only apply to shops on a plan.' }}</p>
                             <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 @foreach (LimitKey::cases() as $limitKey)
-                                    <x-ui.field :label="$limitKey->label()" :name="'limitOverrides.'.$limitKey->value" :for="'limit-override-'.$limitKey->value" :help="$governed ? 'Plan: '.(array_key_exists($limitKey->value, $planLimits) && $planLimits[$limitKey->value] !== null ? number_format($planLimits[$limitKey->value]) : 'unlimited') : null">
+                                    @php
+                                        $limitHelp = $governed ? 'Plan: '.(array_key_exists($limitKey->value, $planLimits) && $planLimits[$limitKey->value] !== null ? number_format($planLimits[$limitKey->value]) : 'unlimited') : null;
+                                        if ($governed && ! $limitsInUse[$limitKey->value]) {
+                                            $limitHelp .= ' · Feature off for this shop ('.($limitKey === LimitKey::MarketingPostsPerMonth ? 'needs WhatsApp or Social posting' : $limitKey->feature()->label().' is off').'), so nothing is counted';
+                                        }
+                                    @endphp
+                                    <x-ui.field :label="$limitKey->label()" :name="'limitOverrides.'.$limitKey->value" :for="'limit-override-'.$limitKey->value" :help="$limitHelp">
                                         <x-ui.input wire:model="limitOverrides.{{ $limitKey->value }}" id="limit-override-{{ $limitKey->value }}" type="number" :min="$limitKey->minimum()" placeholder="Plan default" />
                                     </x-ui.field>
                                 @endforeach
@@ -756,13 +832,17 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                                 <div class="divide-y divide-line rounded-lg border border-line">
                                     @foreach ($groupModules as $module)
                                         @php
-                                            $enabled = $this->moduleOn($module);
+                                            $available = $this->moduleAvailable($module);
+                                            $enabled = $available && $this->moduleOn($module);
                                             $feature = $module->feature();
                                             $confirm = ($enabled ? 'Turn off ' : 'Turn on ').$module->label().' for this shop?'.($feature ? ' '.$feature->adminSwitch()['description'] : '');
                                         @endphp
-                                        <div class="flex items-center justify-between gap-3 px-4 py-2.5" wire:key="module-{{ $module->value }}">
+                                        <div @class(['flex items-center justify-between gap-3 px-4 py-2.5', 'opacity-60' => ! $available]) wire:key="module-{{ $module->value }}" @if (! $available) data-module-unavailable="{{ $module->value }}" @endif>
                                             <div class="min-w-0">
                                                 <span class="text-sm font-medium text-ink">{{ $module->label() }}</span>
+                                                @if (! $available)
+                                                    <p class="text-xs text-ink-faint">{{ $module->needsLabel() }}</p>
+                                                @endif
                                                 @if ($feature && $governed && $feature->planControlled())
                                                     <x-ui.badge class="ml-1">Plan</x-ui.badge>
                                                 @endif
@@ -778,10 +858,16 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                                                 role="switch"
                                                 aria-checked="{{ $enabled ? 'true' : 'false' }}"
                                                 aria-label="{{ $enabled ? 'Turn off' : 'Turn on' }} {{ $module->label() }}"
-                                                wire:click="toggleModule('{{ $module->value }}')"
-                                                wire:confirm="{{ $confirm }}"
+                                                @if ($available)
+                                                    wire:click="toggleModule('{{ $module->value }}')"
+                                                    wire:confirm="{{ $confirm }}"
+                                                @else
+                                                    disabled
+                                                    title="{{ $module->needsLabel() }}"
+                                                @endif
                                                 @class([
                                                     'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                                                    'cursor-not-allowed' => ! $available,
                                                     'bg-success' => $enabled,
                                                     'bg-line-strong' => ! $enabled,
                                                 ])

@@ -55,4 +55,42 @@ class RestoreStockFifo
 
         return $skipped;
     }
+
+    /**
+     * Part of one item back to the exact batch it was sold from (or to the
+     * product's own stock for an item that had no batch). Never re-runs the
+     * sell order, so no other batch and no later sale's cost can move. The
+     * caller checks the quantity against what's left to return and must
+     * already be inside a transaction.
+     *
+     * @return bool false when the product or its batch no longer exists
+     */
+    public static function restoreFromItem(SaleItem $item, int|float|string $quantity): bool
+    {
+        if ($item->product_id === null) {
+            return false;
+        }
+
+        $quantity = Quantity::normalize($quantity);
+        $batch = null;
+
+        if ($item->stock_in_id !== null) {
+            $batch = StockIn::withoutGlobalScopes()->whereKey($item->stock_in_id)->lockForUpdate()->first();
+
+            if ($batch === null) {
+                return false;
+            }
+        }
+
+        $product = Product::withoutGlobalScopes()->whereKey($item->product_id)->lockForUpdate()->first();
+
+        if ($product === null) {
+            return false;
+        }
+
+        $batch?->increment('quantity_remaining', $quantity);
+        $product->increment('stock_quantity', $quantity);
+
+        return true;
+    }
 }

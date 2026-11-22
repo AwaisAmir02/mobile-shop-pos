@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Shop;
+use App\Services\Billing\BillingCycle;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
@@ -20,6 +21,7 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
     public function with(): array
     {
         return [
+            'cycle' => app(BillingCycle::class),
             'shops' => Shop::query()
                 ->with('plan')
                 ->withCount(['products', 'users'])
@@ -86,7 +88,10 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
                         @endif
                     </x-ui.table-cell>
                     <x-ui.table-cell label="Status">
-                        @if ($shop->isSubscriptionActive())
+                        @php($shopPhase = $cycle->phase($shop))
+                        @if ($shopPhase === \App\Enums\BillingPhase::Trial || $shopPhase === \App\Enums\BillingPhase::TrialEnded)
+                            <x-ui.badge :variant="$shopPhase->badge()" data-trial-badge>{{ $shopPhase->label() }}</x-ui.badge>
+                        @elseif ($shop->isSubscriptionActive())
                             <x-ui.badge variant="success">Active</x-ui.badge>
                         @else
                             <x-ui.badge variant="danger">Inactive</x-ui.badge>
@@ -97,7 +102,7 @@ new #[Layout('layouts.app')] #[Title('Shops')] class extends Component
                         @endif
                     </x-ui.table-cell>
                     <x-ui.table-cell label="Start Date">{{ $shop->subscription_start_date?->format('d M Y') ?? '—' }}</x-ui.table-cell>
-                    <x-ui.table-cell label="Renewal">{{ $shop->expectedRenewalDate()?->format('d M Y') ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Renewal">{{ $cycle->nextChargeDate($shop)?->format('d M Y') ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell label="Products">{{ $shop->products_count }}</x-ui.table-cell>
                     <x-ui.table-cell label="Users">{{ $shop->users_count }}</x-ui.table-cell>
                     <x-ui.table-cell actions align="right">

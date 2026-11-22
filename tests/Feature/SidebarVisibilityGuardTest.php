@@ -41,6 +41,7 @@ class SidebarVisibilityGuardTest extends TestCase
         'Dashboard' => '/dashboard',
         'Products' => '/products',
         'Sales' => '/sales',
+        'Promotions' => '/promotions',
         'Wallet Loads' => '/wallet-loads/history',
         'NADRA Verification' => '/nadra-verifications/history',
         'Expenses' => '/expenses',
@@ -49,6 +50,8 @@ class SidebarVisibilityGuardTest extends TestCase
         'Balance Loads' => '/balance-loads/history',
         'Bills' => '/bills/history',
         'Stock In' => '/stock-ins/history',
+        // The guard shop has no business category, so it counts as a phone shop (Shop::sellsDevices()).
+        'Used Phone Buyback' => '/buybacks',
         'Vendors' => '/vendors',
         'Customers' => '/customers',
         'Repairs' => '/repairs/history',
@@ -132,6 +135,8 @@ class SidebarVisibilityGuardTest extends TestCase
             'customers' => [['Customers' => '/customers']],
             'sales' => [['Sales' => '/sales']],
             'sales-edit-cancel' => [[]],
+            'sales-returns' => [[]],
+            'promotions' => [['Promotions' => '/promotions']],
             'sales-view-cost-price' => [[]],
             'sim-sales' => [['SIM Sale' => '/sim-sales/history']],
             'udhaar' => [['Udhaar' => '/udhaar']],
@@ -181,6 +186,8 @@ class SidebarVisibilityGuardTest extends TestCase
             'ledger-reports' => [['Accounts' => '/ledger/trial-balance']],
             'online-orders' => [['Online Store Orders' => '/online-orders']],
             'online-orders-decide' => [[]],
+            'buybacks' => [['Used Phone Buyback' => '/buybacks']],
+            'buybacks-cancel' => [[]],
         ];
     }
 

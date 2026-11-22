@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Enums\QuantityUnit;
 use App\Enums\SaleRevisionAction;
 use App\Models\Product;
+use App\Models\Promotion;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SaleRevision;
@@ -30,6 +31,9 @@ class UpdateSale
                 throw new \RuntimeException('A cancelled sale cannot be edited.');
             }
 
+            // Its returns point at these exact lines, which an edit rebuilds.
+            SaleReturns::assertNoReturns($sale, 'total', 'edited');
+
             $sale->loadMissing(['items', 'payments']);
 
             $alreadyPaid = (float) $sale->payments()->sum('amount');
@@ -51,6 +55,7 @@ class UpdateSale
                     'quantity' => $item->quantity,
                     'unit' => $item->unit->value,
                     'discount_amount' => (float) $item->discount_amount,
+                    'promotion_discount' => (float) $item->promotion_discount,
                     'line_total' => (float) $item->line_total,
                 ])->all(),
             ];
@@ -89,7 +94,9 @@ class UpdateSale
                         'unit' => $unit,
                         'discount_amount' => $discount,
                         'line_total' => $lineTotal,
-                    ] + (($kept = $previousOrphans->get($line['product_name'])) ? ['serial_number' => $kept->serial_number, 'warranty_months' => $kept->warranty_months, 'warranty_type' => $kept->warranty_type] : []);
+                    ] + (($kept = $previousOrphans->get($line['product_name'])) ? ['serial_number' => $kept->serial_number, 'warranty_months' => $kept->warranty_months, 'warranty_type' => $kept->warranty_type] : [])
+                      // Its promotion stays recorded, as far as the discount still covers it.
+                      + ($kept?->promotion_id !== null ? ['promotion_id' => $kept->promotion_id, 'promotion_name' => $kept->promotion_name, 'promotion_discount' => min((float) $kept->promotion_discount, $discount)] : []);
 
                     continue;
                 }
@@ -114,11 +121,17 @@ class UpdateSale
                 $allocations = ConsumeStockFifo::handle($product, $quantity);
                 BatchExpiry::assertNotDrawingExpired($product, $allocations, 'lines', $alreadyHeld);
                 $overridePrice = $line['custom_price'] !== null ? (float) $line['custom_price'] : null;
-                $subLines = SaleCartMath::allocateLines($overridePrice, (float) $line['discount'], $allocations);
+                $previous = $previousByProduct->get($product->id);
+                // An edit keeps the promotion the line was sold with, worked out again on the
+                // new quantity and price, and never adds one. 'discount' is the line's own.
+                $keptPromotion = $previous?->promotion_id !== null ? Promotion::withoutGlobalScopes()->find($previous->promotion_id) : null;
+                $subLines = Promotions::priceLine($product, $overridePrice, (float) $line['discount'], $allocations, null, $keptPromotion);
+                // Still whole packs after the edit: it keeps the pack it was sold in.
+                $pack = SaleItem::packAttributes($line['pack_name'] ?? $previous?->pack_name, $line['pack_size'] ?? $previous?->pack_size, $quantity);
 
                 foreach ($subLines as $subLine) {
                     $subtotal += $subLine['line_total'];
-                    $newItemsData[] = [
+                    $newItemsData[] = $pack + [
                         'product_id' => $product->id,
                         'stock_in_id' => $subLine['stock_in_id'],
                         'product_name' => $line['product_name'],
@@ -129,6 +142,9 @@ class UpdateSale
                         'quantity' => $subLine['quantity'],
                         'unit' => $product->unit,
                         'discount_amount' => $subLine['discount_amount'],
+                        'promotion_id' => $subLine['promotion_id'],
+                        'promotion_name' => $subLine['promotion_name'],
+                        'promotion_discount' => $subLine['promotion_discount'],
                         'line_total' => $subLine['line_total'],
                     ] + SaleItem::warrantyAttributesFor($product, $previousByProduct->get($product->id));
                 }
@@ -178,6 +194,9 @@ class UpdateSale
                 'snapshot' => $snapshot,
                 'created_at' => now(),
             ]);
+
+            // The register follows the new quantities and keeps the sale's details.
+            Prescriptions::syncForSale($sale, null, $userId);
 
             return $sale->fresh(['items', 'payments']);
         });

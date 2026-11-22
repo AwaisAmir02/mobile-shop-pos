@@ -116,11 +116,26 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
 
         [$paymentMethod, $shopAccountId] = $this->chosenPaymentMethod();
 
-        RecordSalePayment::handle($sale, (float) $this->paymentAmount, Auth::id(), $paymentMethod, $shopAccountId);
+        try {
+            RecordSalePayment::handle($sale, (float) $this->paymentAmount, Auth::id(), $paymentMethod, $shopAccountId);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Store credit's own errors (not enough of it) belong under the amount.
+            throw $paymentMethod === \App\Enums\SalePaymentMethod::StoreCredit->value
+                ? \Illuminate\Validation\ValidationException::withMessages(['paymentAmount' => collect($e->errors())->flatten()->first()])
+                : $e;
+        }
 
         $this->toastSuccess('Payment recorded.');
         $this->dispatch('close-modal', name: 'record-payment-form');
         $this->reset(['payingId', 'paymentAmount', 'paymentMethod']);
+    }
+
+    /** The store credit the customer of the sale being paid can use. */
+    public function payingCredit(): float
+    {
+        $customerId = $this->payingId ? Sale::withoutGlobalScope(ExcludesCancelledSalesScope::class)->whereKey($this->payingId)->value('customer_id') : null;
+
+        return $customerId ? \App\Actions\StoreCredit::spendable((int) $customerId) : 0.0;
     }
 
     public function closePaymentForm(): void
@@ -226,6 +241,9 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
                         @else
                             <x-ui.badge variant="danger">Unpaid</x-ui.badge>
                         @endif
+                        @if (! $sale->isCancelled() && $sale->hasReturns())
+                            <x-ui.badge variant="info" data-has-returns>Returns</x-ui.badge>
+                        @endif
                     </x-ui.table-cell>
                     <x-ui.table-cell actions align="right">
                         <x-ui.row-actions label="Actions for {{ $sale->invoiceNumber() }}">
@@ -233,7 +251,10 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
                                 <x-ui.menu-item wire:click="openRecordPayment({{ $sale->id }})">Record Payment</x-ui.menu-item>
                             @endif
                             <x-ui.menu-item wire:click="downloadInvoice({{ $sale->id }})">Download</x-ui.menu-item>
-                            @if (! $sale->isCancelled() && auth()->user()->hasAccessTo('sales-edit-cancel'))
+                            @if (! $sale->isCancelled() && auth()->user()->hasAccessTo('sales-returns'))
+                                <x-ui.menu-item href="{{ route('sales.return', $sale) }}" wire:navigate>Return Items</x-ui.menu-item>
+                            @endif
+                            @if (! $sale->isCancelled() && ! $sale->hasReturns() && auth()->user()->hasAccessTo('sales-edit-cancel'))
                                 <x-ui.menu-item href="{{ route('sales.edit', $sale) }}" wire:navigate>Edit</x-ui.menu-item>
                                 <x-ui.menu-divider />
                                 <x-ui.menu-item danger wire:click="openCancel({{ $sale->id }})">Delete</x-ui.menu-item>
@@ -258,7 +279,7 @@ new #[Layout('layouts.app')] #[Title('Sales History')] class extends Component
                     <x-ui.input wire:model="paymentAmount" id="paymentAmount" type="number" min="0.01" step="0.01" autofocus />
                 </x-ui.field>
 
-                <x-sales.payment-method-picker :accounts="$this->paymentAccounts()" :value="$paymentMethod" amount="paymentAmount" />
+                <x-sales.payment-method-picker :accounts="$this->paymentAccounts()" :value="$paymentMethod" amount="paymentAmount" :credit="$this->payingCredit()" />
             </div>
 
             <div class="mt-6 flex justify-end gap-3">

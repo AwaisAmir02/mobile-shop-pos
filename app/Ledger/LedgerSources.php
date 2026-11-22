@@ -37,6 +37,8 @@ class LedgerSources
     public const DOCUMENTS = [
         'expense' => ['model' => Expense::class, 'builder' => Builders\ExpenseBuilder::class],
         'sale' => ['model' => Sale::class, 'builder' => Builders\SaleBuilder::class],
+        'sale_return' => ['model' => \App\Models\SaleReturn::class, 'builder' => Builders\SaleReturnBuilder::class],
+        'store_credit' => ['model' => \App\Models\StoreCreditEntry::class, 'builder' => Builders\StoreCreditBuilder::class],
         'stock_in' => ['model' => StockIn::class, 'builder' => Builders\StockInBuilder::class],
         'stock_write_off' => ['model' => StockWriteOff::class, 'builder' => Builders\StockWriteOffBuilder::class],
         'udhaar' => ['model' => UdhaarTransaction::class, 'builder' => Builders\UdhaarBuilder::class],
@@ -59,6 +61,7 @@ class LedgerSources
     public const CHILDREN = [
         SaleItem::class => ['sale', 'sale_id'],
         SalePayment::class => ['sale', 'sale_id'],
+        \App\Models\SaleReturnItem::class => ['sale_return', 'sale_return_id'],
         StockInPayment::class => ['stock_in', 'stock_in_id'],
         VendorInvoiceLine::class => ['stock_in', 'stock_in_id'],
     ];

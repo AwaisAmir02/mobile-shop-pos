@@ -70,6 +70,12 @@ enum BusinessCategory: string
         return in_array($this, [self::Kiryana, self::Pharmacy], true);
     }
 
+    /** Pharmacies record each medicine's generic (salt) name and DRAP registration number. */
+    public function usesMedicineFields(): bool
+    {
+        return $this === self::Pharmacy;
+    }
+
     public function starterCategories(): array
     {
         return match ($this) {

@@ -19,6 +19,8 @@ class StockInReport implements ScreenReport
 
     protected ?bool $showsExpiryCache = null;
 
+    protected ?bool $showsBatchCache = null;
+
     public function __construct(
         protected string $from = '',
         protected string $to = '',
@@ -90,6 +92,12 @@ class StockInReport implements ScreenReport
         return $this->showsExpiryCache ??= $this->query()->whereNotNull('stock_ins.expiry_date')->exists();
     }
 
+    /** A Batch column only appears once a row has a batch number. */
+    public function showsBatch(): bool
+    {
+        return $this->showsBatchCache ??= $this->query()->whereNotNull('stock_ins.batch_number')->exists();
+    }
+
     public function filtersSummary(): string
     {
         $parts = [];
@@ -126,7 +134,7 @@ class StockInReport implements ScreenReport
 
     public function tableHeaders(): array
     {
-        return ['Date', 'Product', 'Vendor', 'Quantity', 'Remaining', ...($this->showsUnits() ? ['Unit'] : []), ...($this->showsExpiry() ? ['Expires'] : []), 'Cost Price', 'Selling Price', 'Payment', 'Owed', 'Note', 'Entered By'];
+        return ['Date', 'Product', 'Vendor', 'Quantity', 'Remaining', ...($this->showsUnits() ? ['Unit'] : []), ...($this->showsExpiry() ? ['Expires'] : []), ...($this->showsBatch() ? ['Batch No.'] : []), 'Cost Price', 'Selling Price', 'Payment', 'Owed', 'Note', 'Entered By'];
     }
 
     public function tableRows(bool $forExcel): array
@@ -141,15 +149,16 @@ class StockInReport implements ScreenReport
             $sellingPrice = $entry->selling_price !== null ? (float) $entry->selling_price : null;
             $unitCell = $this->showsUnits() ? [$entry->unit->symbol()] : [];
             $expiryCell = $this->showsExpiry() ? [$forExcel ? TableExport::excelDate($entry->expiry_date) : ($entry->expiry_date?->format('d M Y') ?? '—')] : [];
+            $batchCell = $this->showsBatch() ? [TableExportService::sanitizeCell($entry->batch_number ?? ($forExcel ? '' : '—'))] : [];
 
             return $forExcel
-                ? [TableExport::excelDate($entry->stock_date), $product, $vendor, $entry->quantity, $entry->quantity_remaining, ...$unitCell, ...$expiryCell, $costPrice, $sellingPrice, $status, (float) $entry->amountOwed(), $note, $enteredBy]
-                : [$entry->stock_date->format('d M Y'), $product, $vendor, Quantity::plain($entry->quantity), Quantity::plain($entry->quantity_remaining), ...$unitCell, ...$expiryCell, $costPrice !== null ? 'Rs '.number_format($costPrice, 2) : '—', $sellingPrice !== null ? 'Rs '.number_format($sellingPrice, 2) : '—', $status, $entry->amountOwed() > 0 ? 'Rs '.number_format($entry->amountOwed(), 2) : '—', $note ?: '—', $enteredBy];
+                ? [TableExport::excelDate($entry->stock_date), $product, $vendor, $entry->quantity, $entry->quantity_remaining, ...$unitCell, ...$expiryCell, ...$batchCell, $costPrice, $sellingPrice, $status, (float) $entry->amountOwed(), $note, $enteredBy]
+                : [$entry->stock_date->format('d M Y'), $product, $vendor, Quantity::plain($entry->quantity), Quantity::plain($entry->quantity_remaining), ...$unitCell, ...$expiryCell, ...$batchCell, $costPrice !== null ? 'Rs '.number_format($costPrice, 2) : '—', $sellingPrice !== null ? 'Rs '.number_format($sellingPrice, 2) : '—', $status, $entry->amountOwed() > 0 ? 'Rs '.number_format($entry->amountOwed(), 2) : '—', $note ?: '—', $enteredBy];
         })->all();
     }
 
     public function columnTypes(): array
     {
-        return ['date', 'string', 'string', 'quantity', 'quantity', ...($this->showsUnits() ? ['string'] : []), ...($this->showsExpiry() ? ['date'] : []), 'currency', 'currency', 'string', 'currency', 'string', 'string'];
+        return ['date', 'string', 'string', 'quantity', 'quantity', ...($this->showsUnits() ? ['string'] : []), ...($this->showsExpiry() ? ['date'] : []), ...($this->showsBatch() ? ['string'] : []), 'currency', 'currency', 'string', 'currency', 'string', 'string'];
     }
 }

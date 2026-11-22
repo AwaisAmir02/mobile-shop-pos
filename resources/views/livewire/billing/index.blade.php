@@ -309,7 +309,8 @@ new #[Layout('layouts.app')] #[Title('Plan & Usage')] class extends Component
                                 @endif
 
                                 <ul class="mt-3 space-y-1 text-sm">
-                                    @foreach (LimitKey::cases() as $key)
+                                    {{-- A feature's limit only for a plan with that feature, as on the pricing page. --}}
+                                    @foreach (collect(LimitKey::cases())->filter(fn (LimitKey $key) => $key->feature() === null || $plan->includes($key->feature())) as $key)
                                         @php($planLimit = ($plan->limits ?? [])[$key->value] ?? null)
                                         <li class="flex justify-between gap-2">
                                             <span class="text-ink-muted">{{ $key->label() }}</span>

@@ -20,7 +20,7 @@ use Illuminate\Validation\ValidationException;
 class ReceiveGoods
 {
     /**
-     * @param  array<int, array{po_line_id: int, quantity: int|float|string, cost_price: ?float, selling_price: float, expiry_date?: ?string}>  $lines
+     * @param  array<int, array{po_line_id: int, quantity: int|float|string, cost_price: ?float, selling_price: float, expiry_date?: ?string, batch_number?: ?string}>  $lines
      */
     public static function handle(PurchaseOrder $order, array $lines, string $receivedOn, ?int $branchId, ?string $note, ?int $userId, bool $confirmOverReceipt = false): Grn
     {
@@ -105,6 +105,7 @@ class ReceiveGoods
                     'cost_price' => $line['cost_price'],
                     'selling_price' => $line['selling_price'],
                     'expiry_date' => $line['expiry_date'] ?? null,
+                    'batch_number' => $line['batch_number'] ?? null,
                     'grn_line_id' => $grnLine->id,
                 ];
             }

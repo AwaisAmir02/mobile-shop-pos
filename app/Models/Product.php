@@ -31,9 +31,14 @@ class Product extends Model
         'shop_id',
         'product_group_id',
         'variant_label',
+        'variant_size',
+        'variant_colour',
         'type',
         'name',
         'barcode',
+        'generic_name',
+        'drap_reg_no',
+        'rx_control',
         'image_path',
         'price',
         'cost_price',
@@ -45,6 +50,9 @@ class Product extends Model
         'pack_name',
         'pack_size',
         'pack_price',
+        'outer_pack_name',
+        'outer_pack_size',
+        'outer_pack_price',
         'whatsapp_listed',
         'archived_at',
         'details',
@@ -64,6 +72,8 @@ class Product extends Model
             'warranty_type' => WarrantyType::class,
             'pack_size' => 'integer',
             'pack_price' => 'decimal:2',
+            'outer_pack_size' => 'integer',
+            'outer_pack_price' => 'decimal:2',
             'whatsapp_listed' => 'boolean',
             'archived_at' => 'datetime',
             'details' => 'array',
@@ -75,6 +85,17 @@ class Product extends Model
         // Every save, whichever screen or service it came from.
         static::saving(function (Product $product) {
             $product->enforceUnitRules();
+
+            if ($product->isDirty('generic_name')) {
+                $product->generic_name = self::normalizeGenericName($product->generic_name);
+            }
+
+            // A label typed by hand: size and colour follow it unless the caller set them.
+            if ($product->isDirty('variant_label') && ! $product->isDirty('variant_size') && ! $product->isDirty('variant_colour')) {
+                $product->forceFill($product->product_group_id !== null
+                    ? \App\Services\ProductGroupService::optionColumns($product->variant_label)
+                    : ['variant_size' => null, 'variant_colour' => null]);
+            }
         });
 
         static::updated(function (Product $product) {
@@ -83,6 +104,24 @@ class Product extends Model
                 $product->saveQuietly();
             }
         });
+    }
+
+    /**
+     * "paracetamol  500 MG" and "Paracetamol 500mg" are the same salt and
+     * strength, so they're stored alike and match as substitutes. Spacing
+     * and a space before the unit are tidied; the shop's own wording stays.
+     */
+    public static function normalizeGenericName(?string $name): ?string
+    {
+        $name = trim(preg_replace('/\s+/u', ' ', (string) $name));
+
+        if ($name === '') {
+            return null;
+        }
+
+        $name = preg_replace_callback('/(\d)\s*(mg|mcg|µg|g|ml|iu|%)(?![a-z])/iu', fn ($m) => $m[1].mb_strtolower($m[2]), $name);
+
+        return mb_substr($name, 0, 150);
     }
 
     protected function enforceUnitRules(): void
@@ -170,6 +209,44 @@ class Product extends Model
     public function packDescription(): string
     {
         return ucfirst((string) $this->pack_name).' of '.(int) $this->pack_size;
+    }
+
+    /** An outer pack (a box) holds several packs (strips); only on top of a pack. */
+    public function hasOuterPack(): bool
+    {
+        return $this->hasPack() && $this->outer_pack_name !== null && (int) $this->outer_pack_size > 1;
+    }
+
+    /** Pieces in one outer pack: 3 strips of 10 is 30. */
+    public function outerPackPieces(): int
+    {
+        return (int) $this->pack_size * (int) $this->outer_pack_size;
+    }
+
+    /** What one outer pack sells for: its own price if set, else that many packs. */
+    public function outerPackSellingPrice(): float
+    {
+        return $this->outer_pack_price !== null ? (float) $this->outer_pack_price : round($this->packSellingPrice() * (int) $this->outer_pack_size, 2);
+    }
+
+    /** "2 boxes". */
+    public function outerPackLabel(int $count = 1): string
+    {
+        return self::countLabel($this->outer_pack_name, $count);
+    }
+
+    /** "Box of 3 strips (30)". */
+    public function outerPackDescription(): string
+    {
+        return ucfirst((string) $this->outer_pack_name).' of '.$this->packLabel((int) $this->outer_pack_size).' ('.$this->outerPackPieces().')';
+    }
+
+    /** "1 strip", "3 strips", "2 dozen". */
+    public static function countLabel(?string $name, int $count): string
+    {
+        $name = mb_strtolower((string) $name);
+
+        return $count.' '.($count === 1 || $name === 'dozen' ? $name : \Illuminate\Support\Str::plural($name));
     }
 
     public function canUseMeasuredUnits(): bool

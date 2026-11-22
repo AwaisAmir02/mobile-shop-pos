@@ -23,6 +23,10 @@ use Illuminate\Support\Facades\DB;
  *
  * Sources and their sign (+ money in, − money out):
  * - Sales: each sale payment, on its date. Cancelled sales are left out.
+ * - Refunds: money handed back on a return, on the return's date, from the
+ *   cash or account it was paid out of (−). Cancelled returns are left out.
+ * - Store credit paid out: a customer's credit handed over as money (−), its
+ *   own source so it's never mistaken for a return's refund.
  * - Udhaar: Given −, Repayment +, reversals the other way; only when cash
  *   or an account was picked (a Given can be goods, not money).
  * - Counter services (repair, bill, wallet/balance load, SIM, NADRA, service):
@@ -51,6 +55,8 @@ class MoneyFlow
 
     public const SOURCES = [
         'sale' => 'Sales',
+        'refund' => 'Refunds',
+        'credit' => 'Store credit paid out',
         'udhaar' => 'Udhaar',
         'counter' => 'Counter services',
         'wallet' => 'Wallet Loads',
@@ -113,6 +119,8 @@ class MoneyFlow
     {
         $rows = collect()
             ->concat($this->sales($from, $to))
+            ->concat($this->refunds($from, $to))
+            ->concat($this->creditCashOuts($from, $to))
             ->concat($this->udhaar($from, $to))
             ->concat($this->counterPayments($from, $to))
             ->concat($this->walletPrincipal($from, $to))
@@ -240,6 +248,8 @@ class MoneyFlow
             ->join('sales', 'sales.id', '=', 'sale_payments.sale_id')
             ->where('sale_payments.shop_id', $this->shopId)
             ->where('sales.status', '!=', 'cancelled')
+            // A traded-in phone, store credit or an exchange pays part of a sale without any money moving.
+            ->where(fn ($q) => $q->whereNull('sale_payments.payment_method')->orWhereNotIn('sale_payments.payment_method', ['trade_in', 'store_credit', 'exchange']))
             ->when($from, fn ($q) => $q->where('sale_payments.payment_date', '>=', $from))
             ->when($to, fn ($q) => $q->where('sale_payments.payment_date', '<=', $to))
             ->get(['sale_payments.id', 'sale_payments.amount', 'sale_payments.payment_date', 'sale_payments.payment_method', 'sale_payments.shop_account_id', 'sales.id as sale_id', 'sales.branch_id'])
@@ -250,6 +260,47 @@ class MoneyFlow
                 'sale',
                 'Sale INV-'.str_pad((string) $row->sale_id, 6, '0', STR_PAD_LEFT),
                 ['sales.show', $row->sale_id],
+                $row->id,
+            ))->all();
+    }
+
+    private function refunds(?string $from, ?string $to): array
+    {
+        return DB::table('sale_returns')
+            ->where('shop_id', $this->shopId)
+            ->where('status', '!=', 'cancelled')
+            ->where('refund_cash', '!=', 0)
+            ->when($from, fn ($q) => $q->where('return_date', '>=', $from))
+            ->when($to, fn ($q) => $q->where('return_date', '<=', $to))
+            ->get(['id', 'sale_id', 'refund_cash', 'refund_method', 'shop_account_id', 'return_date', 'branch_id'])
+            ->map(fn ($row) => $this->row(
+                $this->dateOf($row->return_date),
+                $this->bucketFor($row->refund_method, $row->shop_account_id, $row->branch_id),
+                -(float) $row->refund_cash,
+                'refund',
+                'Refund RN-'.str_pad((string) $row->id, 6, '0', STR_PAD_LEFT).' on INV-'.str_pad((string) $row->sale_id, 6, '0', STR_PAD_LEFT),
+                ['sales.show', $row->sale_id],
+                $row->id,
+            ))->all();
+    }
+
+    private function creditCashOuts(?string $from, ?string $to): array
+    {
+        return DB::table('store_credit_entries')
+            ->join('customers', 'customers.id', '=', 'store_credit_entries.customer_id')
+            ->where('store_credit_entries.shop_id', $this->shopId)
+            ->where('store_credit_entries.type', 'cash_out')
+            ->where('store_credit_entries.status', '!=', 'cancelled')
+            ->when($from, fn ($q) => $q->where('store_credit_entries.entry_date', '>=', $from))
+            ->when($to, fn ($q) => $q->where('store_credit_entries.entry_date', '<=', $to))
+            ->get(['store_credit_entries.*', 'customers.name as customer_name'])
+            ->map(fn ($row) => $this->row(
+                $this->dateOf($row->entry_date),
+                $this->bucketFor($row->payment_method, $row->shop_account_id, $row->branch_id),
+                (float) $row->amount,
+                'credit',
+                'Store credit paid out: '.$row->customer_name,
+                ['customers.show', $row->customer_id],
                 $row->id,
             ))->all();
     }
@@ -382,6 +433,8 @@ class MoneyFlow
             ->leftJoin('vendors', 'vendors.id', '=', 'stock_ins.vendor_id')
             ->where('stock_in_payments.shop_id', $this->shopId)
             ->where('stock_ins.status', '!=', 'cancelled')
+            // The other half of a trade-in: the phone came in as payment, not for money.
+            ->where(fn ($q) => $q->whereNull('stock_in_payments.payment_method')->orWhere('stock_in_payments.payment_method', '!=', 'trade_in'))
             ->when($from, fn ($q) => $q->where('stock_in_payments.payment_date', '>=', $from))
             ->when($to, fn ($q) => $q->where('stock_in_payments.payment_date', '<=', $to))
             ->get(['stock_in_payments.*', 'stock_ins.branch_id', 'vendors.name as vendor_name'])

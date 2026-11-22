@@ -6,6 +6,7 @@ use App\Enums\SaleSource;
 use App\Enums\SaleStatus;
 use App\Models\Concerns\BelongsToBranch;
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Scopes\BranchScope;
 use App\Models\Scopes\ExcludesCancelledSalesScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -67,6 +68,47 @@ class Sale extends Model
         return $this->hasMany(SaleRevision::class)->latest();
     }
 
+    /** Its active returns, whichever branch took them back (cancelled ones are left out by their own scope). */
+    /** Its lines in the prescription / controlled-drug register. */
+    public function prescriptions(): HasMany
+    {
+        return $this->hasMany(SalePrescription::class)->withoutGlobalScopes()->orderBy('serial_number');
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(SaleReturn::class)->withoutGlobalScope(BranchScope::class);
+    }
+
+    public function hasReturns(): bool
+    {
+        if (array_key_exists('returns_count', $this->attributes)) {
+            return (int) $this->attributes['returns_count'] > 0;
+        }
+
+        return $this->exists && $this->returns()->exists();
+    }
+
+    /** What returns have taken off the amount owed (the rest of their value was refunded). */
+    public function returnedAgainstDue(): float
+    {
+        if (array_key_exists('returns_sum_due_reduction', $this->attributes)) {
+            return (float) ($this->attributes['returns_sum_due_reduction'] ?? 0);
+        }
+
+        return $this->exists ? (float) $this->returns()->sum('due_reduction') : 0.0;
+    }
+
+    /** The value of everything returned from this sale. */
+    public function returnedValue(): float
+    {
+        if (array_key_exists('returns_sum_value_total', $this->attributes)) {
+            return (float) ($this->attributes['returns_sum_value_total'] ?? 0);
+        }
+
+        return $this->exists ? (float) $this->returns()->sum('value_total') : 0.0;
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -115,9 +157,18 @@ class Sale extends Model
         return (float) $this->payments()->sum('amount');
     }
 
+    /**
+     * The total, less payments, less what returns took off it. The total and
+     * payments stay as they were; a return is its own dated document.
+     */
     public function amountDue(): float
     {
-        return max(0.0, (float) $this->total - $this->amountPaid());
+        $returned = $this->returnedAgainstDue();
+
+        // Exactly the old sum when nothing was returned.
+        return $returned == 0.0
+            ? max(0.0, (float) $this->total - $this->amountPaid())
+            : max(0.0, round((float) $this->total - $this->amountPaid() - $returned, 2));
     }
 
     public function paymentStatus(): string

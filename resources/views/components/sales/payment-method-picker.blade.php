@@ -2,6 +2,7 @@
     'accounts',
     'value',
     'amount',
+    'credit' => 0,
 ])
 
 {{-- Hidden while the amount field holds an explicit 0 — a zero payment never records a method. --}}
@@ -12,6 +13,9 @@
             <x-ui.select wire:model.live="paymentMethod" id="paymentMethod">
                 <option value="">Not recorded</option>
                 <option value="cash">Cash</option>
+                @if ($credit > 0)
+                    <option value="store_credit">Store credit · Rs {{ number_format($credit, 2) }} available</option>
+                @endif
                 @foreach ($accounts as $account)
                     <option value="{{ $account->id }}">{{ $account->name }} · {{ $account->provider_type }}</option>
                 @endforeach

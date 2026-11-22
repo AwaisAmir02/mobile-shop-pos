@@ -78,7 +78,7 @@ class ModuleNavigationTest extends TestCase
         $this->assertEqualsCanonicalizing([
             'reports.screens', 'profit.index', 'sales.history',
             'stock-ins.history', 'stock-ins.expiry', 'stock-ins.write-offs',
-            'party-ledger.index', 'udhaar.index', 'payroll.history',
+            'party-ledger.index', 'udhaar.index', 'store-credit.index', 'payroll.history',
             'ledger.profit-and-loss', 'ledger.balance-sheet', 'ledger.trial-balance', 'ledger.cash-book', 'expenses.index',
         ], $cards);
 

@@ -63,6 +63,79 @@ class ProductGroupService
         return $labels;
     }
 
+    /**
+     * Every combination with its size and colour kept apart, for the Stock In
+     * grid and reports. The label is exactly what combineOptions() gives.
+     *
+     * @return array<int, array{label: string, size: ?string, colour: ?string}>
+     */
+    public static function combineOptionPairs(array $sizes, array $colours): array
+    {
+        if ($sizes === [] || $colours === []) {
+            return [
+                ...array_map(fn (string $size) => ['label' => $size, 'size' => $size, 'colour' => null], $sizes),
+                ...array_map(fn (string $colour) => ['label' => $colour, 'size' => null, 'colour' => $colour], $colours),
+            ];
+        }
+
+        $pairs = [];
+
+        foreach ($sizes as $size) {
+            foreach ($colours as $colour) {
+                $pairs[] = ['label' => $size.self::LABEL_SEPARATOR.$colour, 'size' => $size, 'colour' => $colour];
+            }
+        }
+
+        return $pairs;
+    }
+
+    /** Words that make a lone option a colour rather than a size ("Light Blue", "Ferozi"). */
+    public const COLOUR_WORDS = [
+        'black', 'white', 'red', 'blue', 'navy', 'green', 'yellow', 'orange', 'pink', 'purple', 'maroon',
+        'brown', 'grey', 'gray', 'beige', 'cream', 'skin', 'gold', 'golden', 'silver', 'mustard', 'peach',
+        'olive', 'teal', 'turquoise', 'magenta', 'lilac', 'lavender', 'rust', 'camel', 'khaki', 'tan',
+        'charcoal', 'burgundy', 'wine', 'mint', 'coral', 'ferozi', 'zinc', 'fawn', 'aqua', 'indigo',
+        'violet', 'copper', 'bronze', 'ivory', 'offwhite', 'multi', 'multicolor', 'multicolour', 'colour', 'color',
+    ];
+
+    /**
+     * Size and colour read back from a label: "M / Red" is both. A lone
+     * value is a colour only when it names one, otherwise a size. The
+     * wizard and the import know which list a value came from and set the
+     * two fields themselves; this is for labels typed by hand and old rows.
+     *
+     * @return array{size: ?string, colour: ?string}
+     */
+    public static function optionsFromLabel(?string $label): array
+    {
+        $label = trim((string) $label);
+
+        if ($label === '') {
+            return ['size' => null, 'colour' => null];
+        }
+
+        $parts = explode(self::LABEL_SEPARATOR, $label, 2);
+
+        if (count($parts) === 2 && trim($parts[0]) !== '' && trim($parts[1]) !== '') {
+            return ['size' => mb_substr(trim($parts[0]), 0, 50), 'colour' => mb_substr(trim($parts[1]), 0, 50)];
+        }
+
+        $words = preg_split('/[\s\-]+/', mb_strtolower(str_replace('off white', 'offwhite', mb_strtolower($label))));
+        $isColour = array_intersect($words ?: [], self::COLOUR_WORDS) !== [];
+
+        return $isColour
+            ? ['size' => null, 'colour' => mb_substr($label, 0, 50)]
+            : ['size' => mb_substr($label, 0, 50), 'colour' => null];
+    }
+
+    /** @return array{variant_size: ?string, variant_colour: ?string} */
+    public static function optionColumns(?string $label): array
+    {
+        $options = self::optionsFromLabel($label);
+
+        return ['variant_size' => $options['size'], 'variant_colour' => $options['colour']];
+    }
+
     public function createGroup(int $shopId, string $name, string $type, string $category, ?string $imagePath = null, QuantityUnit $unit = QuantityUnit::Piece): ProductGroup
     {
         $this->assertAllowedType($type);
@@ -80,8 +153,10 @@ class ProductGroupService
     /**
      * A new variant inherits the group's WhatsApp listing, so a listed group
      * doesn't silently hide what was just added to it. Labels the group
-     * already has are skipped.
+     * already has are skipped. Each entry is a label, or a combineOptionPairs()
+     * entry when it's known which value is the size and which the colour.
      *
+     * @param  array<int, string|array{label: string, size: ?string, colour: ?string}>  $labels
      * @return array<int, Product> the variants created
      */
     public function addVariants(ProductGroup $group, array $labels, float|string $price, float|string|null $costPrice): array
@@ -91,7 +166,10 @@ class ProductGroupService
             $listed = $group->variants()->where('whatsapp_listed', true)->exists();
             $created = [];
 
-            foreach ($labels as $label) {
+            foreach ($labels as $entry) {
+                $label = is_array($entry) ? $entry['label'] : $entry;
+                $options = is_array($entry) ? ['size' => $entry['size'], 'colour' => $entry['colour']] : self::optionsFromLabel($label);
+
                 if (in_array(mb_strtolower($label), $existing, true)) {
                     continue;
                 }
@@ -102,6 +180,8 @@ class ProductGroupService
                     'shop_id' => $group->shop_id,
                     'product_group_id' => $group->id,
                     'variant_label' => $label,
+                    'variant_size' => $options['size'],
+                    'variant_colour' => $options['colour'],
                     'type' => $group->type,
                     'name' => self::fullName($group->name, $label),
                     'price' => $price,
@@ -147,6 +227,7 @@ class ProductGroupService
         $product->forceFill([
             'product_group_id' => $group->id,
             'variant_label' => $label,
+            ...self::optionColumns($label),
             'name' => self::fullName($group->name, $label),
             'type' => $group->type,
             'details' => $group->details,
@@ -275,7 +356,7 @@ class ProductGroupService
 
     protected function release(ProductGroup $group, Product $variant): void
     {
-        $attributes = ['product_group_id' => null, 'variant_label' => null];
+        $attributes = ['product_group_id' => null, 'variant_label' => null, 'variant_size' => null, 'variant_colour' => null];
 
         // Each product owns its image file (deleting one removes the file), so it gets its own copy.
         if ($variant->image_path === null && $group->image_path !== null && Storage::disk('public')->exists($group->image_path)) {

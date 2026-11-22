@@ -221,7 +221,7 @@ new class extends Component
     {
         $this->guard();
 
-        return app(ProductImportService::class)->templateResponse(Auth::user()->canUseBarcodes(), (bool) Auth::user()->shop?->variants_enabled, (bool) Auth::user()->shop?->measured_units_enabled);
+        return app(ProductImportService::class)->templateResponse(Auth::user()->canUseBarcodes(), (bool) Auth::user()->shop?->variants_enabled, (bool) Auth::user()->shop?->measured_units_enabled, (bool) Auth::user()->shop?->business_category?->usesMedicineFields());
     }
 }; ?>
 

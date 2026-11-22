@@ -27,7 +27,7 @@ class SalesReport implements ScreenReport
     {
         $query = Sale::query()
             ->withCount('items')
-            ->withSum('payments', 'amount')
+            ->withSum('payments', 'amount')->withSum('returns', 'due_reduction')->withCount('returns')
             ->with('customer')
             ->when($this->from, fn ($q) => $q->whereDate('created_at', '>=', $this->from))
             ->when($this->to, fn ($q) => $q->whereDate('created_at', '<=', $this->to));
@@ -69,11 +69,21 @@ class SalesReport implements ScreenReport
         return $invoiceDiscount + $itemDiscount;
     }
 
+    /** Goods taken back in the date range, counted on the day they came back. */
+    public function totalReturns(): float
+    {
+        return (float) \App\Models\SaleReturn::query()
+            ->when($this->from, fn ($q) => $q->where('return_date', '>=', $this->from))
+            ->when($this->to, fn ($q) => $q->where('return_date', '<=', $this->to))
+            ->sum('value_total');
+    }
+
     /** A running balance, like Udhaar's own Total Outstanding — deliberately not scoped to the from/to filters above. */
     public function totalOutstanding(): float
     {
         return (float) Sale::query()
             ->withSum('payments', 'amount')
+            ->withSum('returns', 'due_reduction')
             ->get()
             ->sum(fn (Sale $sale) => $sale->amountDue());
     }
@@ -92,8 +102,14 @@ class SalesReport implements ScreenReport
 
     public function summaryCards(): array
     {
+        $returns = $this->totalReturns();
+
         return [
             ['label' => 'Total Revenue', 'value' => 'Rs '.number_format($this->totalRevenue(), 2)],
+            ...($returns > 0 ? [
+                ['label' => 'Returns', 'value' => 'Rs '.number_format($returns, 2), 'sub' => 'Goods taken back in this period'],
+                ['label' => 'Net Sales', 'value' => 'Rs '.number_format($this->totalRevenue() - $returns, 2), 'sub' => 'Revenue less returns'],
+            ] : []),
             ['label' => 'Total Discount Given', 'value' => 'Rs '.number_format($this->totalDiscount(), 2)],
             ['label' => 'Total Outstanding', 'value' => 'Rs '.number_format($this->totalOutstanding(), 2), 'sub' => 'Across all customers who currently owe money'],
         ];

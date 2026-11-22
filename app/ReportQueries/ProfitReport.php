@@ -79,6 +79,25 @@ class ProfitReport implements ScreenReport
             $lines += (int) $sale->no_cost_lines;
         }
 
+        // Returns count on the day the goods came back: their value comes off
+        // revenue and the cost they were sold at comes off cost of goods.
+        $returned = 0.0;
+
+        foreach (\App\Models\SaleReturnItem::query()
+            ->whereHas('saleReturn', fn ($query) => $query
+                ->when($this->from, fn ($q) => $q->where('return_date', '>=', $this->from))
+                ->when($this->to, fn ($q) => $q->where('return_date', '<=', $this->to)))
+            ->get(['value', 'cost_price', 'quantity']) as $item) {
+            $returned += (float) $item->value;
+
+            if ($item->cost_price !== null) {
+                $costedRevenue -= (float) $item->value;
+                $cogs -= Quantity::money($item->cost_price, $item->quantity);
+            } else {
+                $uncostedRevenue -= (float) $item->value;
+            }
+        }
+
         $costedRevenue = round($costedRevenue, 2);
         $cogs = round($cogs, 2);
         $grossProfit = round($costedRevenue - $cogs, 2);
@@ -91,6 +110,7 @@ class ProfitReport implements ScreenReport
             'uncostedRevenue' => round($uncostedRevenue, 2),
             'invoiceDiscount' => round((float) $discounts->sum(), 2),
             'linesWithNoCost' => $lines,
+            'returns' => round($returned, 2),
             'margin' => $costedRevenue > 0 ? round($grossProfit / $costedRevenue * 100, 1) : null,
         ];
     }
@@ -124,7 +144,7 @@ class ProfitReport implements ScreenReport
         $totals = $this->totals();
 
         return [
-            ['label' => 'Sales Revenue', 'value' => 'Rs '.number_format($totals['revenue'], 2), 'sub' => 'After all discounts'],
+            ['label' => 'Sales Revenue', 'value' => 'Rs '.number_format($totals['revenue'], 2), 'sub' => $totals['returns'] > 0 ? 'After all discounts and Rs '.number_format($totals['returns'], 2).' of returns' : 'After all discounts'],
             ['label' => 'Cost of Goods Sold', 'value' => 'Rs '.number_format($totals['cogs'], 2), 'sub' => 'Batch cost of what was sold'],
             ['label' => 'Gross Profit', 'value' => 'Rs '.number_format($totals['grossProfit'], 2), 'sub' => 'Sales − cost of goods, before expenses'],
             ['label' => 'Gross Margin', 'value' => $totals['margin'] !== null ? $totals['margin'].'%' : '—', 'sub' => 'Share of sales kept as gross profit'],

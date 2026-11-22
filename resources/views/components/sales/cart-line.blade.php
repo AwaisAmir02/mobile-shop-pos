@@ -3,6 +3,7 @@
     'item',
     'lineTotal',
     'expiryNote' => null,
+    'promotion' => null,
 ])
 
 {{-- One line of the Sales register / sale edit cart. Binds the same cart.{id}.*
@@ -19,8 +20,15 @@
     $quantity = \App\Support\Quantity::normalize($item['quantity'] === '' ? 0 : $item['quantity']);
     $numberInput = 'rounded-lg border-line-strong bg-surface py-1.5 text-right text-sm text-ink focus:border-link focus:ring-link';
     $pack = $item['pack'] ?? null;
-    $byPack = $pack && ! empty($item['by_pack']);
-    $perSuffix = $byPack ? ' per '.mb_strtolower($pack['name']) : $unit->perSuffix();
+    $outer = $item['outer'] ?? null;
+    $selling = match (true) {
+        $outer && ! empty($item['by_outer']) => 'outer',
+        $pack && ! empty($item['by_pack']) => 'pack',
+        default => 'piece',
+    };
+    $level = ['pack' => $pack, 'outer' => $outer][$selling] ?? null;
+    $byPack = $level !== null;
+    $perSuffix = $byPack ? ' per '.mb_strtolower($level['name']) : $unit->perSuffix();
 @endphp
 
 <li
@@ -41,7 +49,7 @@
             <p class="text-xs text-ink-faint">
                 {{ $item['category'] }} · Rs {{ number_format($unitPrice, 2) }}{{ $perSuffix }}
                 @if ($byPack)
-                    · {{ number_format($quantity * $pack['size']) }} pieces
+                    · {{ number_format($quantity * $level['size']) }} pieces
                 @endif
                 @if ($discount > 0)
                     · Rs {{ number_format($discount, 2) }} off
@@ -54,13 +62,20 @@
                 @endif
             @endif
             <x-sales.expiry-note :note="$expiryNote" :unit="$unit" />
+            @if (! empty($item['rx']))
+                <p class="mt-0.5 text-xs font-semibold text-warning" data-line-rx>{{ \App\Models\SalePrescription::controlLabel($item['rx']) }}: goes in the prescription register</p>
+            @endif
+            @if ($promotion && $promotion['amount'] > 0)
+                {{-- Applied by itself; the cashier can't take it off. --}}
+                <p class="mt-0.5 text-xs font-semibold text-success" data-line-promotion>{{ $promotion['name'] }} · {{ $promotion['offer'] }} · Rs {{ number_format($promotion['amount'], 2) }} off</p>
+            @endif
             @if ($pack)
                 <div class="mt-1.5 inline-flex gap-0.5 rounded-full border border-line bg-surface-sunken/60 p-0.5 text-xs font-semibold" role="group" aria-label="Sell {{ $item['name'] }} as" data-sell-as>
-                    @foreach (['piece' => 'Pieces', 'pack' => ucfirst($pack['name']).' of '.$pack['size']] as $mode => $label)
-                        <button type="button" wire:click="sellAs({{ $productId }}, '{{ $mode }}')" aria-pressed="{{ ($mode === 'pack') === $byPack ? 'true' : 'false' }}" @class([
+                    @foreach (array_filter(['piece' => 'Pieces', 'pack' => ucfirst($pack['name']).' of '.$pack['size'], 'outer' => $outer ? ucfirst($outer['name']).' of '.$outer['packs'] : null]) as $mode => $label)
+                        <button type="button" wire:click="sellAs({{ $productId }}, '{{ $mode }}')" aria-pressed="{{ $mode === $selling ? 'true' : 'false' }}" @class([
                             'rounded-full px-2.5 py-1 transition-colors',
-                            'bg-surface text-ink shadow-soft ring-1 ring-line' => ($mode === 'pack') === $byPack,
-                            'text-ink-faint hover:text-ink' => ($mode === 'pack') !== $byPack,
+                            'bg-surface text-ink shadow-soft ring-1 ring-line' => $mode === $selling,
+                            'text-ink-faint hover:text-ink' => $mode !== $selling,
                         ])>{{ $label }}</button>
                     @endforeach
                 </div>

@@ -33,6 +33,7 @@ class ProductReport implements ScreenReport
         return Product::query()
             ->when($this->search, fn ($query) => $query->where(fn ($q) => $q
                 ->where('name', 'like', "%{$this->search}%")
+                ->orWhere('generic_name', 'like', "%{$this->search}%")
                 ->when($this->barcodesEnabled(), fn ($inner) => $inner->orWhere('barcode', 'like', "%{$this->search}%"))))
             ->when($this->typeFilter, fn ($query) => $query->where('type', $this->typeFilter));
     }

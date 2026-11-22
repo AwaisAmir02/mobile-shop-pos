@@ -82,7 +82,7 @@ class UdhaarReport implements ScreenReport
         $accumulate($unpaidOrPartial(SimSale::query())->get(), fn (SimSale $m) => $m->amountOwed());
         $accumulate($unpaidOrPartial(ServicePayment::query())->get(), fn (ServicePayment $m) => $m->amountOwed());
         $accumulate(
-            Sale::query()->whereNotNull('customer_id')->withSum('payments', 'amount')->get(),
+            Sale::query()->whereNotNull('customer_id')->withSum('payments', 'amount')->withSum('returns', 'due_reduction')->get(),
             fn (Sale $m) => $m->amountDue()
         );
 

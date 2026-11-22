@@ -57,6 +57,17 @@ return [
             ],
         ],
         [
+            'id' => 'prescription',
+            'heading' => 'Prescription medicines',
+            'intro' => 'A medicine marked Prescription only or Controlled on its product page shows that on its cart line, and the Prescription register box opens below the cart. The sale is written in the prescription register.',
+            'items' => [
+                ['label' => 'Patient name', 'text' => 'Who the medicine is for. Needed for a controlled drug.'],
+                ['label' => 'Prescriber (doctor)', 'text' => 'The doctor on the prescription, with the PMDC / registration no. and prescription date if you have them.'],
+                ['label' => 'Emergency reason', 'text' => 'With no prescriber, the sale is recorded as an emergency sale, and the reason is required.'],
+                ['label' => 'Prescription photo', 'text' => 'Optional. A photo or PDF of the prescription, kept private to the shop.'],
+            ],
+        ],
+        [
             'id' => 'shortcuts',
             'heading' => 'Keyboard shortcuts',
             'items' => [

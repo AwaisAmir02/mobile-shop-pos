@@ -277,9 +277,10 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
             @php
                 $columns = [
                     'Sales' => fn ($s) => $s['totalRevenue'],
+                    'Returns' => fn ($s) => $s['totalReturns'],
                     'Items sold' => fn ($s) => $s['totalItemsSold'],
                     'Expenses' => fn ($s) => $s['totalExpenses'],
-                    'Net (sales − expenses)' => fn ($s) => $s['netSummary'],
+                    'Net (sales − returns − expenses)' => fn ($s) => $s['netSummary'],
                     'Repairs' => fn ($s) => $s['totalRepairsRevenue'],
                     'Commission (loads, bills)' => fn ($s) => $s['totalBalanceLoadFees'] + $s['totalWalletLoadFees'] + $s['totalBillsFeeRevenue'],
                     'Stock-in units' => fn ($s) => $s['totalStockInUnits'],

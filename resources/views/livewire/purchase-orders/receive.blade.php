@@ -50,6 +50,7 @@ new #[Layout('layouts.app')] #[Title('Receive Goods')] class extends Component
             'cost_price' => (string) ($line->expected_cost ?? $line->product?->cost_price ?? ''),
             'selling_price' => (string) ($line->product?->price ?? ''),
             'expiry_date' => $this->suggestedExpiry($line->product),
+            'batch_number' => '',
         ];
     }
 
@@ -107,6 +108,7 @@ new #[Layout('layouts.app')] #[Title('Receive Goods')] class extends Component
             $rules["rows.$key.cost_price"] = ['nullable', 'numeric', 'min:0', 'max:99999999.99'];
             $rules["rows.$key.selling_price"] = ['required', 'numeric', 'min:0', 'max:99999999.99'];
             $rules["rows.$key.expiry_date"] = ['nullable', 'date'];
+            $rules["rows.$key.batch_number"] = ['nullable', 'string', 'max:50'];
         }
 
         $this->validate($rules, [], ['rows.*.quantity' => 'quantity', 'rows.*.selling_price' => 'selling price', 'rows.*.cost_price' => 'cost price']);
@@ -119,6 +121,7 @@ new #[Layout('layouts.app')] #[Title('Receive Goods')] class extends Component
                 'cost_price' => $row['cost_price'] !== '' ? (float) $row['cost_price'] : null,
                 'selling_price' => (float) $row['selling_price'],
                 'expiry_date' => $row['expiry_date'] !== '' ? $row['expiry_date'] : null,
+                'batch_number' => $row['batch_number'] ?? null,
             ], $filled)),
             $this->receivedOn,
             $this->branchId !== '' ? (int) $this->branchId : null,
@@ -187,7 +190,7 @@ new #[Layout('layouts.app')] #[Title('Receive Goods')] class extends Component
                                 <x-ui.button type="button" variant="danger-ghost" size="sm" wire:click="removeRow({{ $key }})">Remove</x-ui.button>
                             </div>
                         </div>
-                        <div @class(['grid grid-cols-1 gap-3', 'sm:grid-cols-3' => ! $expiryEnabled, 'sm:grid-cols-2 lg:grid-cols-4' => $expiryEnabled])>
+                        <div @class(['grid grid-cols-1 gap-3', 'sm:grid-cols-3' => ! $expiryEnabled, 'sm:grid-cols-2 lg:grid-cols-5' => $expiryEnabled])>
                             <x-ui.field :label="$line->unit->allowsDecimals() ? 'Quantity ('.$line->unit->symbol().')' : 'Quantity'" name="rows.{{ $key }}.quantity" for="row-quantity-{{ $key }}">
                                 <x-ui.input wire:model="rows.{{ $key }}.quantity" id="row-quantity-{{ $key }}" type="number" :min="$line->unit->inputMin()" :step="$line->unit->inputStep()" />
                             </x-ui.field>
@@ -200,6 +203,9 @@ new #[Layout('layouts.app')] #[Title('Receive Goods')] class extends Component
                             @if ($expiryEnabled)
                                 <x-ui.field label="Expiry Date" name="rows.{{ $key }}.expiry_date" for="row-expiry-{{ $key }}" help="Optional. The last day it can be sold">
                                     <x-ui.input wire:model="rows.{{ $key }}.expiry_date" id="row-expiry-{{ $key }}" type="date" />
+                                </x-ui.field>
+                                <x-ui.field label="Batch No." name="rows.{{ $key }}.batch_number" for="row-batch-{{ $key }}" help="Optional. As printed on the pack">
+                                    <x-ui.input wire:model="rows.{{ $key }}.batch_number" id="row-batch-{{ $key }}" maxlength="50" />
                                 </x-ui.field>
                             @endif
                         </div>

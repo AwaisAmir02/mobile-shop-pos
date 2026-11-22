@@ -17,13 +17,18 @@ class CancelStockIn
     /**
      * @return array{entry: StockIn, reversed: bool}
      */
-    public static function handle(StockIn $entry, ?int $userId, ?string $reason = null, bool $fromGrn = false): array
+    public static function handle(StockIn $entry, ?int $userId, ?string $reason = null, bool $fromGrn = false, bool $fromBuyback = false): array
     {
-        return DB::transaction(function () use ($entry, $userId, $reason, $fromGrn) {
+        return DB::transaction(function () use ($entry, $userId, $reason, $fromGrn, $fromBuyback) {
             $entry = StockIn::withoutGlobalScope(ExcludesCancelledScope::class)->whereKey($entry->id)->lockForUpdate()->firstOrFail();
 
             if ($entry->isCancelled()) {
                 throw new \RuntimeException('This stock-in entry has already been cancelled.');
+            }
+
+            // A used phone's batch goes with its buyback record.
+            if (! $fromBuyback && Buybacks::forStockIn($entry->id)) {
+                throw ValidationException::withMessages(['quantity' => 'This stock is a used phone bought from a customer. Cancel it from Used Phone Buyback instead.']);
             }
 
             // A PO's received quantity comes from its GRN, so the two have to go together.

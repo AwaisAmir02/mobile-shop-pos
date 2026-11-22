@@ -61,6 +61,9 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     // A pack (carton, dozen…) of this product; stock stays in pieces.
     public string $pack_name = '';
     public string $pack_size = '';
+    public string $outer_pack_name = '';
+    public string $outer_pack_size = '';
+    public string $outer_pack_price = '';
     public string $pack_price = '';
 
     public string $brand = '';
@@ -70,6 +73,10 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public string $category = '';
 
     public string $barcode = '';
+    public string $generic_name = '';
+    public string $drap_reg_no = '';
+    /** '', 'prescription' or 'controlled': the prescription register (App\Actions\Prescriptions). */
+    public string $rx_control = '';
 
     public ?int $printingId = null;
     public string $printCopies = '1';
@@ -224,6 +231,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             'formUnit' => $this->formUnit(),
             'showUnitField' => $this->showUnitField(),
             'expiryEnabled' => (bool) Auth::user()->shop?->expiry_tracking_enabled,
+            'medicineFields' => $medicineFields = $this->medicineFieldsShown(),
+            'genericNames' => $medicineFields ? Product::query()->whereNotNull('generic_name')->distinct()->orderBy('generic_name')->limit(500)->pluck('generic_name') : collect(),
             'warrantyEnabled' => (bool) Auth::user()->shop?->sellsDevices(),
             'groupTypeOptions' => $mainCategories->reject(fn (MainCategory $category) => in_array($category->slug, ProductGroup::EXCLUDED_TYPES, true))->values(),
             'groupCategoryOptions' => $this->groupCategoryOptions($mainCategories),
@@ -512,7 +521,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             }
 
             if ($labels !== []) {
-                $groups->addVariants($group, $labels, $this->groupPrice, $this->groupCost !== '' ? $this->groupCost : null);
+                $groups->addVariants($group, ProductGroupService::combineOptionPairs(ProductGroupService::parseOptions($this->groupSizes), ProductGroupService::parseOptions($this->groupColours)), $this->groupPrice, $this->groupCost !== '' ? $this->groupCost : null);
             }
 
             $this->expandedGroups = [...$this->expandedGroups, $group->id];
@@ -737,12 +746,18 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->pack_name = (string) ($product->pack_name ?? '');
         $this->pack_size = (string) ($product->pack_size ?? '');
         $this->pack_price = $product->pack_price !== null ? (string) $product->pack_price : '';
+        $this->outer_pack_name = (string) ($product->outer_pack_name ?? '');
+        $this->outer_pack_size = (string) ($product->outer_pack_size ?? '');
+        $this->outer_pack_price = $product->outer_pack_price !== null ? (string) $product->outer_pack_price : '';
 
         $this->brand = $product->details['brand'] ?? '';
         $this->model = $product->details['model'] ?? '';
         $this->imei = $product->details['imei'] ?? '';
         $this->category = $product->details['category'] ?? '';
         $this->barcode = (string) ($product->barcode ?? '');
+        $this->generic_name = (string) ($product->generic_name ?? '');
+        $this->drap_reg_no = (string) ($product->drap_reg_no ?? '');
+        $this->rx_control = (string) ($product->rx_control ?? '');
         $this->variantLabel = (string) ($product->variant_label ?? '');
         $this->editingVariantGroupName = (string) ($product->group?->name ?? '');
 
@@ -790,6 +805,12 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $product->pack_size = $hasPack ? (int) $this->pack_size : null;
         $product->pack_price = $hasPack && $this->pack_price !== '' ? $this->pack_price : null;
 
+        // An outer pack (a box) is made of packs (strips), so it needs a pack under it.
+        $hasOuter = $hasPack && trim($this->outer_pack_name) !== '';
+        $product->outer_pack_name = $hasOuter ? mb_substr(trim($this->outer_pack_name), 0, 20) : null;
+        $product->outer_pack_size = $hasOuter ? (int) $this->outer_pack_size : null;
+        $product->outer_pack_price = $hasOuter && $this->outer_pack_price !== '' ? $this->outer_pack_price : null;
+
         if (Auth::user()->shop?->sellsDevices()) {
             $product->warranty_months = $this->warranty_months !== '' && (int) $this->warranty_months > 0 ? (int) $this->warranty_months : null;
             $product->warranty_type = $product->warranty_months ? $this->warranty_type : null;
@@ -797,6 +818,12 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
 
         if (Auth::user()->shop?->expiry_tracking_enabled) {
             $product->shelf_life_days = $this->shelf_life_days !== '' ? (int) $this->shelf_life_days : null;
+        }
+
+        if ($this->medicineFieldsShown()) {
+            $product->generic_name = trim($this->generic_name) !== '' ? $this->generic_name : null;
+            $product->drap_reg_no = trim($this->drap_reg_no) !== '' ? mb_substr(trim($this->drap_reg_no), 0, 30) : null;
+            $product->rx_control = in_array($this->rx_control, ['prescription', 'controlled'], true) ? $this->rx_control : null;
         }
 
         if (! $this->editingHasBatches) {
@@ -1115,6 +1142,15 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         ));
     }
 
+    /** Pharmacies get the salt and DRAP fields; any product that already has them keeps showing them. */
+    protected function medicineFieldsShown(): bool
+    {
+        return (bool) Auth::user()->shop?->business_category?->usesMedicineFields()
+            || trim($this->generic_name) !== ''
+            || trim($this->drap_reg_no) !== ''
+            || $this->rx_control !== '';
+    }
+
     protected function rules(): array
     {
         $rules = CreateProduct::rules(auth()->user()->shop_id, $this->type, $this->editingId, $this->formUnit());
@@ -1123,6 +1159,12 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $rules['pack_name'] = ['nullable', 'string', 'max:20'];
         $rules['pack_size'] = ['nullable', 'required_with:pack_name', 'integer', 'min:2', 'max:10000'];
         $rules['pack_price'] = ['nullable', 'numeric', 'min:0', 'max:99999999'];
+        $rules['outer_pack_name'] = ['nullable', 'string', 'max:20'];
+        $rules['outer_pack_size'] = ['nullable', 'required_with:outer_pack_name', 'integer', 'min:2', 'max:1000'];
+        $rules['outer_pack_price'] = ['nullable', 'numeric', 'min:0', 'max:99999999'];
+        $rules['generic_name'] = ['nullable', 'string', 'max:150'];
+        $rules['drap_reg_no'] = ['nullable', 'string', 'max:30'];
+        $rules['rx_control'] = ['nullable', 'in:prescription,controlled'];
         $rules['warranty_type'] = ['required', Rule::enum(WarrantyType::class)];
         $groupId = $this->editingId ? Product::whereKey($this->editingId)->value('product_group_id') : null;
 
@@ -1146,8 +1188,8 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     protected function resetForm(): void
     {
         $this->reset([
-            'editingId', 'editingHasBatches', 'unit', 'unitLocked', 'shelf_life_days', 'warranty_months', 'warranty_type', 'pack_name', 'pack_size', 'pack_price', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
-            'brand', 'model', 'imei', 'category', 'barcode', 'variantLabel', 'editingVariantGroupName',
+            'editingId', 'editingHasBatches', 'unit', 'unitLocked', 'shelf_life_days', 'warranty_months', 'warranty_type', 'pack_name', 'pack_size', 'pack_price', 'outer_pack_name', 'outer_pack_size', 'outer_pack_price', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
+            'brand', 'model', 'imei', 'category', 'barcode', 'generic_name', 'drap_reg_no', 'rx_control', 'variantLabel', 'editingVariantGroupName',
         ]);
 
         $this->type = 'mobile';
@@ -1477,6 +1519,25 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                         </p>
                     @endif
 
+                    @if ($medicineFields)
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2" data-medicine-fields>
+                            <x-ui.field label="Generic / Salt" name="generic_name" for="generic_name" help="With strength, e.g. Paracetamol 500mg. Brands with the same salt show as substitutes when searching">
+                                <x-ui.input wire:model="generic_name" id="generic_name" maxlength="150" list="generic-names" autocomplete="off" />
+                                <datalist id="generic-names">
+                                    @foreach ($genericNames as $genericName)
+                                        <option value="{{ $genericName }}">
+                                    @endforeach
+                                </datalist>
+                            </x-ui.field>
+                            <x-ui.field label="DRAP Reg. No." name="drap_reg_no" for="drap_reg_no" help="Optional. As printed on the pack">
+                                <x-ui.input wire:model="drap_reg_no" id="drap_reg_no" maxlength="30" />
+                            </x-ui.field>
+                            <x-ui.field label="Prescription" name="rx_control" class="sm:col-span-2" help="Each sale of a Prescription only or Controlled medicine is written in the prescription register, with the prescriber (or an emergency reason). Your own choice; no official list is applied">
+                                <x-ui.segmented name="rx-control" wire:model="rx_control" :options="['' => 'Not needed', 'prescription' => 'Prescription only', 'controlled' => 'Controlled']" label="Prescription" />
+                            </x-ui.field>
+                        </div>
+                    @endif
+
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-ui.field label="Selling Price" name="price" for="price" :help="$wizard ? 'For every variant, if it comes in sizes or colours' : null">
                             <x-ui.input wire:model="price" id="price" type="number" step="0.01" min="0" :disabled="$editingHasBatches" />
@@ -1554,7 +1615,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 <x-ui.field label="Pack" name="pack_name" for="pack_name" help="e.g. Carton, Dozen, Box. Leave blank if none">
                                     <x-ui.input wire:model.live.debounce.400ms="pack_name" id="pack_name" list="pack-names" maxlength="20" />
-                                    <datalist id="pack-names"><option value="Carton"><option value="Dozen"><option value="Box"><option value="Pack"><option value="Bundle"><option value="Tray"></datalist>
+                                    <datalist id="pack-names"><option value="Carton"><option value="Dozen"><option value="Box"><option value="Pack"><option value="Strip"><option value="Bundle"><option value="Tray"></datalist>
                                 </x-ui.field>
                                 <x-ui.field label="Pieces in one pack" name="pack_size" for="pack_size">
                                     <x-ui.input wire:model="pack_size" id="pack_size" type="number" min="2" step="1" :placeholder="strcasecmp(trim($pack_name), 'dozen') === 0 ? '12' : 'e.g. 24'" />
@@ -1564,6 +1625,20 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                                 </x-ui.field>
                             </div>
                             <p class="text-xs text-ink-faint">Stock is always counted in pieces. Stock In and the sales register can then take whole packs and turn them into pieces.</p>
+                            @if (trim($pack_name) !== '')
+                                <div class="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-3" data-outer-pack-fields>
+                                    <x-ui.field label="Outer pack" name="outer_pack_name" for="outer_pack_name" help="Optional, e.g. Box of strips">
+                                        <x-ui.input wire:model="outer_pack_name" id="outer_pack_name" list="outer-pack-names" maxlength="20" />
+                                        <datalist id="outer-pack-names"><option value="Box"><option value="Carton"><option value="Packet"></datalist>
+                                    </x-ui.field>
+                                    <x-ui.field :label="'How many '.\Illuminate\Support\Str::plural(mb_strtolower(trim($pack_name))).' in one'" name="outer_pack_size" for="outer_pack_size">
+                                        <x-ui.input wire:model="outer_pack_size" id="outer_pack_size" type="number" min="2" step="1" placeholder="e.g. 3" />
+                                    </x-ui.field>
+                                    <x-ui.field label="Price for a whole outer pack" name="outer_pack_price" for="outer_pack_price" help="Optional. Blank sells it at the pack price">
+                                        <x-ui.input wire:model="outer_pack_price" id="outer_pack_price" type="number" min="0" step="0.01" />
+                                    </x-ui.field>
+                                </div>
+                            @endif
                         </div>
                     @endif
 

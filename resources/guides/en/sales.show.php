@@ -36,6 +36,22 @@ return [
             ],
         ],
         [
+            'id' => 'returns',
+            'heading' => 'Returns',
+            'needs' => 'sales-returns',
+            'items' => [
+                ['label' => 'Return Items', 'text' => 'Opens the screen to take back some or all of this sale. Each return gets its own number (RN-) and is counted on the day it happens.'],
+                ['label' => 'Exchange', 'text' => 'Opens New Sale in exchange mode: choose what comes back from this sale, then add what the customer takes instead (a size swap is just picking the other size). What comes back pays for the new items; the customer pays any difference, or gets the leftover back as money or store credit. Saved together as a return and a new sale. Cancelling that return undoes the whole exchange.'],
+                ['label' => 'Credit note PDF', 'text' => 'The return\'s own document, to print or send: what came back, what came off the amount owed and what was handed back.'],
+                ['label' => 'Cancel return', 'text' => 'Undoes a return made by mistake: the goods leave stock again. Not possible once those goods have been sold again.'],
+            ],
+        ],
+        [
+            'id' => 'prescription',
+            'heading' => 'Prescription register',
+            'intro' => 'Shown when the sale had a Prescription only or Controlled medicine: each one\'s register number, the patient and the prescriber (or the emergency reason). Add details fills them in for a sale not made at the register, such as a WhatsApp order; Edit details corrects them. View prescription photo opens the photo, for signed-in shop users only.',
+        ],
+        [
             'id' => 'collecting',
             'heading' => 'Collecting what\'s due',
             'intro' => 'To take a later payment on this sale, use Record Payment on the sale\'s row in Sales History, or on the customer\'s Udhaar page.',

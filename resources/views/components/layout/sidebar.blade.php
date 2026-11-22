@@ -18,6 +18,7 @@
             // each list holds its New button.
             ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'home', 'group' => null, 'permission' => 'dashboard'],
             ['label' => 'Sales', 'route' => 'sales.index', 'icon' => 'cart', 'group' => 'sell', 'permission' => 'sales'],
+            ['label' => 'Promotions', 'route' => 'promotions.index', 'icon' => 'sparkles', 'group' => 'sell', 'permission' => 'promotions'],
             ['label' => 'Customers', 'route' => 'customers.index', 'icon' => 'customers', 'group' => 'sell', 'permission' => 'customers'],
             ['label' => 'Udhaar', 'route' => 'udhaar.index', 'icon' => 'udhaar', 'group' => 'sell', 'permission' => 'udhaar'],
             ['label' => 'Repairs', 'route' => 'repairs.history', 'icon' => 'wrench', 'group' => 'sell', 'permission' => 'repairs'],
@@ -27,6 +28,7 @@
             // arrived; Purchase Orders is ordering first and receiving against the order (which then
             // writes the Stock In entries itself). 'hint' is a caption shown under the label.
             ['label' => 'Stock In', 'route' => 'stock-ins.history', 'icon' => 'stock-in', 'group' => 'stock', 'permission' => 'stock-ins', 'hint' => 'Goods that have arrived'],
+            ['label' => 'Used Phone Buyback', 'route' => 'buybacks.index', 'icon' => 'phone', 'group' => 'stock', 'permission' => 'buybacks', 'hint' => 'Phones bought from customers'],
             ['label' => 'Purchase Orders', 'route' => 'purchase-orders.index', 'icon' => 'clipboard', 'group' => 'stock', 'permission' => ['purchase-orders', 'receive-goods', 'vendor-invoices', 'vendor-invoices-approve'], 'hint' => 'Order first, receive later'],
             ['label' => 'Vendors', 'route' => 'vendors.index', 'icon' => 'vendor', 'group' => 'stock', 'permission' => 'vendors'],
             ['label' => 'Wallet Loads', 'route' => 'wallet-loads.history', 'icon' => 'wallet', 'group' => 'counter', 'permission' => 'wallet-loads'],
@@ -56,6 +58,7 @@
                 'badge' => $user?->shop_id ? \App\Models\SupportTicket::visibleTo($user)->unreadForShop()->count() : 0, 'badgeKey' => 'data-support-unread'],
         ])->filter(fn ($item) => $user && (($item['everyone'] ?? false) || (($item['owner'] ?? false) ? $user->is_owner : collect((array) $item['permission'])->contains(fn ($p) => $user->hasAccessTo($p)))))
             ->reject(fn ($item) => $item['route'] === 'services.history' && ! $user?->shop?->services_enabled)
+            ->reject(fn ($item) => $item['route'] === 'buybacks.index' && ! $user?->shop?->sellsDevices())
             ->reject(fn ($item) => $item['route'] === 'ledger.trial-balance' && ! $user?->shop?->ledger_enabled)
             ->reject(fn ($item) => $item['route'] === 'payroll.employees' && ! $user?->shop?->payroll_enabled)
             ->map(fn ($item) => $item['route'] === 'payroll.employees' && ! $user?->hasAccessTo('payroll') ? array_merge($item, ['route' => 'payroll.run']) : $item)
@@ -77,6 +80,7 @@
             ->all();
 
     $icons = [
+        'phone' => 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3',
         'home' => 'M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75',
         'cube' => 'M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9',
         'cart' => 'M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z',

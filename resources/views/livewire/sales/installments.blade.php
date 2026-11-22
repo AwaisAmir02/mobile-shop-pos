@@ -30,7 +30,7 @@ new #[Layout('layouts.app')] #[Title('Instalments')] class extends Component
         $plans = BranchContext::current()->shopWide(fn () => Sale::query()
             ->whereHas('installments')
             ->with(['installments', 'customer'])
-            ->withSum('payments', 'amount')
+            ->withSum('payments', 'amount')->withSum('returns', 'due_reduction')
             ->latest('id')
             ->get())
             ->map(fn (Sale $sale) => ['sale' => $sale, 'schedule' => new InstallmentSchedule($sale)]);

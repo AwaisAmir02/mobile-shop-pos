@@ -57,6 +57,17 @@ return [
             ],
         ],
         [
+            'id' => 'prescription',
+            'heading' => 'Prescription wali dawaiyan',
+            'intro' => 'Jis dawai ko product page par Prescription only ya Controlled mark kiya gaya ho, cart ki line par yeh likha aata hai aur cart ke neeche Prescription register box khulta hai. Sale prescription register mein darj hoti hai.',
+            'items' => [
+                ['label' => 'Patient name', 'text' => 'Dawai kis ke liye hai. Controlled dawai ke liye zaroori hai.'],
+                ['label' => 'Prescriber (doctor)', 'text' => 'Prescription wala doctor, aur agar ho to PMDC / registration no. aur prescription ki tareekh.'],
+                ['label' => 'Emergency reason', 'text' => 'Prescriber na ho to sale emergency sale ke taur par darj hoti hai, aur wajah likhna zaroori hai.'],
+                ['label' => 'Prescription photo', 'text' => 'Zaroori nahin. Prescription ki photo ya PDF, jo sirf shop ke andar rehti hai.'],
+            ],
+        ],
+        [
             'id' => 'shortcuts',
             'heading' => 'Keyboard shortcuts',
             'items' => [

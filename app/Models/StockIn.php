@@ -40,6 +40,7 @@ class StockIn extends Model
         'amount_paid',
         'stock_date',
         'expiry_date',
+        'batch_number',
         'note',
         'status',
         'cancelled_at',

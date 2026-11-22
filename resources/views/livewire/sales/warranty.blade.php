@@ -98,6 +98,10 @@ new #[Layout('layouts.app')] #[Title('Warranty Check')] class extends Component
             return ['label' => 'Sale cancelled', 'variant' => 'neutral', 'detail' => 'This sale was cancelled, so it carries no warranty.'];
         }
 
+        if (\App\Support\Quantity::compare($item->returnedQuantity(), $item->quantity) >= 0) {
+            return ['label' => 'Returned', 'variant' => 'neutral', 'detail' => 'This was returned to the shop, so it carries no warranty now.'];
+        }
+
         if (! $item->hasWarranty()) {
             return ['label' => 'No warranty', 'variant' => 'neutral', 'detail' => 'No warranty was recorded when this was sold.'];
         }

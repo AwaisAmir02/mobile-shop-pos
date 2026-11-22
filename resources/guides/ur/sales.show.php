@@ -36,6 +36,22 @@ return [
             ],
         ],
         [
+            'id' => 'returns',
+            'heading' => 'Returns',
+            'needs' => 'sales-returns',
+            'items' => [
+                ['label' => 'Return Items', 'text' => 'Is sale ka kuch ya saara saman wapas lene ki screen kholta hai. Har return ka apna number (RN-) hota hai aur usi din gina jata hai jis din hua.'],
+                ['label' => 'Exchange', 'text' => 'New Sale ko exchange mode mein kholta hai: is sale se kya wapas aa raha hai chunein, phir customer jo is ki jagah le raha hai woh add karein (size badalna bas doosra size chunna hai). Wapas aane wala saman naye items ki payment karta hai; farq customer deta hai, ya bachi raqam paison ya store credit mein wapas milti hai. Return aur nayi sale ek saath save hoti hain. Woh return cancel karne se poora exchange wapas ho jata hai.'],
+                ['label' => 'Credit note PDF', 'text' => 'Return ka apna document, print karne ya bhejne ke liye: kya wapas aaya, baqi raqam mein se kitna kata aur kitna wapas diya.'],
+                ['label' => 'Cancel return', 'text' => 'Ghalti se kiya gaya return wapas karta hai: saman dobara stock se nikal jata hai. Agar woh saman dobara bik chuka ho to mumkin nahi.'],
+            ],
+        ],
+        [
+            'id' => 'prescription',
+            'heading' => 'Prescription register',
+            'intro' => 'Jab sale mein Prescription only ya Controlled dawai ho to yeh nazar aata hai: har dawai ka register number, patient aur prescriber (ya emergency ki wajah). Add details us sale ki tafseel bharta hai jo register par nahin bani, maslan WhatsApp order; Edit details unhe theek karta hai. View prescription photo photo kholta hai, sirf shop ke signed-in users ke liye.',
+        ],
+        [
             'id' => 'collecting',
             'heading' => 'Baqi raqam lena',
             'intro' => 'Is sale ki baad mein payment lene ke liye Sales History mein sale ki line par Record Payment, ya customer ke Udhaar page par jayein.',

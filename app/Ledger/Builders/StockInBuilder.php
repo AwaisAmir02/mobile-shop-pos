@@ -29,7 +29,8 @@ class StockInBuilder implements EntryBuilder
 
         // No record of a refund, so a payment on a cancelled batch is the one unclear case: it's parked.
         if ($document->status === RecordStatus::Cancelled) {
-            foreach ($payments as $payment) {
+            // A cancelled trade-in went back with its cancelled sale: no money to park.
+            foreach ($payments->reject(fn (StockInPayment $payment) => $payment->payment_method === 'trade_in') as $payment) {
                 $lines[] = Line::debit(Chart::CANCELLED_UNCONFIRMED, $payment->amount, $payment->payment_date, $branch, 'vendor', $vendor);
                 $lines[] = Line::credit(Chart::paidThrough($payment->payment_method, $payment->shop_account_id), $payment->amount, $payment->payment_date, $branch);
             }

@@ -41,7 +41,7 @@ class ProductImportService
     /** Canonical, lowercase header names this importer understands. */
     protected const REQUIRED_HEADERS = ['name', 'main category', 'selling price'];
 
-    protected const OPTIONAL_HEADERS = ['cost price', 'stock qty', 'sub-category', 'brand', 'model', 'imei/serial', 'barcode', 'variant group', 'option 1', 'option 2', 'unit'];
+    protected const OPTIONAL_HEADERS = ['cost price', 'stock qty', 'sub-category', 'brand', 'model', 'imei/serial', 'barcode', 'variant group', 'option 1', 'option 2', 'unit', 'generic name', 'drap reg no', 'prescription'];
 
     /** A small-edit-distance flag against the shop's own existing names — cheap (php levenshtein()), not exhaustive. */
     protected const SIMILARITY_THRESHOLD = 2;
@@ -218,6 +218,11 @@ class ProductImportService
                 $product->fill([
                     'product_group_id' => $groupKey !== null ? $groups[$groupKey]->id : null,
                     'variant_label' => $row['variantLabel'],
+                    'variant_size' => $row['variantSize'] ?? null,
+                    'variant_colour' => $row['variantColour'] ?? null,
+                    'generic_name' => $row['genericName'] ?? null,
+                    'drap_reg_no' => $row['drapRegNo'] ?? null,
+                    'rx_control' => $row['rxControl'] ?? null,
                     'type' => $typeSlug,
                     // The group's own spelling, whatever casing this row used.
                     'name' => $groupKey !== null ? ProductGroupService::fullName($groups[$groupKey]->name, $row['variantLabel']) : $row['name'],
@@ -389,12 +394,28 @@ class ProductImportService
             $groupName = $variantsEnabled ? trim($cellAt($cells, 'variant group')) : '';
             $options = array_values(array_filter([trim($cellAt($cells, 'option 1')), trim($cellAt($cells, 'option 2'))], fn (string $option) => $option !== ''));
             $variantLabel = $groupName !== '' ? implode(ProductGroupService::LABEL_SEPARATOR, $options) : '';
+            $genericName = trim($cellAt($cells, 'generic name'));
+            $drapRegNo = trim($cellAt($cells, 'drap reg no'));
+            $rxCell = mb_strtolower(trim($cellAt($cells, 'prescription')));
 
             $rowHadError = false;
             $addError = function (string $message) use (&$rowHadError, &$rowErrors, $excelRow) {
                 $rowErrors[] = "Row {$excelRow}: {$message}";
                 $rowHadError = true;
             };
+
+            // The prescription register: blank, "Prescription only" (or Rx) or "Controlled".
+            $rxControl = match (true) {
+                $rxCell === '' || in_array($rxCell, ['no', 'none', 'not needed', 'otc'], true) => null,
+                str_starts_with($rxCell, 'control') => 'controlled',
+                str_starts_with($rxCell, 'prescription') || $rxCell === 'rx' => 'prescription',
+                default => false,
+            };
+
+            if ($rxControl === false) {
+                $addError('Prescription must be blank, Prescription only or Controlled.');
+                $rxControl = null;
+            }
 
             if ($groupName !== '') {
                 if ($options === []) {
@@ -604,6 +625,12 @@ class ProductImportService
                 'barcode' => $barcode !== '' ? $barcode : null,
                 'groupName' => $groupName !== '' ? $groupName : null,
                 'variantLabel' => $groupName !== '' ? $variantLabel : null,
+                // Option 1 is the size and Option 2 the colour, as the template's example shows.
+                'variantSize' => $groupName !== '' && trim($cellAt($cells, 'option 1')) !== '' ? mb_substr(trim($cellAt($cells, 'option 1')), 0, 50) : null,
+                'variantColour' => $groupName !== '' && trim($cellAt($cells, 'option 2')) !== '' ? mb_substr(trim($cellAt($cells, 'option 2')), 0, 50) : null,
+                'genericName' => $genericName !== '' ? mb_substr($genericName, 0, 150) : null,
+                'drapRegNo' => $drapRegNo !== '' ? mb_substr($drapRegNo, 0, 30) : null,
+                'rxControl' => $rxControl,
                 'price' => $price,
                 'costPrice' => $costPrice,
                 'stockQuantity' => $stockQuantity,
@@ -727,7 +754,7 @@ class ProductImportService
      * worked row and the required/optional notes — the importer only ever
      * reads the first sheet.
      */
-    public function templateResponse(bool $withBarcode = true, bool $withVariants = false, bool $withUnits = false): StreamedResponse
+    public function templateResponse(bool $withBarcode = true, bool $withVariants = false, bool $withUnits = false, bool $withMedicine = false): StreamedResponse
     {
         $headers = ['Name', 'Main Category', 'Sub-Category', 'Brand', 'Model', 'IMEI/Serial', 'Selling Price', 'Cost Price', 'Stock Qty'];
         if ($withBarcode) {
@@ -742,6 +769,10 @@ class ProductImportService
 
         if ($withUnits) {
             $headers[] = 'Unit';
+        }
+
+        if ($withMedicine) {
+            array_push($headers, 'Generic Name', 'DRAP Reg No', 'Prescription');
         }
 
         $lastColumn = chr(ord('A') + count($headers) - 1);
@@ -795,6 +826,16 @@ class ProductImportService
             ], null, 'A5');
         }
 
+        if ($withMedicine) {
+            $example->fromArray([
+                'Panadol 500mg Tablets', 'Medicines', '', '', '', '', '3', '2.5', '200',
+                ...($withBarcode ? [''] : []),
+                ...($withVariants ? ['', '', ''] : []),
+                ...($withUnits ? [''] : []),
+                'Paracetamol 500mg', '012345', '',
+            ], null, 'A6');
+        }
+
         $notes = [
             ['Column', 'Required?', 'Notes'],
             ['Name', 'Required', ''],
@@ -812,6 +853,11 @@ class ProductImportService
                 ['Option 1, Option 2', 'At least one, when Variant Group is filled in', 'For example a size and a colour.'],
             ] : []),
             ...($withUnits ? [['Unit', 'Optional', 'piece, kg, litre, metre, yard or gaz. Blank means piece. Mobile phones are always pieces, and every variant in a group has to use the same unit.']] : []),
+            ...($withMedicine ? [
+                ['Generic Name', 'Optional', 'The salt with its strength, e.g. Paracetamol 500mg. Brands with the same generic name show as substitutes on the sales screen.'],
+                ['DRAP Reg No', 'Optional', 'The registration number printed on the pack.'],
+                ['Prescription', 'Optional', 'Blank, Prescription only, or Controlled. Each sale of a marked medicine is written in the prescription register.'],
+            ] : []),
             ['', '', ''],
             ['Note:', '', 'Images cannot be imported from a spreadsheet — add product photos afterwards from the Products screen.'],
             ['Note:', '', 'A row whose Name and IMEI/Serial exactly match an existing product is skipped, not overwritten.'],

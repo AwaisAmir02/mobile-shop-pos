@@ -47,7 +47,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
      * Settings opens on: the shop's own sections first, the user's Profile last.
      */
     protected const TAB_GROUPS = [
-        'Your shop' => ['branding', 'shop-accounts'],
+        'Your shop' => ['branding', 'shop-accounts', 'returns'],
         'Catalogue' => ['accessory-categories', 'brands', 'networks'],
         'Pricing & services' => ['percentage', 'bills', 'services', 'deduction-types'],
         'Team & access' => ['roles', 'modules'],
@@ -110,6 +110,11 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
     public array $rolePermissions = [];
 
     // Commission Percentages
+    // Returns policy (owner only)
+    public string $returnWindowDays = '30';
+    public bool $cashRefundsAllowed = true;
+    public string $storeCreditExpiryDays = '';
+
     public string $simSaleCommissionPercent = '';
     public string $balanceLoadCommissionPercent = '';
     public string $walletLoadCommissionPercent = '';
@@ -145,6 +150,9 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
         $this->brandingDisplayName = $shop?->invoice_display_name ?? '';
         $this->brandingAddress = $shop?->invoice_address ?? '';
         $this->brandingExistingLogoUrl = $shop?->logoUrl();
+        $this->returnWindowDays = (string) ($shop?->return_window_days ?? 30);
+        $this->cashRefundsAllowed = (bool) ($shop?->cash_refunds_allowed ?? true);
+        $this->storeCreditExpiryDays = $shop?->store_credit_expiry_days ? (string) $shop->store_credit_expiry_days : '';
     }
 
     /**
@@ -211,6 +219,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
         if (Auth::user()->is_owner) {
             $tabs[] = 'modules';
+            $tabs[] = 'returns';
         }
 
         // Profile has no permission requirement (matching the standalone
@@ -1030,6 +1039,24 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
 
     // ── Commission Percentages ───────────────────────────────────────
 
+    public function saveReturnPolicy(): void
+    {
+        abort_unless(Auth::user()->is_owner, 403);
+
+        $this->validate([
+            'returnWindowDays' => ['required', 'integer', 'min:0', 'max:365'],
+            'storeCreditExpiryDays' => ['nullable', 'integer', 'min:1', 'max:3650'],
+        ], [], ['returnWindowDays' => 'days', 'storeCreditExpiryDays' => 'days']);
+
+        Auth::user()->shop->update([
+            'return_window_days' => (int) $this->returnWindowDays,
+            'cash_refunds_allowed' => $this->cashRefundsAllowed,
+            'store_credit_expiry_days' => $this->storeCreditExpiryDays !== '' ? (int) $this->storeCreditExpiryDays : null,
+        ]);
+
+        $this->toastSuccess('Return policy saved.');
+    }
+
     public function saveCommissionPercentages(): void
     {
         abort_unless(Auth::user()->hasAccessTo('settings-percentage'), 403);
@@ -1102,6 +1129,7 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
             'profile' => 'Profile',
             'roles' => 'Roles',
             'modules' => 'Modules',
+            'returns' => 'Returns',
         ];
     @endphp
 
@@ -1668,6 +1696,27 @@ new #[Layout('layouts.app')] #[Title('Settings')] class extends Component
                     <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveBranding">
                         Save Branding
                     </x-ui.button>
+                </form>
+            </x-ui.card>
+        </div>
+    @elseif ($tab === 'returns')
+        <div class="max-w-2xl space-y-6">
+            <x-ui.card title="Returns" description="How this shop takes goods back on Sale Receipt > Return Items.">
+                <form wire:submit="saveReturnPolicy" class="space-y-5">
+                    <x-ui.field label="Accept returns within (days)" name="returnWindowDays" for="returnWindowDays" help="Days after the sale. 0 means no limit. Past it, only the owner can take goods back, and has to say why." class="sm:max-w-xs">
+                        <x-ui.input wire:model="returnWindowDays" id="returnWindowDays" type="number" min="0" max="365" step="1" />
+                    </x-ui.field>
+
+                    <div>
+                        <x-ui.checkbox wire:model="cashRefundsAllowed"><span class="font-semibold text-ink">Hand back money on returns</span></x-ui.checkbox>
+                        <p class="mt-1 pl-6 text-sm text-ink-faint">Off means what a return is worth, beyond what the customer still owes, goes on their store credit. On, they can also have store credit paid out.</p>
+                    </div>
+
+                    <x-ui.field label="Store credit lasts (days)" name="storeCreditExpiryDays" for="storeCreditExpiryDays" help="Blank means it never expires. Applies to credit given from now on; what's left after that is written off." class="sm:max-w-xs">
+                        <x-ui.input wire:model="storeCreditExpiryDays" id="storeCreditExpiryDays" type="number" min="1" max="3650" step="1" />
+                    </x-ui.field>
+
+                    <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="saveReturnPolicy">Save</x-ui.button>
                 </form>
             </x-ui.card>
         </div>

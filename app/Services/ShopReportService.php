@@ -41,6 +41,10 @@ class ShopReportService
             ->whereHas('sale', fn ($query) => $query->whereBetween('created_at', [$start, $end]));
 
         $totalRevenue = (float) $salesQuery()->sum('total');
+        // Counted on the day the goods came back; the sale's own figures stay as they were.
+        $totalReturns = (float) \App\Models\SaleReturn::where('shop_id', $shop->id)
+            ->whereBetween('return_date', [$start->toDateString(), $end->toDateString()])
+            ->sum('value_total');
         $invoiceDiscount = (float) $salesQuery()->sum('discount_amount');
         $itemDiscount = (float) $saleItemsQuery()->sum('discount_amount');
 
@@ -119,6 +123,8 @@ class ShopReportService
 
         return [
             'totalRevenue' => $totalRevenue,
+            'totalReturns' => $totalReturns,
+            'netSales' => $totalRevenue - $totalReturns,
             'totalDiscount' => $invoiceDiscount + $itemDiscount,
             'categories' => $categories,
             'totalItemsSold' => (int) $categories->sum('units'),
@@ -140,7 +146,8 @@ class ShopReportService
             'totalRepairsRevenue' => $totalRepairsRevenue,
             'totalNadraVerifications' => $totalNadraVerifications,
             'totalNadraRevenue' => $totalNadraRevenue,
-            'netSummary' => $totalRevenue - $totalExpenses,
+            // Returns are counted on the day the goods came back.
+            'netSummary' => $totalRevenue - $totalExpenses - $totalReturns,
         ];
     }
 

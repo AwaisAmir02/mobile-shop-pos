@@ -127,6 +127,13 @@ class LedgerPoster
     /** A shop's bank and wallet accounts come and go, so each gets its ledger account the first time it's used. */
     public function bankAccount(Shop $shop, string $code): int
     {
+        // A standard account added to the chart after this shop's ledger started (Trade-in Clearing).
+        if (in_array($code, ChartOfAccounts::ADDED_LATER, true)) {
+            [$name, $type] = ChartOfAccounts::ACCOUNTS[$code];
+
+            return LedgerAccount::withoutGlobalScopes()->firstOrCreate(['shop_id' => $shop->id, 'code' => $code], ['name' => $name, 'type' => $type])->id;
+        }
+
         if (ChartOfAccounts::parentCode($code) !== ChartOfAccounts::BANK || $code === ChartOfAccounts::BANK) {
             throw new RuntimeException("No account {$code}.");
         }

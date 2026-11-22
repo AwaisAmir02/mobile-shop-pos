@@ -143,7 +143,7 @@ new #[Layout('layouts.app')] #[Title('Expiring & Expired')] class extends Compon
                             <x-ui.table-row wire:key="expiry-batch-{{ $batch->id }}">
                                 <x-ui.table-cell primary class="font-semibold text-ink">{{ $batch->product_name }}</x-ui.table-cell>
                                 <x-ui.table-cell label="Received">{{ $batch->stock_date->format('d M Y') }}</x-ui.table-cell>
-                                <x-ui.table-cell label="Expires"><span @class(['font-semibold text-danger' => $section === 'expired', 'text-warning' => $section === 'soon'])>{{ $batch->expiry_date?->format('d M Y') ?? '—' }}</span></x-ui.table-cell>
+                                <x-ui.table-cell label="Expires"><span @class(['font-semibold text-danger' => $section === 'expired', 'text-warning' => $section === 'soon'])>{{ $batch->expiry_date?->format('d M Y') ?? '—' }}</span>@if ($batch->batch_number)<span class="ui-sub">Batch {{ $batch->batch_number }}</span>@endif</x-ui.table-cell>
                                 <x-ui.table-cell label="Remaining">{{ $batch->unit->groupedAmount($batch->quantity_remaining) }}</x-ui.table-cell>
                                 <x-ui.table-cell label="Value at Cost">Rs {{ number_format(\App\ReportQueries\ExpiryReport::valueAtCost($batch), 2) }}</x-ui.table-cell>
                                 <x-ui.table-cell actions align="right">

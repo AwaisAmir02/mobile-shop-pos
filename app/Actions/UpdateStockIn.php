@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 class UpdateStockIn
 {
     /**
-     * @param  array{quantity: int|float|string, vendor_id: ?int, stock_date: string, note: ?string, cost_price: ?float, selling_price: ?float, expiry_date?: ?string}  $fields
+     * @param  array{quantity: int|float|string, vendor_id: ?int, stock_date: string, note: ?string, cost_price: ?float, selling_price: ?float, expiry_date?: ?string, batch_number?: ?string}  $fields
      */
     public static function handle(StockIn $entry, array $fields, ?int $userId): StockIn
     {
@@ -23,6 +23,10 @@ class UpdateStockIn
 
             if ($entry->isCancelled()) {
                 throw new \RuntimeException('A cancelled stock-in entry cannot be edited.');
+            }
+
+            if (Buybacks::forStockIn($entry->id)) {
+                throw ValidationException::withMessages(['quantity' => 'This stock is a used phone bought from a customer, so it can\'t be edited here. Cancel the buyback and record it again.']);
             }
 
             $snapshot = [
@@ -35,6 +39,7 @@ class UpdateStockIn
                 'total_cost' => $entry->total_cost !== null ? (float) $entry->total_cost : null,
                 'stock_date' => $entry->stock_date->toDateString(),
                 'expiry_date' => $entry->expiry_date?->toDateString(),
+                'batch_number' => $entry->batch_number,
                 'note' => $entry->note,
             ];
 
@@ -115,6 +120,7 @@ class UpdateStockIn
                 'total_cost' => $newTotalCost,
                 'stock_date' => $fields['stock_date'],
                 ...(array_key_exists('expiry_date', $fields) ? ['expiry_date' => $fields['expiry_date']] : []),
+                ...(array_key_exists('batch_number', $fields) ? ['batch_number' => CreateStockIn::batchNumber($fields['batch_number'])] : []),
                 'note' => $fields['note'],
             ]);
 
