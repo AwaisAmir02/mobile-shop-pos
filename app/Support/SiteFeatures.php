@@ -11,7 +11,12 @@ namespace App\Support;
  * listed as a feature: per-branch stock or transfers, CRM, ERP or HR modules
  * (those appear only in ROADMAP, marked coming soon). A page with a 'notice'
  * is built but not on for everyone: the ledger is off until switched on per
- * shop, and the online store connection hasn't served a live store yet.
+ * shop, the online store connection hasn't served a live store yet, and
+ * courier booking comes with selected plans only.
+ *
+ * These are capability pages ("what it does"). Business-type pages ("who it's
+ * for") live in SiteIndustries, behind their own header menu; the mobile shop
+ * page is in both lists.
  */
 class SiteFeatures
 {
@@ -19,7 +24,7 @@ class SiteFeatures
      * Pages with copy written after the original single Features page, so
      * SiteFeaturePagesTest doesn't hold them to that page's text.
      */
-    public const NEW_COPY = ['pos', 'stock', 'udhaar', 'reports', 'multi-branch', 'purchase-orders', 'payroll', 'cash-balances', 'mobile-shop-services', 'double-entry-ledger', 'online-store'];
+    public const NEW_COPY = ['pos', 'returns-exchange', 'stock', 'udhaar', 'reports', 'multi-branch', 'purchase-orders', 'payroll', 'cash-balances', 'mobile-shop-services', 'double-entry-ledger', 'online-store', 'courier-booking'];
 
     /** Planned modules. Not built: shown only with a Coming soon label, never as a feature. */
     public const ROADMAP = [
@@ -35,7 +40,7 @@ class SiteFeatures
      *     items: array<int, array{0: string, 1: string, 2: string}>,
      *     mockup: ?array{component: string, frame: string, url?: string, label: string},
      *     spotlights?: array<int, array{0: string, 1: string}>,
-     *     badge?: string, notice?: string,
+     *     badge?: string, notice?: string, roadmap?: array<int, string>, roadmap_title?: string,
      *     related: array<int, string>
      * }>
      */
@@ -44,42 +49,73 @@ class SiteFeatures
         return [
             'pos' => [
                 'name' => 'Sales & Invoices',
-                'seo_title' => 'POS Billing & Invoicing Software',
+                'seo_title' => 'POS Billing Software in Pakistan: Sales & Invoices',
                 'summary' => 'Fast checkout with barcode scanning, partial payments and branded PDF invoices with a QR code.',
                 'icon' => 'cart',
                 'anchor' => 'counter',
                 'eyebrow' => 'Counter & sales',
                 'title' => 'A checkout that keeps up with a busy counter',
                 'lead' => 'Scan, sell, print — and every sale already knows its cost, its customer and what is still owed.',
-                'description' => 'POS billing software for Pakistani businesses: barcode checkout, branded PDF invoices with a QR code, cash, account, partial or udhaar payments, and safe edits.',
+                'description' => 'POS billing software for Pakistani shops: barcode checkout, branded PDF invoices with a QR code, cash, JazzCash, Easypaisa or udhaar payments, returns and automatic promotions.',
                 'items' => [
                     ['cart', 'Barcode-first checkout', 'Scan or search products, adjust price and discount per line or for the whole invoice.'],
                     ['receipt', 'Branded invoices', 'PDF invoices with your shop’s name, logo and a QR code, ready to print or send on WhatsApp.'],
                     ['wallet', 'Paid, partial or udhaar', 'Take full or part payment in cash or into JazzCash, Easypaisa or bank, and link the balance to the customer automatically.'],
                     ['shield', 'Safe edits & cancellations', 'Edit or cancel a sale with a reason; stock and dues correct themselves.'],
-                    ['box', 'Sizes, colours and weights', 'Sell one product in several sizes or colours, or by kg, litre, metre or gaz with quantities like 1.5.'],
+                    ['box', 'Sizes, packs and weights', 'Sell in several sizes or colours, by the box, pack or piece, or by kg, litre, metre or gaz with quantities like 1.5.'],
+                    ['sparkles', 'Promotions applied for you', 'Running a sale? Your active promotions take their discount off at the counter automatically.'],
+                    ['layers', 'Returns & exchanges', 'Take an item back against its invoice, refund it or give store credit, or swap it in one step.'],
                     ['qr', 'Barcode labels', 'Generate barcodes for products that don’t have one and print the labels yourself.'],
                 ],
                 'mockup' => ['component' => 'pos', 'frame' => 'browser', 'url' => 'hisabokitab.com/sales', 'label' => 'Sale screen with cart, batch costs, FIFO profit and payment options'],
-                'related' => ['stock', 'udhaar', 'cash-balances'],
+                'related' => ['returns-exchange', 'stock', 'udhaar'],
+            ],
+            'returns-exchange' => [
+                'name' => 'Returns, Exchange & Promotions',
+                'seo_title' => 'Sales Returns, Exchange & Store Credit for Shops',
+                'summary' => 'Returns with credit notes, store credit, one-step exchanges, scheduled promotions and box-strip-piece selling — free on every plan.',
+                'icon' => 'layers',
+                'anchor' => 'returns',
+                'eyebrow' => 'Returns & offers',
+                'title' => 'Returns, exchanges and sales, done properly',
+                'lead' => 'Take items back against the original invoice, give a refund or store credit, swap sizes in one step and run your season sale — with stock, dues and profit correcting themselves.',
+                'description' => 'Sales return and exchange software for Pakistani shops: returns with credit note PDFs, store credit, one-step exchanges, scheduled % or flat promotions and box, strip or piece selling.',
+                'items' => [
+                    ['receipt', 'Returns against the invoice', 'Return all or part of a sale. Items go back to the batch they came from, and the customer’s dues correct themselves.'],
+                    ['check', 'Credit note PDFs', 'Every return gets its own credit note, ready to print or hand to the customer.'],
+                    ['wallet', 'Refund or store credit', 'Refund in cash, or turn the amount into store credit. One switch makes your shop exchange-and-credit only.'],
+                    ['users', 'Store credit per customer', 'Kept apart from udhaar. Spend it at the counter, set an optional expiry, or pay it out.'],
+                    ['layers', 'One-step exchange', 'Take the old item back and sell the new one together; the customer pays or gets back only the difference.'],
+                    ['clock', 'Your return window', '30 days unless you change it. Only the owner can take back a late return, and the reason is recorded.'],
+                    ['sparkles', 'Scheduled promotions', 'Percent or flat off, with start and end dates, on chosen products, groups or categories — applied at the counter automatically.'],
+                    ['box', 'Sell by box, strip or piece', 'Set up to three pack levels with their own prices; stock is always counted in single pieces.'],
+                ],
+                'mockup' => null,
+                'spotlights' => [
+                    ['Net sales you can trust', 'Reports show gross sales, returns and net sales side by side. A return counts on the day it happens, and damaged stock can be written off instead of going back on the shelf.'],
+                    ['Free on every plan', 'Returns, store credit, exchanges, promotions and pack selling are part of every HisabOKitab plan — for mobile shops, pharmacies, kiryana stores and clothing and shoe shops alike.'],
+                ],
+                'related' => ['pos', 'udhaar', 'reports'],
             ],
             'stock' => [
                 'name' => 'Inventory & FIFO Costing',
-                'seo_title' => 'Inventory & Stock Management Software',
+                'seo_title' => 'Inventory & Stock Management Software in Pakistan',
                 'summary' => 'Stock In by batch and vendor, FIFO costing, expiry dates, variants and write-offs — so stock and profit are always right.',
                 'icon' => 'box',
                 'anchor' => 'stock',
                 'eyebrow' => 'Stock & costing',
                 'title' => 'Stock you can count on, profit you can believe',
                 'lead' => 'Every purchase is a batch with its own cost. Sales draw from the oldest batch first, or the one closest to expiry, so margins reflect what you really paid.',
-                'description' => 'Inventory software for shops and businesses in Pakistan: Stock In by batch and vendor, FIFO costing, expiry tracking, sizes and colours, weighed items and stock write-offs.',
+                'description' => 'Inventory software for shops in Pakistan: Stock In by batch and vendor, FIFO costing, expiry dates and batch numbers, sizes and colours, cartons, packs and pieces, and write-offs.',
                 'items' => [
-                    ['box', 'Stock In by batch', 'Record purchases per vendor with quantities, costs and selling prices.'],
+                    ['box', 'Stock In by batch', 'Record purchases per vendor with quantities, costs and selling prices, plus batch numbers when you track expiry.'],
                     ['calculator', 'FIFO batch costing', 'Each unit sold is costed from the batch it came from — automatically.'],
-                    ['clock', 'Expiry date tracking', 'For pharmacies and grocers: the batch closest to expiry sells first, and expired stock can’t be sold by mistake.'],
-                    ['layers', 'Variants', 'One product in several sizes or colours, each with its own barcode, price and stock count.'],
+                    ['clock', 'Expiry date tracking', 'The batch closest to expiry sells first, and expired stock can’t be sold by mistake. On from day one for kiryana stores and pharmacies.'],
+                    ['layers', 'Variants & size grid', 'One product in several sizes or colours, each with its own barcode, price and stock — received in one size-by-colour grid.'],
+                    ['store', 'Cartons, packs & pieces', 'Buy by the carton or box and sell by the pack or piece; stock is always counted in single pieces.'],
                     ['calculator', 'Weighed & measured items', 'Sell by kg, litre, metre, yard or gaz, down to fractions.'],
                     ['receipt', 'Stock write-offs', 'Take damaged, lost or expired stock off the shelf with a reason, valued at what it cost you.'],
+                    ['qr', 'Labels after Stock In', 'Print barcode labels for everything a delivery brought in, straight after you save it.'],
                     ['chart', 'Excel product import', 'Bring a whole catalogue in from an Excel or CSV sheet instead of typing it.'],
                     ['users', 'Vendors & party ledger', 'Know what you owe each supplier and what each party owes you.'],
                 ],
@@ -115,22 +151,23 @@ class SiteFeatures
             ],
             'udhaar' => [
                 'name' => 'Udhaar & Customers',
-                'seo_title' => 'Udhaar & Customer Ledger Software',
+                'seo_title' => 'Udhaar App & Digital Khata for Shops in Pakistan',
                 'summary' => 'Every rupee a customer owes, itemised by where it came from, with WhatsApp reminders.',
                 'icon' => 'wallet',
                 'anchor' => 'udhaar',
                 'eyebrow' => 'Customers & udhaar',
                 'title' => 'Udhaar without the register',
                 'lead' => 'Cash udhaar, unpaid sales and service balances add up to one total per customer — every line traceable to where it came from.',
-                'description' => 'Digital udhaar khata and customer ledger: one clear balance per customer, itemised by sale or service, party ledger statements and WhatsApp payment reminders.',
+                'description' => 'Udhaar app and digital khata for Pakistani shops: one clear balance per customer, itemised by sale, WhatsApp reminders, a private ledger link and JazzCash payments.',
                 'items' => [
                     ['wallet', 'One clear balance', 'Udhaar given and repaid, alongside unpaid sales and services.'],
                     ['receipt', 'Itemised by source', 'See exactly which sale or service each rupee belongs to.'],
-                    ['chat', 'WhatsApp reminders', 'Send a polite reminder that lists every due item — no payment links, no surprises.'],
+                    ['chat', 'WhatsApp reminders', 'Send a polite reminder that lists every due item and links to the customer’s own account page.'],
+                    ['eye', 'Their own ledger link', 'Each customer gets a private link to see their balance and every due, any time, without calling you.'],
+                    ['phone', 'Pay by JazzCash', 'Customers can pay from their ledger link into your own JazzCash merchant account, and the payment is recorded against their balance.'],
                     ['users', 'Customer history', 'Every purchase, repair and payment for a customer on one page.'],
-                    ['store', 'Customers & suppliers', 'Every customer’s purchases and dues, and what you owe each supplier, on one page.'],
                     ['layers', 'Vendors & party ledger', 'Know what you owe each supplier and what each party owes you.'],
-                    ['eye', 'Statements for any dates', 'A running-balance statement for any customer or vendor, ready to settle up or send them a copy.'],
+                    ['store', 'Statements for any dates', 'A running-balance statement for any customer or vendor, ready to settle up or send them a copy.'],
                 ],
                 'mockup' => ['component' => 'udhaar', 'frame' => 'browser', 'url' => 'hisabokitab.com/udhaar', 'label' => 'Customer ledger with each due itemised by source'],
                 'spotlights' => [
@@ -171,7 +208,7 @@ class SiteFeatures
                 'lead' => 'Most shops guess their margins and keep udhaar in a register. HisabOKitab does the arithmetic for you — and shows its working.',
                 'description' => 'Business reports for Pakistani shops and companies: gross profit by product, sales, stock, dues and expenses by day, month or year, with Excel and PDF export.',
                 'items' => [
-                    ['chart', 'Dashboard & reports', 'Sales, services, expenses and dues by day, month or year.'],
+                    ['chart', 'Dashboard & reports', 'Sales, returns and net sales, services, expenses and dues by day, month or year.'],
                     ['calculator', 'Gross profit', 'Revenue against the cost of goods sold, product by product, from the real batch costs.'],
                     ['receipt', 'Excel & PDF export', 'Filter and total the records of any screen — sales, stock in, loads, bills, repairs — and export them.'],
                     ['wallet', 'Expenses & accounts', 'Rent, salaries and daily expenses recorded alongside sales, so your profit is the real one.'],
@@ -288,6 +325,36 @@ class SiteFeatures
                 ],
                 'related' => ['stock', 'pos', 'whatsapp-ordering'],
             ],
+            'courier-booking' => [
+                'name' => 'Courier Booking',
+                'seo_title' => 'Courier Booking for Online Sellers: Leopards & PostEx',
+                'summary' => 'Book Leopards and PostEx parcels straight from a sale with your own courier account — labels, COD, live status and returns.',
+                'badge' => 'New',
+                'notice' => 'Courier booking comes with selected plans — see Pricing for which. You connect your own Leopards or PostEx merchant account; HisabOKitab never holds your parcels’ cash.',
+                'icon' => 'map',
+                'anchor' => 'couriers',
+                'eyebrow' => 'Couriers & delivery',
+                'title' => 'Book the parcel from the sale, not from another website',
+                'lead' => 'Connect your own Leopards or PostEx account once. Then every sale — at the counter, on WhatsApp or from your online store — can be booked, labelled and tracked without copying an address twice.',
+                'description' => 'Courier booking software for Pakistani online sellers: book Leopards and PostEx parcels from a sale with your own account, print labels, collect COD and track every parcel.',
+                'items' => [
+                    ['lock', 'Your own courier account', 'Connect your own Leopards or PostEx merchant account. Rates and cash on delivery stay between you and your courier.'],
+                    ['cart', 'Book from the sale', 'Open a sale and book it: name, address, a city from the courier’s own list, weight and pieces.'],
+                    ['wallet', 'Cash on delivery', 'What’s still owed on the sale is filled in as the COD amount, or 0 if it’s already paid.'],
+                    ['receipt', 'Labels to print', 'Print each parcel’s courier label straight from HisabOKitab.'],
+                    ['map', 'Live parcel status', 'Every parcel’s status on one Shipments screen, checked with the courier every 30 minutes or when you refresh.'],
+                    ['box', 'Returned parcels', 'When a parcel comes back, mark it received back to put the stock back, and cancel the sale if you need to.'],
+                    ['close', 'Cancel a booking', 'Booked by mistake? Cancel the parcel with the courier from the same screen.'],
+                    ['chat', 'Any sale, any channel', 'Counter sales, accepted WhatsApp orders and online store orders can all be booked the same way.'],
+                ],
+                'mockup' => null,
+                'roadmap_title' => 'More couriers on the roadmap',
+                'roadmap' => ['TCS', 'Trax', 'M&P'],
+                'spotlights' => [
+                    ['Built for Pakistani online sellers', 'Selling on Facebook, Instagram, WhatsApp or your own website? Keep the order, the stock, the parcel and the cash collected in one place, instead of a courier portal and a notebook.'],
+                ],
+                'related' => ['whatsapp-ordering', 'online-store', 'pos'],
+            ],
             'whatsapp-ordering' => [
                 'name' => 'WhatsApp Ordering',
                 'seo_title' => 'WhatsApp Ordering Chatbot for Your Business',
@@ -355,15 +422,20 @@ class SiteFeatures
             ],
             'mobile-shop-services' => [
                 'name' => 'Mobile Shop & Counter Services',
-                'seo_title' => 'Mobile Shop Software: Repairs, Loads, SIMs & Bills',
-                'summary' => 'Repairs, SIM sales, balance & wallet loads, bills, NADRA and your own services — each with its own screen and fee income.',
+                'seo_title' => 'Mobile Shop Software Pakistan: IMEI, Repairs & Loads',
+                'summary' => 'IMEI checks, warranty, instalments, buybacks, repairs, SIMs, loads, bills and NADRA — each with its own screen and income.',
                 'icon' => 'device',
                 'anchor' => 'services',
-                'eyebrow' => 'Services & extras',
+                'eyebrow' => 'Mobile & electronics shops',
                 'title' => 'Every income stream, not just product sales',
-                'lead' => 'Repairs, SIM sales, balance & wallet loads, bills and NADRA — switched on when you need them.',
-                'description' => 'Mobile shop software for Pakistan: repairs, SIM sales, balance loads, JazzCash and Easypaisa wallet loads, bill payments, NADRA verification and services, each with fees.',
+                'lead' => 'Phones with checked IMEIs, warranty and instalments, used-phone buybacks, repairs, SIM sales, balance & wallet loads, bills and NADRA — switched on for mobile shops.',
+                'description' => 'Mobile shop software for Pakistan: IMEI checks, warranty, instalment sales, used-phone buyback and trade-in, repairs, SIMs, balance and wallet loads, bills and NADRA.',
                 'items' => [
+                    ['shield', 'IMEI check', 'Every IMEI must be 15 digits and pass the standard check digit, and the same IMEI can’t be entered twice.'],
+                    ['check', 'Warranty check', 'Brand or shop warranty is saved with the serial on each sale, so you can look up whether a phone is still covered.'],
+                    ['calculator', 'Instalment sales', 'Split a sale into dated instalments; see what’s paid, due and late, and send WhatsApp reminders.'],
+                    ['phone', 'Used-phone buyback', 'Buy a used phone over the counter with its IMEI and condition, and it goes into stock ready to resell.'],
+                    ['layers', 'Trade-in at the counter', 'Take the customer’s old phone as part payment on a new one, in the same sale.'],
                     ['wrench', 'Repairs', 'Intake, status, charges and a “device ready” WhatsApp message.'],
                     ['device', 'SIM sales', 'Sell and track SIMs by network with revenue reporting.'],
                     ['bolt', 'Balance loads', 'Mobile load sales with your fee recorded as revenue.'],

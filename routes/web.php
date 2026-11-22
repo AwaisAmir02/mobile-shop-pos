@@ -21,6 +21,10 @@ Route::middleware('throttle:site')->group(function () {
     Route::get('features/{feature}', fn (string $feature) => view('site.feature', ['slug' => $feature, 'feature' => \App\Support\SiteFeatures::find($feature)]))
         ->whereIn('feature', \App\Support\SiteFeatures::slugs())
         ->name('site.feature');
+    Route::view('industries', 'site.industries')->name('site.industries');
+    Route::get('industries/{industry}', fn (string $industry) => view('site.feature', ['slug' => $industry, 'feature' => \App\Support\SiteIndustries::find($industry), 'kind' => 'industry']))
+        ->whereIn('industry', \App\Support\SiteIndustries::slugs())
+        ->name('site.industry');
     Route::view('pricing', 'site.pricing')->name('site.pricing');
     Route::view('about', 'site.about')->name('site.about');
     Route::view('contact', 'site.contact')->name('site.contact');

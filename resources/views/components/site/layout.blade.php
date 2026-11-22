@@ -6,13 +6,28 @@
     $metaDescription = $description ?? 'POS, inventory and accounts software for shops, online sellers and growing businesses in Pakistan: sales, stock, udhaar, cash, payroll and WhatsApp orders in one app.';
     $links = [
         ['route' => 'site.features', 'label' => 'Features'],
+        ['route' => 'site.industries', 'label' => 'Industries'],
         ['route' => 'site.pricing', 'label' => 'Pricing'],
         ['route' => 'site.about', 'label' => 'About'],
         ['route' => 'site.contact', 'label' => 'Contact'],
     ];
     $siteFeatures = \App\Support\SiteFeatures::all();
-    $featuresActive = request()->routeIs('site.features', 'site.feature');
-    $currentFeature = request()->route('feature');
+    $currentUrl = url()->current();
+    // The two header dropdowns: capabilities ("what it does") and business types ("who it's for"). Same markup, different lists.
+    $menus = [
+        'site.features' => [
+            'id' => 'site-features-menu', 'mobileId' => 'site-mobile-features', 'toggleLabel' => 'Show all features', 'allLabel' => 'All features',
+            'grid' => 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
+            'active' => request()->routeIs('site.features', 'site.feature'),
+            'items' => collect($siteFeatures)->map(fn ($feature, $slug) => ['url' => route('site.feature', $slug), 'name' => $feature['name'], 'icon' => $feature['icon'], 'summary' => $feature['summary'], 'badge' => $feature['badge'] ?? null])->values()->all(),
+        ],
+        'site.industries' => [
+            'id' => 'site-industries-menu', 'mobileId' => 'site-mobile-industries', 'toggleLabel' => 'Show all industries', 'allLabel' => 'All industries',
+            'grid' => 'grid-cols-2 xl:grid-cols-4',
+            'active' => request()->routeIs('site.industries', 'site.industry'),
+            'items' => \App\Support\SiteIndustries::menu(),
+        ],
+    ];
     $chevron = '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="h-4 w-4 transition-transform duration-200 group-data-[open]:rotate-180"><path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>';
     $contact = config('site.contact');
     $canonical = url()->current();
@@ -121,33 +136,33 @@
                     <img src="{{ $logo1x }}" srcset="{{ $logo1x }} 1x, {{ $logo2x }} 2x" alt="{{ $brand }}" class="h-8 w-auto sm:h-9" width="144" height="38" fetchpriority="high">
                 </a>
 
-                <div class="hidden items-center gap-1 md:flex">
+                <div class="hidden items-center gap-1 lg:flex">
                     @foreach ($links as $link)
-                        @if ($link['route'] === 'site.features')
+                        @if ($menu = $menus[$link['route']] ?? null)
                             <div class="group" data-dropdown>
                                 <div @class([
                                     'flex items-center rounded-full transition-colors',
-                                    'bg-brand-50 text-brand-700' => $featuresActive,
-                                    'text-slate-600 hover:bg-slate-100 hover:text-slate-900 group-data-[open]:bg-slate-100 group-data-[open]:text-slate-900' => ! $featuresActive,
+                                    'bg-brand-50 text-brand-700' => $menu['active'],
+                                    'text-slate-600 hover:bg-slate-100 hover:text-slate-900 group-data-[open]:bg-slate-100 group-data-[open]:text-slate-900' => ! $menu['active'],
                                 ])>
-                                    <a href="{{ route('site.features') }}" class="py-2 pl-4 pr-1 text-sm font-medium" @if (request()->routeIs('site.features')) aria-current="page" @endif>{{ $link['label'] }}</a>
-                                    <button type="button" data-dropdown-toggle class="rounded-r-full py-2 pl-1 pr-3" aria-expanded="false" aria-controls="site-features-menu" aria-label="Show all features">{!! $chevron !!}</button>
+                                    <a href="{{ route($link['route']) }}" class="py-2 pl-4 pr-1 text-sm font-medium" @if (request()->routeIs($link['route'])) aria-current="page" @endif>{{ $link['label'] }}</a>
+                                    <button type="button" data-dropdown-toggle class="rounded-r-full py-2 pl-1 pr-3" aria-expanded="false" aria-controls="{{ $menu['id'] }}" aria-label="{{ $menu['toggleLabel'] }}">{!! $chevron !!}</button>
                                 </div>
-                                <div id="site-features-menu" class="invisible absolute inset-x-4 top-full z-50 translate-y-1 pt-1 opacity-0 sm:inset-x-6 lg:inset-x-8 transition duration-150 group-data-[open]:visible group-data-[open]:translate-y-0 group-data-[open]:opacity-100">
+                                <div id="{{ $menu['id'] }}" class="invisible absolute inset-x-4 top-full z-50 translate-y-1 pt-1 opacity-0 sm:inset-x-6 lg:inset-x-8 transition duration-150 group-data-[open]:visible group-data-[open]:translate-y-0 group-data-[open]:opacity-100">
                                     <div class="flex max-h-[calc(100vh-5.5rem)] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-brand-950/15 ring-1 ring-slate-900/5">
-                                        <div class="grid min-h-0 grid-cols-2 gap-1 overflow-y-auto overscroll-contain p-3 lg:grid-cols-3 xl:grid-cols-4">
-                                            @foreach ($siteFeatures as $slug => $feature)
-                                                <a href="{{ route('site.feature', $slug) }}" @class(['flex gap-3 rounded-xl p-3 transition hover:bg-slate-50', 'bg-brand-50' => $currentFeature === $slug]) @if ($currentFeature === $slug) aria-current="page" @endif>
-                                                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><x-site.icon :name="$feature['icon']" class="h-5 w-5" /></span>
+                                        <div class="grid min-h-0 gap-1 overflow-y-auto overscroll-contain p-3 {{ $menu['grid'] }}">
+                                            @foreach ($menu['items'] as $item)
+                                                <a href="{{ $item['url'] }}" @class(['flex gap-3 rounded-xl p-3 transition hover:bg-slate-50', 'bg-brand-50' => $item['url'] === $currentUrl]) @if ($item['url'] === $currentUrl) aria-current="page" @endif>
+                                                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><x-site.icon :name="$item['icon']" class="h-5 w-5" /></span>
                                                     <span class="min-w-0">
-                                                        <span class="block text-sm font-semibold text-slate-900">{{ $feature['name'] }}@if (! empty($feature['badge']))<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $feature['badge'] }}</span>@endif</span>
-                                                        <span class="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-500">{{ $feature['summary'] }}</span>
+                                                        <span class="block text-sm font-semibold text-slate-900">{{ $item['name'] }}@if (! empty($item['badge']))<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $item['badge'] }}</span>@endif</span>
+                                                        <span class="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-500">{{ $item['summary'] }}</span>
                                                     </span>
                                                 </a>
                                             @endforeach
                                         </div>
                                         <div class="shrink-0 border-t border-slate-100 bg-slate-50 px-6 py-3">
-                                            <a href="{{ route('site.features') }}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800">All features <x-site.icon name="arrow-right" class="h-4 w-4" /></a>
+                                            <a href="{{ route($link['route']) }}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800">{{ $menu['allLabel'] }} <x-site.icon name="arrow-right" class="h-4 w-4" /></a>
                                         </div>
                                     </div>
                                 </div>
@@ -162,7 +177,7 @@
                     @endforeach
                 </div>
 
-                <div class="hidden items-center gap-3 md:flex">
+                <div class="hidden items-center gap-3 lg:flex">
                     @auth
                         <a href="{{ url('/') }}" class="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700">Open dashboard <x-site.icon name="arrow-right" class="h-4 w-4" /></a>
                     @else
@@ -171,25 +186,25 @@
                     @endauth
                 </div>
 
-                <button type="button" data-menu-toggle class="-mr-2 inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100 md:hidden" aria-expanded="false" aria-controls="site-mobile-menu" aria-label="Open menu">
+                <button type="button" data-menu-toggle class="-mr-2 inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100 lg:hidden" aria-expanded="false" aria-controls="site-mobile-menu" aria-label="Open menu">
                     <x-site.icon name="menu" data-icon-open />
                     <x-site.icon name="close" class="hidden h-6 w-6" data-icon-close />
                 </button>
             </nav>
 
-            <div id="site-mobile-menu" data-menu class="hidden border-t border-slate-100 bg-white px-4 pb-6 pt-2 md:hidden">
+            <div id="site-mobile-menu" data-menu class="hidden border-t border-slate-100 bg-white px-4 pb-6 pt-2 lg:hidden">
                 @foreach ($links as $link)
-                    @if ($link['route'] === 'site.features')
+                    @if ($menu = $menus[$link['route']] ?? null)
                         <div class="group" data-submenu>
                             <div class="flex items-center">
-                                <a href="{{ route('site.features') }}" class="block flex-1 rounded-lg px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50">{{ $link['label'] }}</a>
-                                <button type="button" data-submenu-toggle class="rounded-lg p-3 text-slate-500 hover:bg-slate-50" aria-expanded="false" aria-controls="site-mobile-features" aria-label="Show all features">{!! $chevron !!}</button>
+                                <a href="{{ route($link['route']) }}" class="block flex-1 rounded-lg px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50">{{ $link['label'] }}</a>
+                                <button type="button" data-submenu-toggle class="rounded-lg p-3 text-slate-500 hover:bg-slate-50" aria-expanded="false" aria-controls="{{ $menu['mobileId'] }}" aria-label="{{ $menu['toggleLabel'] }}">{!! $chevron !!}</button>
                             </div>
-                            <div id="site-mobile-features" class="hidden pb-2 pl-3 group-data-[open]:block">
-                                @foreach ($siteFeatures as $slug => $feature)
-                                    <a href="{{ route('site.feature', $slug) }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
-                                        <x-site.icon :name="$feature['icon']" class="h-5 w-5 text-brand-600" />
-                                        <span>{{ $feature['name'] }}@if (! empty($feature['badge']))<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $feature['badge'] }}</span>@endif</span>
+                            <div id="{{ $menu['mobileId'] }}" class="hidden pb-2 pl-3 group-data-[open]:block">
+                                @foreach ($menu['items'] as $item)
+                                    <a href="{{ $item['url'] }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                                        <x-site.icon :name="$item['icon']" class="h-5 w-5 text-brand-600" />
+                                        <span>{{ $item['name'] }}@if (! empty($item['badge']))<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $item['badge'] }}</span>@endif</span>
                                     </a>
                                 @endforeach
                             </div>
@@ -214,16 +229,24 @@
         </main>
 
         <footer class="border-t border-slate-200 bg-slate-50">
-            <div class="mx-auto grid grid-cols-1 max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-5 lg:px-8">
+            <div class="mx-auto grid grid-cols-1 max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-6 lg:px-8">
                 <div class="lg:col-span-2">
                     <img src="{{ $logo1x }}" srcset="{{ $logo1x }} 1x, {{ $logo2x }} 2x" alt="{{ $brand }}" class="h-9 w-auto" width="144" height="38" loading="lazy">
-                    <p class="mt-4 max-w-sm text-sm leading-6 text-slate-600">POS, inventory and accounts software for Pakistani shops, online sellers and growing businesses — from kiryana stores, pharmacies and mobile shops to wholesalers and companies with several branches. {{ config('branding.slogan') }}</p>
+                    <p class="mt-4 max-w-sm text-sm leading-6 text-slate-600">POS, inventory and accounts software for Pakistani shops, online sellers and growing businesses — from kiryana stores, pharmacies, mobile shops and clothing &amp; shoe shops to wholesalers and companies with several branches. {{ config('branding.slogan') }}</p>
                 </div>
                 <div>
                     <h2 class="text-sm font-semibold text-slate-900">Features</h2>
                     <ul class="mt-4 space-y-3 text-sm text-slate-600">
-                        @foreach (\Illuminate\Support\Arr::only($siteFeatures, ['pos', 'stock', 'purchase-orders', 'udhaar', 'cash-balances', 'reports', 'payroll', 'multi-branch', 'whatsapp-ordering']) as $slug => $feature)
+                        @foreach (\Illuminate\Support\Arr::only($siteFeatures, ['pos', 'returns-exchange', 'stock', 'purchase-orders', 'udhaar', 'cash-balances', 'reports', 'payroll', 'multi-branch', 'whatsapp-ordering']) as $slug => $feature)
                             <li><a href="{{ route('site.feature', $slug) }}" class="hover:text-brand-700">{{ $feature['name'] }}</a></li>
+                        @endforeach
+                    </ul>
+                </div>
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-900">Industries</h2>
+                    <ul class="mt-4 space-y-3 text-sm text-slate-600">
+                        @foreach ($menus['site.industries']['items'] as $item)
+                            <li><a href="{{ $item['url'] }}" class="hover:text-brand-700">{{ $item['name'] }}</a></li>
                         @endforeach
                     </ul>
                 </div>

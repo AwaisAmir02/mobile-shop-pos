@@ -8,10 +8,11 @@
                 <p>Too many shopkeepers still close the day with a calculator, a register and a stack of WhatsApp chats. Profit is a guess, udhaar lives in someone’s memory, and online customers wait for a reply.</p>
                 <p>We built HisabOKitab so that every sale, every rupee of udhaar and every WhatsApp order lands in one place — with the real cost behind it and a clear record of who owes what.</p>
                 <p>As our shops grew, so did the app: purchase orders and vendor invoices, payroll, a live view of cash and bank balances, and branches that share one catalog while keeping their own records.</p>
+                <p>Every trade got the tools it asked for: IMEI checks, warranty and buybacks for mobile shops, salt search and a prescription register for pharmacies, packs and udhaar links for kiryana stores, sizes and exchanges for clothing and shoe shops — and returns, store credit and promotions for all of them.</p>
                 <p>Then we went further: the same dashboard posts to Facebook and Instagram and runs Meta ads that bring new customers straight into your WhatsApp.</p>
             </div>
             <div class="grid grid-cols-2 gap-4" data-reveal="right">
-                @foreach ([['7', 'kinds of business, one app'], ['2', 'languages on WhatsApp'], ['1', 'screen for counter & online'], ['100%', 'per-shop data isolation']] as $i => [$value, $label])
+                @foreach ([[(string) count(\App\Enums\BusinessGroup::signupValues()), 'kinds of business in '.count(\App\Enums\BusinessGroup::cases()).' groups, one app'], ['2', 'languages on WhatsApp'], ['1', 'screen for counter & online'], ['100%', 'per-shop data isolation']] as $i => [$value, $label])
                     <div @class(['rounded-2xl p-6', 'bg-brand-600 text-white' => $i === 0 || $i === 3, 'bg-slate-50 ring-1 ring-slate-200' => $i === 1 || $i === 2])>
                         <p class="text-4xl font-extrabold tracking-tight">{{ $value }}</p>
                         <p @class(['mt-2 text-sm', 'text-brand-100' => $i === 0 || $i === 3, 'text-slate-600' => $i === 1 || $i === 2])>{{ $label }}</p>

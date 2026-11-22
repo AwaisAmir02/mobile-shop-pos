@@ -23,23 +23,29 @@ class MarketingSiteTest extends TestCase
         return [
             'home' => ['/', 'POS & Business Management Software in Pakistan | HisabOKitab'],
             'features' => ['/features', 'Features: POS, Inventory, Udhaar, Payroll & WhatsApp | HisabOKitab'],
-            'pricing' => ['/pricing', 'Pricing & Plans in PKR | HisabOKitab'],
+            'industries' => ['/industries', 'POS Software for Every Kind of Shop in Pakistan | HisabOKitab'],
+            'pricing' => ['/pricing', 'POS Software Pricing in Pakistan: Plans in PKR | HisabOKitab'],
             'about' => ['/about', 'About Us: Business Software Made in Pakistan | HisabOKitab'],
             'contact' => ['/contact', 'Contact Us: WhatsApp, Email & Phone | HisabOKitab'],
-            'feature: pos' => ['/features/pos', 'POS Billing & Invoicing Software | HisabOKitab'],
-            'feature: stock' => ['/features/stock', 'Inventory & Stock Management Software | HisabOKitab'],
+            'feature: pos' => ['/features/pos', 'POS Billing Software in Pakistan: Sales & Invoices | HisabOKitab'],
+            'feature: returns-exchange' => ['/features/returns-exchange', 'Sales Returns, Exchange & Store Credit for Shops | HisabOKitab'],
+            'feature: stock' => ['/features/stock', 'Inventory & Stock Management Software in Pakistan | HisabOKitab'],
             'feature: purchase-orders' => ['/features/purchase-orders', 'Purchase Order & Goods Receipt Software | HisabOKitab'],
-            'feature: udhaar' => ['/features/udhaar', 'Udhaar & Customer Ledger Software | HisabOKitab'],
+            'feature: udhaar' => ['/features/udhaar', 'Udhaar App & Digital Khata for Shops in Pakistan | HisabOKitab'],
             'feature: cash-balances' => ['/features/cash-balances', 'Cash in Hand, JazzCash, Easypaisa & Bank Balances | HisabOKitab'],
             'feature: reports' => ['/features/reports', 'Business Reports, Profit & Expense Tracking | HisabOKitab'],
             'feature: double-entry-ledger' => ['/features/double-entry-ledger', 'Double-Entry Accounting Ledger for Small Businesses | HisabOKitab'],
             'feature: online-store' => ['/features/online-store', 'Connect Your Online Store: Live Stock & Orders API | HisabOKitab'],
+            'feature: courier-booking' => ['/features/courier-booking', 'Courier Booking for Online Sellers: Leopards & PostEx | HisabOKitab'],
             'feature: payroll' => ['/features/payroll', 'Payroll & Salary Software for Small Businesses | HisabOKitab'],
             'feature: multi-branch' => ['/features/multi-branch', 'Multi-Branch Business Software | HisabOKitab'],
             'feature: whatsapp-ordering' => ['/features/whatsapp-ordering', 'WhatsApp Ordering Chatbot for Your Business | HisabOKitab'],
             'feature: social-posting' => ['/features/social-posting', 'Facebook & Instagram Posting from Your Product List | HisabOKitab'],
             'feature: meta-ads' => ['/features/meta-ads', 'Run Facebook, Instagram & WhatsApp Ads | HisabOKitab'],
-            'feature: mobile-shop-services' => ['/features/mobile-shop-services', 'Mobile Shop Software: Repairs, Loads, SIMs & Bills | HisabOKitab'],
+            'feature: mobile-shop-services' => ['/features/mobile-shop-services', 'Mobile Shop Software Pakistan: IMEI, Repairs & Loads | HisabOKitab'],
+            'industry: pharmacy' => ['/industries/pharmacy', 'Pharmacy Software in Pakistan: Medical Store POS | HisabOKitab'],
+            'industry: kiryana-store' => ['/industries/kiryana-store', 'Kiryana Store Software: Grocery POS & Udhaar App | HisabOKitab'],
+            'industry: clothing-shoes' => ['/industries/clothing-shoes', 'Clothing & Shoe Shop POS Software in Pakistan | HisabOKitab'],
         ];
     }
 
@@ -263,12 +269,16 @@ class MarketingSiteTest extends TestCase
     {
         $response = $this->get('/sitemap.xml')->assertOk()->assertHeader('Content-Type', 'application/xml');
 
-        foreach (['home', 'site.features', 'site.pricing', 'site.about', 'site.contact'] as $name) {
+        foreach (['home', 'site.features', 'site.industries', 'site.pricing', 'site.about', 'site.contact'] as $name) {
             $response->assertSee('<loc>'.route($name).'</loc>', false);
         }
 
         foreach (\App\Support\SiteFeatures::slugs() as $slug) {
             $response->assertSee('<loc>'.route('site.feature', $slug).'</loc>', false);
+        }
+
+        foreach (\App\Support\SiteIndustries::slugs() as $slug) {
+            $response->assertSee('<loc>'.route('site.industry', $slug).'</loc>', false);
         }
         $this->assertMatchesRegularExpression('#<lastmod>\d{4}-\d{2}-\d{2}</lastmod>#', $response->getContent());
         $response->assertDontSee('signup/complete');

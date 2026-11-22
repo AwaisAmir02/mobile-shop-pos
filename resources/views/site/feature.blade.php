@@ -1,9 +1,14 @@
 @php
     $mockup = $feature['mockup'];
     $related = collect($feature['related'])->mapWithKeys(fn ($relatedSlug) => [$relatedSlug => \App\Support\SiteFeatures::find($relatedSlug)]);
+    // The same page layout serves capability pages (/features/…) and business-type pages (/industries/…).
+    $isIndustry = ($kind ?? 'feature') === 'industry';
+    $section = $isIndustry
+        ? ['label' => 'Industries', 'url' => route('site.industries'), 'back' => 'All industries', 'page' => route('site.industry', $slug)]
+        : ['label' => 'Features', 'url' => route('site.features'), 'back' => 'All '.config('branding.name').' features', 'page' => route('site.feature', $slug)];
 @endphp
 
-<x-site.layout :title="$feature['seo_title']" :description="$feature['description']" :breadcrumbs="[['Home', route('home')], ['Features', route('site.features')], [$feature['name'], route('site.feature', $slug)]]">
+<x-site.layout :title="$feature['seo_title']" :description="$feature['description']" :breadcrumbs="[['Home', route('home')], [$section['label'], $section['url']], [$feature['name'], $section['page']]]">
     <x-site.page-hero :eyebrow="$feature['eyebrow']" :title="$feature['title']" :lead="$feature['lead']">
         @if (! empty($feature['notice']))
             <div class="mx-auto mt-8 flex max-w-2xl items-start gap-3 rounded-2xl border border-accent-200 bg-accent-50 p-4 text-left" role="note" data-reveal style="--reveal-delay: 200ms">
@@ -12,7 +17,7 @@
             </div>
         @endif
         <p class="mt-8" data-reveal style="--reveal-delay: 240ms">
-            <a href="{{ route('site.features') }}" class="text-sm font-semibold text-brand-700 hover:text-brand-800">&larr; All {{ config('branding.name') }} features</a>
+            <a href="{{ $section['url'] }}" class="text-sm font-semibold text-brand-700 hover:text-brand-800">&larr; {{ $section['back'] }}</a>
         </p>
     </x-site.page-hero>
 
@@ -88,7 +93,7 @@
         <section>
             <div class="mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-8">
                 <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6" data-reveal>
-                    <p class="font-semibold text-slate-900">More ad channels on the roadmap</p>
+                    <p class="font-semibold text-slate-900">{{ $feature['roadmap_title'] ?? 'More ad channels on the roadmap' }}</p>
                     <div class="mt-4 flex flex-wrap gap-2">
                         @foreach ($feature['roadmap'] as $channel)
                             <span class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-slate-200">{{ $channel }} <span class="rounded-full bg-accent-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-700">Coming soon</span></span>

@@ -8,18 +8,39 @@
         default => 'md:grid-cols-2 xl:grid-cols-4',
     };
 
+    // Which active plans include purchase orders and payroll, said from the plan data so the answer can't go stale.
+    $planIncludes = function (\App\Enums\FeatureKey $feature) use ($plans): string {
+        $names = $plans->filter(fn ($plan) => $plan->includes($feature))->pluck('name');
+        $what = ucfirst($feature === \App\Enums\FeatureKey::PurchaseOrders ? 'purchase orders are' : 'payroll is');
+
+        return match (true) {
+            $names->count() === $plans->count() => $what.' included in every plan.',
+            $names->isEmpty() => $what.' a monthly add-on on every plan.',
+            default => $what.' included in '.$names->join(', ', ' and ').'.',
+        };
+    };
+    $inEveryPlan = $plans->every(fn ($plan) => $plan->includes(\App\Enums\FeatureKey::PurchaseOrders) && $plan->includes(\App\Enums\FeatureKey::Payroll));
+    $addonsAnswer = $plans->isEmpty() ? '' : $planIncludes(\App\Enums\FeatureKey::PurchaseOrders).' '.$planIncludes(\App\Enums\FeatureKey::Payroll).($inEveryPlan
+        ? ' Extra branches and product packs are available as add-ons from Billing inside the app.'
+        : ' On a plan without one, add it as a monthly add-on from Billing inside the app, along with extra branches and product packs.');
+
     $faqs = [
         ['Do I need to install anything?', 'No. HisabOKitab runs in your browser on a phone, tablet or computer. Log in and start selling.'],
         ['Who pays for Meta ads?', 'Ads are billed by Meta directly to your own ad account. HisabOKitab never charges you for ad spend, and you confirm the maximum spend before any ad goes live.'],
         ['Can I run more than one branch?', 'Yes. Each plan includes a set number of branches, and you can add more with a monthly or yearly branch add-on. Products, customers and stock are shared by every branch; each branch records its own sales, stock-ins, udhaar and expenses, and you see them side by side.'],
         ['Can I keep using WhatsApp Business on my phone?', 'Yes. Your number stays usable in the WhatsApp Business app while HisabOKitab handles chatbot orders and messages.'],
-        ['Do purchase orders and payroll cost extra?', 'Some plans include them; on the others you can add them as a monthly add-on from Billing inside the app, along with extra branches and product packs.'],
+        ['Do returns, store credit and promotions cost extra?', 'No. Returns with credit notes, store credit, exchanges, promotions and pack selling are part of every plan, along with the tools for your kind of shop: warranty, instalments and buybacks for mobile shops, and the prescription register for pharmacies.'],
+        ...($addonsAnswer !== '' ? [['Do purchase orders and payroll cost extra?', $addonsAnswer]] : []),
         ['Is my shop’s data private?', 'Yes. Every shop’s records are isolated from every other shop, and staff only see the screens you allow.'],
     ];
 
     $everyPlan = [
         'Sales, invoices & receipts',
+        'Returns with credit notes, refunds or store credit',
+        'One-step exchanges',
+        'Promotions with start and end dates',
         'Inventory with FIFO batch costing',
+        'Cartons, packs & pieces',
         'Udhaar & customer ledger',
         'Vendors & party ledger statements',
         'Cash & Balances: cash, JazzCash, Easypaisa & bank',
@@ -28,6 +49,8 @@
         'Stock write-offs',
         'Staff roles & permissions',
         'Repairs, SIM, loads, bills & NADRA for mobile shops',
+        'Warranty, instalments, buybacks & trade-in for mobile shops',
+        'Prescription & controlled-drug register for pharmacies',
         'Guide on every screen in Roman Urdu & English',
         'Help & support tickets',
     ];
@@ -60,7 +83,7 @@
     }
 @endphp
 
-<x-site.layout title="Pricing & Plans in PKR" description="HisabOKitab plans in Pakistani rupees for shops, online sellers and growing businesses — POS, inventory and udhaar on every plan, plus WhatsApp ordering, social posting and Meta ads." :schema="$schema" :breadcrumbs="[['Home', route('home')], ['Pricing', route('site.pricing')]]">
+<x-site.layout title="POS Software Pricing in Pakistan: Plans in PKR" description="POS software prices in Pakistani rupees: sales, stock, udhaar, returns and store credit on every plan, plus WhatsApp ordering, courier booking, social posting and Meta ads." :schema="$schema" :breadcrumbs="[['Home', route('home')], ['Pricing', route('site.pricing')]]">
     <x-site.page-hero eyebrow="Pricing" title="Simple plans that grow with your business" lead="Start with the counter. Add WhatsApp ordering, marketing, branches and add-ons when you’re ready. No hidden charges — ad spend is billed by Meta to your own account." />
 
     <section class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
@@ -121,7 +144,7 @@
     <section class="mx-auto max-w-5xl px-4 pb-24 sm:px-6 lg:px-8">
         <div class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm sm:p-10" data-reveal>
             <h2 class="text-xl font-bold text-slate-900">Included in every plan</h2>
-            <p class="mt-2 text-sm text-slate-600">Whichever plan you pick, these are part of it. Product variants, weighed and measured items and expiry date tracking are free too — ask us and we’ll switch them on.</p>
+            <p class="mt-2 text-sm text-slate-600">Whichever plan you pick, these are part of it. Expiry date tracking is free and already on for kiryana stores and pharmacies. Product variants, weighed and measured items, and expiry tracking for any other shop are free too — ask us and we’ll switch them on.</p>
             <ul class="mt-6 grid grid-cols-1 gap-x-8 gap-y-3 text-sm text-slate-700 sm:grid-cols-2">
                 @foreach ($everyPlan as $item)
                     <li class="flex gap-3"><x-site.icon name="check" class="h-5 w-5 shrink-0 text-brand-600" /><span>{{ $item }}</span></li>
