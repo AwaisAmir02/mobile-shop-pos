@@ -65,6 +65,47 @@ class MarketingSiteTest extends TestCase
         $response->assertSee('Log in')->assertSee('Get started');
     }
 
+    public function test_the_google_tag_is_on_every_public_page_and_nowhere_in_the_app(): void
+    {
+        $head = "'https://www.googletagmanager.com/gtm.js?id='+i+dl;";
+        $container = "(window,document,'script','dataLayer','GTM-T9NJ569Q');</script>";
+        $noscript = '<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T9NJ569Q"';
+
+        foreach ([...array_column(self::pages(), 0), '/signup'] as $path) {
+            $html = $this->get($path)->assertOk()->getContent();
+            [$inHead, $inBody] = explode('</head>', $html, 2);
+
+            // Standard GTM snippet in <head>, the noscript iframe first thing in <body>.
+            $this->assertSame(1, substr_count($inHead, $head), $path);
+            $this->assertSame(1, substr_count($inHead, $container), $path);
+            $this->assertSame(1, substr_count($html, $noscript), $path);
+            $this->assertMatchesRegularExpression('/<body[^>]*>\s*<!-- Google Tag Manager \(noscript\) -->\s*'.preg_quote($noscript, '/').'/', $inBody, $path);
+
+            // GA4 lives inside the container, never as a direct gtag config call.
+            $this->assertStringNotContainsString('gtag(', $html, $path);
+            $this->assertStringNotContainsString('G-CSF00KWLHT', $html, $path);
+        }
+
+        $this->get('/login')->assertOk()->assertDontSee('googletagmanager', false);
+
+        $shop = Shop::create(['name' => 'Shop A']);
+        $owner = User::factory()->create(['shop_id' => $shop->id]);
+        $this->actingAs($owner)->get('/dashboard')->assertOk()->assertDontSee('googletagmanager', false);
+        $this->actingAs(User::factory()->create(['is_super_admin' => true, 'shop_id' => null]))
+            ->get(route('admin.dashboard'))->assertOk()->assertDontSee('googletagmanager', false);
+
+        // Changeable from .env without a code edit, and off when blank or running locally.
+        config(['services.google_tag.container_id' => 'GTM-OTHER']);
+        $this->get('/pricing')->assertSee("'dataLayer','GTM-OTHER');", false)->assertSee('ns.html?id=GTM-OTHER', false);
+
+        config(['services.google_tag.container_id' => '']);
+        $this->get('/pricing')->assertOk()->assertDontSee('googletagmanager', false);
+
+        config(['services.google_tag.container_id' => 'GTM-T9NJ569Q']);
+        $this->app['env'] = 'local';
+        $this->get('/pricing')->assertOk()->assertDontSee('googletagmanager', false);
+    }
+
     public function test_a_logged_in_user_still_goes_straight_to_their_shop_from_the_root(): void
     {
         $shop = Shop::create(['name' => 'Shop A']);

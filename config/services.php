@@ -34,6 +34,13 @@ return [
         'ads_max_daily_budget' => (float) env('META_ADS_MAX_DAILY_BUDGET', 50000),
     ],
 
+    // Google Tag Manager on the public marketing site only: components/site/layout.blade.php.
+    // GA4 and any other tags are set up inside the GTM container, not in code.
+    // Never rendered on the app or admin, nor when APP_ENV=local. A blank container ID turns it off.
+    'google_tag' => [
+        'container_id' => env('GOOGLE_TAG_CONTAINER_ID', 'GTM-T9NJ569Q'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

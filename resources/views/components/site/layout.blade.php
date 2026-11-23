@@ -30,6 +30,8 @@
     ];
     $chevron = '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="h-4 w-4 transition-transform duration-200 group-data-[open]:rotate-180"><path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>';
     $contact = config('site.contact');
+    $googleTag = config('services.google_tag');
+    $googleTagOn = filled($googleTag['container_id']) && ! app()->environment('local');
     $canonical = url()->current();
     $ogImage = \Illuminate\Support\Facades\Vite::asset('resources/images/site/og-image.png');
     $logo1x = \Illuminate\Support\Facades\Vite::asset('resources/images/site/logo@1x.webp');
@@ -90,6 +92,15 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        @if ($googleTagOn)
+            <!-- Google Tag Manager -->
+            <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+            })(window,document,'script','dataLayer',@js($googleTag['container_id']));</script>
+            <!-- End Google Tag Manager -->
+        @endif
         <title>{{ $pageTitle }}</title>
         <meta name="description" content="{{ $metaDescription }}">
         @if ($noindex)
@@ -128,6 +139,12 @@
         <script type="application/ld+json">{!! $structuredData !!}</script>
     </head>
     <body class="bg-white font-sans text-slate-900 antialiased">
+        @if ($googleTagOn)
+            <!-- Google Tag Manager (noscript) -->
+            <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ $googleTag['container_id'] }}"
+            height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+            <!-- End Google Tag Manager (noscript) -->
+        @endif
         <a href="#main" class="sr-only z-[60] rounded-lg bg-white px-4 py-2 text-sm font-semibold text-brand-700 shadow focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to content</a>
 
         <header data-site-header class="sticky top-0 z-50 border-b border-transparent bg-white/85 backdrop-blur-md transition-[border-color,box-shadow] duration-300">
