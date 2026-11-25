@@ -33,7 +33,60 @@ class Customer extends Model
         'name',
         'phone',
         'address',
+        // Wholesale businesses (W2, W3, W5); all optional.
+        'business_name',
+        'contact_person',
+        'phone_2',
+        'area',
+        'ntn',
+        'strn',
+        'cnic',
+        'price_tier',
+        'credit_limit',
+        'payment_terms_days',
+        // Wholesale P2: the route this customer is on, their place in its visiting order, and their vendor record.
+        'route_id',
+        'route_sequence',
+        'vendor_id',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'credit_limit' => 'decimal:2',
+            'payment_terms_days' => 'integer',
+        ];
+    }
+
+    /** "Bilal General Store (Bilal)" for a business, else just the name. */
+    public function displayName(): string
+    {
+        return filled($this->business_name) ? $this->business_name.' ('.$this->name.')' : $this->name;
+    }
+
+    /** "NTN 1234567-8 · STRN …", or null when none is set. */
+    public function taxNumbersLine(): ?string
+    {
+        $parts = array_filter(['NTN' => $this->ntn, 'STRN' => $this->strn, 'CNIC' => $this->cnic], fn ($value) => filled($value));
+
+        return $parts === [] ? null : collect($parts)->map(fn ($value, $label) => $label.' '.$value)->implode(' · ');
+    }
+
+    public function route(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(DeliveryRoute::class, 'route_id');
+    }
+
+    /** The same party as one of the shop's vendors (W11). */
+    public function vendor(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Vendor::class);
+    }
+
+    public function receipts(): HasMany
+    {
+        return $this->hasMany(CustomerReceipt::class)->latest('id');
+    }
 
     protected $hidden = ['ledger_token'];
 
@@ -121,7 +174,8 @@ class Customer extends Model
     {
         return Sale::withoutGlobalScope(BranchScope::class)
             ->where('customer_id', $this->id)
-            ->withSum('payments', 'amount')->withSum('returns', 'due_reduction')
+            ->owing()
+            ->orderBy('sales.id')
             ->get()
             ->sum(fn (Sale $sale) => $sale->amountDue());
     }
@@ -157,6 +211,9 @@ class Customer extends Model
             || $this->simSales()->exists()
             || $this->servicePayments()->exists()
             || StoreCreditEntry::withoutGlobalScopes()->where('customer_id', $this->id)->exists()
+            || Cheque::withoutGlobalScopes()->where('customer_id', $this->id)->exists()
+            || ContraSettlement::withoutGlobalScopes()->where('customer_id', $this->id)->exists()
+            || SalesOrder::withoutGlobalScopes()->where('customer_id', $this->id)->exists()
             || PartyLedgerEntry::withoutGlobalScope(ExcludesCancelledScope::class)->where('customer_id', $this->id)->exists();
     }
 }

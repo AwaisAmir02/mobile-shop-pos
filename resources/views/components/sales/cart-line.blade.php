@@ -4,6 +4,11 @@
     'lineTotal',
     'expiryNote' => null,
     'promotion' => null,
+    // Wholesale businesses: what the trade price is called, and this customer's last rate for the product.
+    'tierLabel' => null,
+    'lastRate' => null,
+    // Distributors: free pieces a running scheme adds to this line.
+    'schemeFree' => 0,
 ])
 
 {{-- One line of the Sales register / sale edit cart. Binds the same cart.{id}.*
@@ -62,6 +67,18 @@
                 @endif
             @endif
             <x-sales.expiry-note :note="$expiryNote" :unit="$unit" />
+            @if (! empty($item['price_tier']))
+                <p class="mt-0.5 text-xs font-semibold text-success" data-line-tier>{{ $tierLabel ?? 'Wholesale price' }} · normal Rs {{ number_format((float) ($item['normal_price'] ?? 0), 2) }}{{ $unit->perSuffix() }}</p>
+            @endif
+            @if (! empty($item['scheme']))
+                <p class="mt-0.5 text-xs font-semibold text-success" data-line-scheme>Scheme {{ $item['scheme']['offer'] }}{{ $schemeFree > 0 ? ': +'.$schemeFree.' free' : '' }}</p>
+            @endif
+            @if ($lastRate)
+                <p class="mt-0.5 text-xs text-ink-faint" data-line-last-rate>
+                    Last rate Rs {{ number_format($lastRate['price'], 2) }}{{ $unit->perSuffix() }}@if ($lastRate['pack'] && $lastRate['pack_size']) (Rs {{ number_format($lastRate['price'] * $lastRate['pack_size'], 2) }} per {{ mb_strtolower($lastRate['pack']) }})@endif on {{ $lastRate['date']->format('d M Y') }}
+                    <button type="button" wire:click="useLastRate({{ $productId }})" class="ml-1 font-semibold text-link hover:underline">Use</button>
+                </p>
+            @endif
             @if (! empty($item['rx']))
                 <p class="mt-0.5 text-xs font-semibold text-warning" data-line-rx>{{ \App\Models\SalePrescription::controlLabel($item['rx']) }}: goes in the prescription register</p>
             @endif

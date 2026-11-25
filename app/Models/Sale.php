@@ -24,6 +24,10 @@ class Sale extends Model
         'subtotal',
         'discount_amount',
         'total',
+        'due_date',
+        'credit_override_by',
+        'credit_override_reason',
+        'booker_id',
         'status',
         'cancelled_at',
         'cancelled_by',
@@ -41,6 +45,7 @@ class Sale extends Model
             'subtotal' => 'decimal:2',
             'discount_amount' => 'decimal:2',
             'total' => 'decimal:2',
+            'due_date' => 'date',
             'status' => SaleStatus::class,
             'source' => SaleSource::class,
             'cancelled_at' => 'datetime',
@@ -169,6 +174,42 @@ class Sale extends Model
         return $returned == 0.0
             ? max(0.0, (float) $this->total - $this->amountPaid())
             : max(0.0, round((float) $this->total - $this->amountPaid() - $returned, 2));
+    }
+
+    /**
+     * Only sales that can still be owed: the same sums amountDue() reads,
+     * compared in SQL, so a fully paid sale never leaves the database.
+     * amountDue() is still the figure; this only narrows what is loaded.
+     * (A sale with returns rounds in amountDue(), so the SQL test is wider.)
+     */
+    public function scopeOwing(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->withSum('payments', 'amount')->withSum('returns', 'due_reduction')
+            ->havingRaw('total - COALESCE(payments_sum_amount, 0) - COALESCE(returns_sum_due_reduction, 0) > 0');
+    }
+
+    /** Past its due date with money still owed. */
+    public function isOverdue(?string $today = null): bool
+    {
+        return $this->due_date !== null
+            && $this->due_date->toDateString() < ($today ?? \App\Support\BatchExpiry::today())
+            && $this->amountDue() > 0;
+    }
+
+    /** Who booked the order or made the sale on the route (W8), apart from who rang it up. */
+    public function booker(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'booker_id');
+    }
+
+    public function schemeRedemptions(): HasMany
+    {
+        return $this->hasMany(SchemeRedemption::class);
+    }
+
+    public function creditOverrideUser(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'credit_override_by');
     }
 
     public function paymentStatus(): string

@@ -53,6 +53,7 @@ final class Guide
         'sim-sales.history' => ['sim-sales.index', 'history'],
         'nadra-verifications.history' => ['nadra-verifications.index', 'history'],
         'services.history' => ['services.index', 'history'],
+        'sales-orders.edit' => ['sales-orders.create', 'items'],
     ];
 
     /** @var array<string, array|null> */

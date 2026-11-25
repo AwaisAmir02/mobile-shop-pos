@@ -133,7 +133,7 @@ new #[Layout('layouts.app')] #[Title('Dashboard')] class extends Component
         // not scoped to the dashboard's period selector, which describes sales
         // activity in a window, not which sales still owe money right now.
         $totalSalesOutstanding = Sale::query()
-            ->withSum('payments', 'amount')->withSum('returns', 'due_reduction')
+            ->owing()->orderBy('sales.id')
             ->get()
             ->sum(fn (Sale $sale) => $sale->amountDue());
 

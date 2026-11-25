@@ -41,6 +41,7 @@ class StockIn extends Model
         'stock_date',
         'expiry_date',
         'batch_number',
+        'free_quantity',
         'note',
         'status',
         'cancelled_at',

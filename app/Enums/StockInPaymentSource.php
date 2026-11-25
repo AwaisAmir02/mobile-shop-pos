@@ -9,6 +9,9 @@ enum StockInPaymentSource: string
     case MarkPaid = 'mark_paid';
     case Backfill = 'backfill';
     case InvoicePayment = 'invoice_payment';
+    case Cheque = 'cheque';
+    case VendorCredit = 'vendor_credit';
+    case Contra = 'contra';
 
     public function label(): string
     {
@@ -18,6 +21,9 @@ enum StockInPaymentSource: string
             self::MarkPaid => 'Marked as paid',
             self::Backfill => 'Paid before payment dates were tracked',
             self::InvoicePayment => 'Paid on vendor invoice',
+            self::Cheque => 'Paid by cheque',
+            self::VendorCredit => 'Vendor credit (debit note or claim)',
+            self::Contra => 'Contra set-off',
         };
     }
 }

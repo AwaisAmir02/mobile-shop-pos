@@ -78,6 +78,8 @@ class CreateStockIn
                     'stock_date' => $stockDate,
                     'expiry_date' => $product->sellsByExpiry() ? ($line['expiry_date'] ?? null) : null,
                     'batch_number' => self::batchNumber($line['batch_number'] ?? null),
+                    // Bonus pieces that came free (already in quantity; the cost is spread over them).
+                    'free_quantity' => ! empty($line['free_quantity']) ? Quantity::normalize($line['free_quantity']) : null,
                     'note' => $note !== null && $note !== '' ? $note : null,
                     'grn_line_id' => $line['grn_line_id'] ?? null,
                     // Otherwise the branch the person is working in.

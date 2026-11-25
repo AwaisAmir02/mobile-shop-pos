@@ -9,6 +9,7 @@ use App\Models\BalanceLoad;
 use App\Models\BillPayment;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
+use App\Models\CustomerReceipt;
 use App\Models\NadraVerification;
 use App\Models\PaymentGatewayConnection;
 use App\Models\Repair;
@@ -31,6 +32,9 @@ use Illuminate\Validation\ValidationException;
  * money goes, oldest first, to the udhaar loan balance and then each unpaid
  * item (sales, repairs, bills…) through the same actions a shopkeeper's
  * "Record Payment" uses; anything left over is kept as udhaar advance.
+ *
+ * The same spreading serves a lump sum taken at the counter (receiveAtCounter,
+ * W1): one receipt for the customer, the money recorded on what it paid.
  */
 class CustomerPayments
 {
@@ -120,34 +124,135 @@ class CustomerPayments
         $customer = Customer::withoutGlobalScopes()->findOrFail($payment->customer_id);
         [$method, $accountId] = $connection->shop_account_id ? [SalePaymentMethod::Account->value, $connection->shop_account_id] : [null, null];
         $note = 'Paid online by '.$connection->gateway->label().' ('.$payment->reference.')';
-        $left = round((float) $payment->amount, 2);
-        $applied = [];
 
-        $repay = function (float $amount) use ($customer, $method, $accountId, $note, &$applied) {
-            UdhaarTransaction::create([
+        // Stored as it always was: an advance is an udhaar repayment, and only source/id/amount.
+        return array_map(
+            fn (array $part) => ['source' => $part['source'] === 'advance' ? 'udhaar' : $part['source'], 'id' => $part['id'], 'amount' => $part['amount']],
+            self::allocate($customer, (float) $payment->amount, self::payer($customer, $method, $accountId, $note, null)),
+        );
+    }
+
+    /**
+     * A lump sum taken from the customer at the counter (W1): spread over
+     * what they owe exactly as an online payment is, under one receipt.
+     * More than they owe is allowed; the rest is kept as udhaar advance.
+     */
+    /** @param  list<string>|null  $only  the kinds of dues it may pay (e.g. ['udhaar', 'sale'] for a cheque); null = all */
+    public static function receiveAtCounter(Customer $customer, float $amount, ?string $method, ?int $shopAccountId, ?int $userId, ?string $note = null, ?array $only = null): CustomerReceipt
+    {
+        $amount = round($amount, 2);
+
+        if ($amount <= 0) {
+            throw ValidationException::withMessages(['receiptAmount' => 'Enter the amount received.']);
+        }
+
+        return DB::transaction(function () use ($customer, $amount, $method, $shopAccountId, $userId, $note, $only) {
+            // One receipt at a time per customer, so two can't both pay the same bill.
+            $customer = Customer::whereKey($customer->id)->lockForUpdate()->firstOrFail();
+            $note = trim((string) $note) !== '' ? mb_substr(trim((string) $note), 0, 200) : null;
+
+            $receipt = CustomerReceipt::create([
                 'shop_id' => $customer->shop_id,
                 'customer_id' => $customer->id,
-                'type' => UdhaarTransactionType::Repayment->value,
+                'user_id' => $userId,
                 'amount' => $amount,
-                'transaction_date' => now()->toDateString(),
-                'note' => $note,
                 'payment_method' => $method,
-                'shop_account_id' => $accountId,
+                'shop_account_id' => $shopAccountId,
+                'note' => $note,
+                'applied_to' => [],
+                'receipt_date' => now()->toDateString(),
             ]);
-            $applied[] = ['source' => 'udhaar', 'id' => null, 'amount' => $amount];
-        };
 
+            $text = 'Receipt '.$receipt->number().($note !== null ? ': '.$note : '');
+            $receipt->update(['applied_to' => self::allocate($customer, $amount, self::payer($customer, $method, $shopAccountId, mb_substr($text, 0, 255), $userId), $only)]);
+
+            return $receipt;
+        });
+    }
+
+    /**
+     * Undoes a receipt whose money didn't arrive (a bounced cheque): each bill
+     * it paid gets a negative payment, and each udhaar repayment it made a
+     * repayment reversal, dated today on the same account. So the dues come
+     * back and Cash & Balances shows the money leaving that account again.
+     * Only receipts limited to udhaar and sales (cheques) can be reversed.
+     */
+    public static function reverseReceipt(CustomerReceipt $receipt, string $note, ?int $userId): void
+    {
+        DB::transaction(function () use ($receipt, $note, $userId) {
+            $receipt = CustomerReceipt::whereKey($receipt->id)->lockForUpdate()->firstOrFail();
+
+            if ($receipt->reversed_at !== null) {
+                return;
+            }
+
+            foreach ($receipt->applied_to as $part) {
+                $amount = round((float) $part['amount'], 2);
+
+                if ($part['source'] === 'sale') {
+                    \App\Models\SalePayment::create([
+                        'shop_id' => $receipt->shop_id,
+                        'sale_id' => $part['id'],
+                        'user_id' => $userId,
+                        'amount' => -$amount,
+                        'payment_date' => now()->toDateString(),
+                        'payment_method' => $receipt->payment_method,
+                        'shop_account_id' => $receipt->shop_account_id,
+                        'note' => mb_substr($note, 0, 120),
+                    ]);
+                } elseif (in_array($part['source'], ['udhaar', 'advance'], true)) {
+                    UdhaarTransaction::create([
+                        'shop_id' => $receipt->shop_id,
+                        'customer_id' => $receipt->customer_id,
+                        'user_id' => $userId,
+                        'type' => UdhaarTransactionType::RepaymentReversal->value,
+                        'amount' => $amount,
+                        'transaction_date' => now()->toDateString(),
+                        'note' => mb_substr($note, 0, 255),
+                        'reverses_transaction_id' => $part['udhaar_transaction_id'] ?? null,
+                        'payment_method' => $receipt->payment_method,
+                        'shop_account_id' => $receipt->shop_account_id,
+                    ]);
+                } else {
+                    throw new \RuntimeException("A receipt that paid a {$part['source']} can't be reversed here.");
+                }
+            }
+
+            $receipt->update(['reversed_at' => now()]);
+        });
+    }
+
+    /**
+     * Where an amount goes, oldest first: the udhaar loan balance, then each
+     * unpaid item (sales, repairs, bills…) by date; whatever is left is kept
+     * as udhaar advance. With no $pay it only reads (a preview); otherwise
+     * $pay records each part as it goes.
+     *
+     * @param  (\Closure(string, ?object, float): void)|null  $pay
+     * @return list<array{source: string, id: ?int, reference: string, label: string, amount: float}>
+     */
+    public static function allocate(Customer $customer, float $amount, ?\Closure $pay = null, ?array $only = null): array
+    {
+        $left = round($amount, 2);
+        $applied = [];
         $statement = CustomerDuesStatement::for($customer);
 
-        if (($udhaar = round($statement->udhaarBalance(), 2)) > 0 && $left > 0) {
+        if (($only === null || in_array('udhaar', $only, true)) && ($udhaar = round($statement->udhaarBalance(), 2)) > 0 && $left > 0) {
             $take = min($left, $udhaar);
-            $repay($take);
+            $made = $pay !== null ? $pay('udhaar', null, $take) : null;
+
+            $applied[] = ['source' => 'udhaar', 'id' => null, 'reference' => 'Udhaar', 'label' => 'Udhaar loan balance', 'amount' => $take]
+                + ($made instanceof UdhaarTransaction ? ['udhaar_transaction_id' => $made->id] : []);
             $left = round($left - $take, 2);
         }
 
         foreach ($statement->items()->sortBy('date') as $item) {
             if ($left <= 0) {
                 break;
+            }
+
+            if ($only !== null && ! in_array($item['source'], $only, true)) {
+                continue;
             }
 
             $record = self::recordFor($item['source'], $item['id']);
@@ -158,22 +263,50 @@ class CustomerPayments
 
             $take = round(min($left, (float) $item['amountDue']), 2);
 
-            if ($record instanceof Sale) {
-                RecordSalePayment::handle($record, $take, null, $method, $accountId);
-            } else {
-                RecordModulePayment::handle($record, $take, $method, $accountId, null);
+            if ($pay !== null) {
+                $pay($item['source'], $record, $take);
             }
 
-            $applied[] = ['source' => $item['source'], 'id' => $item['id'], 'amount' => $take];
+            $applied[] = ['source' => $item['source'], 'id' => $item['id'], 'reference' => $item['reference'], 'label' => $item['label'], 'amount' => $take];
             $left = round($left - $take, 2);
         }
 
-        // Paid more than the dues just checked (a sale settled meanwhile): kept as advance.
+        // More than the dues just checked (or a sale settled meanwhile): kept as advance.
         if ($left > 0) {
-            $repay($left);
+            $made = $pay !== null ? $pay('advance', null, $left) : null;
+
+            $applied[] = ['source' => 'advance', 'id' => null, 'reference' => 'Advance', 'label' => 'Kept as udhaar advance', 'amount' => $left]
+                + ($made instanceof UdhaarTransaction ? ['udhaar_transaction_id' => $made->id] : []);
         }
 
         return $applied;
+    }
+
+    /** Records one part of a payment: an udhaar repayment, or a payment on the item it pays. */
+    protected static function payer(Customer $customer, ?string $method, ?int $accountId, string $note, ?int $userId): \Closure
+    {
+        return function (string $source, ?object $record, float $amount) use ($customer, $method, $accountId, $note, $userId) {
+            if ($record === null) {
+                return UdhaarTransaction::create(array_merge([
+                    'shop_id' => $customer->shop_id,
+                    'customer_id' => $customer->id,
+                    'type' => UdhaarTransactionType::Repayment->value,
+                    'amount' => $amount,
+                    'transaction_date' => now()->toDateString(),
+                    'note' => $note,
+                    'payment_method' => $method,
+                    'shop_account_id' => $accountId,
+                ], $userId !== null ? ['user_id' => $userId] : []));
+            }
+
+            if ($record instanceof Sale) {
+                RecordSalePayment::handle($record, $amount, $userId, $method, $accountId);
+            } else {
+                RecordModulePayment::handle($record, $amount, $method, $accountId, $userId);
+            }
+
+            return null;
+        };
     }
 
     protected static function recordFor(string $source, int $id): ?object

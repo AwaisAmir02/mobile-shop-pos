@@ -21,6 +21,9 @@
             ['label' => 'Promotions', 'route' => 'promotions.index', 'icon' => 'sparkles', 'group' => 'sell', 'permission' => 'promotions'],
             ['label' => 'Customers', 'route' => 'customers.index', 'icon' => 'customers', 'group' => 'sell', 'permission' => 'customers'],
             ['label' => 'Udhaar', 'route' => 'udhaar.index', 'icon' => 'udhaar', 'group' => 'sell', 'permission' => 'udhaar'],
+            ['label' => 'Orders', 'route' => 'sales-orders.index', 'icon' => 'truck', 'group' => 'sell', 'permission' => 'sales', 'tool' => 'orders', 'hint' => 'Booked, loaded, delivered', 'active' => ['sales-orders.*', 'load-sheets.*']],
+            ['label' => 'Routes', 'route' => 'delivery-routes.index', 'icon' => 'customers', 'group' => 'sell', 'permission' => 'customers', 'tool' => 'routes'],
+            ['label' => 'Schemes', 'route' => 'schemes.index', 'icon' => 'sparkles', 'group' => 'sell', 'permission' => 'sales', 'tool' => 'schemes'],
             ['label' => 'Repairs', 'route' => 'repairs.history', 'icon' => 'wrench', 'group' => 'sell', 'permission' => 'repairs'],
             ['label' => 'Services', 'route' => 'services.history', 'icon' => 'sparkles', 'group' => 'sell', 'permission' => 'services'],
             ['label' => 'Products', 'route' => 'products.index', 'icon' => 'cube', 'group' => 'stock', 'permission' => 'products'],
@@ -43,6 +46,7 @@
             ['label' => 'Marketing', 'route' => 'marketing.posts', 'icon' => 'megaphone', 'group' => 'online', 'permission' => ['marketing', 'marketing-analytics', 'marketing-ads']],
             ['label' => 'Expenses', 'route' => 'expenses.index', 'icon' => 'banknote', 'group' => 'money', 'permission' => 'expenses'],
             ['label' => 'Party Ledger', 'route' => 'party-ledger.index', 'icon' => 'ledger', 'group' => 'money', 'permission' => 'party-ledger'],
+            ['label' => 'Cheques', 'route' => 'cheques.index', 'icon' => 'banknote', 'group' => 'money', 'permission' => 'udhaar', 'tool' => 'cheques'],
             ['label' => 'Cash & Balances', 'route' => 'cash-balances.index', 'icon' => 'coins', 'group' => 'money', 'permission' => 'cash-balances'],
             // Gross Profit, write-offs, expiry and payroll history are cards on the Reports hub.
             ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'group' => 'money', 'permission' => 'reports', 'active' => ['reports.*', 'profit.*']],
@@ -57,6 +61,8 @@
             ['label' => 'Help & Support', 'route' => 'support.index', 'icon' => 'lifebuoy', 'group' => 'manage', 'everyone' => true, 'active' => ['support.*'], 'captureScreen' => true,
                 'badge' => $user?->shop_id ? \App\Models\SupportTicket::visibleTo($user)->unreadForShop()->count() : 0, 'badgeKey' => 'data-support-unread'],
         ])->filter(fn ($item) => $user && (($item['everyone'] ?? false) || (($item['owner'] ?? false) ? $user->is_owner : collect((array) $item['permission'])->contains(fn ($p) => $user->hasAccessTo($p)))))
+            // Wholesale P2 screens: only for the trades that use them (BusinessCategory::wholesaleTools).
+            ->reject(fn ($item) => isset($item['tool']) && ! $user?->shop?->usesTool($item['tool']))
             ->reject(fn ($item) => $item['route'] === 'services.history' && ! $user?->shop?->services_enabled)
             ->reject(fn ($item) => $item['route'] === 'buybacks.index' && ! $user?->shop?->sellsDevices())
             ->reject(fn ($item) => $item['route'] === 'ledger.trial-balance' && ! $user?->shop?->ledger_enabled)

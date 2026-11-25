@@ -235,7 +235,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
         } else {
             $ids = $ids
                 ->concat(
-                    Sale::whereNotNull('customer_id')->withSum('payments', 'amount')->withSum('returns', 'due_reduction')->get()
+                    Sale::whereNotNull('customer_id')->owing()->orderBy('sales.id')->get()
                         ->filter(fn (Sale $sale) => $sale->amountDue() > 0)
                         ->pluck('customer_id')
                 )

@@ -16,6 +16,8 @@ enum SalePaymentMethod: string
     case StoreCredit = 'store_credit';
     /** Goods handed back in an exchange, paying for the new sale (App\Actions\Exchanges). No money moves. */
     case Exchange = 'exchange';
+    /** Set off against what the shop owes the same party as a vendor (App\Actions\Contra). No money moves. */
+    case Contra = 'contra';
 
     public function label(): string
     {
@@ -25,6 +27,7 @@ enum SalePaymentMethod: string
             self::TradeIn => 'Trade-in',
             self::StoreCredit => 'Store credit',
             self::Exchange => 'Exchange',
+            self::Contra => 'Contra',
         };
     }
 
@@ -55,6 +58,10 @@ enum SalePaymentMethod: string
         // Only App\Actions\StoreCredit creates these, drawing on the customer's credit.
         if ($case === self::Exchange) {
             throw ValidationException::withMessages(['paymentMethod' => 'An exchange is made from the sale being exchanged, with Exchange on its receipt.']);
+        }
+
+        if ($case === self::Contra) {
+            throw ValidationException::withMessages(['paymentMethod' => 'A contra is recorded from the customer\'s page, against their vendor account.']);
         }
 
         if ($case === self::StoreCredit) {

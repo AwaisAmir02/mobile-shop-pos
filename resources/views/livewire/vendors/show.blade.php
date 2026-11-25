@@ -2,13 +2,20 @@
 
 use App\Models\Vendor;
 use App\Support\BranchContext;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] #[Title('Vendor Profile')] class extends Component
 {
+    use \App\Livewire\Concerns\ChoosesPaymentSource, \App\Livewire\Concerns\Toasts;
+
     public Vendor $vendor;
+
+    // Credit the vendor owes back (debit notes, claims, overpaid cheques).
+    public ?int $refundingId = null;
+    public string $refundAmount = '';
 
     /**
      * Customers and vendors belong to the whole shop, so this screen shows
@@ -25,6 +32,40 @@ new #[Layout('layouts.app')] #[Title('Vendor Profile')] class extends Component
         $this->vendor = $vendor;
     }
 
+    protected function canManageCredit(): bool
+    {
+        return Auth::user()->hasAccessTo('stock-ins');
+    }
+
+    public function applyCredit(int $id): void
+    {
+        abort_unless($this->canManageCredit(), 403);
+        $taken = \App\Actions\VendorCredits::applyToStock(\App\Models\VendorCredit::where('vendor_id', $this->vendor->id)->findOrFail($id), Auth::id());
+        $taken > 0 ? $this->toastSuccess('Rs '.number_format($taken, 2).' taken off what you owe them.') : $this->toastError('Nothing is owed to this vendor right now.');
+    }
+
+    public function openRefund(int $id): void
+    {
+        abort_unless($this->canManageCredit(), 403);
+        $credit = \App\Models\VendorCredit::where('vendor_id', $this->vendor->id)->findOrFail($id);
+        $this->refundingId = $credit->id;
+        $this->refundAmount = (string) $credit->remaining;
+        $this->paidFrom = 'cash';
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'vendor-refund');
+    }
+
+    public function refund(): void
+    {
+        abort_unless($this->canManageCredit(), 403);
+        $this->validate(['refundAmount' => ['required', 'numeric', 'min:0.01']], [], ['refundAmount' => 'amount']);
+        [$method, $accountId] = $this->paidFromParts();
+        \App\Actions\VendorCredits::refund(\App\Models\VendorCredit::where('vendor_id', $this->vendor->id)->findOrFail($this->refundingId), (float) $this->refundAmount, $method, $accountId, Auth::id());
+
+        $this->dispatch('close-modal', name: 'vendor-refund');
+        $this->toastSuccess('Money back recorded.');
+    }
+
     public function with(): array
     {
         $this->vendor->load('stockIns.product');
@@ -35,6 +76,10 @@ new #[Layout('layouts.app')] #[Title('Vendor Profile')] class extends Component
             'measuredTotals' => \App\Enums\QuantityUnit::summarize($this->vendor->stockIns->filter(fn ($entry) => $entry->unit->allowsDecimals())->groupBy(fn ($entry) => $entry->unit->value)->map(fn ($entries) => \App\Support\Quantity::sum($entries->pluck('quantity')))->all()),
             'totalCost' => $this->vendor->stockIns->sum('total_cost'),
             'totalOwed' => $this->vendor->totalOwed(),
+            'credits' => \App\Models\VendorCredit::query()->where('vendor_id', $this->vendor->id)->where('status', 'active')->latest('id')->get(),
+            'creditLeft' => \App\Actions\VendorCredits::available($this->vendor->id),
+            'linkedCustomer' => Auth::user()->shop?->usesTool('contra') ? $this->vendor->linkedCustomer() : null,
+            'canManageCredit' => $this->canManageCredit(),
         ];
     }
 }; ?>
@@ -59,6 +104,50 @@ new #[Layout('layouts.app')] #[Title('Vendor Profile')] class extends Component
             <x-ui.stat label="Weight, Volume & Length" :value="$measuredTotals" />
         @endif
     </x-ui.stat-row>
+
+    @if ($credits->isNotEmpty() || $linkedCustomer)
+        <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            @if ($credits->isNotEmpty())
+                <x-ui.card title="They owe you back" :description="'Rs '.number_format($creditLeft, 2).' left, from debit notes, scheme claims and overpaid cheques'" data-vendor-credits>
+                    <ul class="divide-y divide-line text-sm">
+                        @foreach ($credits as $credit)
+                            <li wire:key="credit-{{ $credit->id }}" class="flex flex-wrap items-center justify-between gap-3 py-2">
+                                <span>{{ $credit->sourceLabel() }} · Rs {{ number_format($credit->amount, 2) }}</span>
+                                <span class="flex items-center gap-2">
+                                    <span class="font-semibold tabular-nums text-ink">Rs {{ number_format($credit->remaining, 2) }} left</span>
+                                    @if ($canManageCredit && (float) $credit->remaining > 0)
+                                        <x-ui.button size="sm" variant="secondary" wire:click="applyCredit({{ $credit->id }})">Take off stock</x-ui.button>
+                                        <x-ui.button size="sm" variant="secondary" wire:click="openRefund({{ $credit->id }})">Paid back</x-ui.button>
+                                    @endif
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </x-ui.card>
+            @endif
+            @if ($linkedCustomer)
+                <x-ui.card title="Also a customer" description="Contra with them is on their customer page.">
+                    <a href="{{ route('customers.show', $linkedCustomer) }}" wire:navigate class="font-semibold text-link hover:underline">{{ $linkedCustomer->displayName() }}</a>
+                </x-ui.card>
+            @endif
+        </div>
+
+        <x-ui.modal name="vendor-refund" max-width="sm">
+            <form wire:submit="refund" class="p-6">
+                <h2 class="text-lg font-bold text-ink">Money Back from {{ $vendor->name }}</h2>
+                <div class="mt-4 space-y-4">
+                    <x-ui.field label="Amount (Rs)" name="refundAmount" for="refundAmount">
+                        <x-ui.input wire:model="refundAmount" id="refundAmount" type="number" min="0.01" step="0.01" />
+                    </x-ui.field>
+                    <x-ledger.paid-from :value="$paidFrom" label="Received Into" />
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal', { name: 'vendor-refund' })">Cancel</x-ui.button>
+                    <x-ui.button type="submit">Save</x-ui.button>
+                </div>
+            </form>
+        </x-ui.modal>
+    @endif
 
     <x-ui.card class="mb-6">
         <dl class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">

@@ -31,6 +31,11 @@ class UpdateSale
                 throw new \RuntimeException('A cancelled sale cannot be edited.');
             }
 
+            // Free scheme goods were claimed per sale at their cost; an edit would leave the claim wrong.
+            if (\App\Models\SchemeRedemption::where('sale_id', $sale->id)->exists()) {
+                throw ValidationException::withMessages(['lines' => 'This sale gave free goods under a scheme, so it can\'t be edited. Cancel it and make it again instead.']);
+            }
+
             // Its returns point at these exact lines, which an edit rebuilds.
             SaleReturns::assertNoReturns($sale, 'total', 'edited');
 
@@ -121,6 +126,9 @@ class UpdateSale
                 $allocations = ConsumeStockFifo::handle($product, $quantity);
                 BatchExpiry::assertNotDrawingExpired($product, $allocations, 'lines', $alreadyHeld);
                 $overridePrice = $line['custom_price'] !== null ? (float) $line['custom_price'] : null;
+                // A line sold at a trade price keeps it (PriceTiers): the price, unless one was typed, and the list price.
+                $tierPrice = isset($line['tier_price']) ? (float) $line['tier_price'] : null;
+                $overridePrice ??= $tierPrice;
                 $previous = $previousByProduct->get($product->id);
                 // An edit keeps the promotion the line was sold with, worked out again on the
                 // new quantity and price, and never adds one. 'discount' is the line's own.
@@ -137,7 +145,8 @@ class UpdateSale
                         'product_name' => $line['product_name'],
                         'product_type' => $line['product_type'],
                         'unit_price' => $subLine['unit_price'],
-                        'list_price' => $subLine['list_price'],
+                        'list_price' => $tierPrice ?? $subLine['list_price'],
+                        'price_tier' => $tierPrice !== null ? ($line['price_tier'] ?? 'trade') : null,
                         'cost_price' => $subLine['cost_price'],
                         'quantity' => $subLine['quantity'],
                         'unit' => $product->unit,

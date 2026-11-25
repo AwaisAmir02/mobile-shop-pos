@@ -201,7 +201,9 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                         <x-ui.button href="{{ route('sales.index', ['exchange' => $sale->id]) }}" wire:navigate variant="secondary" size="sm" data-exchange-items>Exchange</x-ui.button>
                     @endif
                     @if (! $sale->isCancelled() && $activeReturns->isEmpty() && auth()->user()->hasAccessTo('sales-edit-cancel'))
-                        <x-ui.button href="{{ route('sales.edit', $sale) }}" wire:navigate variant="secondary" size="sm">Edit</x-ui.button>
+                        @unless ($sale->schemeRedemptions()->exists())
+                            <x-ui.button href="{{ route('sales.edit', $sale) }}" wire:navigate variant="secondary" size="sm">Edit</x-ui.button>
+                        @endunless
                         <x-ui.button wire:click="openCancel" variant="danger-outline" size="sm">
                             Delete
                         </x-ui.button>
@@ -231,6 +233,29 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                     <a href="{{ route('customers.show', $sale->customer) }}" wire:navigate class="font-semibold text-link hover:underline">
                         {{ $sale->customer->name }}
                     </a>
+                </div>
+            @endif
+
+            @if ($sale->booker_id)
+                <div class="flex items-center justify-between border-b border-line py-4" data-sale-booker>
+                    <p class="text-sm text-ink-faint">Booked by</p>
+                    <p class="font-semibold text-ink">{{ $sale->booker?->name }}</p>
+                </div>
+            @endif
+
+            @if ($sale->due_date || $sale->credit_override_by)
+                <div class="flex items-start justify-between gap-4 border-b border-line py-4" data-sale-due>
+                    <p class="text-sm text-ink-faint">{{ $sale->due_date ? 'Due date' : 'Credit limit' }}</p>
+                    <div class="text-right">
+                        @if ($sale->due_date)
+                            <p @class(['font-semibold', 'text-danger' => $sale->isOverdue(), 'text-ink' => ! $sale->isOverdue()])>
+                                {{ $sale->due_date->format('d M Y') }}{{ $sale->isOverdue() ? ' · overdue' : '' }}
+                            </p>
+                        @endif
+                        @if ($sale->credit_override_by)
+                            <p class="mt-0.5 text-xs text-warning">Over the credit limit, approved by {{ $sale->creditOverrideUser?->name ?? 'the owner' }}: {{ $sale->credit_override_reason }}</p>
+                        @endif
+                    </div>
                 </div>
             @endif
 
@@ -313,7 +338,7 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                     @foreach ($recordedPayments as $payment)
                         <li class="flex flex-wrap items-center justify-between gap-2">
                             <span class="text-ink-faint">{{ $payment->payment_date->format('d M Y') }} · Rs {{ number_format($payment->amount, 2) }}</span>
-                            <span class="text-ink-muted">Paid by: <span class="font-semibold text-ink">{{ $payment->methodLabel() }}</span></span>
+                            <span class="text-ink-muted">Paid by: <span class="font-semibold text-ink">{{ $payment->methodLabel() }}</span>{{ $payment->note && $payment->payment_method?->value !== 'contra' ? ' · '.$payment->note : '' }}</span>
                         </li>
                     @endforeach
                 </ul>

@@ -62,6 +62,7 @@ class MoneyFlow
         'wallet' => 'Wallet Loads',
         'bill' => 'Bills paid',
         'vendor' => 'Vendor payments',
+        'vendor_refund' => 'Money back from vendors',
         'expense' => 'Expenses',
         'payroll' => 'Payroll',
         'owner' => 'Owner money',
@@ -126,6 +127,7 @@ class MoneyFlow
             ->concat($this->walletPrincipal($from, $to))
             ->concat($this->billPrincipal($from, $to))
             ->concat($this->vendorPayments($from, $to))
+            ->concat($this->vendorRefunds($from, $to))
             ->concat($this->expenses($from, $to))
             ->concat($this->payroll($from, $to))
             ->concat($this->ownerMoney($from, $to))
@@ -249,7 +251,8 @@ class MoneyFlow
             ->where('sale_payments.shop_id', $this->shopId)
             ->where('sales.status', '!=', 'cancelled')
             // A traded-in phone, store credit or an exchange pays part of a sale without any money moving.
-            ->where(fn ($q) => $q->whereNull('sale_payments.payment_method')->orWhereNotIn('sale_payments.payment_method', ['trade_in', 'store_credit', 'exchange']))
+            // A contra sets bills off against what the shop owes the same party: no money either.
+            ->where(fn ($q) => $q->whereNull('sale_payments.payment_method')->orWhereNotIn('sale_payments.payment_method', ['trade_in', 'store_credit', 'exchange', 'contra']))
             ->when($from, fn ($q) => $q->where('sale_payments.payment_date', '>=', $from))
             ->when($to, fn ($q) => $q->where('sale_payments.payment_date', '<=', $to))
             ->get(['sale_payments.id', 'sale_payments.amount', 'sale_payments.payment_date', 'sale_payments.payment_method', 'sale_payments.shop_account_id', 'sales.id as sale_id', 'sales.branch_id'])
@@ -434,7 +437,8 @@ class MoneyFlow
             ->where('stock_in_payments.shop_id', $this->shopId)
             ->where('stock_ins.status', '!=', 'cancelled')
             // The other half of a trade-in: the phone came in as payment, not for money.
-            ->where(fn ($q) => $q->whereNull('stock_in_payments.payment_method')->orWhere('stock_in_payments.payment_method', '!=', 'trade_in'))
+            // So is a vendor credit (debit note, claim) or a contra taken off what's owed.
+            ->where(fn ($q) => $q->whereNull('stock_in_payments.payment_method')->orWhereNotIn('stock_in_payments.payment_method', ['trade_in', 'vendor_credit', 'contra']))
             ->when($from, fn ($q) => $q->where('stock_in_payments.payment_date', '>=', $from))
             ->when($to, fn ($q) => $q->where('stock_in_payments.payment_date', '<=', $to))
             ->get(['stock_in_payments.*', 'stock_ins.branch_id', 'vendors.name as vendor_name'])
@@ -444,6 +448,27 @@ class MoneyFlow
                 -(float) $row->amount,
                 'vendor',
                 'Paid '.($row->vendor_name ?? 'for stock'),
+                null,
+                $row->id,
+            ))->all();
+    }
+
+    /** A vendor paying back credit they owe the shop (a debit note, a scheme claim). */
+    private function vendorRefunds(?string $from, ?string $to): array
+    {
+        return DB::table('vendor_credit_refunds')
+            ->join('vendor_credits', 'vendor_credits.id', '=', 'vendor_credit_refunds.vendor_credit_id')
+            ->join('vendors', 'vendors.id', '=', 'vendor_credits.vendor_id')
+            ->where('vendor_credit_refunds.shop_id', $this->shopId)
+            ->when($from, fn ($q) => $q->where('vendor_credit_refunds.refund_date', '>=', $from))
+            ->when($to, fn ($q) => $q->where('vendor_credit_refunds.refund_date', '<=', $to))
+            ->get(['vendor_credit_refunds.*', 'vendors.name as vendor_name'])
+            ->map(fn ($row) => $this->row(
+                $this->dateOf($row->refund_date),
+                $this->bucketFor($row->payment_method, $row->shop_account_id, null),
+                (float) $row->amount,
+                'vendor_refund',
+                'Money back from '.$row->vendor_name,
                 null,
                 $row->id,
             ))->all();

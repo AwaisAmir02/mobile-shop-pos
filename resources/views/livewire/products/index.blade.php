@@ -66,6 +66,9 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     public string $outer_pack_price = '';
     public string $pack_price = '';
 
+    // Wholesale businesses: the trade price customers buy at (PriceTiers).
+    public string $wholesale_price = '';
+
     public string $brand = '';
     public string $model = '';
     public string $imei = '';
@@ -232,6 +235,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
             'showUnitField' => $this->showUnitField(),
             'expiryEnabled' => (bool) Auth::user()->shop?->expiry_tracking_enabled,
             'medicineFields' => $medicineFields = $this->medicineFieldsShown(),
+            'wholesalePriceLabel' => $this->wholesalePriceShown() ? \App\Support\PriceTiers::label(Auth::user()->shop) : null,
             'genericNames' => $medicineFields ? Product::query()->whereNotNull('generic_name')->distinct()->orderBy('generic_name')->limit(500)->pluck('generic_name') : collect(),
             'warrantyEnabled' => (bool) Auth::user()->shop?->sellsDevices(),
             'groupTypeOptions' => $mainCategories->reject(fn (MainCategory $category) => in_array($category->slug, ProductGroup::EXCLUDED_TYPES, true))->values(),
@@ -737,6 +741,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $this->existingImageUrl = $product->imageUrl();
         $this->price = (string) $product->price;
         $this->cost_price = (string) $product->cost_price;
+        $this->wholesale_price = $product->wholesale_price !== null ? (string) $product->wholesale_price : '';
         $this->stock_quantity = (string) $product->stock_quantity;
         $this->unit = $product->unit->value;
         $this->unitLocked = $product->unitIsLocked();
@@ -829,6 +834,11 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         if (! $this->editingHasBatches) {
             $product->price = $this->price;
             $product->cost_price = $this->cost_price !== '' ? $this->cost_price : null;
+        }
+
+        // The trade price is the product's own, batches or not.
+        if ($this->wholesalePriceShown()) {
+            $product->wholesale_price = $this->wholesale_price !== '' ? $this->wholesale_price : null;
         }
 
         if (Auth::user()->canUseBarcodes()) {
@@ -1143,6 +1153,12 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     }
 
     /** Pharmacies get the salt and DRAP fields; any product that already has them keeps showing them. */
+    /** Wholesale businesses, or a product that already has a trade price. */
+    protected function wholesalePriceShown(): bool
+    {
+        return (bool) Auth::user()->shop?->isWholesale() || trim($this->wholesale_price) !== '';
+    }
+
     protected function medicineFieldsShown(): bool
     {
         return (bool) Auth::user()->shop?->business_category?->usesMedicineFields()
@@ -1162,6 +1178,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
         $rules['outer_pack_name'] = ['nullable', 'string', 'max:20'];
         $rules['outer_pack_size'] = ['nullable', 'required_with:outer_pack_name', 'integer', 'min:2', 'max:1000'];
         $rules['outer_pack_price'] = ['nullable', 'numeric', 'min:0', 'max:99999999'];
+        $rules['wholesale_price'] = ['nullable', 'numeric', 'min:0', 'max:99999999'];
         $rules['generic_name'] = ['nullable', 'string', 'max:150'];
         $rules['drap_reg_no'] = ['nullable', 'string', 'max:30'];
         $rules['rx_control'] = ['nullable', 'in:prescription,controlled'];
@@ -1188,7 +1205,7 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
     protected function resetForm(): void
     {
         $this->reset([
-            'editingId', 'editingHasBatches', 'unit', 'unitLocked', 'shelf_life_days', 'warranty_months', 'warranty_type', 'pack_name', 'pack_size', 'pack_price', 'outer_pack_name', 'outer_pack_size', 'outer_pack_price', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
+            'editingId', 'editingHasBatches', 'unit', 'unitLocked', 'shelf_life_days', 'warranty_months', 'warranty_type', 'pack_name', 'pack_size', 'pack_price', 'outer_pack_name', 'outer_pack_size', 'outer_pack_price', 'wholesale_price', 'name', 'image', 'existingImageUrl', 'price', 'cost_price',
             'brand', 'model', 'imei', 'category', 'barcode', 'generic_name', 'drap_reg_no', 'rx_control', 'variantLabel', 'editingVariantGroupName',
         ]);
 
@@ -1546,6 +1563,12 @@ new #[Layout('layouts.app')] #[Title('Products')] class extends Component
                         <x-ui.field label="Cost Price" name="cost_price" for="cost_price" help="Optional">
                             <x-ui.input wire:model="cost_price" id="cost_price" type="number" step="0.01" min="0" :disabled="$editingHasBatches" />
                         </x-ui.field>
+
+                        @if ($wholesalePriceLabel)
+                            <x-ui.field :label="$wholesalePriceLabel" name="wholesale_price" for="wholesale_price" help="Optional. What business customers pay for one; blank sells to them at the selling price" data-wholesale-price>
+                                <x-ui.input wire:model="wholesale_price" id="wholesale_price" type="number" step="0.01" min="0" />
+                            </x-ui.field>
+                        @endif
                     </div>
                 </div>
 

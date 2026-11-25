@@ -236,6 +236,18 @@ class Shop extends Model
      * Warranty tracking and instalment sales: for phone and electronics shops,
      * and for shops from before business categories (which were mobile shops).
      */
+    /** A Wholesale / Distribution business (wholesaler, trader, distributor): trade prices, credit control, aging. */
+    public function isWholesale(): bool
+    {
+        return $this->business_category?->group() === \App\Enums\BusinessGroup::Wholesale;
+    }
+
+    /** One of the Wholesale P2 tools (BusinessCategory::wholesaleTools). */
+    public function usesTool(string $tool): bool
+    {
+        return in_array($tool, $this->business_category?->wholesaleTools() ?? [], true);
+    }
+
     public function sellsDevices(): bool
     {
         return $this->business_category === null || $this->business_category === BusinessCategory::MobileElectronics;

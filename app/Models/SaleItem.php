@@ -28,6 +28,7 @@ class SaleItem extends Model
         'warranty_type',
         'unit_price',
         'list_price',
+        'price_tier',
         'cost_price',
         'quantity',
         'unit',

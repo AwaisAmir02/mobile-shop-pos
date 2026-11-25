@@ -71,6 +71,25 @@ class Promotions
     }
 
     /**
+     * A line with free scheme goods (W9): the bought and free pieces are all
+     * in $allocations; the free ones' share of the line's value comes off as
+     * discount, so the line totals what the bought pieces cost. No promotion
+     * is added on top of a scheme.
+     */
+    public static function priceLineWithFree(Product $product, ?float $customPrice, float $discount, array $allocations, int|float $free): array
+    {
+        $plain = SaleCartMath::allocateLines($customPrice, 0.0, $allocations);
+        $gross = (float) array_sum(array_column($plain, 'line_total'));
+        $quantity = (float) Quantity::sum(array_column($allocations, 'quantity'));
+        $freeValue = $quantity > 0 ? round($gross * (float) $free / $quantity, 2) : 0.0;
+
+        return array_map(
+            fn (array $line) => $line + ['promotion_id' => null, 'promotion_name' => null, 'promotion_discount' => 0.0],
+            SaleCartMath::allocateLines($customPrice, round($discount + $freeValue, 2), $allocations),
+        );
+    }
+
+    /**
      * @param  Collection<int, Promotion>  $candidates
      * @return array{0: ?Promotion, 1: float}
      */

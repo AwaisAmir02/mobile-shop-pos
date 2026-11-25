@@ -75,6 +75,7 @@ class SaleBuilder implements EntryBuilder
             $payment->payment_method === SalePaymentMethod::Account => Chart::BANK,
             $payment->payment_method === SalePaymentMethod::TradeIn => Chart::TRADE_IN,
             $payment->payment_method === SalePaymentMethod::Exchange => Chart::EXCHANGE_CLEARING,
+            $payment->payment_method === SalePaymentMethod::Contra => Chart::CONTRA_CLEARING,
             default => Chart::NOT_CLASSIFIED,
         };
     }

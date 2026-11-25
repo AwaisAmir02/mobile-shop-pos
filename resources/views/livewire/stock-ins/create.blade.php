@@ -38,6 +38,8 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
     public string $sellingPrice = '';
     public string $expiryDate = '';
     public string $batchNumber = '';
+    // Wholesale (W9): bonus that came free with the purchase, e.g. 10 + 1.
+    public string $freeQuantity = '';
 
     /** The size/colour grid: one variant group at a time, a quantity per variant. */
     public ?int $gridGroupId = null;
@@ -263,6 +265,15 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
         $sellingPrice = (float) $this->sellingPrice;
         $expiryDate = $this->expiryEnabled() && $this->expiryDate !== '' ? $this->expiryDate : null;
 
+        if ($this->bonusOn() && is_numeric($this->freeQuantity) && (float) $this->freeQuantity > 0) {
+            $this->addLineWithBonus($product, $quantity, (float) $this->freeQuantity, $costPrice, $sellingPrice, $expiryDate, $batchNumber);
+            $this->reset(['productId', 'quantity', 'costPrice', 'sellingPrice', 'expiryDate', 'batchNumber', 'freeQuantity']);
+            $this->buyIn = 'piece';
+            $this->refreshAmountPaidForTotalChange();
+
+            return;
+        }
+
         if ($this->buyingPacks($product)) {
             // Stock is kept in pieces. The cost per piece is rounded; the amount owed is the exact pack total.
             $level = $this->buyLevel($product);
@@ -297,6 +308,49 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
 
         $this->reset(['productId', 'quantity', 'costPrice', 'sellingPrice', 'expiryDate', 'batchNumber']);
         $this->refreshAmountPaidForTotalChange();
+    }
+
+    protected function bonusOn(): bool
+    {
+        return (bool) Auth::user()->shop?->usesTool('bonus');
+    }
+
+    /**
+     * A line with free bonus pieces: the batch holds the bought and the free
+     * pieces, the amount owed is only what was bought, and its cost per piece
+     * is spread over all of them (the effective rate), so profit is right.
+     */
+    protected function addLineWithBonus(Product $product, int|float $quantity, float $free, ?float $costPrice, float $sellingPrice, ?string $expiryDate, ?string $batchNumber): void
+    {
+        $level = $this->buyingPacks($product) ? $this->buyLevel($product) : null;
+        $size = $level['size'] ?? 1;
+        $product->unit->assertQuantity($free, 'freeQuantity', $product->name);
+        $paid = Quantity::normalize($level ? (int) $quantity * $size : $quantity);
+        $bonus = Quantity::normalize($level ? (int) $free * $size : $free);
+        $pieces = Quantity::add($paid, $bonus);
+        $total = $costPrice !== null ? ($level ? round($costPrice * (int) $quantity, 2) : Quantity::money($costPrice, $paid)) : null;
+
+        $key = $product->id.'-bonus';
+        for ($n = 2; isset($this->cart[$key]); $n++) {
+            $key = $product->id.'-bonus-'.$n;
+        }
+
+        $this->cart[$key] = [
+            'product_id' => $product->id,
+            'name' => $product->name,
+            'category' => $product->typeLabel(),
+            'quantity' => $pieces,
+            'unit' => $product->unit->value,
+            'cost_price' => $total !== null && (float) $pieces > 0 ? round($total / (float) $pieces, 2) : null,
+            'total_cost' => $total,
+            'selling_price' => $sellingPrice,
+            'expiry_date' => $expiryDate,
+            'batch_number' => $batchNumber,
+            'free_quantity' => $bonus,
+            'bonus_label' => $level
+                ? Product::countLabel($level['name'], (int) $quantity).' + '.Product::countLabel($level['name'], (int) $free).' free'
+                : Quantity::grouped($paid).' + '.Quantity::grouped($bonus).' free',
+        ];
     }
 
     protected function addLooseLine(Product $product, int|float $quantity, ?float $costPrice, float $sellingPrice, ?string $expiryDate, ?string $batchNumber): void
@@ -504,6 +558,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
             'packMode' => $this->buyingPacks($selectedProduct),
             'buyLevel' => $this->buyLevel($selectedProduct),
             'expiryEnabled' => $this->expiryEnabled(),
+            'bonusOn' => $this->bonusOn(),
             'grid' => $this->grid(),
             'labelsEnabled' => Auth::user()->canUseBarcodes(),
             'labelProducts' => $this->receivedLabels !== [] ? Product::whereIn('id', array_keys($this->receivedLabels))->orderBy('name')->get() : collect(),
@@ -780,6 +835,12 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                         <x-ui.input wire:model="sellingPrice" id="sellingPrice" type="number" min="0" step="0.01" />
                     </x-ui.field>
 
+                    @if ($bonusOn)
+                        <x-ui.field :label="$packMode ? 'Free '.\Illuminate\Support\Str::plural(mb_strtolower($buyLevel['name'])) : 'Free quantity'" name="freeQuantity" for="freeQuantity" help="Bonus that came free, e.g. the 1 in 10 + 1">
+                            <x-ui.input wire:model="freeQuantity" id="freeQuantity" type="number" min="0" :step="$selectedUnit->inputStep()" />
+                        </x-ui.field>
+                    @endif
+
                     @if ($expiryEnabled)
                         <x-ui.field label="Expiry Date" name="expiryDate" for="expiryDate" help="The last day it can be sold">
                             <x-ui.input wire:model="expiryDate" id="expiryDate" type="date" />
@@ -825,6 +886,9 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
                                                 · Cost {{ $line['cost_price'] !== null ? 'Rs '.number_format($line['cost_price'], 2) : '—' }}
                                             @endif
                                             · Sell Rs {{ number_format($line['selling_price'], 2) }}
+                                            @if (! empty($line['bonus_label']))
+                                                · {{ $line['bonus_label'] }}, cost spread over all
+                                            @endif
                                             @if (! empty($line['expiry_date']))
                                                 · Expires {{ Carbon::parse($line['expiry_date'])->format('d M Y') }}
                                             @endif

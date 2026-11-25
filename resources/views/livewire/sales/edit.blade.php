@@ -97,6 +97,12 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
                 'discount' => (string) round($itemsForProduct->sum('discount_amount') - $itemsForProduct->sum('promotion_discount'), 2),
                 'max_stock' => Quantity::add($product->stock_quantity, $totalQuantity),
             ];
+
+            // Sold at a trade price (PriceTiers): that stays the line's price, and its list price.
+            if ($firstItem->price_tier !== null && $firstItem->list_price !== null) {
+                $this->cart[$product->id]['list_price'] = (string) (float) $firstItem->list_price;
+                $this->cart[$product->id]['price_tier'] = $firstItem->price_tier;
+            }
         }
     }
 
@@ -213,6 +219,7 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
     protected function pricedLine(Product $product, array $item): array
     {
         $overridePrice = $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null;
+        $overridePrice ??= ! empty($item['price_tier']) ? (float) $item['list_price'] : null;
 
         return Promotions::priceLine($product, $overridePrice, (float) $item['discount'], $this->previewAllocations($product, $item), null, $this->keptPromotion($product->id));
     }
@@ -303,7 +310,7 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
             'custom_price' => $item['custom_price'] !== '' && $item['custom_price'] !== null ? (float) $item['custom_price'] : null,
             'quantity' => $item['quantity'],
             'discount' => (float) $item['discount'],
-        ])->values()->all();
+        ] + (! empty($item['price_tier']) ? ['tier_price' => (float) $item['list_price'], 'price_tier' => $item['price_tier']] : []))->values()->all();
 
         foreach ($this->legacyItems as $legacy) {
             $lines[] = [

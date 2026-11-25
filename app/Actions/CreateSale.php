@@ -9,6 +9,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Shop;
 use App\Support\BatchExpiry;
+use App\Support\PriceTiers;
 use App\Support\Imei;
 use App\Support\Quantity;
 use Carbon\Carbon;
@@ -37,6 +38,7 @@ class CreateSale
         return DB::transaction(function () use ($lines, $invoiceDiscount, $customerId, $userId, $saleDate, $amountPaid, $shopId, $attributes, $paymentMethod, $shopAccountId, $installments, $tradeIn, $storeCredit, $applyPromotions, $prescription) {
             $subtotal = 0;
             $allItemsData = [];
+            $redemptions = [];
             // Only the register asks; WhatsApp and online orders sell at their own prices.
             $running = null;
 
@@ -49,7 +51,9 @@ class CreateSale
 
                 $product = $productQuery->lockForUpdate()->firstOrFail();
                 $product->unit->assertQuantity($line['quantity'], "lines.{$product->id}", $product->name);
-                $quantity = Quantity::normalize($line['quantity']);
+                // A trade scheme's free pieces (W9) go out on the same line, priced at nothing.
+                $free = ! empty($line['scheme_id']) ? Quantity::normalize($line['scheme_free'] ?? 0) : 0;
+                $quantity = Quantity::add(Quantity::normalize($line['quantity']), $free);
 
                 if (Quantity::compare($product->stock_quantity, $quantity) < 0) {
                     throw ValidationException::withMessages([
@@ -63,7 +67,18 @@ class CreateSale
                     $running ??= Promotions::runningOn($shopId ?? $product->shop_id, Carbon::parse($saleDate)->toDateString());
                 }
 
-                $subLines = Promotions::priceLine($product, $line['custom_price'], (float) $line['discount'], $allocations, $running);
+                // A wholesale customer's trade price (PriceTiers) is the line's price unless the
+                // cashier typed one; it is also the list price, so it never reads as overridden.
+                $tierPrice = isset($line['tier_price']) ? (float) $line['tier_price'] : null;
+                $subLines = $free > 0
+                    ? Promotions::priceLineWithFree($product, $line['custom_price'] ?? $tierPrice, (float) $line['discount'], $allocations, $free)
+                    : Promotions::priceLine($product, $line['custom_price'] ?? $tierPrice, (float) $line['discount'], $allocations, $running);
+
+                if ($free > 0) {
+                    $lineCost = (float) array_sum(array_map(fn (array $a) => Quantity::money($a['cost_price'] ?? 0, $a['quantity']), $allocations));
+                    $redemptions[] = [(int) $line['scheme_id'], $product->id, $free, (float) $quantity > 0 ? $lineCost * (float) $free / (float) $quantity : 0.0];
+                }
+                $tier = $tierPrice !== null ? ['list_price' => $tierPrice, 'price_tier' => $line['price_tier'] ?? PriceTiers::TRADE] : [];
 
                 // The pack it was sold in (strip, box…), when the line was whole packs.
                 $pack = SaleItem::packAttributes($line['pack_name'] ?? null, $line['pack_size'] ?? null, $quantity);
@@ -75,7 +90,7 @@ class CreateSale
                         'product_name' => $product->name,
                         'product_type' => $product->type,
                         'unit' => $product->unit,
-                    ], $pack, SaleItem::warrantyAttributesFor($product));
+                    ], $pack, SaleItem::warrantyAttributesFor($product), $tier);
                 }
 
                 $product->decrement('stock_quantity', $quantity);
@@ -101,6 +116,10 @@ class CreateSale
 
             foreach ($allItemsData as $itemData) {
                 $sale->items()->create(array_merge($itemData, ['shop_id' => $sale->shop_id]));
+            }
+
+            foreach ($redemptions as [$schemeId, $productId, $free, $costValue]) {
+                Schemes::redeem($sale, $schemeId, $productId, $free, $costValue);
             }
 
             // Prescription medicines go in the register: with the register's details, or

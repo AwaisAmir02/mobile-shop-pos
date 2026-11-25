@@ -25,6 +25,8 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
                 ['title' => 'Screen reports', 'text' => 'Filter, total and export the records of any screen: sales, stock in, loads, bills, repairs and more.', 'route' => 'reports.screens', 'icon' => 'table', 'show' => true],
                 ['title' => 'Gross profit', 'text' => 'Revenue against the cost of goods sold, product by product.', 'route' => 'profit.index', 'icon' => 'trend', 'show' => $user->hasAccessTo('sales-view-cost-price')],
                 ['title' => 'Sales history', 'text' => 'Every sale with its payment status, customer and invoice.', 'route' => 'sales.history', 'icon' => 'cart', 'show' => $user->hasAccessTo('sales')],
+                ['title' => 'Sales by booker & route', 'text' => 'Sales and gross profit by booker, route and brand.', 'route' => 'sales-performance.index', 'icon' => 'trend', 'show' => (bool) $shop?->usesTool('routes')],
+                ['title' => 'Scheme claims', 'text' => 'Free goods given under company schemes: claimed, waiting and received.', 'route' => 'schemes.index', 'icon' => 'coins', 'show' => $user->hasAccessTo('sales') && (bool) $shop?->usesTool('schemes')],
                 // Pharmacies, and any shop that has marked a medicine or has entries.
                 ['title' => 'Prescription register', 'text' => 'Every sale of a Prescription only or Controlled medicine, with the prescriber or emergency reason.', 'route' => 'prescriptions.index', 'icon' => 'table', 'show' => $user->hasAccessTo('sales') && ((bool) $shop?->business_category?->usesMedicineFields()
                     || \App\Models\Product::query()->whereNotNull('rx_control')->exists() || \App\Models\SalePrescription::query()->exists())],
@@ -33,10 +35,14 @@ new #[Layout('layouts.app')] #[Title('Reports')] class extends Component
                 ['title' => 'Stock In receipts', 'text' => 'Goods received, what they cost and what is still owed to vendors.', 'route' => 'stock-ins.history', 'icon' => 'box', 'show' => $user->hasAccessTo('stock-ins')],
                 ['title' => 'Expiring & expired stock', 'text' => 'Batches past or near their expiry date, valued at cost.', 'route' => 'stock-ins.expiry', 'icon' => 'clock', 'show' => $user->hasAccessTo('stock-ins') && $shop?->expiry_tracking_enabled],
                 ['title' => 'Stock write-offs', 'text' => 'Damaged, lost and expired stock taken off the shelf.', 'route' => 'stock-ins.write-offs', 'icon' => 'minus', 'show' => $user->hasAccessTo('stock-ins')],
+                ['title' => 'Purchase returns', 'text' => 'Stock sent back to vendors, with each debit note.', 'route' => 'purchase-returns.index', 'icon' => 'box', 'show' => $user->hasAccessTo('stock-ins') && (bool) $shop?->usesTool('returns')],
             ],
             'People' => [
                 ['title' => 'Party ledger', 'text' => 'A running statement for any customer or vendor.', 'route' => 'party-ledger.index', 'icon' => 'book', 'show' => $user->hasAccessTo('party-ledger')],
                 ['title' => 'Udhaar', 'text' => 'Who owes the shop, and how much.', 'route' => 'udhaar.index', 'icon' => 'coins', 'show' => $user->hasAccessTo('udhaar')],
+                // Wholesale businesses: who owes, for how long, by area.
+                ['title' => 'Cheques', 'text' => 'Post-dated cheques in hand and given out, and which have bounced.', 'route' => 'cheques.index', 'icon' => 'wallet', 'show' => $user->hasAccessTo('udhaar') && (bool) $shop?->usesTool('cheques')],
+                ['title' => 'Dues aging', 'text' => 'Unpaid bills and udhaar by age: 0-30, 31-60, 61-90 and over 90 days.', 'route' => 'aging.index', 'icon' => 'clock', 'show' => $user->hasAccessTo('udhaar') && (bool) $shop?->isWholesale()],
                 ['title' => 'Store credit', 'text' => 'Credit given on returns, what has been used and who still holds it.', 'route' => 'store-credit.index', 'icon' => 'coins', 'show' => $user->hasAccessTo('sales-returns')],
                 ['title' => 'Payroll history', 'text' => 'Payslips and salaries paid, month by month.', 'route' => 'payroll.history', 'icon' => 'briefcase', 'show' => ModuleNav::payrollHistoryVisible($user)],
             ],

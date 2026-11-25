@@ -27,6 +27,7 @@ class StockInPayment extends Model
         'amount',
         'payment_date',
         'source',
+        'note',
     ];
 
     protected function casts(): array

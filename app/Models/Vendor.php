@@ -24,6 +24,12 @@ class Vendor extends Model
         return $this->stockIns()->exists();
     }
 
+    /** The customer record of the same party (W11), if linked. */
+    public function linkedCustomer(): ?Customer
+    {
+        return Customer::query()->where('vendor_id', $this->id)->first();
+    }
+
     public function totalOwed(): float
     {
         return (float) $this->stockIns->sum(fn (StockIn $entry) => $entry->amountOwed());

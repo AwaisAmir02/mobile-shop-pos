@@ -82,8 +82,8 @@ class SalesReport implements ScreenReport
     public function totalOutstanding(): float
     {
         return (float) Sale::query()
-            ->withSum('payments', 'amount')
-            ->withSum('returns', 'due_reduction')
+            ->owing()
+            ->orderBy('sales.id')
             ->get()
             ->sum(fn (Sale $sale) => $sale->amountDue());
     }

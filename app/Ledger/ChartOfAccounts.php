@@ -23,6 +23,8 @@ class ChartOfAccounts
     /** A traded-in phone: the sale's Trade-in payment and the buyback's payment meet here and net to zero. */
     public const TRADE_IN = '1350';
     public const EXCHANGE_CLEARING = '1360';
+    public const VENDOR_CREDITS = '1370';
+    public const CONTRA_CLEARING = '1380';
     public const CLEARING = '1400';
     public const CANCELLED_UNCONFIRMED = '1450';
     public const PAYABLE = '2000';
@@ -38,6 +40,7 @@ class ChartOfAccounts
     public const SERVICE_INCOME = '4200';
     public const REPAIR_INCOME = '4300';
     public const EXPIRED_CREDIT = '4400';
+    public const SCHEME_INCOME = '4450';
     public const COGS = '5000';
     public const WRITE_OFFS = '5100';
     public const ADJUSTMENTS = '5200';
@@ -54,6 +57,8 @@ class ChartOfAccounts
         self::INVENTORY => ['Inventory', LedgerAccount::ASSET],
         self::TRADE_IN => ['Trade-in Clearing', LedgerAccount::ASSET],
         self::EXCHANGE_CLEARING => ['Exchange Clearing', LedgerAccount::ASSET],
+        self::VENDOR_CREDITS => ['Vendor Credits (debit notes & claims)', LedgerAccount::ASSET],
+        self::CONTRA_CLEARING => ['Contra Clearing', LedgerAccount::ASSET],
         self::CLEARING => ['Agent Float & Clearing', LedgerAccount::ASSET],
         self::CANCELLED_UNCONFIRMED => ['Cancelled, Cash Unconfirmed', LedgerAccount::ASSET],
         self::PAYABLE => ['Accounts Payable', LedgerAccount::LIABILITY],
@@ -69,6 +74,7 @@ class ChartOfAccounts
         self::SERVICE_INCOME => ['Service & Commission Income', LedgerAccount::INCOME],
         self::REPAIR_INCOME => ['Repair Income', LedgerAccount::INCOME],
         self::EXPIRED_CREDIT => ['Expired Store Credit', LedgerAccount::INCOME],
+        self::SCHEME_INCOME => ['Scheme Claims Received', LedgerAccount::INCOME],
         self::COGS => ['Cost of Goods Sold', LedgerAccount::EXPENSE],
         self::WRITE_OFFS => ['Inventory Write-offs', LedgerAccount::EXPENSE],
         self::ADJUSTMENTS => ['Inventory Adjustments', LedgerAccount::EXPENSE],
@@ -81,7 +87,7 @@ class ChartOfAccounts
      * ledger: created the first time one is posted to. Any other missing
      * account is a fault and fails the posting.
      */
-    public const ADDED_LATER = [self::TRADE_IN, self::SALES_RETURNS, self::CUSTOMER_CREDIT, self::EXPIRED_CREDIT, self::EXCHANGE_CLEARING];
+    public const ADDED_LATER = [self::TRADE_IN, self::SALES_RETURNS, self::CUSTOMER_CREDIT, self::EXPIRED_CREDIT, self::EXCHANGE_CLEARING, self::VENDOR_CREDITS, self::CONTRA_CLEARING, self::SCHEME_INCOME];
 
     public static function ensureFor(Shop $shop): void
     {
@@ -121,6 +127,8 @@ class ChartOfAccounts
             $method === 'trade_in' => self::TRADE_IN,
             $method === 'store_credit' => self::CUSTOMER_CREDIT,
             $method === 'exchange' => self::EXCHANGE_CLEARING,
+            $method === 'vendor_credit' => self::VENDOR_CREDITS,
+            $method === 'contra' => self::CONTRA_CLEARING,
             default => $unrecorded,
         };
     }

@@ -131,6 +131,9 @@ new #[Layout('layouts.app')] class extends Component
     @if ($tab === 'overview')
         <x-ui.stat-row>
             <x-ui.stat label="Selling price" :value="'Rs '.number_format($product->currentSellingPrice(), 2).$product->unit->perSuffix()" />
+            @if ($product->wholesale_price !== null && auth()->user()->shop?->isWholesale())
+                <x-ui.stat :label="\App\Support\PriceTiers::label(auth()->user()->shop)" :value="'Rs '.number_format($product->wholesale_price, 2).$product->unit->perSuffix()" sub="For business customers" />
+            @endif
             <x-ui.stat label="In stock" :value="$product->stockLabel()" :sub="$product->stock_quantity > 0 ? null : 'Out of stock'" />
             @if ($canSeeCost)
                 <x-ui.stat label="Cost price" :value="$product->currentCostPrice() !== null ? 'Rs '.number_format($product->currentCostPrice(), 2) : '—'" sub="From the next batch to sell" />

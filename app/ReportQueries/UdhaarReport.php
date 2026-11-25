@@ -58,35 +58,72 @@ class UdhaarReport implements ScreenReport
 
     protected function collectOtherDueTotals(): Collection
     {
-        $unpaidOrPartial = fn ($query) => $query
-            ->whereNotNull('customer_id')
-            ->where('payment_status', '!=', PaymentStatus::Paid->value);
-
         $totals = collect();
 
-        $accumulate = function (Collection $records, \Closure $amountOf) use (&$totals) {
-            $records->each(function ($record) use ($amountOf, &$totals) {
-                $due = $amountOf($record);
+        // Added up in the order dueRecords() lists them, one record at a time.
+        foreach ($this->collectDueRecords(null) as $record) {
+            $totals[$record['customer_id']] = ($totals[$record['customer_id']] ?? 0.0) + $record['amount'];
+        }
+
+        return $totals;
+    }
+
+    /**
+     * Every unpaid amount behind the figures above, one row per record: the
+     * counter services, then sales. Dues aging reads these same rows, so its
+     * bills always add up to what this list shows. Shop-wide.
+     *
+     * @return list<array{customer_id: int, source: string, id: int, amount: float, date: mixed, due_date: mixed}>
+     */
+    public function dueRecords(?int $customerId = null): array
+    {
+        return BranchContext::current()->shopWide(fn () => $this->collectDueRecords($customerId));
+    }
+
+    protected function collectDueRecords(?int $customerId): array
+    {
+        $unpaidOrPartial = fn ($query) => $query
+            ->whereNotNull('customer_id')
+            ->when($customerId !== null, fn ($q) => $q->where('customer_id', $customerId))
+            ->where('payment_status', '!=', PaymentStatus::Paid->value);
+
+        $records = [];
+
+        $collect = function (string $source, Collection $models, \Closure $amountOf) use (&$records) {
+            $models->each(function ($model) use ($source, $amountOf, &$records) {
+                $due = $amountOf($model);
 
                 if ($due > 0) {
-                    $totals[$record->customer_id] = ($totals[$record->customer_id] ?? 0.0) + $due;
+                    $records[] = [
+                        'customer_id' => (int) $model->customer_id,
+                        'source' => $source,
+                        'id' => $model->id,
+                        'amount' => $due,
+                        'date' => $model->created_at,
+                        'due_date' => $source === 'sale' ? $model->due_date : null,
+                    ];
                 }
             });
         };
 
-        $accumulate($unpaidOrPartial(WalletLoad::query()->countsAsDue())->get(), fn (WalletLoad $m) => $m->amountOwed());
-        $accumulate($unpaidOrPartial(BalanceLoad::query())->get(), fn (BalanceLoad $m) => $m->amountOwed());
-        $accumulate($unpaidOrPartial(BillPayment::query())->get(), fn (BillPayment $m) => $m->amountOwed());
-        $accumulate($unpaidOrPartial(Repair::query())->get(), fn (Repair $m) => $m->amountOwed());
-        $accumulate($unpaidOrPartial(NadraVerification::query())->get(), fn (NadraVerification $m) => $m->amountOwed());
-        $accumulate($unpaidOrPartial(SimSale::query())->get(), fn (SimSale $m) => $m->amountOwed());
-        $accumulate($unpaidOrPartial(ServicePayment::query())->get(), fn (ServicePayment $m) => $m->amountOwed());
-        $accumulate(
-            Sale::query()->whereNotNull('customer_id')->withSum('payments', 'amount')->withSum('returns', 'due_reduction')->get(),
+        $collect('wallet_load', $unpaidOrPartial(WalletLoad::query()->countsAsDue())->get(), fn (WalletLoad $m) => $m->amountOwed());
+        $collect('balance_load', $unpaidOrPartial(BalanceLoad::query())->get(), fn (BalanceLoad $m) => $m->amountOwed());
+        $collect('bill_payment', $unpaidOrPartial(BillPayment::query())->get(), fn (BillPayment $m) => $m->amountOwed());
+        $collect('repair', $unpaidOrPartial(Repair::query())->get(), fn (Repair $m) => $m->amountOwed());
+        $collect('nadra_verification', $unpaidOrPartial(NadraVerification::query())->get(), fn (NadraVerification $m) => $m->amountOwed());
+        $collect('sim_sale', $unpaidOrPartial(SimSale::query())->get(), fn (SimSale $m) => $m->amountOwed());
+        $collect('service_payment', $unpaidOrPartial(ServicePayment::query())->get(), fn (ServicePayment $m) => $m->amountOwed());
+        // Only sales that can still be owed leave the database (Sale::scopeOwing);
+        // amountDue() still decides, exactly as before.
+        $collect(
+            'sale',
+            Sale::query()->whereNotNull('customer_id')
+                ->when($customerId !== null, fn ($q) => $q->where('customer_id', $customerId))
+                ->owing()->orderBy('sales.id')->get(),
             fn (Sale $m) => $m->amountDue()
         );
 
-        return $totals;
+        return $records;
     }
 
     public function rows(): Collection

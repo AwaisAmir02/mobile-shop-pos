@@ -55,6 +55,7 @@ class LedgerSources
         'repair' => ['model' => Repair::class, 'builder' => Builders\RepairBuilder::class],
         'nadra_verification' => ['model' => NadraVerification::class, 'builder' => Builders\NadraVerificationBuilder::class],
         'service_payment' => ['model' => ServicePayment::class, 'builder' => Builders\ServicePaymentBuilder::class],
+        'vendor_credit' => ['model' => \App\Models\VendorCredit::class, 'builder' => Builders\VendorCreditBuilder::class],
     ];
 
     /** @var array<class-string<Model>, array{0: string, 1: string}> child model => [document key, foreign key] */
@@ -64,6 +65,7 @@ class LedgerSources
         \App\Models\SaleReturnItem::class => ['sale_return', 'sale_return_id'],
         StockInPayment::class => ['stock_in', 'stock_in_id'],
         VendorInvoiceLine::class => ['stock_in', 'stock_in_id'],
+        \App\Models\VendorCreditRefund::class => ['vendor_credit', 'vendor_credit_id'],
     ];
 
     /** @return array<int, class-string<Model>> */

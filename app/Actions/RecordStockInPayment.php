@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\DB;
  */
 class RecordStockInPayment
 {
-    public static function add(StockIn $entry, float $amount, ?int $userId, StockInPaymentSource $source = StockInPaymentSource::Payment, ?int $vendorInvoiceId = null, ?string $paymentMethod = null, ?int $shopAccountId = null): StockIn
+    public static function add(StockIn $entry, float $amount, ?int $userId, StockInPaymentSource $source = StockInPaymentSource::Payment, ?int $vendorInvoiceId = null, ?string $paymentMethod = null, ?int $shopAccountId = null, ?string $note = null): StockIn
     {
-        return DB::transaction(function () use ($entry, $amount, $userId, $source, $vendorInvoiceId, $paymentMethod, $shopAccountId) {
+        return DB::transaction(function () use ($entry, $amount, $userId, $source, $vendorInvoiceId, $paymentMethod, $shopAccountId, $note) {
             $entry = self::lock($entry);
 
             $previousAmountPaid = (float) $entry->amount_paid;
@@ -26,12 +26,15 @@ class RecordStockInPayment
 
             $entry->update([
                 'amount_paid' => $newAmountPaid,
-                'payment_status' => $entry->total_cost !== null && $newAmountPaid >= (float) $entry->total_cost
-                    ? PaymentStatus::Paid
-                    : PaymentStatus::Partial,
+                'payment_status' => match (true) {
+                    $entry->total_cost !== null && $newAmountPaid >= (float) $entry->total_cost => PaymentStatus::Paid,
+                    // Only a reversal (a bounced cheque, an undone credit) takes it back to nothing paid.
+                    $amount < 0 && round($newAmountPaid, 2) <= 0 => PaymentStatus::Unpaid,
+                    default => PaymentStatus::Partial,
+                },
             ]);
 
-            self::recordRow($entry, (float) $entry->amount_paid - $previousAmountPaid, $source, $userId, $vendorInvoiceId, $paymentMethod, $shopAccountId);
+            self::recordRow($entry, (float) $entry->amount_paid - $previousAmountPaid, $source, $userId, $vendorInvoiceId, $paymentMethod, $shopAccountId, $note);
 
             return $entry;
         });
@@ -64,7 +67,7 @@ class RecordStockInPayment
     }
 
     /** The exact change just stored, after decimal rounding. No change, no row. */
-    protected static function recordRow(StockIn $entry, float $change, StockInPaymentSource $source, ?int $userId, ?int $vendorInvoiceId = null, ?string $paymentMethod = null, ?int $shopAccountId = null): void
+    protected static function recordRow(StockIn $entry, float $change, StockInPaymentSource $source, ?int $userId, ?int $vendorInvoiceId = null, ?string $paymentMethod = null, ?int $shopAccountId = null, ?string $note = null): void
     {
         if (round($change, 2) == 0.0) {
             return;
@@ -79,6 +82,7 @@ class RecordStockInPayment
             'vendor_invoice_id' => $vendorInvoiceId,
             'payment_method' => $paymentMethod,
             'shop_account_id' => $shopAccountId,
+            'note' => $note !== null ? mb_substr($note, 0, 120) : null,
         ]);
     }
 }

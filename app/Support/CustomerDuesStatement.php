@@ -41,7 +41,7 @@ class CustomerDuesStatement
         $customerId = $this->customer->id;
         $rows = collect();
 
-        Sale::where('customer_id', $customerId)->withSum('payments', 'amount')->withSum('returns', 'due_reduction')->with('installments')->get()
+        Sale::where('customer_id', $customerId)->owing()->orderBy('sales.id')->with('installments')->get()
             ->each(function (Sale $sale) use ($rows) {
                 if ($sale->amountDue() > 0) {
                     $row = $this->row('sale', $sale->id, $sale->invoiceNumber(), $this->saleItemsLabel($sale), $sale->created_at, $sale->amountDue());

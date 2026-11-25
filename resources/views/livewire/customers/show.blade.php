@@ -22,6 +22,15 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
     public string $cashOutAmount = '';
     public string $cashOutNote = '';
 
+    // Receive Payment (wholesale businesses, W1): one amount, spread oldest first.
+    public string $receiptAmount = '';
+    public string $receiptNote = '';
+    public bool $receiving = false;
+
+    // Contra with the same party's vendor record (traders, W11).
+    public string $contraAmount = '';
+    public string $contraNote = '';
+
     /**
      * Customers and vendors belong to the whole shop, so this screen shows
      * every branch's lines and balances to everyone, restricted staff
@@ -70,9 +79,124 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
         $this->toastSuccess('Rs '.number_format(abs((float) $entry->amount), 2).' of store credit paid out.');
     }
 
+    protected function wholesale(): bool
+    {
+        return (bool) Auth::user()->shop?->isWholesale();
+    }
+
+    /** Taking money against what the customer owes is the Udhaar permission's job. */
+    protected function canReceive(): bool
+    {
+        return $this->wholesale() && Auth::user()->hasAccessTo('udhaar');
+    }
+
+    public function openReceive(): void
+    {
+        abort_unless($this->canReceive(), 403);
+
+        $this->receiptAmount = '';
+        $this->receiptNote = '';
+        $this->paidFrom = 'cash';
+        $this->receiving = true;
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'receive-payment-form');
+    }
+
+    public function closeReceive(): void
+    {
+        $this->receiving = false;
+        $this->dispatch('close-modal', name: 'receive-payment-form');
+    }
+
+    public function receive(): void
+    {
+        abort_unless($this->canReceive(), 403);
+
+        $this->validate([
+            'receiptAmount' => ['required', 'numeric', 'min:1', 'max:9999999999'],
+            'receiptNote' => ['nullable', 'string', 'max:200'],
+        ], [], ['receiptAmount' => 'amount', 'receiptNote' => 'note']);
+
+        [$method, $accountId] = $this->paidFromParts();
+        $receipt = \App\Actions\CustomerPayments::receiveAtCounter($this->customer, (float) $this->receiptAmount, $method, $accountId, Auth::id(), $this->receiptNote);
+
+        $this->receiving = false;
+        $this->dispatch('close-modal', name: 'receive-payment-form');
+        $this->toastSuccess('Rs '.number_format((float) $receipt->amount, 2).' received. Receipt '.$receipt->number().'.');
+    }
+
+    public function downloadReceipt(int $id): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        abort_unless($this->wholesale(), 404);
+        $receipt = \App\Models\CustomerReceipt::query()->where('customer_id', $this->customer->id)->with(['customer.shop', 'user', 'shopAccount'])->findOrFail($id);
+        $output = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.customer-receipt', [
+            'receipt' => $receipt,
+            'balanceNow' => \App\Support\CustomerDuesStatement::for($this->customer)->total(),
+        ])->setPaper('a6')->output();
+
+        return response()->streamDownload(fn () => print ($output), $receipt->number().'.pdf');
+    }
+
+    protected function canContra(): bool
+    {
+        return (bool) Auth::user()->shop?->usesTool('contra') && $this->customer->vendor_id !== null
+            && Auth::user()->hasAccessTo('udhaar') && Auth::user()->hasAccessTo('vendors');
+    }
+
+    public function openContra(): void
+    {
+        abort_unless($this->canContra(), 403);
+        $this->contraAmount = (string) \App\Actions\Contra::position($this->customer)['most'];
+        $this->contraNote = '';
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'contra-form');
+    }
+
+    public function settleContra(): void
+    {
+        abort_unless($this->canContra(), 403);
+        $this->validate(['contraAmount' => ['required', 'numeric', 'min:0.01'], 'contraNote' => ['nullable', 'string', 'max:255']], [], ['contraAmount' => 'amount']);
+        $settlement = \App\Actions\Contra::settle($this->customer, (float) $this->contraAmount, $this->contraNote, Auth::id());
+
+        $this->dispatch('close-modal', name: 'contra-form');
+        $this->toastSuccess($settlement->number().': Rs '.number_format((float) $settlement->amount, 2).' set off on both sides.');
+    }
+
+    public function cancelContra(int $id): void
+    {
+        abort_unless($this->canContra(), 403);
+        \App\Actions\Contra::cancel(\App\Models\ContraSettlement::where('customer_id', $this->customer->id)->findOrFail($id), Auth::id());
+        $this->toastSuccess('Contra undone. Both sides owe what they did before.');
+    }
+
+    /** The wholesale panels: business details, credit, aging and receipts. */
+    protected function wholesaleData(): array
+    {
+        $plan = [];
+
+        if ($this->receiving && is_numeric($this->receiptAmount) && (float) $this->receiptAmount > 0) {
+            $plan = \App\Actions\CustomerPayments::allocate($this->customer, (float) $this->receiptAmount);
+        }
+
+        return [
+            'aging' => \App\ReportQueries\DuesAging::today()->forCustomer($this->customer),
+            'creditCheck' => \App\Support\CreditControl::check($this->customer, 0),
+            'tierLabel' => $this->customer->price_tier === \App\Support\PriceTiers::NORMAL ? 'Normal selling price' : \App\Support\PriceTiers::label(Auth::user()->shop),
+            'receipts' => $this->customer->receipts()->with('shopAccount')->limit(10)->get(),
+            'canReceive' => $this->canReceive(),
+            'receiptPlan' => $plan,
+            'chequesInHand' => Auth::user()->shop?->usesTool('cheques') ? \App\Models\Cheque::query()->where('customer_id', $this->customer->id)->where('direction', 'received')->whereIn('status', ['pending', 'deposited'])->orderBy('cheque_date')->get() : null,
+            'canContra' => $this->canContra(),
+            'contra' => $this->canContra() ? \App\Actions\Contra::position($this->customer) : null,
+            'contraSettlements' => $this->customer->vendor_id ? \App\Models\ContraSettlement::query()->where('customer_id', $this->customer->id)->latest('id')->limit(10)->get() : collect(),
+            'canBookOrder' => Auth::user()->shop?->usesTool('orders') && Auth::user()->hasAccessTo('sales'),
+        ];
+    }
+
     public function with(): array
     {
         $this->customer->load(['sales', 'udhaarTransactions']);
+        $wholesale = $this->wholesale();
 
         return [
             'sales' => $this->customer->sales,
@@ -88,7 +212,8 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
             'creditEntries' => StoreCreditEntry::query()->withoutGlobalScope(\App\Models\Scopes\ExcludesCancelledScope::class)->where('customer_id', $this->customer->id)->latest('entry_date')->latest('id')->limit(50)->get(),
             'canCashOut' => $this->canCashOut(),
             'totalOwed' => (new UdhaarReport)->rows()->first(fn (array $row) => $row['customer']->id === $this->customer->id)['balance'] ?? 0.0,
-        ];
+            'wholesale' => $wholesale,
+        ] + ($wholesale ? $this->wholesaleData() : []);
     }
 }; ?>
 
@@ -102,6 +227,10 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
     </x-slot>
 
     <x-party.tabs type="customer" :party="$customer" active="profile" />
+
+    @if ($wholesale)
+        @include('customers.wholesale-panels')
+    @endif
 
     <x-ui.stat-row>
         <x-ui.stat label="Total Owed" value="Rs {{ number_format(abs($totalOwed), 2) }}" :sub="$totalOwed < 0 ? 'In advance · as on the Udhaar list' : 'Udhaar, sales and services · as on the Udhaar list'" />

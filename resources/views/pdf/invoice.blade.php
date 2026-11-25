@@ -108,6 +108,25 @@
             transform: rotate(-25deg);
             z-index: 100;
         }
+        table.bill-to { margin-bottom: 4px; }
+        .bill-to-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+        }
+        .bill-to-name {
+            font-size: 13px;
+            font-weight: bold;
+            color: #022157;
+            margin-top: 2px;
+        }
+        .totals.account { margin-top: 14px; }
+        .account-note {
+            font-size: 8px;
+            color: #94a3b8;
+            text-align: right;
+        }
     </style>
 </head>
 <body>
@@ -134,7 +153,37 @@
 
     @php
         $hasItemDiscounts = $sale->items->contains(fn ($item) => (float) $item->discount_amount > 0);
+        // Wholesale businesses bill another business: who it is, and where their account stands.
+        $billTo = $sale->shop->isWholesale() && $sale->customer_id ? $sale->customer : null;
     @endphp
+
+    @if ($billTo)
+        <table class="layout bill-to">
+            <tr>
+                <td>
+                    <div class="bill-to-label">Bill to</div>
+                    <div class="bill-to-name">{{ $billTo->business_name ?: $billTo->name }}</div>
+                    @if ($billTo->business_name)
+                        <div class="shop-meta">{{ $billTo->contact_person ?: $billTo->name }}</div>
+                    @endif
+                    @if ($phones = collect([$billTo->phone, $billTo->phone_2])->filter()->implode(' · '))
+                        <div class="shop-meta">{{ $phones }}</div>
+                    @endif
+                    @if ($place = collect([$billTo->address, $billTo->area])->filter()->implode(', '))
+                        <div class="shop-meta">{{ $place }}</div>
+                    @endif
+                    @if ($taxLine = $billTo->taxNumbersLine())
+                        <div class="shop-meta">{{ $taxLine }}</div>
+                    @endif
+                </td>
+                @if ($sale->due_date && ! $sale->isCancelled())
+                    <td class="text-right">
+                        <div class="bill-to-label">Payment due by {{ $sale->due_date->format('d M Y') }}</div>
+                    </td>
+                @endif
+            </tr>
+        </table>
+    @endif
     <table class="items">
         <thead>
             <tr>
@@ -215,6 +264,31 @@
             </tr>
         @endif
     </table>
+
+    @if ($billTo && ! $sale->isCancelled())
+        @php
+            // As on the customer's page and the Udhaar list, on the day this is printed.
+            $owedNow = \App\Support\CustomerDuesStatement::for($billTo)->total();
+            $thisBill = $sale->amountDue();
+        @endphp
+        <table class="totals account">
+            <tr>
+                <td>Previous balance</td>
+                <td class="text-right">Rs {{ number_format($owedNow - $thisBill, 2) }}</td>
+            </tr>
+            <tr>
+                <td>This bill</td>
+                <td class="text-right">Rs {{ number_format($thisBill, 2) }}</td>
+            </tr>
+            <tr class="total-row">
+                <td>Total balance</td>
+                <td class="text-right">Rs {{ number_format($owedNow, 2) }}</td>
+            </tr>
+            <tr>
+                <td colspan="2" class="account-note">Balance as of {{ now('Asia/Karachi')->format('d M Y') }}</td>
+            </tr>
+        </table>
+    @endif
 
     @php($schedule = $sale->isCancelled() ? null : \App\Support\InstallmentSchedule::for($sale))
     @if ($schedule)

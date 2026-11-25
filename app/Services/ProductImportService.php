@@ -41,7 +41,7 @@ class ProductImportService
     /** Canonical, lowercase header names this importer understands. */
     protected const REQUIRED_HEADERS = ['name', 'main category', 'selling price'];
 
-    protected const OPTIONAL_HEADERS = ['cost price', 'stock qty', 'sub-category', 'brand', 'model', 'imei/serial', 'barcode', 'variant group', 'option 1', 'option 2', 'unit', 'generic name', 'drap reg no', 'prescription'];
+    protected const OPTIONAL_HEADERS = ['cost price', 'stock qty', 'sub-category', 'brand', 'model', 'imei/serial', 'barcode', 'variant group', 'option 1', 'option 2', 'unit', 'generic name', 'drap reg no', 'prescription', 'wholesale price'];
 
     /** A small-edit-distance flag against the shop's own existing names — cheap (php levenshtein()), not exhaustive. */
     protected const SIMILARITY_THRESHOLD = 2;
@@ -229,6 +229,7 @@ class ProductImportService
                     'barcode' => $row['barcode'],
                     'price' => $row['price'],
                     'cost_price' => $row['costPrice'],
+                    'wholesale_price' => $row['wholesalePrice'] ?? null,
                     'stock_quantity' => $row['stockQuantity'],
                     'unit' => $row['unit'],
                     'details' => $details,
@@ -338,6 +339,12 @@ class ProductImportService
         if (isset($headerIndex['unit']) && ! $unitsEnabled) {
             $notices[] = 'The Unit column was ignored because weighed and measured items are turned off for this shop.';
         }
+
+        // Trade prices are for wholesale businesses (PriceTiers).
+        $wholesaleEnabled = (bool) Shop::find($shopId)?->isWholesale();
+        if (isset($headerIndex['wholesale price']) && ! $wholesaleEnabled) {
+            $notices[] = 'The Wholesale Price column was ignored because trade prices are only used by wholesale businesses.';
+        }
         $seenGroupUnits = []; // normalized group name => the unit its first row settled on
 
         // Existing groups, by normalized name, so a row can join one but never disagree with its category.
@@ -385,6 +392,7 @@ class ProductImportService
             $mainCategoryName = trim($cellAt($cells, 'main category'));
             $priceRaw = $cellAt($cells, 'selling price');
             $costPriceRaw = $cellAt($cells, 'cost price');
+            $wholesalePriceRaw = $wholesaleEnabled ? $cellAt($cells, 'wholesale price') : '';
             $stockRaw = $cellAt($cells, 'stock qty');
             $subCategoryName = trim($cellAt($cells, 'sub-category'));
             $brandName = trim($cellAt($cells, 'brand'));
@@ -452,6 +460,15 @@ class ProductImportService
                 $costPrice = $this->parseNumber($costPriceRaw);
                 if ($costPrice === null || $costPrice < 0) {
                     $addError('Cost Price is not a valid number.');
+                }
+            }
+
+            $wholesalePrice = null;
+            if ($wholesalePriceRaw !== '') {
+                $wholesalePrice = $this->parseNumber($wholesalePriceRaw);
+                if ($wholesalePrice === null || $wholesalePrice < 0) {
+                    $addError('Wholesale Price is not a valid number.');
+                    $wholesalePrice = null;
                 }
             }
 
@@ -633,6 +650,7 @@ class ProductImportService
                 'rxControl' => $rxControl,
                 'price' => $price,
                 'costPrice' => $costPrice,
+                'wholesalePrice' => $wholesalePrice,
                 'stockQuantity' => $stockQuantity,
                 'unit' => $unit,
                 'skip' => $skip,
@@ -754,7 +772,7 @@ class ProductImportService
      * worked row and the required/optional notes — the importer only ever
      * reads the first sheet.
      */
-    public function templateResponse(bool $withBarcode = true, bool $withVariants = false, bool $withUnits = false, bool $withMedicine = false): StreamedResponse
+    public function templateResponse(bool $withBarcode = true, bool $withVariants = false, bool $withUnits = false, bool $withMedicine = false, bool $withWholesale = false): StreamedResponse
     {
         $headers = ['Name', 'Main Category', 'Sub-Category', 'Brand', 'Model', 'IMEI/Serial', 'Selling Price', 'Cost Price', 'Stock Qty'];
         if ($withBarcode) {
@@ -773,6 +791,10 @@ class ProductImportService
 
         if ($withMedicine) {
             array_push($headers, 'Generic Name', 'DRAP Reg No', 'Prescription');
+        }
+
+        if ($withWholesale) {
+            $headers[] = 'Wholesale Price';
         }
 
         $lastColumn = chr(ord('A') + count($headers) - 1);
@@ -858,6 +880,7 @@ class ProductImportService
                 ['DRAP Reg No', 'Optional', 'The registration number printed on the pack.'],
                 ['Prescription', 'Optional', 'Blank, Prescription only, or Controlled. Each sale of a marked medicine is written in the prescription register.'],
             ] : []),
+            ...($withWholesale ? [['Wholesale Price', 'Optional', 'The trade price business customers pay for one. Blank sells to them at the Selling Price.']] : []),
             ['', '', ''],
             ['Note:', '', 'Images cannot be imported from a spreadsheet — add product photos afterwards from the Products screen.'],
             ['Note:', '', 'A row whose Name and IMEI/Serial exactly match an existing product is skipped, not overwritten.'],

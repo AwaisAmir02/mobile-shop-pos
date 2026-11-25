@@ -70,6 +70,34 @@ enum BusinessCategory: string
         return in_array($this, [self::Kiryana, self::Pharmacy], true);
     }
 
+    /** What the second, lower price is called in this trade (PriceTiers). */
+    public function tradePriceLabel(): string
+    {
+        return match ($this) {
+            self::Distributor => 'Trade price',
+            self::Trader => 'Wholesale rate',
+            default => 'Wholesale price',
+        };
+    }
+
+    /**
+     * The Wholesale P2 tools each trade uses, in one place so widening one is a
+     * one-line change: cheques (W6), sales orders + load sheets (W7), routes +
+     * bookers (W8), schemes + claims (W9), bonus quantity on Stock In (W9),
+     * purchase returns (W10), contra with a linked vendor (W11).
+     *
+     * @return list<string>
+     */
+    public function wholesaleTools(): array
+    {
+        return match ($this) {
+            self::Wholesaler => ['cheques', 'returns', 'bonus'],
+            self::Trader => ['cheques', 'returns', 'bonus', 'contra'],
+            self::Distributor => ['cheques', 'returns', 'bonus', 'orders', 'routes', 'schemes'],
+            default => [],
+        };
+    }
+
     /** Pharmacies record each medicine's generic (salt) name and DRAP registration number. */
     public function usesMedicineFields(): bool
     {

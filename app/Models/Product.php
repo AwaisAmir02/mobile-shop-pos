@@ -42,6 +42,7 @@ class Product extends Model
         'image_path',
         'price',
         'cost_price',
+        'wholesale_price',
         'stock_quantity',
         'unit',
         'shelf_life_days',
@@ -65,6 +66,7 @@ class Product extends Model
         return [
             'price' => 'decimal:2',
             'cost_price' => 'decimal:2',
+            'wholesale_price' => 'decimal:2',
             'stock_quantity' => QuantityCast::class,
             'unit' => QuantityUnit::class,
             'shelf_life_days' => 'integer',

@@ -161,6 +161,20 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('udhaar', 'udhaar.index')->name('udhaar.index')->middleware('shop.access:udhaar');
         Volt::route('udhaar/{customer}', 'udhaar.show')->name('udhaar.show')->middleware('shop.access:udhaar');
+        Volt::route('dues-aging', 'aging.index')->name('aging.index')->middleware('shop.access:udhaar');
+        // Wholesale P2: each screen also checks its tool (Shop::usesTool) and 404s without it.
+        Volt::route('cheques', 'cheques.index')->name('cheques.index')->middleware('shop.access:udhaar');
+        Volt::route('purchase-returns', 'purchase-returns.index')->name('purchase-returns.index')->middleware('shop.access:stock-ins');
+        Volt::route('purchase-returns/create', 'purchase-returns.create')->name('purchase-returns.create')->middleware('shop.access:stock-ins');
+        Volt::route('schemes', 'schemes.index')->name('schemes.index')->middleware('shop.access:sales');
+        Volt::route('delivery-routes', 'delivery-routes.index')->name('delivery-routes.index')->middleware('shop.access:customers');
+        Volt::route('orders', 'sales-orders.index')->name('sales-orders.index')->middleware('shop.access:sales');
+        Volt::route('orders/create', 'sales-orders.form')->name('sales-orders.create')->middleware('shop.access:sales');
+        Volt::route('orders/{order}/edit', 'sales-orders.form')->name('sales-orders.edit')->whereNumber('order')->middleware('shop.access:sales');
+        Volt::route('orders/{order}', 'sales-orders.show')->name('sales-orders.show')->whereNumber('order')->middleware('shop.access:sales');
+        Volt::route('load-sheets', 'load-sheets.index')->name('load-sheets.index')->middleware('shop.access:sales');
+        Volt::route('load-sheets/{sheet}', 'load-sheets.show')->name('load-sheets.show')->whereNumber('sheet')->middleware('shop.access:sales');
+        Volt::route('sales-by-booker', 'sales-performance.index')->name('sales-performance.index')->middleware('shop.access:reports');
 
         Volt::route('balance-loads', 'balance-loads.create')->name('balance-loads.index')->middleware('shop.access:balance-loads');
         Volt::route('balance-loads/history', 'balance-loads.history')->name('balance-loads.history')->middleware('shop.access:balance-loads');

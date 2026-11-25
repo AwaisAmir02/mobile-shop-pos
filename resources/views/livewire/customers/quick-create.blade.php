@@ -10,26 +10,30 @@ new class extends Component
 
     public string $name = '';
     public string $phone = '';
+    // Wholesale businesses: the shop or company the customer runs.
+    public string $businessName = '';
 
     public function save(): void
     {
         $this->validate([
             'name' => CreateCustomer::rules()['name'],
             'phone' => CreateCustomer::rules()['phone'],
-        ]);
+            'businessName' => ['nullable', 'string', 'max:255'],
+        ], [], ['businessName' => 'business name']);
 
-        $customer = CreateCustomer::handle($this->name, $this->phone);
+        $wholesale = (bool) \Illuminate\Support\Facades\Auth::user()->shop?->isWholesale();
+        $customer = CreateCustomer::handle($this->name, $this->phone, null, $wholesale && trim($this->businessName) !== '' ? ['business_name' => trim($this->businessName)] : []);
 
         $this->toastSuccess('Customer added.');
         $this->dispatch('close-modal', name: 'quick-create-customer');
         $this->dispatch('customer-created', customerId: $customer->id, customerName: $customer->name);
-        $this->reset(['name', 'phone']);
+        $this->reset(['name', 'phone', 'businessName']);
     }
 
     public function close(): void
     {
         $this->dispatch('close-modal', name: 'quick-create-customer');
-        $this->reset(['name', 'phone']);
+        $this->reset(['name', 'phone', 'businessName']);
         $this->resetErrorBag();
     }
 }; ?>
@@ -47,6 +51,12 @@ new class extends Component
                 <x-ui.field label="Phone" name="phone" for="quickCustomerPhone">
                     <x-ui.input wire:model="phone" id="quickCustomerPhone" type="tel" placeholder="03xx-xxxxxxx" />
                 </x-ui.field>
+
+                @if (auth()->user()->shop?->isWholesale())
+                    <x-ui.field label="Business name" name="businessName" for="quickCustomerBusiness" help="Optional. More details, price and credit on the Customers list">
+                        <x-ui.input wire:model="businessName" id="quickCustomerBusiness" />
+                    </x-ui.field>
+                @endif
             </div>
 
             <div class="mt-6 flex justify-end gap-3">
