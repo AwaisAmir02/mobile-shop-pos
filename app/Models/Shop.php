@@ -7,6 +7,7 @@ use App\Enums\PlanType;
 use App\Enums\ShopModule;
 use App\Enums\ShopScreen;
 use App\Enums\SubscriptionStatus;
+use App\Enums\WholesaleTool;
 use App\Support\BranchContext;
 use App\Support\StoreEvents;
 use Carbon\Carbon;
@@ -21,6 +22,7 @@ class Shop extends Model
 {
     protected $attributes = [
         'subscription_status' => 'inactive',
+        'service_reminders_enabled' => true,
     ];
 
     protected $fillable = [
@@ -41,6 +43,8 @@ class Shop extends Model
         'disabled_screens',
         'hidden_screens',
         'business_category',
+        'business_addons',
+        'service_reminders_enabled',
         'import_enabled',
         'barcode_enabled',
         'branding_enabled',
@@ -83,6 +87,8 @@ class Shop extends Model
             'disabled_screens' => 'array',
             'hidden_screens' => 'array',
             'business_category' => BusinessCategory::class,
+            'business_addons' => 'array',
+            'service_reminders_enabled' => 'boolean',
             'import_enabled' => 'boolean',
             'barcode_enabled' => 'boolean',
             'branding_enabled' => 'boolean',
@@ -233,21 +239,80 @@ class Shop extends Model
     }
 
     /**
-     * Warranty tracking and instalment sales: for phone and electronics shops,
-     * and for shops from before business categories (which were mobile shops).
+     * A Wholesale / Distribution business (wholesaler, trader, distributor):
+     * trade prices, credit control, aging. The one check for "is this a
+     * wholesale shop"; the per-trade tools on top are usesTool().
      */
-    /** A Wholesale / Distribution business (wholesaler, trader, distributor): trade prices, credit control, aging. */
     public function isWholesale(): bool
     {
         return $this->business_category?->group() === \App\Enums\BusinessGroup::Wholesale;
     }
 
-    /** One of the Wholesale P2 tools (BusinessCategory::wholesaleTools). */
-    public function usesTool(string $tool): bool
+    /**
+     * An online seller (social, Daraz, own brand): no counter, orders arrive
+     * by message or from a store and leave by courier. The one check for "is
+     * this an online shop"; the per-trade tools on top are usesTool().
+     */
+    public function isOnline(): bool
     {
-        return in_array($tool, $this->business_category?->wholesaleTools() ?? [], true);
+        return $this->business_category?->group() === \App\Enums\BusinessGroup::Online;
     }
 
+    /**
+     * A service business (repair workshop, salon, spa, gym, personal training).
+     * The one check for "is this a service business"; the per-trade tools on
+     * top are usesTool().
+     */
+    public function isServiceTrade(): bool
+    {
+        return $this->business_category?->group() === \App\Enums\BusinessGroup::ServiceTrades;
+    }
+
+    /**
+     * The related trades this shop also runs (a salon that is also a spa).
+     * Anything stored that its own trade can't combine with is ignored.
+     *
+     * @return list<BusinessCategory>
+     */
+    public function businessAddons(): array
+    {
+        if ($this->business_category === null || empty($this->business_addons)) {
+            return [];
+        }
+
+        return array_map(fn (string $value) => BusinessCategory::from($value), $this->business_category->cleanAddons($this->business_addons));
+    }
+
+    /**
+     * One of the tools its trade uses: Wholesale P2 (BusinessCategory::wholesaleTools),
+     * Online P1 (onlineTools) or the Services group (serviceTradeTools, merged
+     * with any related trade it also runs). Only those trades have any.
+     */
+    public function usesTool(WholesaleTool|\App\Enums\OnlineTool|\App\Enums\ServiceTradeTool $tool): bool
+    {
+        $tools = match (true) {
+            $tool instanceof WholesaleTool => $this->business_category?->wholesaleTools() ?? [],
+            $tool instanceof \App\Enums\OnlineTool => $this->business_category?->onlineTools() ?? [],
+            default => array_merge($this->business_category?->serviceTradeTools() ?? [], ...array_map(fn (BusinessCategory $c) => $c->serviceTradeTools(), $this->businessAddons())),
+        };
+
+        return in_array($tool, $tools, true);
+    }
+
+    /**
+     * Whether the shop keeps a list of parcels: booked through a connected courier
+     * (the plan's Courier booking) or typed in by an online seller who books on the
+     * courier's own portal (OnlineTool::Delivery).
+     */
+    public function tracksParcels(): bool
+    {
+        return (bool) $this->couriers_enabled || $this->usesTool(\App\Enums\OnlineTool::Delivery);
+    }
+
+    /**
+     * Warranty tracking and instalment sales: for phone and electronics shops,
+     * and for shops from before business categories (which were mobile shops).
+     */
     public function sellsDevices(): bool
     {
         return $this->business_category === null || $this->business_category === BusinessCategory::MobileElectronics;

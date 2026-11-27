@@ -2,7 +2,23 @@
 
 For developers connecting an online store to a shop on HisabOKitab.
 
-> **Status:** written contract. The API is being built in stages and isn't live yet.
+> **Status:** built: every endpoint and event below is implemented and covered by tests. On Shopify or WooCommerce? You don't need this API: the shop connects those stores itself (docs/storefronts.md).
+
+## Quick start (about an hour)
+
+1. **Get credentials.** The shop owner opens **Settings › Integrations › Online Store**, types a name under **New connection** (your site's domain is fine) and presses **Connect a store**. The screen shows three things once: the **connection ID** (`chn_…`), the **API token** (`hok_…`) and the **signing secret**. Copy them now; only the owner can generate new ones, and that cancels the old token.
+2. **Pick the products.** On the same screen the owner ticks which products your store may sell, and can give each one your own code (`external_sku`).
+3. **Check you're in:**
+
+   ```bash
+   curl -H "Authorization: Bearer hok_YOUR_TOKEN" https://hisabokitab.com/api/channel/v1/me
+   ```
+
+4. **Load products and stock** with `GET /products` and `GET /inventory` (below). Show `available` as your stock.
+5. **Send each order** as a signed `order.created` event (below), and `order.cancelled` if the customer cancels.
+6. **Optional, recommended: receive our events.** The owner pastes your HTTPS endpoint into **Updates to the store** on the connection. You then get stock changes as they happen instead of polling.
+
+Test against a real connection: an order you send is stored as **pending** and changes no stock until the shop accepts it, so the owner can simply reject test orders.
 
 ## How it works
 
@@ -56,6 +72,10 @@ Any valid token can call `GET /me`. Sending order events uses the signing secret
 | 404 | `not_found` | Doesn't exist, or isn't published on this connection |
 | 422 | `validation_failed` | See `error.fields` |
 | 429 | `rate_limited` | Wait for the `Retry-After` number of seconds |
+
+### Rate limits
+
+Reading endpoints and the order webhook are limited per connection. Over the limit you get `429` with `Retry-After`; wait that many seconds. Polling `GET /inventory?updated_since=` once a minute is well within limits; receiving our events is better still.
 
 ### Pagination
 
@@ -168,6 +188,44 @@ Sign the exact bytes you send. Don't re-encode the JSON after signing. In PHP:
 $body = json_encode($event);
 $timestamp = time();
 $signature = 'v1='.hash_hmac('sha256', $timestamp.'.'.$body, $signingSecret);
+
+$response = (new GuzzleHttp\Client)->post("https://hisabokitab.com/webhooks/channels/{$connectionId}", [
+    'headers' => [
+        'Content-Type' => 'application/json',
+        'X-HOK-Event-Id' => $eventId,        // e.g. "order-1001-created"; the same on every retry
+        'X-HOK-Timestamp' => (string) $timestamp,
+        'X-HOK-Signature' => $signature,
+    ],
+    'body' => $body,
+    'http_errors' => false,
+]);
+```
+
+In Node.js:
+
+```js
+const crypto = require('crypto');
+
+const body = JSON.stringify(event);
+const timestamp = Math.floor(Date.now() / 1000).toString();
+const signature = 'v1=' + crypto.createHmac('sha256', signingSecret).update(`${timestamp}.${body}`).digest('hex');
+
+await fetch(`https://hisabokitab.com/webhooks/channels/${connectionId}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', 'X-HOK-Event-Id': eventId, 'X-HOK-Timestamp': timestamp, 'X-HOK-Signature': signature },
+  body,
+});
+```
+
+With curl, for a first test:
+
+```bash
+BODY='{"type":"order.created","data":{"external_order_id":"TEST-1","placed_at":"2026-11-25T10:00:00+05:00","customer":{"name":"Test","phone":"03001234567"},"payment":{"method":"cod"},"items":[{"external_sku":"CHG-20W-BLK","name":"Charger","quantity":1,"unit_price":"1250.00"}]}}'
+TS=$(date +%s)
+SIG=$(printf '%s' "$TS.$BODY" | openssl dgst -sha256 -hmac "$SIGNING_SECRET" | sed 's/^.* //')
+curl -X POST "https://hisabokitab.com/webhooks/channels/$CONNECTION_ID" \
+  -H 'Content-Type: application/json' -H "X-HOK-Event-Id: test-1" \
+  -H "X-HOK-Timestamp: $TS" -H "X-HOK-Signature: v1=$SIG" -d "$BODY"
 ```
 
 ### `order.created`
@@ -199,7 +257,7 @@ $signature = 'v1='.hash_hmac('sha256', $timestamp.'.'.$body, $signingSecret);
 - Each item needs `product_id` or `external_sku`. An item we can't match is still stored, and staff have to map or remove it before accepting.
 - `unit_price` is what you charged. It's used on the sale, whatever the shop's listed price.
 - `payment.method` is `prepaid` or `cod`. A COD order becomes a sale the customer owes until the shop records payment.
-- `shipping_amount` is kept with the order for reference and isn't part of the sale in v1, so a prepaid sale records the goods total as paid.
+- `shipping_amount` is what the customer paid for delivery. For a shop registered as an online seller it's part of the sale (its total, revenue and what's owed). For any other shop it's kept with the order for reference only, and a prepaid sale records the goods total as paid.
 - `phone` is required for `cod` orders.
 
 ### `order.cancelled`
@@ -248,6 +306,33 @@ We `POST` to the HTTPS callback URL set on the connection, signed the same way w
 | `order.cancel_flagged` | `{ "external_order_id": "1001" }` |
 | `connection.paused` | `{}`. **Stop selling. Published stock is no longer being kept up to date.** |
 | `connection.resumed` | `{}`. Run a full `GET /inventory`, then resume. |
+
+### Verifying our events
+
+Check the signature before reading anything, against the raw body, and refuse a timestamp more than 5 minutes off:
+
+```php
+$raw = file_get_contents('php://input');
+$timestamp = $_SERVER['HTTP_X_HOK_TIMESTAMP'] ?? '';
+$expected = 'v1='.hash_hmac('sha256', $timestamp.'.'.$raw, $signingSecret);
+
+if (! hash_equals($expected, $_SERVER['HTTP_X_HOK_SIGNATURE'] ?? '') || abs(time() - (int) $timestamp) > 300) {
+    http_response_code(401);
+    exit;
+}
+
+$event = json_decode($raw, true);
+// Skip $event['id'] if you've handled it before; then act on $event['type'].
+http_response_code(200);
+```
+
+```js
+// Express: use express.raw({ type: 'application/json' }) on this route so req.body is the raw Buffer.
+const expected = 'v1=' + crypto.createHmac('sha256', signingSecret).update(`${req.get('X-HOK-Timestamp')}.${req.body}`).digest('hex');
+const ok = expected.length === (req.get('X-HOK-Signature') || '').length
+  && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(req.get('X-HOK-Signature')))
+  && Math.abs(Date.now() / 1000 - Number(req.get('X-HOK-Timestamp'))) <= 300;
+```
 
 ### Handling events
 

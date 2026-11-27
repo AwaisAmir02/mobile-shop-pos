@@ -21,6 +21,8 @@ class SalePayment extends Model
         'payment_method',
         'shop_account_id',
         'note',
+        'gift_voucher_id',
+        'customer_deposit_id',
     ];
 
     protected function casts(): array
@@ -65,6 +67,7 @@ class SalePayment extends Model
             SalePaymentMethod::Cash => 'Cash',
             SalePaymentMethod::StoreCredit => 'Store credit',
             SalePaymentMethod::Contra => 'Contra'.($this->note ? ': '.$this->note : ''),
+            SalePaymentMethod::Courier => 'Courier payout'.($this->note ? ': '.$this->note : ''),
             SalePaymentMethod::Exchange => ($exchange = SaleReturn::withoutGlobalScopes()->where('exchange_sale_id', $this->sale_id)->latest('id')->first())
                 ? 'Exchange: '.$exchange->number().' on INV-'.str_pad((string) $exchange->sale_id, 6, '0', STR_PAD_LEFT)
                 : 'Exchange',

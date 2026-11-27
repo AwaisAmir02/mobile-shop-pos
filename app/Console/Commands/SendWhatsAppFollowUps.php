@@ -50,6 +50,16 @@ class SendWhatsAppFollowUps extends Command
                 }
             });
 
+        // Delivered parcels of online sellers (O8): the same request, about the parcel.
+        foreach (\App\Actions\ParcelReviews::due($limit) as $shipment) {
+            try {
+                \App\Actions\ParcelReviews::sendByWhatsApp($shipment, $notifications);
+                $reviews++;
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
+
         RestockSubscription::withoutGlobalScopes()
             ->waiting()
             ->where('created_at', '<', now()->subDays(self::RESTOCK_EXPIRY_DAYS))

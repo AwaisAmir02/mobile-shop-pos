@@ -197,6 +197,7 @@ class DeleteShop
             ['disk' => 'local', 'path' => 'whatsapp-slips/'.$id, 'dir' => true],
             ['disk' => 'local', 'path' => 'product-imports/'.$id, 'dir' => true],
             ['disk' => 'local', 'path' => 'prescriptions/'.$id, 'dir' => true],
+            ['disk' => 'local', 'path' => 'broadcasts/'.$id, 'dir' => true],
         ];
 
         // Anything stored outside the shop's own folder: user photos, and an

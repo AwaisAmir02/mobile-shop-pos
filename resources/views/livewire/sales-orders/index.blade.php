@@ -29,21 +29,20 @@ new #[Layout('layouts.app')] #[Title('Orders')] class extends Component
 
     public function mount(): void
     {
-        abort_unless(Auth::user()->shop?->usesTool('orders'), 404);
     }
 
     public function with(): array
     {
         return [
             'orders' => SalesOrder::query()
-                ->with(['customer', 'booker', 'route', 'loadSheet'])
+                ->with(['customer', 'booker', 'deliveryRoute', 'loadSheet'])
                 ->when($this->status !== 'all', fn ($q) => $q->where('status', $this->status))
                 ->when($this->routeId !== '', fn ($q) => $q->where('route_id', (int) $this->routeId))
                 ->when($this->bookerId !== '', fn ($q) => $q->where('booker_id', (int) $this->bookerId))
                 ->orderByRaw('delivery_date IS NULL')->orderBy('delivery_date')->latest('id')
                 ->limit(300)
                 ->get(),
-            'routes' => DeliveryRoute::query()->orderBy('name')->get(),
+            'deliveryRoutes' => DeliveryRoute::query()->orderBy('name')->get(),
             'users' => User::query()->where('shop_id', Auth::user()->shop_id)->orderBy('name')->get(),
         ];
     }
@@ -68,8 +67,8 @@ new #[Layout('layouts.app')] #[Title('Orders')] class extends Component
         <x-ui.field label="Route" for="orderRoute" class="w-full sm:w-48">
             <x-ui.select wire:model.live="routeId" id="orderRoute">
                 <option value="">All routes</option>
-                @foreach ($routes as $route)
-                    <option value="{{ $route->id }}">{{ $route->name }}</option>
+                @foreach ($deliveryRoutes as $deliveryRoute)
+                    <option value="{{ $deliveryRoute->id }}">{{ $deliveryRoute->name }}</option>
                 @endforeach
             </x-ui.select>
         </x-ui.field>
@@ -98,11 +97,11 @@ new #[Layout('layouts.app')] #[Title('Orders')] class extends Component
                         <span class="block text-xs text-ink-faint">{{ $order->order_date->format('d M Y') }}{{ $order->booker ? ' · '.$order->booker->name : '' }}</span>
                     </x-ui.table-cell>
                     <x-ui.table-cell label="Customer">{{ $order->customer?->displayName() }}</x-ui.table-cell>
-                    <x-ui.table-cell label="Route">{{ $order->route?->name ?? '—' }}</x-ui.table-cell>
+                    <x-ui.table-cell label="Route">{{ $order->deliveryRoute?->name ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell label="Deliver on">{{ $order->delivery_date?->format('d M Y') ?? '—' }}</x-ui.table-cell>
                     <x-ui.table-cell label="Value" class="tabular-nums">Rs {{ number_format($order->estimated_total, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell label="Status">
-                        <x-ui.badge :variant="match ($order->status) { 'delivered' => 'success', 'cancelled' => 'default', default => $order->load_sheet_id ? 'brand' : 'warning' }">{{ $order->statusLabel() }}</x-ui.badge>
+                        <x-ui.badge :variant="match ($order->status) { \App\Enums\SalesOrderStatus::Delivered => 'success', \App\Enums\SalesOrderStatus::Cancelled => 'default', default => $order->load_sheet_id ? 'brand' : 'warning' }">{{ $order->statusLabel() }}</x-ui.badge>
                         @if ($order->loadSheet)
                             <span class="block text-xs text-ink-faint">{{ $order->loadSheet->number() }}</span>
                         @endif

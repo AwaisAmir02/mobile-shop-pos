@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Enums\RecordStatus;
 use App\Enums\SalePaymentMethod;
 use App\Enums\StockInPaymentSource;
 use App\Models\ContraSettlement;
@@ -33,7 +34,7 @@ class Contra
     {
         $vendor = $customer->vendor_id ? Vendor::find($customer->vendor_id) : null;
         $customerOwes = round($customer->salesOutstandingBalance(), 2);
-        $vendorOwed = $vendor ? VendorCredits::owedTo($vendor->id) : 0.0;
+        $vendorOwed = $vendor ? VendorPayments::owed($vendor->id) : 0.0;
 
         return ['customer_owes' => $customerOwes, 'vendor_owed' => $vendorOwed, 'most' => round(min($customerOwes, $vendorOwed), 2)];
     }
@@ -60,7 +61,7 @@ class Contra
                 'settled_on' => now()->toDateString(),
                 'applied_to' => [],
                 'note' => filled($note) ? mb_substr($note, 0, 255) : null,
-                'status' => 'active',
+                'status' => RecordStatus::Active,
                 'user_id' => $userId,
             ]);
             $label = 'Contra '.$settlement->number();
@@ -73,7 +74,7 @@ class Contra
                 return null;
             }, ['sale']);
 
-            $vendorSide = VendorCredits::payBatches($customer->vendor_id, $amount, StockInPaymentSource::Contra, self::METHOD, null, $userId, $label);
+            $vendorSide = VendorPayments::payOldestFirst($customer->vendor_id, $amount, StockInPaymentSource::Contra, self::METHOD, null, $userId, $label);
 
             $settlement->update(['applied_to' => [
                 'customer' => array_values(array_map(fn ($p) => ['sale_id' => $p['id'], 'reference' => $p['reference'], 'amount' => $p['amount']], $customerSide)),
@@ -102,8 +103,8 @@ class Contra
                 }
             }
 
-            VendorCredits::unpayBatches($settlement->applied_to['vendor'] ?? [], StockInPaymentSource::Contra, self::METHOD, null, $userId, $label);
-            $settlement->update(['status' => 'cancelled', 'cancelled_at' => now()]);
+            VendorPayments::undo($settlement->applied_to['vendor'] ?? [], StockInPaymentSource::Contra, self::METHOD, null, $userId, $label);
+            $settlement->update(['status' => RecordStatus::Cancelled, 'cancelled_at' => now()]);
         });
     }
 

@@ -52,7 +52,9 @@ class CourierBookingTest extends TestCase
         parent::setUp();
         Cache::flush();
 
-        $this->shop = Shop::create(['name' => 'Style Hub', 'couriers_enabled' => true, 'business_category' => 'social_seller']);
+        // A retail shop booking couriers (Commerce plan): the generic flow. Online sellers'
+        // own courier behaviour (hand-typed parcels, payouts) is in OnlineCouriersTest.
+        $this->shop = Shop::create(['name' => 'Style Hub', 'couriers_enabled' => true, 'business_category' => 'clothing']);
         $this->owner = User::factory()->create(['shop_id' => $this->shop->id]);
         $this->actingAs($this->owner);
 

@@ -311,6 +311,9 @@ new class extends Component
         <livewire:settings.couriers key="couriers" />
     @elseif ($section === 'online-store')
         <livewire:settings.online-store key="online-store" />
+        @if (\App\Actions\StorefrontConnections::allowed(auth()->user()->shop))
+            <div class="mt-6"><livewire:settings.storefronts key="storefronts" /></div>
+        @endif
     @elseif ($section === 'whatsapp')
         <x-ui.card title="WhatsApp" description="Connect your shop's WhatsApp Business number so customers can browse and order through a chatbot.">
             @if (! $shop->usesWhatsApp())

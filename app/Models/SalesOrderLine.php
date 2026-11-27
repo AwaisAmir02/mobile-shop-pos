@@ -16,7 +16,7 @@ class SalesOrderLine extends Model
 
     protected function casts(): array
     {
-        return ['quantity' => QuantityCast::class, 'unit_price' => 'decimal:2', 'discount' => 'decimal:2', 'pack_size' => 'integer'];
+        return ['quantity' => QuantityCast::class, 'unit_price' => 'decimal:2', 'discount' => 'decimal:2', 'pack_size' => 'integer', 'price_tier' => \App\Enums\PriceTier::class];
     }
 
     public function product(): BelongsTo

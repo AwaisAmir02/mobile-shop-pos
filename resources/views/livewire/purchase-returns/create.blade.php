@@ -1,7 +1,7 @@
 <?php
 
 use App\Actions\PurchaseReturns;
-use App\Actions\VendorCredits;
+use App\Actions\VendorPayments;
 use App\Livewire\Concerns\Toasts;
 use App\Models\PurchaseReturn;
 use App\Models\StockIn;
@@ -37,7 +37,6 @@ new #[Layout('layouts.app')] #[Title('Return to Vendor')] class extends Componen
 
     public function mount(): void
     {
-        abort_unless(Auth::user()->shop?->usesTool('returns'), 404);
         $this->returnDate = BatchExpiry::today();
     }
 
@@ -88,7 +87,7 @@ new #[Layout('layouts.app')] #[Title('Return to Vendor')] class extends Componen
             'vendors' => Vendor::query()->orderBy('name')->get(),
             'batches' => $batches,
             'value' => round($value, 2),
-            'owed' => $vendorId ? VendorCredits::owedTo($vendorId) : 0.0,
+            'owed' => $vendorId ? VendorPayments::owed($vendorId) : 0.0,
             'today' => BatchExpiry::today(),
         ];
     }

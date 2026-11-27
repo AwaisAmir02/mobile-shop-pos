@@ -18,6 +18,12 @@ enum SalePaymentMethod: string
     case Exchange = 'exchange';
     /** Set off against what the shop owes the same party as a vendor (App\Actions\Contra). No money moves. */
     case Contra = 'contra';
+    /** Cash a courier collected on delivery and paid out (App\Actions\CourierSettlements). The money moves with the payout, not here. */
+    case Courier = 'courier';
+    /** A gift voucher's value, by its code (App\Actions\GiftVouchers). The money came in when it was sold. */
+    case GiftVoucher = 'gift_voucher';
+    /** A deposit the customer paid ahead on a booking or job (App\Actions\CustomerDeposits). The money came in then. */
+    case Deposit = 'deposit';
 
     public function label(): string
     {
@@ -28,6 +34,9 @@ enum SalePaymentMethod: string
             self::StoreCredit => 'Store credit',
             self::Exchange => 'Exchange',
             self::Contra => 'Contra',
+            self::Courier => 'Courier payout',
+            self::GiftVoucher => 'Gift voucher',
+            self::Deposit => 'Deposit',
         };
     }
 
@@ -62,6 +71,14 @@ enum SalePaymentMethod: string
 
         if ($case === self::Contra) {
             throw ValidationException::withMessages(['paymentMethod' => 'A contra is recorded from the customer\'s page, against their vendor account.']);
+        }
+
+        if ($case === self::Courier) {
+            throw ValidationException::withMessages(['paymentMethod' => 'Cash a courier collected is recorded with its payout, under Courier Payouts.']);
+        }
+
+        if ($case === self::GiftVoucher || $case === self::Deposit) {
+            throw ValidationException::withMessages(['paymentMethod' => 'A gift voucher or deposit is used through its own option on New Sale.']);
         }
 
         if ($case === self::StoreCredit) {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SchemeClaimStatus;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,7 +17,7 @@ class SchemeClaim extends Model
 
     protected function casts(): array
     {
-        return ['claimed_on' => 'date', 'settled_on' => 'date', 'claimed_amount' => 'decimal:2', 'settled_amount' => 'decimal:2'];
+        return ['claimed_on' => 'date', 'settled_on' => 'date', 'claimed_amount' => 'decimal:2', 'settled_amount' => 'decimal:2', 'status' => SchemeClaimStatus::class];
     }
 
     public function vendor(): BelongsTo

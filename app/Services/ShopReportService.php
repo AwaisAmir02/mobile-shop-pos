@@ -65,6 +65,13 @@ class ShopReportService
                 'units' => (int) ($categoryRows->get($category->slug)->units ?? 0),
             ]);
 
+        // Services, memberships and package sessions on the bill (Services group), only once there are any.
+        foreach (['service' => 'Services', 'membership' => 'Memberships & packages'] as $kind => $label) {
+            if ($categoryRows->has($kind)) {
+                $categories->push(['slug' => $kind, 'label' => $label, 'revenue' => (float) $categoryRows->get($kind)->revenue, 'units' => (int) $categoryRows->get($kind)->units]);
+            }
+        }
+
         // SIM is no longer a product type, but old sales of one still belong in the breakdown.
         if ($categoryRows->has('sim')) {
             $categories->push([

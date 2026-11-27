@@ -35,6 +35,9 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
     public string $address = '';
     public string $businessCategory = '';
 
+    /** @var list<string> related trades also run (BusinessCategory::combinesWith) */
+    public array $businessAddons = [];
+
     public string $planId = '';
     public string $planType = 'monthly';
     public string $subscriptionStatus = 'inactive';
@@ -62,6 +65,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
         $this->email = (string) $shop->email;
         $this->address = (string) $shop->address;
         $this->businessCategory = $shop->business_category?->value ?? '';
+        $this->businessAddons = array_map(fn (BusinessCategory $c) => $c->value, $shop->businessAddons());
 
         $this->planId = $shop->plan_id !== null ? (string) $shop->plan_id : '';
         $this->planType = $shop->plan_type?->value ?? 'monthly';
@@ -94,6 +98,7 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
             'email' => $this->email !== '' ? $this->email : null,
             'address' => $this->address !== '' ? $this->address : null,
             'business_category' => $this->businessCategory !== '' ? $this->businessCategory : null,
+            'business_addons' => ($addons = BusinessCategory::tryFrom($this->businessCategory)?->cleanAddons($this->businessAddons) ?? []) !== [] ? $addons : null,
         ]);
 
         $this->toastSuccess('Shop information updated.');
@@ -482,6 +487,16 @@ new #[Layout('layouts.app')] #[Title('Shop Details')] class extends Component
                                         @endforeach
                                     </x-ui.select>
                                 </x-ui.field>
+@if (($partners = BusinessCategory::tryFrom($businessCategory)?->combinesWith() ?? []) !== [])
+                                <div class="sm:col-span-2" data-business-addons>
+                                    <p class="text-sm font-medium text-ink">Also runs</p>
+                                    <div class="mt-1 flex flex-wrap gap-3">
+                                        @foreach ($partners as $partner)
+                                            <x-ui.checkbox wire:model="businessAddons" :value="$partner->value" :label="$partner->label()" />
+                                        @endforeach
+                                    </div>
+                                </div>
+@endif
                             </div>
 
                             <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-sunken px-3 py-2 text-xs text-ink-muted">

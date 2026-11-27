@@ -8,15 +8,16 @@ namespace App\Support;
  * /features/{slug} routes.
  *
  * Copy here must only describe what shops can use today. Not built, so never
- * listed as a feature: per-branch stock or transfers, CRM, ERP or HR modules
- * (those appear only in ROADMAP, marked coming soon). A page with a 'notice'
+ * listed as a feature: per-branch stock or transfers, CRM or ERP modules
+ * (those appear only in ROADMAP, marked coming soon). Staff attendance exists
+ * for service businesses (SiteIndustries), so it left the roadmap. A page with a 'notice'
  * is built but not on for everyone: the ledger is off until switched on per
  * shop, the online store connection hasn't served a live store yet, and
  * courier booking comes with selected plans only.
  *
  * These are capability pages ("what it does"). Business-type pages ("who it's
- * for") live in SiteIndustries, behind their own header menu; the mobile shop
- * page is in both lists.
+ * for"), including the mobile shop page, live in SiteIndustries behind their
+ * own header menu.
  */
 class SiteFeatures
 {
@@ -24,13 +25,12 @@ class SiteFeatures
      * Pages with copy written after the original single Features page, so
      * SiteFeaturePagesTest doesn't hold them to that page's text.
      */
-    public const NEW_COPY = ['pos', 'returns-exchange', 'stock', 'udhaar', 'reports', 'multi-branch', 'purchase-orders', 'payroll', 'cash-balances', 'mobile-shop-services', 'double-entry-ledger', 'online-store', 'courier-booking'];
+    public const NEW_COPY = ['pos', 'returns-exchange', 'stock', 'udhaar', 'reports', 'multi-branch', 'purchase-orders', 'payroll', 'cash-balances', 'double-entry-ledger', 'online-store', 'courier-booking'];
 
     /** Planned modules. Not built: shown only with a Coming soon label, never as a feature. */
     public const ROADMAP = [
         ['CRM', 'Customer relationship management: follow-ups, leads and customer notes in one place.'],
         ['ERP', 'Wider business planning across purchasing, stock, production and finance.'],
-        ['HR management', 'Staff records and attendance beyond today’s payroll.'],
     ];
 
     /**
@@ -145,7 +145,8 @@ class SiteFeatures
                 ],
                 'mockup' => null,
                 'spotlights' => [
-                    ['Built for businesses that buy in bulk', 'Distributors, wholesalers and multi-location shops get the order, the delivery and the bill in one chain — so a short delivery or a wrong price is caught before it is paid.'],
+                    ['Built for businesses that buy in bulk', 'Wholesalers, traders, distributors and multi-location shops get the order, the delivery and the bill in one chain — so a short delivery or a wrong price is caught before it is paid.'],
+                    ['Returns and bonus stock for wholesale', 'Wholesale businesses also send goods back to the supplier with a debit note, and record the free bonus pieces a supplier adds to a delivery, with the cost spread over every piece.'],
                 ],
                 'related' => ['stock', 'cash-balances', 'udhaar'],
             ],
@@ -195,7 +196,7 @@ class SiteFeatures
                 'spotlights' => [
                     ['No separate cash book to keep', 'Sales, udhaar repayments, wallet loads, bills, vendor payments, expenses and payroll already say whether they were cash or which account — Cash & Balances simply adds them up.'],
                 ],
-                'related' => ['reports', 'mobile-shop-services', 'udhaar'],
+                'related' => ['reports', 'pos', 'udhaar'],
             ],
             'reports' => [
                 'name' => 'Reports & Expenses',
@@ -300,15 +301,15 @@ class SiteFeatures
             'online-store' => [
                 'name' => 'Online Store Connection',
                 'seo_title' => 'Connect Your Online Store: Live Stock & Orders API',
-                'summary' => 'Connect your own website: publish products and live stock from HisabOKitab, and take its orders into the same inbox. New — set up with your developer.',
+                'summary' => 'Connect Shopify, WooCommerce or your own website: publish products and live stock from HisabOKitab, and take its orders into the same inbox.',
                 'badge' => 'New',
-                'notice' => 'New: the connection is built and tested, but no store is using it live yet. It needs your store’s developer to connect to our API, so talk to us and we’ll set up the first connection with you.',
+                'notice' => 'New: the connection is built and tested, but no store is using it live yet. Online sellers connect a Shopify or WooCommerce store from Settings; any other website needs your store’s developer to connect to our API. Talk to us and we’ll set up the first connection with you.',
                 'icon' => 'store',
                 'anchor' => 'online-store',
                 'eyebrow' => 'Online store',
                 'title' => 'Your website and your counter, selling from one stock',
                 'lead' => 'Your own online store reads products and live stock from HisabOKitab and sends its orders back in. Staff accept each order, and an accepted order becomes a real sale — the counter and the website never sell stock twice by mistake.',
-                'description' => 'Connect your own online store to HisabOKitab: publish products and live stock, receive orders for staff to accept, and send order statuses back, over a secure REST API and signed webhooks.',
+                'description' => 'Connect your Shopify, WooCommerce or own online store to HisabOKitab: publish products and live stock, receive orders for staff to accept, and send order statuses back.',
                 'items' => [
                     ['box', 'Publish chosen products', 'Pick which products your store shows, with their images. Sending your counter prices is optional.'],
                     ['chart', 'Live stock, one source', 'HisabOKitab is the only place stock changes. Your store gets an update when it does, plus a full refresh every night.'],
@@ -318,37 +319,40 @@ class SiteFeatures
                     ['shield', 'Locked to your business', 'Each connection has its own scoped API token and signing secret, and can reach only your business’s data.'],
                     ['layers', 'Pause any time', 'Pausing stops stock updates but still lets customer cancellations through; resuming sends a full stock refresh.'],
                     ['receipt', 'Documented API', 'A versioned REST API with signed webhooks, documented for your store’s developer.'],
+                    ['globe', 'Shopify & WooCommerce', 'Online sellers connect a Shopify or WooCommerce store from Settings, with no developer: stock changes in HisabOKitab update the store.'],
                 ],
                 'mockup' => null,
                 'spotlights' => [
-                    ['For stores with a developer', 'This is an API connection, not a one-click plugin: your website needs a developer to connect it. Ready-made plugins for specific store platforms aren’t available.'],
+                    ['Shopify, WooCommerce or your own site', 'Online sellers on Shopify or WooCommerce connect from Settings in a few clicks, with no developer. Any other website connects through the API, which needs your store’s developer.'],
                 ],
                 'related' => ['stock', 'pos', 'whatsapp-ordering'],
             ],
             'courier-booking' => [
                 'name' => 'Courier Booking',
                 'seo_title' => 'Courier Booking for Online Sellers: Leopards & PostEx',
-                'summary' => 'Book Leopards and PostEx parcels straight from a sale with your own courier account — labels, COD, live status and returns.',
+                'summary' => 'Book Leopards and PostEx parcels from a sale with your own account, track any courier, and reconcile COD payouts and returns.',
                 'badge' => 'New',
-                'notice' => 'Courier booking comes with selected plans — see Pricing for which. You connect your own Leopards or PostEx merchant account; HisabOKitab never holds your parcels’ cash.',
+                'notice' => 'Booking with Leopards or PostEx comes with selected plans — see Pricing for which — through your own merchant account; HisabOKitab never holds your parcels’ cash. Online sellers also get typed-in parcels, courier payouts and returns on every plan.',
                 'icon' => 'map',
                 'anchor' => 'couriers',
                 'eyebrow' => 'Couriers & delivery',
                 'title' => 'Book the parcel from the sale, not from another website',
                 'lead' => 'Connect your own Leopards or PostEx account once. Then every sale — at the counter, on WhatsApp or from your online store — can be booked, labelled and tracked without copying an address twice.',
-                'description' => 'Courier booking software for Pakistani online sellers: book Leopards and PostEx parcels from a sale with your own account, print labels, collect COD and track every parcel.',
+                'description' => 'Courier booking software for Pakistani online sellers: book Leopards and PostEx parcels, track any courier, reconcile COD payouts net of fees and handle RTO returns.',
                 'items' => [
                     ['lock', 'Your own courier account', 'Connect your own Leopards or PostEx merchant account. Rates and cash on delivery stay between you and your courier.'],
                     ['cart', 'Book from the sale', 'Open a sale and book it: name, address, a city from the courier’s own list, weight and pieces.'],
                     ['wallet', 'Cash on delivery', 'What’s still owed on the sale is filled in as the COD amount, or 0 if it’s already paid.'],
                     ['receipt', 'Labels to print', 'Print each parcel’s courier label straight from HisabOKitab.'],
                     ['map', 'Live parcel status', 'Every parcel’s status on one Shipments screen, checked with the courier every 30 minutes or when you refresh.'],
-                    ['box', 'Returned parcels', 'When a parcel comes back, mark it received back to put the stock back, and cancel the sale if you need to.'],
+                    ['box', 'Returned parcels (RTO)', 'When a parcel comes back, mark it received back to put the stock back, write off damaged pieces and note the courier’s return charge.'],
                     ['close', 'Cancel a booking', 'Booked by mistake? Cancel the parcel with the courier from the same screen.'],
                     ['chat', 'Any sale, any channel', 'Counter sales, accepted WhatsApp orders and online store orders can all be booked the same way.'],
+                    ['banknotes', 'COD payouts', 'Record one courier payout covering many parcels, net of fees and tax. COD the courier holds never shows as customer udhaar.'],
+                    ['truck', 'Any courier, typed in', 'Booked on TCS, Trax, M&P or another portal? Online sellers type in the tracking number and follow the parcel and its COD here too.'],
                 ],
                 'mockup' => null,
-                'roadmap_title' => 'More couriers on the roadmap',
+                'roadmap_title' => 'Direct booking with more couriers on the roadmap',
                 'roadmap' => ['TCS', 'Trax', 'M&P'],
                 'spotlights' => [
                     ['Built for Pakistani online sellers', 'Selling on Facebook, Instagram, WhatsApp or your own website? Keep the order, the stock, the parcel and the cash collected in one place, instead of a courier portal and a notebook.'],
@@ -419,36 +423,6 @@ class SiteFeatures
                 'mockup' => ['component' => 'ads', 'frame' => 'browser', 'url' => 'hisabokitab.com/marketing/ads', 'label' => 'Meta ad campaign with placements on Facebook, Instagram and WhatsApp Status, and results'],
                 'roadmap' => ['Google Ads', 'YouTube Ads', 'LinkedIn Ads'],
                 'related' => ['social-posting', 'whatsapp-ordering', 'reports'],
-            ],
-            'mobile-shop-services' => [
-                'name' => 'Mobile Shop & Counter Services',
-                'seo_title' => 'Mobile Shop Software Pakistan: IMEI, Repairs & Loads',
-                'summary' => 'IMEI checks, warranty, instalments, buybacks, repairs, SIMs, loads, bills and NADRA — each with its own screen and income.',
-                'icon' => 'device',
-                'anchor' => 'services',
-                'eyebrow' => 'Mobile & electronics shops',
-                'title' => 'Every income stream, not just product sales',
-                'lead' => 'Phones with checked IMEIs, warranty and instalments, used-phone buybacks, repairs, SIM sales, balance & wallet loads, bills and NADRA — switched on for mobile shops.',
-                'description' => 'Mobile shop software for Pakistan: IMEI checks, warranty, instalment sales, used-phone buyback and trade-in, repairs, SIMs, balance and wallet loads, bills and NADRA.',
-                'items' => [
-                    ['shield', 'IMEI check', 'Every IMEI must be 15 digits and pass the standard check digit, and the same IMEI can’t be entered twice.'],
-                    ['check', 'Warranty check', 'Brand or shop warranty is saved with the serial on each sale, so you can look up whether a phone is still covered.'],
-                    ['calculator', 'Instalment sales', 'Split a sale into dated instalments; see what’s paid, due and late, and send WhatsApp reminders.'],
-                    ['phone', 'Used-phone buyback', 'Buy a used phone over the counter with its IMEI and condition, and it goes into stock ready to resell.'],
-                    ['layers', 'Trade-in at the counter', 'Take the customer’s old phone as part payment on a new one, in the same sale.'],
-                    ['wrench', 'Repairs', 'Intake, status, charges and a “device ready” WhatsApp message.'],
-                    ['device', 'SIM sales', 'Sell and track SIMs by network with revenue reporting.'],
-                    ['bolt', 'Balance loads', 'Mobile load sales with your fee recorded as revenue.'],
-                    ['wallet', 'Wallet loads', 'JazzCash and Easypaisa cash-in and cash-out, with the fee and the account balance tracked both ways.'],
-                    ['receipt', 'Bills', 'Utility bill collection by provider, with fee income.'],
-                    ['id', 'NADRA verification', 'Record verifications and the revenue they bring in.'],
-                    ['sparkles', 'Services', 'Any other service you offer — photocopies, installations, setup — with its own categories and pricing.'],
-                ],
-                'mockup' => null,
-                'spotlights' => [
-                    ['Mobile & electronics shops', 'Phones with IMEIs, accessories, SIMs, loads, bills, NADRA and repairs — each with its own screen and fee income.'],
-                ],
-                'related' => ['cash-balances', 'pos', 'udhaar'],
             ],
         ];
     }

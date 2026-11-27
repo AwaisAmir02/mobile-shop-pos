@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Enums\PriceTier;
 use App\Enums\QuantityUnit;
 use App\Enums\SaleRevisionAction;
 use App\Models\Product;
@@ -29,6 +30,11 @@ class UpdateSale
 
             if ($sale->isCancelled()) {
                 throw new \RuntimeException('A cancelled sale cannot be edited.');
+            }
+
+            // Services carry who did them, memberships and package sessions; an edit rebuilds every line.
+            if (ServiceLines::on($sale)) {
+                throw ValidationException::withMessages(['lines' => 'This bill has services or memberships on it, so it can\'t be edited. Cancel it and ring it up again instead.']);
             }
 
             // Free scheme goods were claimed per sale at their cost; an edit would leave the claim wrong.
@@ -146,7 +152,7 @@ class UpdateSale
                         'product_type' => $line['product_type'],
                         'unit_price' => $subLine['unit_price'],
                         'list_price' => $tierPrice ?? $subLine['list_price'],
-                        'price_tier' => $tierPrice !== null ? ($line['price_tier'] ?? 'trade') : null,
+                        'price_tier' => $tierPrice !== null ? ($line['price_tier'] ?? PriceTier::Trade->value) : null,
                         'cost_price' => $subLine['cost_price'],
                         'quantity' => $subLine['quantity'],
                         'unit' => $product->unit,
@@ -164,7 +170,8 @@ class UpdateSale
             // Whole paisas, so "less than already paid" can't trip on float noise.
             $subtotal = round($subtotal, 2);
             $clampedDiscount = min($invoiceDiscount, $subtotal);
-            $newTotal = round(max(0.0, $subtotal - $clampedDiscount), 2);
+            // A delivery charge (O2) stays as it was: editing the goods doesn't change the parcel.
+            $newTotal = round(max(0.0, $subtotal - $clampedDiscount) + (float) $sale->delivery_charge, 2);
 
             if ($newTotal < $alreadyPaid) {
                 throw ValidationException::withMessages([

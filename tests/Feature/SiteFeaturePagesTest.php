@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BusinessCategory;
+use App\Enums\BusinessGroup;
 use App\Support\SiteFeatures;
 use App\Support\SiteIndustries;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,7 +16,7 @@ class SiteFeaturePagesTest extends TestCase
     public function test_the_feature_pages_exist_in_the_agreed_order_and_unknown_slugs_404(): void
     {
         $this->assertSame(
-            ['pos', 'returns-exchange', 'stock', 'purchase-orders', 'udhaar', 'cash-balances', 'reports', 'double-entry-ledger', 'payroll', 'multi-branch', 'online-store', 'courier-booking', 'whatsapp-ordering', 'social-posting', 'meta-ads', 'mobile-shop-services'],
+            ['pos', 'returns-exchange', 'stock', 'purchase-orders', 'udhaar', 'cash-balances', 'reports', 'double-entry-ledger', 'payroll', 'multi-branch', 'online-store', 'courier-booking', 'whatsapp-ordering', 'social-posting', 'meta-ads'],
             SiteFeatures::slugs(),
         );
 
@@ -94,38 +96,173 @@ class SiteFeaturePagesTest extends TestCase
         }
     }
 
-    public function test_the_industry_pages_exist_with_their_items_and_link_back_to_industries(): void
+    public function test_every_business_group_and_business_type_has_its_page(): void
     {
-        $this->assertSame(['pharmacy', 'kiryana-store', 'clothing-shoes'], SiteIndustries::slugs());
+        $this->assertSame(['retail-shops', 'wholesale-distribution', 'online-sellers', 'service-businesses'], SiteIndustries::groupSlugs());
+        $this->assertSame(
+            ['mobile-shop', 'pharmacy', 'kiryana-store', 'clothing-shoes', 'wholesaler', 'trader', 'distributor', 'social-seller', 'daraz-seller', 'online-brand', 'repair-workshop', 'salon', 'spa', 'gym', 'personal-training'],
+            SiteIndustries::pageSlugs(),
+        );
+        $this->assertSame([...SiteIndustries::groupSlugs(), ...SiteIndustries::pageSlugs()], SiteIndustries::slugs());
 
+        // One overview per business group, in the enum's order.
+        $groupSlugs = collect(SiteIndustries::groups())->mapWithKeys(fn (array $group, string $slug) => [$group['group']->value => $slug]);
+        $this->assertSame(array_map(fn (BusinessGroup $group) => $group->value, BusinessGroup::cases()), $groupSlugs->keys()->all());
+
+        // One page per signup business type except "Other shop", filed under that type's own group.
+        $covered = [];
         foreach (SiteIndustries::all() as $slug => $page) {
+            $this->assertSame($groupSlugs[$page['category']->group()->value], $page['group'], $slug);
+            $covered[] = $page['category']->value;
+        }
+        $signup = array_diff(BusinessGroup::signupValues(), [BusinessCategory::Other->value]);
+        $this->assertEqualsCanonicalizing(array_values($signup), $covered);
+        $this->assertSame(array_unique($covered), $covered);
+    }
+
+    public function test_trades_run_together_link_each_other_both_ways(): void
+    {
+        foreach (SiteIndustries::all() as $slug => $page) {
+            $partner = SiteIndustries::partnerOf($slug);
+            $this->assertSame($page['category']->combinesWith() !== [], $partner !== null, $slug);
+            $this->assertSame($partner !== null, isset($page['pair']), "$slug has pair copy only when it has a partner");
+            if ($partner !== null) {
+                $this->assertSame($slug, SiteIndustries::partnerOf($partner));
+                $this->get('/industries/'.$slug)->assertSee($page['pair'][0])->assertSee('href="'.route('site.industry', $partner).'"', false);
+            }
+        }
+
+        $this->assertSame('spa', SiteIndustries::partnerOf('salon'));
+        $this->assertSame('personal-training', SiteIndustries::partnerOf('gym'));
+        $this->get('/industries/service-businesses')->assertSee('Runs together with Spas')->assertSee('Runs together with Gyms');
+    }
+
+    public function test_each_business_type_page_shows_its_features_under_its_group(): void
+    {
+        foreach (SiteIndustries::all() as $slug => $page) {
+            $group = SiteIndustries::findGroup($page['group']);
             $response = $this->get('/industries/'.$slug)->assertOk();
             $response->assertSee($page['title']);
             foreach ($page['items'] as [, $title]) {
                 $response->assertSee($title);
             }
+            $response->assertSee('href="'.route('site.industry', $page['group']).'"', false);
             $response->assertSee('All industries');
             $response->assertSee('href="'.route('site.industries').'"', false);
             foreach ($page['related'] as $related) {
                 $this->assertNotNull(SiteFeatures::find($related), "$slug relates to unknown feature $related");
                 $response->assertSee('href="'.route('site.feature', $related).'"', false);
             }
+            foreach (array_keys(SiteIndustries::pagesIn($page['group'])) as $sibling) {
+                $response->assertSee('href="'.route('site.industry', $sibling).'"', false);
+            }
+
+            preg_match('#<script type="application/ld\+json">(.*?)</script>#s', $response->getContent(), $json);
+            $breadcrumbs = collect(json_decode($json[1], true)['@graph'])->firstWhere('@type', 'BreadcrumbList');
+            $this->assertSame(['Home', 'Industries', $group['name'], $page['name']], array_column($breadcrumbs['itemListElement'], 'name'), $slug);
         }
 
         // Clothing leans on variants and measured items, which are off until switched on, so the page says so.
         $this->get('/industries/clothing-shoes')->assertSee('role="note"', false)->assertSee('free features we switch on for your shop');
 
-        $this->get('/industries/bakery')->assertNotFound();
-        $this->get('/industries/wholesale')->assertNotFound();
+        foreach (['bakery', 'wholesale', 'clinic', 'mobile-shop-services', 'nope'] as $unknown) {
+            $this->get('/industries/'.$unknown)->assertNotFound();
+        }
     }
 
-    public function test_industries_menu_is_separate_from_features_and_lists_only_shop_types(): void
+    public function test_each_group_page_lists_its_business_types_and_what_they_all_get(): void
     {
-        $industryUrls = array_column(SiteIndustries::menu(), 'url');
-        $this->assertSame(route('site.feature', 'mobile-shop-services'), $industryUrls[0]);
-        $this->assertCount(4, $industryUrls);
+        foreach (SiteIndustries::groups() as $groupSlug => $group) {
+            $response = $this->get('/industries/'.$groupSlug)->assertOk()->assertSee($group['title'])->assertSee($group['shared_title']);
 
-        foreach (['/', '/pricing', '/industries', '/industries/pharmacy', '/features/udhaar'] as $path) {
+            foreach (SiteIndustries::pagesIn($groupSlug) as $slug => $page) {
+                $response->assertSee('href="'.route('site.industry', $slug).'"', false)->assertSee($page['summary']);
+            }
+            foreach ($group['items'] as [, $title]) {
+                $response->assertSee($title);
+            }
+            foreach ($group['related'] as $related) {
+                $this->assertNotNull(SiteFeatures::find($related), "$groupSlug relates to unknown feature $related");
+                $response->assertSee('href="'.route('site.feature', $related).'"', false);
+            }
+            foreach (array_diff(SiteIndustries::groupSlugs(), [$groupSlug]) as $other) {
+                $response->assertSee('href="'.route('site.industry', $other).'"', false);
+            }
+
+            preg_match('#<script type="application/ld\+json">(.*?)</script>#s', $response->getContent(), $json);
+            $breadcrumbs = collect(json_decode($json[1], true)['@graph'])->firstWhere('@type', 'BreadcrumbList');
+            $this->assertSame(['Home', 'Industries', $group['name']], array_column($breadcrumbs['itemListElement'], 'name'), $groupSlug);
+        }
+    }
+
+    public function test_groups_not_yet_proven_on_live_shops_say_new_on_every_page(): void
+    {
+        foreach (['online-sellers', 'service-businesses'] as $groupSlug) {
+            $group = SiteIndustries::findGroup($groupSlug);
+            $this->assertSame('New', $group['badge']);
+            $this->get('/industries/'.$groupSlug)->assertSee('role="note"', false)->assertSee($group['notice']);
+
+            foreach (SiteIndustries::pagesIn($groupSlug) as $slug => $page) {
+                $this->assertSame('New', $page['badge'], $slug);
+                $this->get('/industries/'.$slug)->assertSee('role="note"', false)->assertSee($page['notice']);
+            }
+        }
+
+        // Pages whose own risk is specific say so in their own words.
+        $this->get('/industries/daraz-seller')->assertSee('haven’t been run on a real seller’s file yet');
+        $this->get('/industries/gym')->assertSee('It hasn’t run on a real device yet');
+        $this->get('/industries/online-brand')->assertSee('haven’t connected a live store yet');
+
+        foreach (['retail-shops', 'wholesale-distribution'] as $groupSlug) {
+            $this->get('/industries/'.$groupSlug)->assertDontSee('role="note"', false);
+        }
+        $this->get('/industries/distributor')->assertDontSee('role="note"', false);
+    }
+
+    public function test_no_industry_page_claims_what_is_not_built(): void
+    {
+        foreach (SiteIndustries::slugs() as $slug) {
+            $text = strtolower(html_entity_decode(strip_tags($this->get('/industries/'.$slug)->getContent())));
+            foreach (['order booker app', 'order-booker app', 'booker app', 'van sales', 'gps', 'fbr integration', 'restaurant'] as $claim) {
+                $this->assertStringNotContainsString($claim, $text, "/industries/$slug claims “{$claim}”");
+            }
+        }
+
+        // The distributor page states the gap plainly instead.
+        $this->get('/industries/distributor')->assertSee('There’s no order-booker mobile app or van stock count yet');
+    }
+
+    public function test_the_old_mobile_shop_feature_url_moves_permanently_under_shops(): void
+    {
+        $this->assertNull(SiteFeatures::find('mobile-shop-services'));
+        $this->get('/features/mobile-shop-services')->assertStatus(301)->assertRedirect('/industries/mobile-shop');
+
+        $this->get('/industries/mobile-shop')->assertOk()
+            ->assertSee('Every income stream, not just product sales')
+            ->assertSee('href="'.route('site.industry', 'retail-shops').'"', false);
+
+        // /features#services still lands on the trade tools, which lead to every group.
+        $features = $this->get('/features')->assertOk();
+        foreach (SiteIndustries::groupSlugs() as $groupSlug) {
+            $features->assertSee('href="'.route('site.industry', $groupSlug).'"', false);
+        }
+    }
+
+    public function test_industries_menu_is_separate_from_features_and_lists_every_group_and_business_type(): void
+    {
+        $menu = SiteIndustries::menu();
+        $this->assertSame(SiteIndustries::groupSlugs(), array_column($menu, 'slug'));
+        $urls = [];
+        foreach ($menu as $group) {
+            $urls[] = $group['url'];
+            $this->assertSame(array_keys(SiteIndustries::pagesIn($group['slug'])), array_column($group['items'], 'slug'));
+            foreach ($group['items'] as $item) {
+                $urls[] = $item['url'];
+            }
+        }
+        $this->assertCount(19, $urls);
+
+        foreach (['/', '/pricing', '/industries', '/industries/pharmacy', '/industries/online-sellers', '/features/udhaar'] as $path) {
             $html = $this->get($path)->assertOk()->getContent();
             $this->assertStringContainsString('id="site-industries-menu"', $html, $path);
             $this->assertStringContainsString('id="site-mobile-industries"', $html, $path);
@@ -133,34 +270,101 @@ class SiteFeaturePagesTest extends TestCase
 
             // The desktop Features dropdown holds capability pages only.
             $features = str($html)->after('id="site-features-menu"')->before('id="site-industries-menu"')->toString();
-            foreach (SiteIndustries::slugs() as $slug) {
-                $this->assertStringNotContainsString(route('site.industry', $slug), $features, "$path: $slug in the Features menu");
-            }
+            $this->assertStringNotContainsString(url('/industries').'/', $features, "$path: an industry page in the Features menu");
 
-            $industries = str($html)->after('id="site-industries-menu"')->before('</nav>')->toString();
-            foreach ($industryUrls as $url) {
-                $this->assertStringContainsString('href="'.$url.'"', $industries, "$path → $url");
+            $desktop = str($html)->after('id="site-industries-menu"')->before('id="site-mobile-menu"')->toString();
+            $mobile = str($html)->after('id="site-mobile-industries"')->before('</header>')->toString();
+            foreach ($urls as $url) {
+                $this->assertStringContainsString('href="'.$url.'"', $desktop, "$path desktop → $url");
+                $this->assertStringContainsString('href="'.$url.'"', $mobile, "$path mobile → $url");
             }
         }
 
         $activePill = '#<div class="flex items-center rounded-full transition-colors bg-brand-50 text-brand-700">\s*<a href="'.preg_quote(route('site.industries'), '#').'"#';
-        $this->assertMatchesRegularExpression($activePill, $this->get('/industries/kiryana-store')->getContent());
+        foreach (['/industries/kiryana-store', '/industries/service-businesses'] as $path) {
+            $this->assertMatchesRegularExpression($activePill, $this->get($path)->getContent(), $path);
+        }
         $this->assertDoesNotMatchRegularExpression($activePill, $this->get('/features/pos')->getContent());
+
+        $this->assertMatchesRegularExpression(
+            '#href="'.preg_quote(route('site.industry', 'salon'), '#').'" class="[^"]*bg-brand-50[^"]*"\s+aria-current="page"#',
+            $this->get('/industries/salon')->getContent(),
+        );
     }
 
-    public function test_the_industries_overview_links_every_shop_type_and_no_unbuilt_group(): void
+    public function test_the_industries_overview_shows_every_group_with_its_business_types_and_no_unbuilt_group(): void
     {
         $response = $this->get('/industries')->assertOk();
 
-        foreach (SiteIndustries::menu() as $industry) {
-            $response->assertSee('href="'.$industry['url'].'"', false);
-            $response->assertSee($industry['summary']);
+        foreach (SiteIndustries::menu() as $group) {
+            $response->assertSee('id="'.$group['slug'].'"', false)->assertSee('href="'.$group['url'].'"', false)->assertSee($group['summary']);
+            foreach ($group['items'] as $industry) {
+                $response->assertSee('href="'.$industry['url'].'"', false)->assertSee($industry['summary']);
+            }
         }
 
         $text = strtolower(strip_tags($response->getContent()));
         foreach (['bakery', 'bakeries', 'restaurant', 'school'] as $unbuilt) {
             $this->assertStringNotContainsString($unbuilt, $text);
         }
+    }
+
+    public function test_home_footer_and_who_its_for_follow_the_industry_list(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+        $whoItsFor = str($html)->after('Made for the way you do business')->before('See every industry')->toString();
+        foreach (SiteIndustries::menu() as $group) {
+            $this->assertStringContainsString('href="'.$group['url'].'"', $whoItsFor, $group['slug']);
+            foreach ($group['items'] as $industry) {
+                $this->assertStringContainsString('href="'.$industry['url'].'"', $whoItsFor, $industry['slug']);
+                $this->assertStringContainsString('>'.e($industry['short']).'</a>', $whoItsFor, $industry['slug']);
+            }
+        }
+
+        $footer = str($html)->after('<footer')->before('</footer>')->toString();
+        foreach (SiteIndustries::menu() as $group) {
+            $this->assertStringContainsString('<a href="'.$group['url'].'" class="hover:text-brand-700">'.e($group['name']).'</a>', $footer);
+        }
+        $this->assertStringContainsString('<a href="'.route('site.industries').'" class="hover:text-brand-700">All industries</a>', $footer);
+        $this->assertStringContainsString('salons, gyms and workshops', $footer);
+
+        $this->get('/')->assertSee('Does it work for salons, gyms and workshops?')->assertSee('Can a wholesaler or distributor use it?');
+        $this->get('/about')->assertSee('workshops, salons, spas, gyms and trainers');
+    }
+
+    public function test_pricing_names_counter_services_plainly_and_lists_every_groups_tools(): void
+    {
+        foreach (\App\Models\Plan::active()->get() as $plan) {
+            $plan->update(['feature_flags' => ['services' => true] + ($plan->feature_flags ?? [])]);
+        }
+
+        $this->get('/pricing')->assertOk()
+            ->assertSee('Counter services (mobile shops)')
+            ->assertDontSee('Services module')
+            ->assertSee('Trade prices, credit limits &amp; dues aging for wholesalers', false)
+            ->assertSee('Sales orders, load sheets, routes &amp; trade schemes for distributors', false)
+            ->assertSee('Delivery charges, courier payouts &amp; RTO returns for online sellers', false)
+            ->assertSee('Appointments, staff commission &amp; memberships for salons, spas &amp; gyms', false)
+            ->assertSee('Job cards with estimates for repair workshops')
+            ->assertSee('Is there a separate plan for wholesalers, online sellers or salons?')
+            ->assertSee('appointments, job cards and memberships for service businesses');
+
+        // The rename is site copy only: the plan data keeps its own label.
+        $this->assertSame('Services module', \App\Enums\FeatureKey::Services->label());
+    }
+
+    public function test_stale_copy_is_gone_and_new_capabilities_are_described(): void
+    {
+        $this->assertSame(['CRM', 'ERP'], array_column(SiteFeatures::ROADMAP, 0));
+        foreach (['/', '/pricing', '/features'] as $path) {
+            $this->get($path)->assertDontSee('HR management');
+        }
+
+        $this->get('/features/purchase-orders')->assertSee('Wholesalers, traders, distributors and multi-location shops');
+        $this->get('/features/online-store')->assertSee('Shopify & WooCommerce')->assertSee('connect a Shopify or WooCommerce store from Settings');
+        $this->get('/features/courier-booking')->assertSee('COD payouts')->assertSee('Returned parcels (RTO)')->assertSee('Any courier, typed in');
+
+        $this->assertSame('Business Management Software', config('branding.tagline'));
     }
 
     public function test_no_page_advertises_bakeries_or_the_old_clothing_name_and_reminders_no_longer_deny_links(): void

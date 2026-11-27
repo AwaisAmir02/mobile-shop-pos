@@ -11,7 +11,7 @@
         ['site.signup', 'site/signup.blade.php', '0.5'],
     ];
     $featuresModified = date('Y-m-d', max(@filemtime(app_path('Support/SiteFeatures.php')) ?: 0, @filemtime(resource_path('views/site/feature.blade.php')) ?: 0, @filemtime(resource_path('views/'.$layout)) ?: 0));
-    $industriesModified = date('Y-m-d', max(@filemtime(app_path('Support/SiteIndustries.php')) ?: 0, @filemtime(resource_path('views/site/feature.blade.php')) ?: 0, @filemtime(resource_path('views/'.$layout)) ?: 0));
+    $industriesModified = date('Y-m-d', max(@filemtime(app_path('Support/SiteIndustries.php')) ?: 0, @filemtime(resource_path('views/site/industry.blade.php')) ?: 0, @filemtime(resource_path('views/site/industry-group.blade.php')) ?: 0, @filemtime(resource_path('views/'.$layout)) ?: 0));
 @endphp
 {!! '<?xml version="1.0" encoding="UTF-8"?>' !!}
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -33,7 +33,7 @@
     <url>
         <loc>{{ route('site.industry', $slug) }}</loc>
         <lastmod>{{ $industriesModified }}</lastmod>
-        <priority>0.8</priority>
+        <priority>{{ \App\Support\SiteIndustries::findGroup($slug) !== null ? '0.9' : '0.8' }}</priority>
     </url>
 @endforeach
 </urlset>

@@ -1,5 +1,5 @@
-<x-site.layout title="Features: POS, Inventory, Udhaar, Payroll & WhatsApp" description="Every HisabOKitab feature: POS and invoices, returns and exchange, inventory with FIFO costing, purchase orders, udhaar, cash and bank balances, payroll, multi-branch and WhatsApp ordering." :breadcrumbs="[['Home', route('home')], ['Features', route('site.features')]]">
-    <x-site.page-hero eyebrow="Features" title="Built around how Pakistani businesses really work" lead="Kiryana store, pharmacy, mobile shop, clothing or shoe shop, online seller, wholesaler or a business with several branches — from the first scan at the counter to the supplier’s bill, a customer’s return, the month’s payroll and the WhatsApp message that brings a customer back, here’s everything HisabOKitab does." />
+<x-site.layout title="Features: POS, Inventory, Udhaar, Payroll & WhatsApp" description="Every HisabOKitab feature: POS and invoices, returns and exchange, inventory with FIFO costing, purchase orders, udhaar, cash and bank balances, payroll, couriers and WhatsApp ordering." :breadcrumbs="[['Home', route('home')], ['Features', route('site.features')]]">
+    <x-site.page-hero eyebrow="Features" title="Built around how Pakistani businesses really work" lead="Shop, wholesaler, online seller, salon, gym or workshop, with one branch or several — from the first scan at the counter to the supplier’s bill, a customer’s return, the month’s payroll and the WhatsApp message that brings a customer back, here’s everything HisabOKitab does." />
 
     <section>
         <div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
@@ -12,6 +12,23 @@
                         <h3 class="mt-4 font-semibold text-slate-900 group-hover:text-brand-700">{{ $feature['name'] }}@if (! empty($feature['badge']))<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $feature['badge'] }}</span>@endif</h3>
                         <p class="mt-2 flex-1 text-sm leading-6 text-slate-600">{{ $feature['summary'] }}</p>
                         <span class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">Learn more <x-site.icon name="arrow-right" class="h-4 w-4 transition group-hover:translate-x-0.5" /></span>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    </section>
+
+    {{-- Trade-specific tools live on the Industries pages; #services kept for old links to the counter-services section. --}}
+    <section id="services" class="scroll-mt-24 border-t border-slate-100">
+        <div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
+            <x-site.section-heading eyebrow="Tools for your trade" title="Plus the screens your kind of business needs" lead="IMEIs and counter services for mobile shops, trade prices and load sheets for distributors, courier payouts for online sellers, appointments and job cards for service businesses — switched on for the business you run." />
+            <div class="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                @foreach (\App\Support\SiteIndustries::menu() as $group)
+                    <a href="{{ $group['url'] }}" class="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-950/5" data-reveal style="--reveal-delay: {{ $loop->index * 70 }}ms">
+                        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-50 text-accent-600"><x-site.icon :name="$group['icon']" class="h-5 w-5" /></span>
+                        <h3 class="mt-4 font-semibold text-slate-900 group-hover:text-brand-700">{{ $group['name'] }}@if ($group['badge'])<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $group['badge'] }}</span>@endif</h3>
+                        <p class="mt-2 flex-1 text-sm leading-6 text-slate-600">{{ $group['summary'] }}</p>
+                        <span class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">See the tools <x-site.icon name="arrow-right" class="h-4 w-4 transition group-hover:translate-x-0.5" /></span>
                     </a>
                 @endforeach
             </div>

@@ -14,6 +14,12 @@ use App\Models\SimSale;
 use App\Models\WalletLoad;
 use Illuminate\Support\Collection;
 
+/**
+ * Everything one customer owes right now, record by record: unpaid sales and
+ * counter services, and the udhaar balance (an advance offsets the total).
+ * Agrees with UdhaarReport's balance for the same customer. For the credit
+ * limit, aging and the rest, see docs/customer-balances.md.
+ */
 class CustomerDuesStatement
 {
     public function __construct(public readonly Customer $customer)
@@ -41,7 +47,7 @@ class CustomerDuesStatement
         $customerId = $this->customer->id;
         $rows = collect();
 
-        Sale::where('customer_id', $customerId)->owing()->orderBy('sales.id')->with('installments')->get()
+        Sale::where('customer_id', $customerId)->owedByCustomer()->orderBy('sales.id')->with('installments')->get()
             ->each(function (Sale $sale) use ($rows) {
                 if ($sale->amountDue() > 0) {
                     $row = $this->row('sale', $sale->id, $sale->invoiceNumber(), $this->saleItemsLabel($sale), $sale->created_at, $sale->amountDue());

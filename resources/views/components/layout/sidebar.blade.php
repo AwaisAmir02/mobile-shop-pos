@@ -10,6 +10,7 @@
             ['label' => 'Payments', 'route' => 'admin.payments', 'icon' => 'wallet', 'active' => ['admin.payments', 'admin.payments.*']],
             ['label' => 'Payment Accounts', 'route' => 'admin.payment-accounts', 'icon' => 'banknote', 'active' => ['admin.payment-accounts']],
             ['label' => 'Support', 'route' => 'admin.support', 'icon' => 'lifebuoy', 'active' => ['admin.support', 'admin.support.*'], 'badge' => \App\Models\SupportTicket::waitingOnAdmin()->count(), 'badgeKey' => 'data-support-waiting'],
+            ['label' => 'Website Requests', 'route' => 'admin.website-requests', 'icon' => 'clipboard', 'active' => ['admin.website-requests', 'admin.website-requests.*'], 'badge' => \App\Models\WebsiteRequest::waitingOnAdmin()->count(), 'badgeKey' => 'data-website-requests-waiting'],
             ['label' => 'Integrations', 'route' => 'admin.integrations', 'icon' => 'link', 'active' => ['admin.integrations', 'admin.integrations.*']],
             ['label' => 'Backups', 'route' => 'admin.backups', 'icon' => 'cog', 'active' => ['admin.backups', 'admin.backups.*']],
         ]
@@ -21,11 +22,18 @@
             ['label' => 'Promotions', 'route' => 'promotions.index', 'icon' => 'sparkles', 'group' => 'sell', 'permission' => 'promotions'],
             ['label' => 'Customers', 'route' => 'customers.index', 'icon' => 'customers', 'group' => 'sell', 'permission' => 'customers'],
             ['label' => 'Udhaar', 'route' => 'udhaar.index', 'icon' => 'udhaar', 'group' => 'sell', 'permission' => 'udhaar'],
-            ['label' => 'Orders', 'route' => 'sales-orders.index', 'icon' => 'truck', 'group' => 'sell', 'permission' => 'sales', 'tool' => 'orders', 'hint' => 'Booked, loaded, delivered', 'active' => ['sales-orders.*', 'load-sheets.*']],
-            ['label' => 'Routes', 'route' => 'delivery-routes.index', 'icon' => 'customers', 'group' => 'sell', 'permission' => 'customers', 'tool' => 'routes'],
-            ['label' => 'Schemes', 'route' => 'schemes.index', 'icon' => 'sparkles', 'group' => 'sell', 'permission' => 'sales', 'tool' => 'schemes'],
+            ['label' => 'Orders', 'route' => 'sales-orders.index', 'icon' => 'truck', 'group' => 'sell', 'permission' => 'sales', 'tool' => \App\Enums\WholesaleTool::SalesOrders, 'hint' => 'Booked, loaded, delivered', 'active' => ['sales-orders.*', 'load-sheets.*']],
+            ['label' => 'Routes', 'route' => 'delivery-routes.index', 'icon' => 'customers', 'group' => 'sell', 'permission' => 'customers', 'tool' => \App\Enums\WholesaleTool::Routes],
+            ['label' => 'Schemes', 'route' => 'schemes.index', 'icon' => 'sparkles', 'group' => 'sell', 'permission' => 'sales', 'tool' => \App\Enums\WholesaleTool::Schemes],
+            ['label' => 'Job Cards', 'route' => 'job-cards.index', 'icon' => 'wrench', 'group' => 'sell', 'permission' => 'sales', 'tool' => \App\Enums\ServiceTradeTool::JobCards, 'hint' => 'Units in for repair', 'active' => ['job-cards.*']],
+            ['label' => 'Appointments', 'route' => 'appointments.index', 'icon' => 'clipboard', 'group' => 'sell', 'permission' => 'sales', 'tool' => \App\Enums\ServiceTradeTool::Appointments, 'hint' => 'Bookings and walk-ins'],
+            ['label' => 'Members', 'route' => 'memberships.index', 'icon' => 'customers', 'group' => 'sell', 'permission' => 'customers', 'tool' => \App\Enums\ServiceTradeTool::Memberships],
+            ['label' => 'Check-ins', 'route' => 'check-ins.index', 'icon' => 'identification', 'group' => 'sell', 'permission' => 'customers', 'tool' => \App\Enums\ServiceTradeTool::CheckIns, 'active' => ['check-ins.*', 'biometric-devices.*']],
+            ['label' => 'Gift Vouchers', 'route' => 'gift-vouchers.index', 'icon' => 'receipt', 'group' => 'sell', 'permission' => 'sales', 'tool' => \App\Enums\ServiceTradeTool::GiftVouchers],
+            ['label' => 'Broadcasts', 'route' => 'broadcasts.index', 'icon' => 'megaphone', 'group' => 'sell', 'permission' => 'customers', 'tool' => \App\Enums\ServiceTradeTool::Broadcasts, 'hint' => 'One message to many'],
             ['label' => 'Repairs', 'route' => 'repairs.history', 'icon' => 'wrench', 'group' => 'sell', 'permission' => 'repairs'],
             ['label' => 'Services', 'route' => 'services.history', 'icon' => 'sparkles', 'group' => 'sell', 'permission' => 'services'],
+            ['label' => 'Service Menu', 'route' => 'service-menu.index', 'icon' => 'sparkles', 'group' => 'stock', 'permission' => 'products', 'tool' => \App\Enums\ServiceTradeTool::ServiceMenu, 'hint' => 'Services, memberships, packages'],
             ['label' => 'Products', 'route' => 'products.index', 'icon' => 'cube', 'group' => 'stock', 'permission' => 'products'],
             // Two ways stock comes in, named for what each one is: Stock In records goods that have
             // arrived; Purchase Orders is ordering first and receiving against the order (which then
@@ -42,17 +50,21 @@
             ['label' => 'WhatsApp Orders', 'route' => 'whatsapp-orders.index', 'icon' => 'chat', 'group' => 'online', 'permission' => 'whatsapp-orders'],
             ['label' => 'Online Store Orders', 'route' => 'online-orders.index', 'icon' => 'link', 'group' => 'online', 'permission' => 'online-orders'],
             ['label' => 'Shipments', 'route' => 'shipments.index', 'icon' => 'truck', 'group' => 'online', 'permission' => 'sales'],
+            ['label' => 'Daraz', 'route' => 'daraz.index', 'icon' => 'link', 'group' => 'online', 'permission' => 'sales', 'tool' => \App\Enums\OnlineTool::Marketplace, 'hint' => 'Orders and payouts by file'],
+            ['label' => 'Courier Payouts', 'route' => 'courier-settlements.index', 'icon' => 'banknote', 'group' => 'online', 'permission' => 'sales', 'tool' => \App\Enums\OnlineTool::CourierSettlements, 'hint' => 'Cash on delivery paid to you', 'active' => ['courier-settlements.*']],
+            ['label' => 'Get a Website', 'route' => 'website-requests.index', 'icon' => 'sparkles', 'group' => 'online', 'permission' => 'settings', 'tool' => \App\Enums\OnlineTool::WebsiteRequests],
             ['label' => 'Customer Messages', 'route' => 'whatsapp-messages.index', 'icon' => 'bell', 'group' => 'online', 'permission' => 'whatsapp-messages'],
             ['label' => 'Marketing', 'route' => 'marketing.posts', 'icon' => 'megaphone', 'group' => 'online', 'permission' => ['marketing', 'marketing-analytics', 'marketing-ads']],
             ['label' => 'Expenses', 'route' => 'expenses.index', 'icon' => 'banknote', 'group' => 'money', 'permission' => 'expenses'],
             ['label' => 'Party Ledger', 'route' => 'party-ledger.index', 'icon' => 'ledger', 'group' => 'money', 'permission' => 'party-ledger'],
-            ['label' => 'Cheques', 'route' => 'cheques.index', 'icon' => 'banknote', 'group' => 'money', 'permission' => 'udhaar', 'tool' => 'cheques'],
+            ['label' => 'Cheques', 'route' => 'cheques.index', 'icon' => 'banknote', 'group' => 'money', 'permission' => 'udhaar', 'tool' => \App\Enums\WholesaleTool::Cheques],
             ['label' => 'Cash & Balances', 'route' => 'cash-balances.index', 'icon' => 'coins', 'group' => 'money', 'permission' => 'cash-balances'],
             // Gross Profit, write-offs, expiry and payroll history are cards on the Reports hub.
             ['label' => 'Reports', 'route' => 'reports.index', 'icon' => 'chart', 'group' => 'money', 'permission' => 'reports', 'active' => ['reports.*', 'profit.*']],
             ['label' => 'Payroll', 'route' => 'payroll.employees', 'icon' => 'briefcase', 'group' => 'money', 'permission' => ['payroll', 'payroll-run']],
             ['label' => 'Accounts', 'route' => 'ledger.trial-balance', 'icon' => 'scale', 'group' => 'money', 'permission' => ['ledger-reports']],
             ['label' => 'Team', 'route' => 'users.index', 'icon' => 'users', 'group' => 'manage', 'permission' => 'users'],
+            ['label' => 'Staff', 'route' => 'staff.index', 'icon' => 'briefcase', 'group' => 'manage', 'permission' => 'users', 'tool' => \App\Enums\ServiceTradeTool::StaffEarnings, 'hint' => 'Who does the work, commission', 'active' => ['staff.*', 'staff-earnings.*', 'staff-attendance.*']],
             ['label' => 'Branches', 'route' => 'branches.index', 'icon' => 'building', 'group' => 'manage', 'permission' => 'branches'],
             ['label' => 'Settings', 'route' => 'settings.index', 'icon' => 'cog', 'group' => 'manage', 'permission' => ['settings', 'users']],
             ['label' => 'Plan & Usage', 'route' => 'billing.index', 'icon' => 'receipt', 'group' => 'manage', 'owner' => true],
@@ -61,7 +73,7 @@
             ['label' => 'Help & Support', 'route' => 'support.index', 'icon' => 'lifebuoy', 'group' => 'manage', 'everyone' => true, 'active' => ['support.*'], 'captureScreen' => true,
                 'badge' => $user?->shop_id ? \App\Models\SupportTicket::visibleTo($user)->unreadForShop()->count() : 0, 'badgeKey' => 'data-support-unread'],
         ])->filter(fn ($item) => $user && (($item['everyone'] ?? false) || (($item['owner'] ?? false) ? $user->is_owner : collect((array) $item['permission'])->contains(fn ($p) => $user->hasAccessTo($p)))))
-            // Wholesale P2 screens: only for the trades that use them (BusinessCategory::wholesaleTools).
+            // Wholesale P2 and Online P1 screens: only for the trades that use them (BusinessCategory::wholesaleTools, onlineTools).
             ->reject(fn ($item) => isset($item['tool']) && ! $user?->shop?->usesTool($item['tool']))
             ->reject(fn ($item) => $item['route'] === 'services.history' && ! $user?->shop?->services_enabled)
             ->reject(fn ($item) => $item['route'] === 'buybacks.index' && ! $user?->shop?->sellsDevices())
@@ -75,7 +87,7 @@
                 && ! ($user?->hasAccessTo('purchase-orders') && \App\Models\PurchaseOrder::query()->exists()))
             ->reject(fn ($item) => $item['route'] === 'whatsapp-orders.index' && ! $user?->shop?->whatsapp_ordering_enabled)
             ->reject(fn ($item) => $item['route'] === 'online-orders.index' && ! $user?->shop?->online_store_enabled)
-            ->reject(fn ($item) => $item['route'] === 'shipments.index' && ! $user?->shop?->couriers_enabled)
+            ->reject(fn ($item) => $item['route'] === 'shipments.index' && ! $user?->shop?->tracksParcels())
             ->reject(fn ($item) => $item['route'] === 'whatsapp-messages.index' && ! $user?->shop?->whatsapp_messaging_enabled)
             ->reject(fn ($item) => $item['route'] === 'marketing.posts' && ! ($user?->shop?->usesWhatsApp() || $user?->shop?->social_enabled))
             ->map(fn ($item) => $item['route'] === 'marketing.posts' && $user?->hasAccessTo('marketing-analytics') ? array_merge($item, ['route' => 'marketing.index']) : $item)

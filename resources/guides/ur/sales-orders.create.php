@@ -17,7 +17,7 @@ return [
                 ],
                 [
                     'label' => 'Qty',
-                    'text' => 'Pieces mein, ya cartons mein jab line yeh bataye.',
+                    'text' => 'Pieces mein, ya product ke packs aur bade packs mein (dabba, dabbon ka carton): item ke neeche jo chahiye us par tap karein.',
                 ],
                 [
                     'label' => 'Price each',

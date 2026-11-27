@@ -66,6 +66,9 @@ return [
 
     'repair_ready' => "Hi :name, your :device repair (:ref) at :shop is ready for pickup. ✅",
     'repair_ready_due' => 'Amount remaining on this repair: Rs :amount.',
+    'appointment_reminder' => 'Hi :name, a reminder of your appointment at :shop on :when for :services. Reply to this message if you need to change it.',
+    'membership_renewal' => 'Hi :name, your :plan at :shop ends on :date. Renew at the counter to keep it running. Thank you!',
+    'service_due' => 'Hi :name, your :unit is due for its next service at :shop (:due). Reply to book a time. Thank you!',
 
     'reminder_intro' => "Hi :name, this is a friendly reminder from :shop about your pending balance:",
     'reminder_total' => '*Total due: Rs :total*',

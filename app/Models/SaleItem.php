@@ -23,6 +23,11 @@ class SaleItem extends Model
         'stock_in_id',
         'product_name',
         'product_type',
+        'line_kind',
+        'service_item_id',
+        'performed_by',
+        'membership_plan_id',
+        'membership_id',
         'serial_number',
         'warranty_months',
         'warranty_type',
@@ -41,7 +46,7 @@ class SaleItem extends Model
         'line_total',
     ];
 
-    protected $attributes = ['unit' => 'piece'];
+    protected $attributes = ['unit' => 'piece', 'line_kind' => 'product'];
 
     /**
      * The pack a product line was sold in, kept only when the line really is
@@ -122,6 +127,10 @@ class SaleItem extends Model
             'line_total' => 'decimal:2',
             'warranty_months' => 'integer',
             'warranty_type' => WarrantyType::class,
+            // Trade when sold at a wholesale customer's trade price (PriceTiers), else null.
+            'price_tier' => \App\Enums\PriceTier::class,
+            // Product unless App\Actions\ServiceLines put it on the sale.
+            'line_kind' => \App\Enums\SaleLineKind::class,
         ];
     }
 

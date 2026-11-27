@@ -46,7 +46,7 @@ class ProfitReport implements ScreenReport
     }
 
     /**
-     * @return array{revenue: float, cogs: float, grossProfit: float, costedRevenue: float, uncostedRevenue: float, invoiceDiscount: float, linesWithNoCost: int, margin: ?float}
+     * @return array{revenue: float, cogs: float, grossProfit: float, costedRevenue: float, uncostedRevenue: float, deliveryCharges: float, invoiceDiscount: float, linesWithNoCost: int, margin: ?float}
      */
     public function totals(): array
     {
@@ -79,6 +79,11 @@ class ProfitReport implements ScreenReport
             $lines += (int) $sale->no_cost_lines;
         }
 
+        // A delivery charge (O2) is earned with no goods cost, so it counts as costed revenue
+        // and keeps Sales Revenue equal to the sum of sales.total.
+        $deliveryCharges = round((float) $this->salesInRange(Sale::query())->sum('delivery_charge'), 2);
+        $costedRevenue += $deliveryCharges;
+
         // Returns count on the day the goods came back: their value comes off
         // revenue and the cost they were sold at comes off cost of goods.
         $returned = 0.0;
@@ -108,6 +113,7 @@ class ProfitReport implements ScreenReport
             'grossProfit' => $grossProfit,
             'costedRevenue' => $costedRevenue,
             'uncostedRevenue' => round($uncostedRevenue, 2),
+            'deliveryCharges' => $deliveryCharges,
             'invoiceDiscount' => round((float) $discounts->sum(), 2),
             'linesWithNoCost' => $lines,
             'returns' => round($returned, 2),

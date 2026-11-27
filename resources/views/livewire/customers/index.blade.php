@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\CreateCustomer;
+use App\Enums\WholesaleTool;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\ReportQueries\UdhaarReport;
@@ -64,14 +65,14 @@ new #[Layout('layouts.app')] #[Title('Customers')] class extends Component
         $this->resetPage();
     }
 
-    protected function wholesale(): bool
+    protected function isWholesale(): bool
     {
         return (bool) Auth::user()->shop?->isWholesale();
     }
 
     public function with(): array
     {
-        $wholesale = $this->wholesale();
+        $wholesale = $this->isWholesale();
 
         return [
             'wholesale' => $wholesale,
@@ -91,8 +92,8 @@ new #[Layout('layouts.app')] #[Title('Customers')] class extends Component
             'balances' => (new UdhaarReport)->rows()->keyBy(fn (array $row) => $row['customer']->id),
             'areas' => $wholesale ? Customer::query()->whereNotNull('area')->where('area', '!=', '')->distinct()->orderBy('area')->pluck('area') : collect(),
             'tierOptions' => $wholesale ? PriceTiers::options(Auth::user()->shop) : [],
-            'routes' => Auth::user()->shop?->usesTool('routes') ? \App\Models\DeliveryRoute::query()->orderBy('name')->get() : null,
-            'linkableVendors' => Auth::user()->shop?->usesTool('contra') && Auth::user()->hasAccessTo('vendors') ? \App\Models\Vendor::query()->orderBy('name')->get() : null,
+            'deliveryRoutes' => Auth::user()->shop?->usesTool(WholesaleTool::Routes) ? \App\Models\DeliveryRoute::query()->orderBy('name')->get() : null,
+            'linkableVendors' => Auth::user()->shop?->usesTool(WholesaleTool::Contra) && Auth::user()->hasAccessTo('vendors') ? \App\Models\Vendor::query()->orderBy('name')->get() : null,
         ];
     }
 
@@ -112,7 +113,8 @@ new #[Layout('layouts.app')] #[Title('Customers')] class extends Component
         $this->address = (string) $customer->address;
 
         foreach (CreateCustomer::BUSINESS_FIELDS as $field) {
-            $this->{$field} = (string) ($customer->{$field} ?? '');
+            $value = $customer->{$field};
+            $this->{$field} = (string) ($value instanceof \BackedEnum ? $value->value : ($value ?? ''));
         }
 
         $this->routeId = (string) ($customer->route_id ?? '');
@@ -125,7 +127,7 @@ new #[Layout('layouts.app')] #[Title('Customers')] class extends Component
 
     public function save(): void
     {
-        $wholesale = $this->wholesale();
+        $wholesale = $this->isWholesale();
         $this->validate(CreateCustomer::rules() + ($wholesale ? CreateCustomer::businessRules() : []), [], CreateCustomer::businessAttributes());
 
         $business = $wholesale ? CreateCustomer::businessAttributesFrom($this->only(CreateCustomer::BUSINESS_FIELDS)) : [];
@@ -152,13 +154,13 @@ new #[Layout('layouts.app')] #[Title('Customers')] class extends Component
         $shop = Auth::user()->shop;
         $attributes = [];
 
-        if ($shop?->usesTool('routes')) {
+        if ($shop?->usesTool(WholesaleTool::Routes)) {
             $this->validate(['routeId' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('delivery_routes', 'id')->where('shop_id', $shop->id)], 'routeSequence' => ['nullable', 'integer', 'min:1', 'max:9999']], [], ['routeId' => 'route', 'routeSequence' => 'visiting order']);
             $attributes['route_id'] = $this->routeId !== '' ? (int) $this->routeId : null;
             $attributes['route_sequence'] = $this->routeId !== '' && $this->routeSequence !== '' ? (int) $this->routeSequence : null;
         }
 
-        if ($shop?->usesTool('contra') && Auth::user()->hasAccessTo('vendors')) {
+        if ($shop?->usesTool(WholesaleTool::Contra) && Auth::user()->hasAccessTo('vendors')) {
             $this->validate(['linkedVendorId' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('vendors', 'id')->where('shop_id', $shop->id), \Illuminate\Validation\Rule::unique('customers', 'vendor_id')->ignore($this->editingId)]], ['linkedVendorId.unique' => 'That vendor is already linked to another customer.'], ['linkedVendorId' => 'vendor']);
             $attributes['vendor_id'] = $this->linkedVendorId !== '' ? (int) $this->linkedVendorId : null;
         }
@@ -215,7 +217,7 @@ new #[Layout('layouts.app')] #[Title('Customers')] class extends Component
 
         <x-slot:actions>
             @if ($wholesale && auth()->user()->hasAccessTo('udhaar'))
-                <x-ui.button href="{{ route('aging.index') }}" wire:navigate variant="secondary" class="shrink-0" data-aging-link>Dues aging</x-ui.button>
+                <x-ui.button href="{{ route('dues-aging.index') }}" wire:navigate variant="secondary" class="shrink-0" data-aging-link>Dues aging</x-ui.button>
             @endif
             <x-ui.button wire:click="openCreate" class="shrink-0">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -394,15 +396,15 @@ new #[Layout('layouts.app')] #[Title('Customers')] class extends Component
                         </div>
                     </div>
 
-                    @if ($routes !== null || $linkableVendors !== null)
+                    @if ($deliveryRoutes !== null || $linkableVendors !== null)
                         <div class="grid grid-cols-1 gap-4 border-t border-line pt-5 sm:grid-cols-3" data-p2-fields>
-                            @if ($routes !== null)
+                            @if ($deliveryRoutes !== null)
                                 <x-ui.field label="Route" name="routeId" for="routeId">
                                     <div wire:key="route-{{ $editingId ?? 'new' }}-{{ $routeId }}">
                                         <x-ui.select wire:model="routeId" id="routeId">
                                             <option value="">No route</option>
-                                            @foreach ($routes as $route)
-                                                <option value="{{ $route->id }}">{{ $route->name }}</option>
+                                            @foreach ($deliveryRoutes as $deliveryRoute)
+                                                <option value="{{ $deliveryRoute->id }}">{{ $deliveryRoute->name }}</option>
                                             @endforeach
                                         </x-ui.select>
                                     </div>

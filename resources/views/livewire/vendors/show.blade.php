@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\WholesaleTool;
 use App\Models\Vendor;
 use App\Support\BranchContext;
 use Illuminate\Support\Facades\Auth;
@@ -76,9 +77,9 @@ new #[Layout('layouts.app')] #[Title('Vendor Profile')] class extends Component
             'measuredTotals' => \App\Enums\QuantityUnit::summarize($this->vendor->stockIns->filter(fn ($entry) => $entry->unit->allowsDecimals())->groupBy(fn ($entry) => $entry->unit->value)->map(fn ($entries) => \App\Support\Quantity::sum($entries->pluck('quantity')))->all()),
             'totalCost' => $this->vendor->stockIns->sum('total_cost'),
             'totalOwed' => $this->vendor->totalOwed(),
-            'credits' => \App\Models\VendorCredit::query()->where('vendor_id', $this->vendor->id)->where('status', 'active')->latest('id')->get(),
+            'credits' => \App\Models\VendorCredit::query()->where('vendor_id', $this->vendor->id)->where('status', \App\Enums\RecordStatus::Active->value)->latest('id')->get(),
             'creditLeft' => \App\Actions\VendorCredits::available($this->vendor->id),
-            'linkedCustomer' => Auth::user()->shop?->usesTool('contra') ? $this->vendor->linkedCustomer() : null,
+            'linkedCustomer' => Auth::user()->shop?->usesTool(WholesaleTool::Contra) ? $this->vendor->linkedCustomer() : null,
             'canManageCredit' => $this->canManageCredit(),
         ];
     }

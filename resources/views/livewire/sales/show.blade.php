@@ -300,11 +300,23 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                         <span class="font-medium tabular-nums text-ink">Rs {{ number_format($sale->discount_amount, 2) }}</span>
                     </div>
                 @endif
+                @if ((float) $sale->delivery_charge > 0)
+                    <div class="flex items-center justify-between text-sm" data-delivery-charge>
+                        <span class="text-ink-faint">Delivery charge</span>
+                        <span class="font-medium tabular-nums text-ink">Rs {{ number_format($sale->delivery_charge, 2) }}</span>
+                    </div>
+                @endif
                 <div class="flex items-center justify-between border-t border-line pt-2">
                     <span class="font-semibold text-ink-faint">Total</span>
                     <span class="text-display-sm font-extrabold tabular-nums text-ink">Rs {{ number_format($sale->total, 2) }}</span>
                 </div>
             </div>
+
+            @if ($sale->delivery)
+                <p class="mt-3 text-sm text-ink-muted" data-sale-delivery>
+                    <span class="font-semibold text-ink">Deliver to</span> {{ $sale->delivery->name }} · {{ $sale->delivery->phone }} · {{ $sale->delivery->address }}{{ $sale->delivery->city ? ', '.$sale->delivery->city : '' }}
+                </p>
+            @endif
 
             <div class="mt-4 flex items-center justify-between rounded-xl border border-line bg-surface-sunken/50 px-4 py-4">
                 <div class="flex gap-6">
@@ -319,6 +331,8 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
                 </div>
                 @if ($sale->isCancelled())
                     <x-ui.badge variant="danger">Cancelled</x-ui.badge>
+                @elseif ($sale->amountDue() > 0 && ($heldBy = $sale->heldByCourier()))
+                    <x-ui.badge variant="info" data-with-courier>With {{ $heldBy->courierLabel() }}</x-ui.badge>
                 @elseif ($sale->paymentStatus() === 'paid')
                     <x-ui.badge variant="success">Paid</x-ui.badge>
                 @elseif ($sale->paymentStatus() === 'partial')
@@ -330,6 +344,9 @@ new #[Layout('layouts.app')] #[Title('Sale Receipt')] class extends Component
 
             @unless ($sale->isCancelled())
                 <x-shipments.order-courier :sale-id="$sale->id" class="mt-3 rounded-xl border border-line px-4 py-3" />
+                @if (! $sale->isCancelled() && \App\Actions\SalePaymentLinks::available(auth()->user()->shop))
+                    <div class="mt-3"><livewire:sales.payment-link :sale-id="$sale->id" :key="'payment-link-'.$sale->id" /></div>
+                @endif
             @endunless
 
             @php($recordedPayments = $sale->payments->filter(fn ($payment) => (float) $payment->amount != 0.0)->sortBy('id'))

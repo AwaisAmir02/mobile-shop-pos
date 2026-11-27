@@ -30,6 +30,50 @@ use Illuminate\Validation\ValidationException;
 class StoreOrders
 {
     /**
+     * The contract's order.created shape (docs/channel-api-v1.md), the one set of
+     * rules for every way an order arrives: our API webhook, and Shopify and
+     * WooCommerce orders once mapped into it (App\Storefronts).
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function rules(array $data): array
+    {
+        return [
+            'external_order_id' => ['required', 'string', 'max:100'],
+            'placed_at' => ['required', 'date'],
+            'customer' => ['nullable', 'array'],
+            'customer.name' => ['nullable', 'string', 'max:120'],
+            'customer.phone' => ['nullable', 'string', 'max:50', \Illuminate\Validation\Rule::requiredIf(fn () => ($data['payment']['method'] ?? null) === StoreOrder::COD)],
+            'customer.address' => ['nullable', 'string', 'max:500'],
+            'customer.area' => ['nullable', 'string', 'max:200'],
+            'payment' => ['required', 'array'],
+            'payment.method' => ['required', \Illuminate\Validation\Rule::in([StoreOrder::PREPAID, StoreOrder::COD])],
+            'payment.amount_paid' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'shipping_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'discount_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'note' => ['nullable', 'string', 'max:500'],
+            'items' => ['required', 'array', 'min:1', 'max:200'],
+            'items.*.product_id' => ['nullable', 'integer', 'min:1', 'required_without:items.*.external_sku'],
+            'items.*.external_sku' => ['nullable', 'string', 'max:100', 'required_without:items.*.product_id'],
+            'items.*.name' => ['required', 'string', 'max:255'],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:1000000'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
+        ];
+    }
+
+    /**
+     * Validates an order mapped from a platform's own payload against the contract
+     * and stores it. Throws ValidationException when the mapping can't make a valid order.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function receiveMapped(StoreConnection $connection, array $data, string $eventId): StoreOrder
+    {
+        return self::receive($connection, \Illuminate\Support\Facades\Validator::make($data, self::rules($data))->validate(), $eventId);
+    }
+
+    /**
      * Stored whatever the plan's limit says: the customer has already bought, so an
      * order is never dropped. The limit is enforced when someone accepts it. Sending
      * the same order again changes nothing and returns the one already held.
@@ -125,8 +169,12 @@ class StoreOrders
 
             $shop = Shop::findOrFail($order->shop_id);
 
-            if (! $shop->online_store_enabled) {
-                throw ValidationException::withMessages(['order' => 'Online store isn\'t enabled for this shop, so this order can\'t be accepted.']);
+            $connection = StoreConnection::withoutGlobalScopes()->findOrFail($order->store_connection_id);
+
+            if (! $connection->featureOn()) {
+                throw ValidationException::withMessages(['order' => $connection->driver->isMarketplace()
+                    ? 'Daraz orders aren\'t available for this shop, so this order can\'t be accepted.'
+                    : 'Online store isn\'t enabled for this shop, so this order can\'t be accepted.']);
             }
 
             try {
@@ -167,9 +215,10 @@ class StoreOrders
                 saleDate: now()->toDateString(),
                 amountPaid: $amountPaid,
                 shopId: $order->shop_id,
-                attributes: ['source' => SaleSource::Online->value],
+                attributes: ['source' => $connection->driver->saleSource()->value],
                 paymentMethod: $paymentMethod,
                 shopAccountId: $shopAccountId,
+                deliveryCharge: self::deliveryChargeFor($order),
             );
 
             $total = (float) $sale->total;
@@ -193,6 +242,12 @@ class StoreOrders
             ]);
 
             StoreEvents::forOrder($order, 'order.accepted');
+
+            // A marketplace collects from the buyer and pays out net of its fees (O6): the
+            // sale's money is owed by the marketplace, held as a courier holds COD (O4).
+            if ($connection->driver->isMarketplace()) {
+                Shipments::recordMarketplace($sale, $order, $userId);
+            }
 
             return $sale;
         });
@@ -264,6 +319,15 @@ class StoreOrders
         if (filled($item->external_sku) && ! StoreProduct::where('store_connection_id', $order->store_connection_id)->where('external_sku', $item->external_sku)->exists()) {
             StoreConnections::setExternalSku($order->connection()->firstOrFail(), $product, $item->external_sku);
         }
+    }
+
+    /**
+     * The store's delivery charge, part of the sale for an online seller (O2,
+     * OnlineTool::Delivery). Any other shop's sale records the goods only, as before.
+     */
+    public static function deliveryChargeFor(StoreOrder $order): float
+    {
+        return Shop::find($order->shop_id)?->usesTool(\App\Enums\OnlineTool::Delivery) ? round((float) $order->shipping_amount, 2) : 0.0;
     }
 
     public static function find(StoreConnection $connection, string $externalOrderId): ?StoreOrder

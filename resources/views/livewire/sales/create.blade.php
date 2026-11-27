@@ -7,6 +7,9 @@ use App\Enums\QuantityUnit;
 use App\Enums\SaleStatus;
 use App\Livewire\Concerns\PicksPaymentMethod;
 use App\Livewire\Concerns\PromptsForMeasuredQuantity;
+use App\Livewire\Concerns\SellsOnline;
+use App\Livewire\Concerns\SellsServices;
+use App\Livewire\Concerns\SellsWholesale;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
 use App\Models\Product;
@@ -14,8 +17,6 @@ use App\Models\ProductGroup;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Support\BatchExpiry;
-use App\Support\CreditControl;
-use App\Support\PriceTiers;
 use App\Support\Quantity;
 use App\Support\InstallmentSchedule;
 use App\Support\SaleCartMath;
@@ -30,7 +31,7 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 {
-    use PicksPaymentMethod, PromptsForMeasuredQuantity, Toasts, \Livewire\WithFileUploads;
+    use PicksPaymentMethod, PromptsForMeasuredQuantity, SellsOnline, SellsServices, SellsWholesale, Toasts, \Livewire\WithFileUploads;
 
     /** Register details for prescription medicines in the cart (App\Actions\Prescriptions). */
     public array $prescription = [];
@@ -76,17 +77,6 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
     public string $exchangeLateReason = '';
 
-    // Wholesale businesses only (PriceTiers, CreditControl): when a credit sale falls
-    // due (blank = the customer's payment terms), and the owner's approval to go over
-    // a customer's credit limit. The password is never kept after a try.
-    public string $dueDate = '';
-    public bool $overrideCredit = false;
-    public string $overrideReason = '';
-    public string $ownerPassword = '';
-
-    // Distributors (W8): who booked or sold it on the route, apart from who rings it up.
-    public string $bookerId = '';
-
     public function mount(): void
     {
         $this->openExchange(request()->query('exchange'));
@@ -95,6 +85,8 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         $this->firstDueDate = now()->addMonthNoOverflow()->toDateString();
         $this->tradeIn = self::blankTradeIn();
         $this->prescription = \App\Actions\Prescriptions::blank();
+        $this->startOnline();
+        $this->startServices();
     }
 
     /** @return array<int, array<string, mixed>> cart lines the shop marked Prescription only or Controlled */
@@ -119,235 +111,6 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         $this->withTradeIn = false;
         $this->tradeIn = self::blankTradeIn();
         $this->resetValidation(array_map(fn ($key) => 'tradeIn.'.$key, array_keys(self::blankTradeIn())));
-    }
-
-    /** Trade prices, last rates, due dates and credit limits: wholesale businesses only. */
-    protected function tiersOn(): bool
-    {
-        return PriceTiers::enabled(Auth::user()->shop);
-    }
-
-    protected function chosenCustomer(): ?Customer
-    {
-        return ctype_digit($this->customerId) ? Customer::find((int) $this->customerId) : null;
-    }
-
-    /** One piece at the chosen customer's price level. */
-    protected function piecePriceFor(Product $product): float
-    {
-        $normal = $product->currentSellingPrice();
-
-        return $this->tiersOn() ? (PriceTiers::piecePrice($product, PriceTiers::forCustomer($this->chosenCustomer())) ?? $normal) : $normal;
-    }
-
-    /** A new cart line priced for the chosen customer: their trade price on pieces, packs and outer packs. */
-    protected function withTier(array $line, Product $product): array
-    {
-        $tier = PriceTiers::forCustomer($this->chosenCustomer());
-        $piece = PriceTiers::piecePrice($product, $tier);
-
-        $line['normal_price'] = $product->currentSellingPrice();
-        $line['price_tier'] = $piece !== null ? $tier : null;
-        $line['list_price'] = (string) ($piece ?? $line['normal_price']);
-
-        if ($line['pack'] !== null) {
-            $packTier = PriceTiers::packPrice($product, $tier, (int) $product->pack_size, $product->packSellingPrice());
-            $line['pack']['price'] = $packTier ?? $line['pack']['price'];
-            $line['pack']['has_price'] = $packTier !== null || $line['pack']['has_price'];
-        }
-
-        if ($line['outer'] !== null) {
-            $outerTier = PriceTiers::packPrice($product, $tier, $product->outerPackPieces(), $product->outerPackSellingPrice());
-            $line['outer']['price'] = $outerTier ?? $line['outer']['price'];
-            $line['outer']['has_price'] = $outerTier !== null || $line['outer']['has_price'];
-        }
-
-        return $line;
-    }
-
-    /**
-     * The customer changed: every line takes that customer's price, at the
-     * level (piece, pack, outer) it is being sold in. A price the cashier
-     * typed stays as typed.
-     */
-    protected function repriceCart(): void
-    {
-        foreach ($this->cart as $productId => $item) {
-            $product = Product::find($productId);
-
-            if ($product === null) {
-                continue;
-            }
-
-            $fresh = $this->cartLineFor($product, $item['quantity']);
-            $mode = match (true) {
-                ! empty($item['by_outer']) && $fresh['outer'] !== null => 'outer',
-                ! empty($item['by_pack']) && $fresh['pack'] !== null => 'pack',
-                default => 'piece',
-            };
-
-            $this->cart[$productId] = array_merge($item, [
-                'pack' => $fresh['pack'],
-                'outer' => $fresh['outer'],
-                'normal_price' => $fresh['normal_price'],
-                'price_tier' => $fresh['price_tier'],
-                'list_price' => match ($mode) {
-                    'outer' => (string) $fresh['outer']['price'],
-                    'pack' => (string) $fresh['pack']['price'],
-                    default => $fresh['list_price'],
-                },
-            ]);
-        }
-    }
-
-    /**
-     * What the chosen customer last paid for each product in the cart, from
-     * their latest sale of it (any branch), so staff can check the price.
-     *
-     * @return array<int, array{price: float, pack: ?string, pack_size: ?int, date: \Carbon\Carbon}>
-     */
-    protected function lastRates(): array
-    {
-        $customer = $this->chosenCustomer();
-
-        if (! $this->tiersOn() || $customer === null || $this->cart === []) {
-            return [];
-        }
-
-        return \App\Support\BranchContext::current()->shopWide(function () use ($customer) {
-            $ids = SaleItem::query()
-                ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
-                ->where('sales.customer_id', $customer->id)
-                ->where('sales.status', '!=', SaleStatus::Cancelled->value)
-                ->whereIn('sale_items.product_id', array_keys($this->cart))
-                ->groupBy('sale_items.product_id')
-                ->selectRaw('MAX(sale_items.id) as id')
-                ->pluck('id');
-
-            return SaleItem::query()->whereIn('id', $ids)->with('sale:id,created_at')->get()
-                ->mapWithKeys(fn (SaleItem $item) => [$item->product_id => [
-                    'price' => (float) $item->unit_price,
-                    'pack' => $item->pack_name,
-                    'pack_size' => $item->pack_size,
-                    'date' => $item->sale->created_at,
-                ]])
-                ->all();
-        });
-    }
-
-    /** Puts the customer's last rate on a line, at the level it is being sold in. */
-    public function useLastRate(int $productId): void
-    {
-        $rate = $this->lastRates()[$productId] ?? null;
-
-        if ($rate === null || ! isset($this->cart[$productId])) {
-            return;
-        }
-
-        $level = self::sellingLevel($this->cart[$productId]);
-        $this->cart[$productId]['custom_price'] = (string) round($rate['price'] * (int) ($level['size'] ?? 1), 2);
-    }
-
-    /** What this sale leaves unpaid, after everything paid now. */
-    protected function unpaidAfterSale(): float
-    {
-        $paidNow = $this->amountPaidNow !== '' && is_numeric($this->amountPaidNow) ? (float) $this->amountPaidNow : $this->toPay();
-
-        return round(max(0.0, $this->toPay() - $paidNow), 2);
-    }
-
-    /** The chosen customer's credit position with this sale, for the panel; null without a customer. */
-    protected function creditStatus(): ?array
-    {
-        $customer = $this->chosenCustomer();
-
-        if (! $this->tiersOn() || $customer === null) {
-            return null;
-        }
-
-        $unpaid = $this->unpaidAfterSale();
-
-        return [
-            'customer' => $customer,
-            'unpaid' => $unpaid,
-            'check' => CreditControl::check($customer, $unpaid),
-            'terms' => $customer->payment_terms_days,
-            'defaultDue' => $this->termsDueDate($customer),
-            'isOwner' => (bool) Auth::user()->is_owner,
-        ];
-    }
-
-    protected function termsDueDate(Customer $customer): ?string
-    {
-        if (! $customer->payment_terms_days) {
-            return null;
-        }
-
-        try {
-            return Carbon::parse($this->saleDate ?: now()->toDateString())->addDays($customer->payment_terms_days)->toDateString();
-        } catch (\Carbon\Exceptions\InvalidFormatException) {
-            return null;
-        }
-    }
-
-    /**
-     * The due date and any credit-limit approval for a sale that leaves money
-     * unpaid (wholesale businesses). Refuses a sale over the limit until the
-     * owner approves it.
-     *
-     * @return array<string, mixed> Sale attributes
-     */
-    protected function creditAttributes(float $unpaid): array
-    {
-        $customer = $this->chosenCustomer();
-
-        if ($customer === null || $unpaid <= 0) {
-            return [];
-        }
-
-        $this->validate(['dueDate' => ['nullable', 'date', 'after_or_equal:saleDate']], ['dueDate.after_or_equal' => 'The due date can\'t be before the sale date.'], ['dueDate' => 'due date']);
-
-        $attributes = ['due_date' => $this->dueDate !== '' ? Carbon::parse($this->dueDate)->toDateString() : $this->termsDueDate($customer)];
-        $check = CreditControl::check($customer, $unpaid);
-
-        if ($check === null || ! $check['over']) {
-            return $attributes;
-        }
-
-        $password = $this->ownerPassword;
-        $this->ownerPassword = '';
-
-        if (! $this->overrideCredit) {
-            throw ValidationException::withMessages(['credit' => 'This takes '.$customer->name.' to Rs '.number_format($check['after'], 2).', over their credit limit of Rs '.number_format($check['limit'], 2).'. Take more payment now, or have the owner approve it.']);
-        }
-
-        $this->validate(['overrideReason' => ['required', 'string', 'max:255']], ['overrideReason.required' => 'Say why the limit is being passed.'], ['overrideReason' => 'reason']);
-        $owner = CreditControl::approvingOwner(Auth::user(), $password);
-
-        if ($owner === null) {
-            throw ValidationException::withMessages(['ownerPassword' => 'That is not the owner\'s password.']);
-        }
-
-        return $attributes + ['credit_override_by' => $owner->id, 'credit_override_reason' => $this->overrideReason];
-    }
-
-    /** Refuses selling stock that open orders hold (distributors with orders). */
-    protected function assertNotHeldForOrders(array $lines): void
-    {
-        if (! Auth::user()->shop?->usesTool('orders')) {
-            return;
-        }
-
-        $held = \App\Actions\SalesOrders::reserved(array_column($lines, 'product_id'));
-
-        foreach ($lines as $line) {
-            $product = Product::find($line['product_id']);
-            $wanted = Quantity::add(Quantity::normalize($line['quantity']), (int) ($line['scheme_free'] ?? 0));
-
-            if ($product && ($held[$product->id] ?? 0) > 0 && Quantity::compare(Quantity::subtract($product->stock_quantity, $held[$product->id]), $wanted) < 0) {
-                throw ValidationException::withMessages(["cart.{$product->id}.quantity" => 'Only '.$product->unit->amount(max(0, (float) Quantity::subtract($product->stock_quantity, $held[$product->id])))." of {$product->name} is free to sell; ".$product->unit->amount($held[$product->id]).' is held for booked orders.']);
-            }
-        }
     }
 
     /** What the traded-in phone counts for, while one is being added. */
@@ -378,7 +141,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
     /** What's left to pay after the trade-in and store credit. */
     public function toPay(): float
     {
-        return round(max(0.0, $this->total() - $this->tradeInValue() - $this->exchangeValue() - $this->creditValue()), 2);
+        return round(max(0.0, $this->total() - $this->tradeInValue() - $this->exchangeValue() - $this->creditValue() - $this->servicePrepaidValue()), 2);
     }
 
     /** Starts exchange mode for a sale this person may take goods back from. */
@@ -559,32 +322,15 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             $this->dispatch('open-modal', name: 'quick-create-customer');
         }
 
-        if ($this->tiersOn()) {
-            $this->customerChangedForWholesale();
-        }
+        $this->wholesaleCustomerChanged();
+        $this->servicesCustomerChanged();
     }
 
     #[On('customer-created')]
     public function onCustomerCreated(int $customerId): void
     {
         $this->customerId = (string) $customerId;
-
-        if ($this->tiersOn()) {
-            $this->customerChangedForWholesale();
-        }
-    }
-
-    protected function customerChangedForWholesale(): void
-    {
-        if (Auth::user()->shop?->usesTool('routes') && ($booker = $this->chosenCustomer()?->route?->booker_id)) {
-            $this->bookerId = (string) $booker;
-        }
-
-        $this->repriceCart();
-        $this->dueDate = '';
-        $this->overrideCredit = false;
-        $this->overrideReason = '';
-        $this->ownerPassword = '';
+        $this->wholesaleCustomerChanged();
     }
 
     /**
@@ -641,13 +387,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             'promptProduct' => $this->quantityPromptId !== null ? Product::find($this->quantityPromptId) : null,
             'offersInstallments' => $this->offersInstallments(),
             'installmentPlan' => $this->installmentPlan(),
-            'wholesale' => ($wholesale = $this->tiersOn()),
-            'tierLabel' => $wholesale ? PriceTiers::label(Auth::user()->shop) : null,
-            'lastRates' => $wholesale ? $this->lastRates() : [],
-            'creditStatus' => $wholesale ? $this->creditStatus() : null,
-            'bookers' => $wholesale && Auth::user()->shop?->usesTool('routes') ? \App\Models\User::where('shop_id', Auth::user()->shop_id)->orderBy('name')->get() : null,
-            'schemeFree' => $wholesale ? collect($this->cart)->map(fn (array $item) => (int) ($this->saleLine($item)['scheme_free'] ?? 0))->all() : [],
-        ];
+        ] + $this->wholesaleViewData() + $this->onlineViewData() + $this->servicesViewData();
     }
 
     public function addToCart(int $productId): void
@@ -717,21 +457,8 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             'rx' => $product->rx_control,
         ];
 
-        if ($this->tiersOn() && Auth::user()->shop?->usesTool('schemes') && ($scheme = \App\Actions\Schemes::runningFor($product->id, BatchExpiry::today())) !== null) {
-            $line['scheme'] = ['id' => $scheme->id, 'name' => $scheme->name, 'offer' => $scheme->offerLabel()];
-        }
-
-        return $this->tiersOn() ? $this->withTier($line, $product) : $line;
-    }
-
-    /** Free scheme pieces (W9) a cart line earns, for the pieces it sells. */
-    protected function schemeFree(array $item, int|float $pieces): int
-    {
-        if (empty($item['scheme']['id'])) {
-            return 0;
-        }
-
-        return \App\Models\Scheme::find($item['scheme']['id'])?->freeFor($pieces) ?? 0;
+        // Wholesale businesses: the customer's trade prices and any running scheme (SellsWholesale).
+        return $this->wholesaleCartLine($line, $product);
     }
 
     /** The pack a cart line is being sold in: its outer pack, its pack, or null for pieces. */
@@ -846,13 +573,6 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         return $this->withScheme(['quantity' => $pieces, 'discount' => round((float) $item['discount'] + $rounding, 2), 'custom_price' => $perPiece] + $sold, $item, $pieces);
     }
 
-    /** Adds a line's free scheme pieces (CreateSale prices them at nothing). */
-    protected function withScheme(array $line, array $item, int|float $pieces): array
-    {
-        $free = $this->schemeFree($item, $pieces);
-
-        return $free > 0 ? $line + ['scheme_id' => $item['scheme']['id'], 'scheme_free' => $free] : $line;
-    }
 
     public function scanBarcode(string $raw): void
     {
@@ -994,20 +714,21 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
     public function subtotal(): float
     {
-        return round(array_sum(array_map(fn (array $item) => $this->lineTotal($item), $this->cart)), 2);
+        // Service lines (SellsServices) are 0 for every shop that doesn't sell services.
+        return round(array_sum(array_map(fn (array $item) => $this->lineTotal($item), $this->cart)) + $this->servicesSubtotal(), 2);
     }
 
     public function total(): float
     {
         $subtotal = $this->subtotal();
 
-        return round(max(0.0, $subtotal - min((float) $this->invoiceDiscount, $subtotal)), 2);
+        return round(max(0.0, $subtotal - min((float) $this->invoiceDiscount, $subtotal)) + $this->deliveryChargeValue(), 2);
     }
 
     public function completeSale(): void
     {
-        if (empty($this->cart)) {
-            $this->toastError('Add at least one product to the cart.');
+        if (empty($this->cart) && empty($this->serviceLines)) {
+            $this->toastError($this->servicesOn() ? 'Add at least one product or service.' : 'Add at least one product to the cart.');
 
             return;
         }
@@ -1016,11 +737,15 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
         $onInstallments = $this->onInstallments && $this->offersInstallments();
         $withTradeIn = $this->withTradeIn && $this->offersInstallments();
         $tradeInValue = $withTradeIn ? $this->tradeInValue() : 0.0;
-        $creditValue = $this->creditValue();
+        // Gift vouchers and deposits (SellsServices) count here like store credit; 0 for every other shop.
+        $prepaid = $this->exchangeSaleId === null ? $this->prepaidParts() : [];
+        $creditValue = round($this->creditValue() + array_sum(array_column($prepaid, 'amount')), 2);
         $exchangeValue = $this->exchangeValue();
         $toPay = round(max(0.0, $total - $tradeInValue - $exchangeValue - $creditValue), 2);
         $paidNow = $this->amountPaidNow !== '' ? (float) $this->amountPaidNow : ($onInstallments ? 0.0 : $toPay);
         $isFullyPaid = ! $onInstallments && $paidNow + $tradeInValue + $exchangeValue + $creditValue >= $total;
+        // An online order's buyer becomes the customer when cash is left to collect (SellsOnline).
+        $this->onlineCustomer($isFullyPaid);
 
         $rules = [
             'saleDate' => ['required', 'date', 'before_or_equal:today'],
@@ -1038,6 +763,8 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             $rules["cart.$id.discount"] = ['required', 'numeric', 'min:0'];
             $rules["cart.$id.custom_price"] = ['nullable', 'numeric', 'min:0', 'max:'.self::MAX_LINE_PRICE];
         }
+
+        $rules += $this->deliveryRules() + $this->serviceRules();
 
         if ($onInstallments) {
             $rules['installmentCount'] = ['required', 'integer', 'min:1', 'max:'.InstallmentSchedule::MAX_COUNT];
@@ -1065,7 +792,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
             'firstDueDate.after_or_equal' => 'The first instalment must be due on or after the sale date.',
         ] : [], ['installmentCount' => 'number of instalments', 'firstDueDate' => 'first due date',
             'tradeIn.seller_name' => 'seller name', 'tradeIn.seller_cnic' => 'CNIC', 'tradeIn.brand' => 'brand', 'tradeIn.model' => 'model', 'tradeIn.imei' => 'IMEI',
-            'tradeIn.condition' => 'condition', 'tradeIn.battery_health' => 'battery health', 'tradeIn.price' => 'trade-in value', 'tradeIn.selling_price' => 'resale price']);
+            'tradeIn.condition' => 'condition', 'tradeIn.battery_health' => 'battery health', 'tradeIn.price' => 'trade-in value', 'tradeIn.selling_price' => 'resale price'] + $this->deliveryAttributes());
 
         $installments = [];
 
@@ -1094,25 +821,21 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
         [$paymentMethod, $shopAccountId] = $this->chosenPaymentMethod();
 
-        // Wholesale: the due date, and the credit limit (an exchange is settled on the spot).
-        $saleAttributes = $this->tiersOn() && $this->exchangeSaleId === null
-            ? $this->creditAttributes(round(max(0.0, $total - $paidNow - $tradeInValue - $exchangeValue - $creditValue), 2))
+        // Wholesale: the due date, the credit limit, stock held for orders and the booker
+        // (SellsWholesale). Not for an exchange, which is settled on the spot.
+        $saleAttributes = $this->exchangeSaleId === null
+            ? $this->wholesaleSaleAttributes(round(max(0.0, $total - $paidNow - $tradeInValue - $exchangeValue - $creditValue), 2), $lines)
             : [];
 
-        // Distributors: stock held for booked orders can't be sold at the counter (W7), and the booker (W8).
-        if ($this->tiersOn() && $this->exchangeSaleId === null) {
-            $this->assertNotHeldForOrders($lines);
-
-            if (Auth::user()->shop?->usesTool('routes') && ctype_digit($this->bookerId) && \App\Models\User::where('shop_id', Auth::user()->shop_id)->whereKey((int) $this->bookerId)->exists()) {
-                $saleAttributes['booker_id'] = (int) $this->bookerId;
-            }
-        }
-
         if ($this->exchangeSaleId !== null) {
-            $this->completeExchange($lines, $paidNow, $paymentMethod, $shopAccountId, $creditValue);
+            $this->completeExchange($lines, $paidNow, $paymentMethod, $shopAccountId, $this->creditValue());
 
             return;
         }
+
+        // Online: stock pending orders hold, then the channel, delivery and its charge (SellsOnline).
+        $this->assertNotHeldForPendingOrders($lines);
+        $online = $this->onlineSaleArguments();
 
         try {
             $sale = CreateSale::handle(
@@ -1126,21 +849,29 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                 shopAccountId: $shopAccountId,
                 installments: $installments,
                 tradeIn: $tradeIn,
-                storeCredit: $creditValue,
+                storeCredit: $this->creditValue(),
                 applyPromotions: true,
                 prescription: $this->prescriptionDetails(),
-                attributes: $saleAttributes,
+                attributes: $saleAttributes + $online['attributes'],
+                deliveryCharge: $online['deliveryCharge'],
+                delivery: $online['delivery'],
+                services: $this->serviceSaleLines(),
+                prepaid: $prepaid,
             );
         } catch (ValidationException $e) {
             $errors = [];
 
             foreach ($e->errors() as $key => $messages) {
                 $key = $key === 'prescription.photo' ? 'prescriptionPhoto' : $key;
+                $key = preg_match('/^services\./', $key) === 1 ? 'serviceLines' : $key;
                 $errors[preg_replace('/^lines\.(\d+)$/', 'cart.$1.quantity', $key)] = $messages;
             }
 
             throw ValidationException::withMessages($errors);
         }
+
+        $this->recordParcel($sale);
+        $this->afterServicesSale($sale);
 
         $this->toastSuccess('Sale completed.');
         // Lets the receipt open as a "sale complete" confirmation, once.
@@ -1214,7 +945,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
 
     <x-billing.limit-notice limit="sales_per_month" informational />
 
-    @php($itemCount = count($cart))
+    @php($itemCount = count($cart) + count($serviceLines))
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div class="min-w-0 lg:col-span-2">
@@ -1265,6 +996,9 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                 </x-ui.card>
             @endif
 
+@if ($servicesOn && ! $exchangeSaleId)
+            <x-sales.service-lines :lines="$serviceLines" :results="$serviceResults" :plans="$planResults" :staff="$staff" :package-choices="$packageChoices" :search="$serviceSearch" :billing="$billing" />
+@endif
             <x-ui.card :padding="false">
                 <div class="p-4 sm:p-5">
                     <div class="relative">
@@ -1475,7 +1209,15 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                                 <span class="font-medium tabular-nums text-ink">− Rs {{ number_format($this->creditValue(), 2) }}</span>
                             </div>
                         @endif
-                        @if ($this->tradeInValue() > 0 || $this->creditValue() > 0 || $this->exchangeValue() > 0)
+@if ($servicesOn)
+                        @foreach ($this->prepaidParts() as $part)
+                            <div class="flex items-center justify-between" data-prepaid-line>
+                                <span class="text-ink-faint">{{ $part['label'] }}</span>
+                                <span class="font-medium tabular-nums text-ink">− Rs {{ number_format($part['amount'], 2) }}</span>
+                            </div>
+                        @endforeach
+@endif
+                        @if ($this->tradeInValue() > 0 || $this->creditValue() > 0 || $this->exchangeValue() > 0 || ($servicesOn && $this->servicePrepaidValue() > 0))
                             <div class="flex items-center justify-between font-semibold">
                                 <span class="text-ink">To pay</span>
                                 <span class="tabular-nums text-ink">Rs {{ number_format($this->toPay(), 2) }}</span>
@@ -1530,6 +1272,9 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                         </div>
                     @endif
 
+@if ($servicesOn && ! $exchangeSaleId)
+                    <x-sales.prepaid-panel :vouchers-on="$vouchersOn" :vouchers="$vouchers" :deposits="$heldDeposits" />
+@endif
                     @if ($offersInstallments)
                         {{-- The customer's used phone as part of the payment (a buyback recorded with the sale). --}}
                         <div data-trade-in-panel>
@@ -1595,7 +1340,7 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                     <div>
                         <p class="mb-1.5 text-sm font-medium text-ink-muted">Payment</p>
                         <div @class(['grid gap-1 rounded-full border border-line bg-surface-sunken/60 p-1', 'grid-cols-4' => $offersInstallments, 'grid-cols-3' => ! $offersInstallments]) role="group" aria-label="Payment">
-                            @foreach (['cash' => 'Cash', 'partial' => 'Partial', 'udhaar' => 'Udhaar', ...($offersInstallments ? ['instalments' => 'Instalments'] : [])] as $value => $label)
+                            @foreach (['cash' => 'Cash', 'partial' => 'Partial', 'udhaar' => $takesDelivery ? 'COD' : 'Udhaar', ...($offersInstallments ? ['instalments' => 'Instalments'] : [])] as $value => $label)
                                 <button
                                     type="button"
                                     x-on:click="pick('{{ $value }}')"
@@ -1651,6 +1396,10 @@ new #[Layout('layouts.app')] #[Title('New Sale')] class extends Component
                             @endforeach
                         </x-ui.select>
                     </x-ui.field>
+
+                    @if ($takesDelivery)
+                        <x-sales.online-delivery :channels="$channels" :couriers="$couriers" :refusals="$refusals" :with-delivery="$withDelivery" :parcel-courier="$parcelCourier" />
+                    @endif
 
                     @if ($onInstallments || ($amountPaidNow !== '' && (float) $amountPaidNow < $this->toPay()))
                         <div class="flex items-center justify-between rounded-xl bg-warning-soft px-3 py-2 text-sm">

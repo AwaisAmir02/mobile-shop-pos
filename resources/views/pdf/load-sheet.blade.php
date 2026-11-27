@@ -32,7 +32,7 @@
             <td class="text-right">
                 <div class="title">Load Sheet</div>
                 <div class="meta">{{ $sheet->number() }} · {{ $sheet->load_date->format('d M Y') }}</div>
-                <div class="meta">{{ collect([$sheet->route?->name, $sheet->vehicle, $sheet->driver, $sheet->salesman?->name])->filter()->implode(' · ') }}</div>
+                <div class="meta">{{ collect([$sheet->deliveryRoute?->name, $sheet->vehicle, $sheet->driver, $sheet->salesman?->name])->filter()->implode(' · ') }}</div>
             </td>
         </tr>
     </table>

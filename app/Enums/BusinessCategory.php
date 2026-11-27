@@ -27,6 +27,13 @@ enum BusinessCategory: string
     case DarazSeller = 'daraz_seller';
     case OnlineBrand = 'online_brand';
 
+    // Services & appointments
+    case RepairWorkshop = 'repair_workshop';
+    case Salon = 'salon';
+    case Spa = 'spa';
+    case Gym = 'gym';
+    case PersonalTraining = 'personal_training';
+
     // Not offered at signup any more
     case Bakery = 'bakery';
     case OnlineSeller = 'online_seller';
@@ -45,6 +52,11 @@ enum BusinessCategory: string
             self::SocialSeller => 'Facebook / Instagram / WhatsApp seller',
             self::DarazSeller => 'Daraz seller',
             self::OnlineBrand => 'Small online brand',
+            self::RepairWorkshop => 'Repair workshop (AC, bike, auto, appliances)',
+            self::Salon => 'Salon / barber',
+            self::Spa => 'Spa / beauty clinic',
+            self::Gym => 'Gym / fitness club',
+            self::PersonalTraining => 'Personal training / fitness studio',
             self::Bakery => 'Bakery & sweets',
             self::OnlineSeller => 'Online seller (Daraz / social media)',
         };
@@ -81,19 +93,95 @@ enum BusinessCategory: string
     }
 
     /**
-     * The Wholesale P2 tools each trade uses, in one place so widening one is a
-     * one-line change: cheques (W6), sales orders + load sheets (W7), routes +
-     * bookers (W8), schemes + claims (W9), bonus quantity on Stock In (W9),
-     * purchase returns (W10), contra with a linked vendor (W11).
+     * The Wholesale P2 tools each trade uses (WholesaleTool), in one place so
+     * widening one is a one-line change. Every other trade gets none.
      *
-     * @return list<string>
+     * @return list<WholesaleTool>
      */
     public function wholesaleTools(): array
     {
         return match ($this) {
-            self::Wholesaler => ['cheques', 'returns', 'bonus'],
-            self::Trader => ['cheques', 'returns', 'bonus', 'contra'],
-            self::Distributor => ['cheques', 'returns', 'bonus', 'orders', 'routes', 'schemes'],
+            self::Wholesaler => [WholesaleTool::Cheques, WholesaleTool::PurchaseReturns, WholesaleTool::BonusQuantity],
+            self::Trader => [WholesaleTool::Cheques, WholesaleTool::PurchaseReturns, WholesaleTool::BonusQuantity, WholesaleTool::Contra],
+            self::Distributor => [WholesaleTool::Cheques, WholesaleTool::PurchaseReturns, WholesaleTool::BonusQuantity, WholesaleTool::SalesOrders, WholesaleTool::Routes, WholesaleTool::Schemes],
+            default => [],
+        };
+    }
+
+    /**
+     * The Online P1 tools each online trade uses (OnlineTool), in one place so
+     * widening one (say, delivery charges for a kiryana) is a one-line change.
+     * Every other trade gets none.
+     *
+     * @return list<OnlineTool>
+     */
+    public function onlineTools(): array
+    {
+        return match ($this) {
+            self::SocialSeller, self::DarazSeller, self::OnlineBrand => OnlineTool::cases(),
+            default => [],
+        };
+    }
+
+    /**
+     * The Services group's tools each trade uses (ServiceTradeTool), in one place.
+     * A shop that also runs a related trade (business_addons) gets both lists:
+     * Shop::usesTool() merges them. Every other trade gets none.
+     *
+     * @return list<ServiceTradeTool>
+     */
+    public function serviceTradeTools(): array
+    {
+        $beauty = [ServiceTradeTool::ServiceMenu, ServiceTradeTool::Appointments, ServiceTradeTool::WalkIns, ServiceTradeTool::StaffEarnings, ServiceTradeTool::Memberships, ServiceTradeTool::GiftVouchers, ServiceTradeTool::Deposits, ServiceTradeTool::ClientNotes, ServiceTradeTool::Broadcasts, ServiceTradeTool::StaffAttendance];
+        $fitness = [ServiceTradeTool::ServiceMenu, ServiceTradeTool::Appointments, ServiceTradeTool::StaffEarnings, ServiceTradeTool::Memberships, ServiceTradeTool::CheckIns, ServiceTradeTool::ClientNotes, ServiceTradeTool::Broadcasts, ServiceTradeTool::StaffAttendance];
+
+        return match ($this) {
+            self::RepairWorkshop => [ServiceTradeTool::JobCards, ServiceTradeTool::ServiceMenu, ServiceTradeTool::Deposits, ServiceTradeTool::StaffEarnings, ServiceTradeTool::ClientNotes, ServiceTradeTool::StaffAttendance],
+            self::Salon, self::Spa => $beauty,
+            self::Gym => [...$fitness, ServiceTradeTool::Biometric],
+            self::PersonalTraining => $fitness,
+            default => [],
+        };
+    }
+
+    /**
+     * Related trades one shop may also run (a salon that is also a spa, a gym
+     * with personal training). Only these pairs combine; nothing else does.
+     *
+     * @return list<self>
+     */
+    public function combinesWith(): array
+    {
+        return match ($this) {
+            self::Salon => [self::Spa],
+            self::Spa => [self::Salon],
+            self::Gym => [self::PersonalTraining],
+            self::PersonalTraining => [self::Gym],
+            default => [],
+        };
+    }
+
+    /**
+     * The values in $addons this trade may combine with, in order, once each.
+     *
+     * @return list<string>
+     */
+    public function cleanAddons(array $addons): array
+    {
+        $allowed = array_map(fn (self $c) => $c->value, $this->combinesWith());
+
+        return array_values(array_unique(array_filter(array_map('strval', $addons), fn ($v) => in_array($v, $allowed, true))));
+    }
+
+    /** @return list<string> service categories a new service business starts with */
+    public function starterServiceCategories(): array
+    {
+        return match ($this) {
+            self::RepairWorkshop => ['Labour', 'Site visits'],
+            self::Salon => ['Hair', 'Skin', 'Nails', 'Makeup'],
+            self::Spa => ['Massage', 'Skin', 'Body'],
+            self::Gym => ['Memberships', 'Personal training', 'Classes'],
+            self::PersonalTraining => ['Personal training', 'Classes'],
             default => [],
         };
     }
@@ -111,6 +199,9 @@ enum BusinessCategory: string
             self::Bakery => ['Bakery', 'Sweets'],
             self::Clothing => ['Men', 'Women', 'Kids'],
             self::Pharmacy => ['Medicines', 'Personal care'],
+            self::RepairWorkshop => ['Spare parts'],
+            self::Salon, self::Spa => ['Retail products'],
+            self::Gym, self::PersonalTraining => ['Supplements', 'Accessories'],
             default => [],
         };
     }

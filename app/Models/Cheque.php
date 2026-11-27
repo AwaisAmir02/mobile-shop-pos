@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\ChequeDirection;
+use App\Enums\ChequeStatus;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,15 +16,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Cheque extends Model
 {
     use BelongsToShop;
-
-    public const RECEIVED = 'received';
-    public const ISSUED = 'issued';
-
-    public const PENDING = 'pending';
-    public const DEPOSITED = 'deposited';
-    public const CLEARED = 'cleared';
-    public const BOUNCED = 'bounced';
-    public const CANCELLED = 'cancelled';
 
     protected $fillable = [
         'shop_id', 'direction', 'customer_id', 'vendor_id', 'cheque_number', 'bank', 'amount', 'cheque_date', 'received_on', 'status',
@@ -39,6 +32,8 @@ class Cheque extends Model
             'cleared_on' => 'date',
             'bounced_on' => 'date',
             'applied_to' => 'array',
+            'direction' => ChequeDirection::class,
+            'status' => ChequeStatus::class,
         ];
     }
 
@@ -69,12 +64,12 @@ class Cheque extends Model
 
     public function isReceived(): bool
     {
-        return $this->direction === self::RECEIVED;
+        return $this->direction === ChequeDirection::Received;
     }
 
     public function isOpen(): bool
     {
-        return in_array($this->status, [self::PENDING, self::DEPOSITED], true);
+        return $this->status->isOpen();
     }
 
     public function partyName(): string
@@ -89,12 +84,6 @@ class Cheque extends Model
 
     public function statusLabel(): string
     {
-        return match ($this->status) {
-            self::PENDING => 'In hand',
-            self::DEPOSITED => 'Deposited',
-            self::CLEARED => 'Cleared',
-            self::BOUNCED => 'Bounced',
-            default => 'Cancelled',
-        };
+        return $this->status->label();
     }
 }

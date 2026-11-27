@@ -34,6 +34,8 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
     public string $customerId = '';
     public string $invoiceDiscount = '0';
     public string $amountPaid = '';
+    // O2, online sellers only (OnlineTool::Delivery): what the customer pays for delivery, part of the sale.
+    public string $deliveryCharge = '';
     public string $rejectReason = '';
 
     public function mount(WhatsAppOrder $order): void
@@ -134,7 +136,17 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
     {
         $subtotal = $this->subtotal();
 
-        return round(max(0.0, $subtotal - min(max(0, (float) $this->invoiceDiscount), $subtotal)), 2);
+        return round(max(0.0, $subtotal - min(max(0, (float) $this->invoiceDiscount), $subtotal)) + $this->deliveryChargeValue(), 2);
+    }
+
+    protected function chargesDelivery(): bool
+    {
+        return (bool) Auth::user()->shop?->usesTool(\App\Enums\OnlineTool::Delivery);
+    }
+
+    public function deliveryChargeValue(): float
+    {
+        return $this->chargesDelivery() && is_numeric($this->deliveryCharge) ? round(max(0.0, (float) $this->deliveryCharge), 2) : 0.0;
     }
 
     protected function authorizeDecision(): void
@@ -150,7 +162,7 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
             'invoiceDiscount' => ['required', 'numeric', 'min:0'],
             'amountPaid' => ['nullable', 'numeric', 'min:0'],
             'customerId' => ['nullable', 'integer', Rule::exists('customers', 'id')->where('shop_id', Auth::user()->shop_id)],
-        ];
+        ] + ($this->chargesDelivery() ? ['deliveryCharge' => ['nullable', 'numeric', 'min:0', 'max:100000']] : []);
 
         foreach ($this->activeLines() as $id => $line) {
             $rules["lines.$id.quantity"] = QuantityUnit::fromValue($line['unit'] ?? 'piece')->quantityRules();
@@ -185,6 +197,7 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
                 userId: Auth::id(),
                 paymentMethod: $paymentMethod,
                 shopAccountId: $shopAccountId,
+                deliveryCharge: $this->deliveryChargeValue(),
             );
         } catch (ValidationException $e) {
             $errors = [];
@@ -361,6 +374,12 @@ new #[Layout('layouts.app')] #[Title('WhatsApp Order')] class extends Component
                         <x-ui.field label="Invoice discount" name="invoiceDiscount" for="invoiceDiscount">
                             <x-ui.input wire:model.live.debounce.400ms="invoiceDiscount" id="invoiceDiscount" type="number" step="0.01" min="0" />
                         </x-ui.field>
+
+                        @if ($this->chargesDelivery())
+                            <x-ui.field label="Delivery charge" name="deliveryCharge" for="deliveryCharge" help="Added to the bill">
+                                <x-ui.input wire:model.live.debounce.400ms="deliveryCharge" id="deliveryCharge" type="number" step="1" min="0" placeholder="0" />
+                            </x-ui.field>
+                        @endif
 
                         <x-ui.field label="Amount paid now" name="amountPaid" for="amountPaid" help="Leave blank if paid in full. Anything unpaid shows as this customer's sale balance.">
                             <x-ui.input wire:model.live.debounce.400ms="amountPaid" id="amountPaid" type="number" step="0.01" min="0" :placeholder="number_format($this->total(), 2, '.', '')" />

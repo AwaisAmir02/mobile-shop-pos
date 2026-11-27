@@ -4,7 +4,7 @@
         <h2 class="text-lg font-semibold text-slate-900">On the roadmap</h2>
         <p class="text-sm text-slate-500">Planned, not available yet — not part of any plan today.</p>
     </div>
-    <ul class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+    <ul @class(['mt-5 grid grid-cols-1 gap-4', 'md:grid-cols-2' => count(\App\Support\SiteFeatures::ROADMAP) === 2, 'md:grid-cols-3' => count(\App\Support\SiteFeatures::ROADMAP) !== 2])>
         @foreach (\App\Support\SiteFeatures::ROADMAP as [$module, $text])
             <li class="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200">
                 <p class="flex flex-wrap items-center gap-2 font-semibold text-slate-900">{{ $module }} <span class="rounded-full bg-accent-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-700">Coming soon</span></p>

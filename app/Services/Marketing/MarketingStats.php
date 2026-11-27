@@ -34,7 +34,7 @@ class MarketingStats
             ->get()
             ->keyBy(fn ($row) => $row->source instanceof SaleSource ? $row->source->value : $row->source);
 
-        return collect(SaleSource::cases())->mapWithKeys(fn (SaleSource $source) => [$source->value => [
+        return collect(SaleSource::cases())->reject(fn (SaleSource $source) => $source->listedOnlyWhenUsed() && ! isset($rows[$source->value]))->mapWithKeys(fn (SaleSource $source) => [$source->value => [
             'label' => $source->label(),
             'orders' => (int) ($rows[$source->value]->orders ?? 0),
             'revenue' => (float) ($rows[$source->value]->revenue ?? 0),

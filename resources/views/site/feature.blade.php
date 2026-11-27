@@ -1,23 +1,15 @@
 @php
+    // A capability page (SiteFeatures). Business-type pages use site.industry.
     $mockup = $feature['mockup'];
-    $related = collect($feature['related'])->mapWithKeys(fn ($relatedSlug) => [$relatedSlug => \App\Support\SiteFeatures::find($relatedSlug)]);
-    // The same page layout serves capability pages (/features/…) and business-type pages (/industries/…).
-    $isIndustry = ($kind ?? 'feature') === 'industry';
-    $section = $isIndustry
-        ? ['label' => 'Industries', 'url' => route('site.industries'), 'back' => 'All industries', 'page' => route('site.industry', $slug)]
-        : ['label' => 'Features', 'url' => route('site.features'), 'back' => 'All '.config('branding.name').' features', 'page' => route('site.feature', $slug)];
 @endphp
 
-<x-site.layout :title="$feature['seo_title']" :description="$feature['description']" :breadcrumbs="[['Home', route('home')], [$section['label'], $section['url']], [$feature['name'], $section['page']]]">
+<x-site.layout :title="$feature['seo_title']" :description="$feature['description']" :breadcrumbs="[['Home', route('home')], ['Features', route('site.features')], [$feature['name'], route('site.feature', $slug)]]">
     <x-site.page-hero :eyebrow="$feature['eyebrow']" :title="$feature['title']" :lead="$feature['lead']">
         @if (! empty($feature['notice']))
-            <div class="mx-auto mt-8 flex max-w-2xl items-start gap-3 rounded-2xl border border-accent-200 bg-accent-50 p-4 text-left" role="note" data-reveal style="--reveal-delay: 200ms">
-                <span class="mt-0.5 shrink-0 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">{{ $feature['badge'] ?? 'Note' }}</span>
-                <p class="text-sm leading-6 text-slate-700">{{ $feature['notice'] }}</p>
-            </div>
+            <x-site.notice :badge="$feature['badge'] ?? null" :text="$feature['notice']" />
         @endif
         <p class="mt-8" data-reveal style="--reveal-delay: 240ms">
-            <a href="{{ $section['url'] }}" class="text-sm font-semibold text-brand-700 hover:text-brand-800">&larr; {{ $section['back'] }}</a>
+            <a href="{{ route('site.features') }}" class="text-sm font-semibold text-brand-700 hover:text-brand-800">&larr; All {{ config('branding.name') }} features</a>
         </p>
     </x-site.page-hero>
 
@@ -76,15 +68,7 @@
         <section>
             <div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
                 <h2 class="sr-only">{{ $feature['name'] }}</h2>
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                    @foreach ($feature['items'] as $i => [$icon, $title, $text])
-                        <div class="rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-brand-950/5" data-reveal style="--reveal-delay: {{ ($i % 4) * 70 }}ms">
-                            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-50 text-accent-600"><x-site.icon :name="$icon" class="h-5 w-5" /></span>
-                            <h3 class="mt-4 font-semibold text-slate-900">{{ $title }}</h3>
-                            <p class="mt-2 text-sm leading-6 text-slate-600">{{ $text }}</p>
-                        </div>
-                    @endforeach
-                </div>
+                <x-site.item-grid :items="$feature['items']" />
             </div>
         </section>
     @endif
@@ -105,32 +89,10 @@
     @endif
 
     @if (! empty($feature['spotlights']))
-        <section class="bg-slate-50">
-            <div @class(['mx-auto grid grid-cols-1 gap-6 px-4 py-20 sm:px-6 lg:px-8', 'max-w-3xl' => count($feature['spotlights']) === 1, 'max-w-5xl md:grid-cols-2' => count($feature['spotlights']) > 1])>
-                @foreach ($feature['spotlights'] as $i => [$title, $text])
-                    <div class="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200" data-reveal style="--reveal-delay: {{ $i * 90 }}ms">
-                        <h2 class="text-lg font-semibold text-slate-900">{{ $title }}</h2>
-                        <p class="mt-2 text-slate-600">{{ $text }}</p>
-                    </div>
-                @endforeach
-            </div>
-        </section>
+        <x-site.spotlights :spotlights="$feature['spotlights']" />
     @endif
 
-    <section class="border-t border-slate-100">
-        <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-            <h2 class="text-sm font-semibold uppercase tracking-[0.18em] text-accent-600">Related features</h2>
-            <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-3">
-                @foreach ($related as $relatedSlug => $relatedFeature)
-                    <a href="{{ route('site.feature', $relatedSlug) }}" class="group rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-950/5">
-                        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><x-site.icon :name="$relatedFeature['icon']" class="h-5 w-5" /></span>
-                        <h3 class="mt-4 font-semibold text-slate-900 group-hover:text-brand-700">{{ $relatedFeature['name'] }}</h3>
-                        <p class="mt-2 text-sm leading-6 text-slate-600">{{ $relatedFeature['summary'] }}</p>
-                    </a>
-                @endforeach
-            </div>
-        </div>
-    </section>
+    <x-site.related-features :slugs="$feature['related']" />
 
     <x-site.cta />
 </x-site.layout>

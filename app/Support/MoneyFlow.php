@@ -57,6 +57,7 @@ class MoneyFlow
         'sale' => 'Sales',
         'refund' => 'Refunds',
         'credit' => 'Store credit paid out',
+        'prepaid' => 'Deposits & gift vouchers',
         'udhaar' => 'Udhaar',
         'counter' => 'Counter services',
         'wallet' => 'Wallet Loads',
@@ -120,8 +121,10 @@ class MoneyFlow
     {
         $rows = collect()
             ->concat($this->sales($from, $to))
+            ->concat($this->courierPayouts($from, $to))
             ->concat($this->refunds($from, $to))
             ->concat($this->creditCashOuts($from, $to))
+            ->concat($this->prepaid($from, $to))
             ->concat($this->udhaar($from, $to))
             ->concat($this->counterPayments($from, $to))
             ->concat($this->walletPrincipal($from, $to))
@@ -252,7 +255,9 @@ class MoneyFlow
             ->where('sales.status', '!=', 'cancelled')
             // A traded-in phone, store credit or an exchange pays part of a sale without any money moving.
             // A contra sets bills off against what the shop owes the same party: no money either.
-            ->where(fn ($q) => $q->whereNull('sale_payments.payment_method')->orWhereNotIn('sale_payments.payment_method', ['trade_in', 'store_credit', 'exchange', 'contra']))
+            // Cash a courier collected arrives with its payout, net of deductions (courierPayouts()).
+            // A gift voucher or deposit was money when it came in (prepaid()).
+            ->where(fn ($q) => $q->whereNull('sale_payments.payment_method')->orWhereNotIn('sale_payments.payment_method', ['trade_in', 'store_credit', 'exchange', 'contra', 'courier', 'gift_voucher', 'deposit']))
             ->when($from, fn ($q) => $q->where('sale_payments.payment_date', '>=', $from))
             ->when($to, fn ($q) => $q->where('sale_payments.payment_date', '<=', $to))
             ->get(['sale_payments.id', 'sale_payments.amount', 'sale_payments.payment_date', 'sale_payments.payment_method', 'sale_payments.shop_account_id', 'sales.id as sale_id', 'sales.branch_id'])
@@ -263,6 +268,26 @@ class MoneyFlow
                 'sale',
                 'Sale INV-'.str_pad((string) $row->sale_id, 6, '0', STR_PAD_LEFT),
                 ['sales.show', $row->sale_id],
+                $row->id,
+            ))->all();
+    }
+
+    /** A courier's payout (O4): what reached the account, after its charges and tax. Counted with sales. */
+    private function courierPayouts(?string $from, ?string $to): array
+    {
+        return DB::table('courier_settlements')
+            ->where('shop_id', $this->shopId)
+            ->where('status', '!=', 'cancelled')
+            ->when($from, fn ($q) => $q->where('settlement_date', '>=', $from))
+            ->when($to, fn ($q) => $q->where('settlement_date', '<=', $to))
+            ->get()
+            ->map(fn ($row) => $this->row(
+                $this->dateOf($row->settlement_date),
+                $this->bucketFor($row->payment_method, $row->shop_account_id, null),
+                (float) $row->net_amount,
+                'sale',
+                'Courier payout CS-'.str_pad((string) $row->id, 6, '0', STR_PAD_LEFT),
+                ['courier-settlements.show', $row->id],
                 $row->id,
             ))->all();
     }
@@ -306,6 +331,37 @@ class MoneyFlow
                 ['customers.show', $row->customer_id],
                 $row->id,
             ))->all();
+    }
+
+    /**
+     * Money paid ahead (Services group): a deposit when it is received and
+     * when any of it is refunded, a gift voucher when it is sold. Using either
+     * on a bill later moves no money. A deposit the shop keeps stays in.
+     */
+    private function prepaid(?string $from, ?string $to): array
+    {
+        $rows = [];
+        $between = fn ($q, string $column) => $q->when($from, fn ($q) => $q->where($column, '>=', $from))->when($to, fn ($q) => $q->where($column, '<=', $to));
+
+        $deposits = DB::table('customer_deposits')->join('customers', 'customers.id', '=', 'customer_deposits.customer_id')
+            ->where('customer_deposits.shop_id', $this->shopId)->where('customer_deposits.status', '!=', 'cancelled');
+
+        foreach ($between(clone $deposits, 'customer_deposits.received_on')->get(['customer_deposits.*', 'customers.name as customer_name']) as $row) {
+            $rows[] = $this->row($this->dateOf($row->received_on), $this->bucketFor($row->payment_method, $row->shop_account_id, $row->branch_id), (float) $row->amount, 'prepaid',
+                'Deposit DP-'.str_pad((string) $row->id, 6, '0', STR_PAD_LEFT).': '.$row->customer_name, ['customers.show', $row->customer_id], $row->id);
+        }
+
+        foreach ($between((clone $deposits)->where('customer_deposits.refunded', '>', 0), 'customer_deposits.refunded_on')->get(['customer_deposits.*', 'customers.name as customer_name']) as $row) {
+            $rows[] = $this->row($this->dateOf($row->refunded_on), $this->bucketFor($row->refund_method, $row->refund_account_id, $row->branch_id), -(float) $row->refunded, 'prepaid',
+                'Deposit refunded DP-'.str_pad((string) $row->id, 6, '0', STR_PAD_LEFT).': '.$row->customer_name, ['customers.show', $row->customer_id], $row->id);
+        }
+
+        foreach ($between(DB::table('gift_vouchers')->where('shop_id', $this->shopId)->where('status', '!=', 'cancelled'), 'sold_on')->get() as $row) {
+            $rows[] = $this->row($this->dateOf($row->sold_on), $this->bucketFor($row->payment_method, $row->shop_account_id, $row->branch_id), (float) $row->amount, 'prepaid',
+                'Gift voucher '.$row->code.' sold', ['gift-vouchers.index', []], $row->id);
+        }
+
+        return $rows;
     }
 
     private function udhaar(?string $from, ?string $to): array

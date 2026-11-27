@@ -101,7 +101,7 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
             // Sold at a trade price (PriceTiers): that stays the line's price, and its list price.
             if ($firstItem->price_tier !== null && $firstItem->list_price !== null) {
                 $this->cart[$product->id]['list_price'] = (string) (float) $firstItem->list_price;
-                $this->cart[$product->id]['price_tier'] = $firstItem->price_tier;
+                $this->cart[$product->id]['price_tier'] = $firstItem->price_tier->value;
             }
         }
     }
@@ -267,7 +267,8 @@ new #[Layout('layouts.app')] #[Title('Edit Sale')] class extends Component
 
     public function total(): float
     {
-        return round(max(0.0, $this->subtotal() - min((float) $this->invoiceDiscount, $this->subtotal())), 2);
+        // A delivery charge (O2) isn't edited here; it stays on the sale as it was.
+        return round(max(0.0, $this->subtotal() - min((float) $this->invoiceDiscount, $this->subtotal())) + (float) $this->sale->delivery_charge, 2);
     }
 
     public function alreadyPaid(): float

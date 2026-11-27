@@ -21,6 +21,10 @@ enum CourierKey: string
     case Tcs = 'tcs';
     case Trax = 'trax';
     case MnP = 'mnp';
+    /** Any other courier, named on the parcel (Shipment::courier_name). Typed in by hand only, never connected. */
+    case Other = 'other';
+    /** O6: the marketplace delivers its own orders and pays them out net of its fees, as a courier does. Never connected or typed in. */
+    case Daraz = 'daraz';
 
     public function label(): string
     {
@@ -30,6 +34,8 @@ enum CourierKey: string
             self::Tcs => 'TCS',
             self::Trax => 'Trax',
             self::MnP => 'M&P',
+            self::Other => 'Other courier',
+            self::Daraz => 'Daraz',
         };
     }
 
@@ -57,6 +63,18 @@ enum CourierKey: string
             self::MnP => 'M&P has no public API documentation. Coming once M&P gives us access.',
             default => null,
         };
+    }
+
+    /** The couriers listed under Settings › Couriers: every real one, ready or coming later. */
+    public static function connectable(): array
+    {
+        return array_values(array_filter(self::cases(), fn (self $courier) => ! in_array($courier, [self::Other, self::Daraz], true)));
+    }
+
+    /** The couriers a parcel can be typed in for: every one but the marketplace, which books its own. */
+    public static function typedIn(): array
+    {
+        return array_values(array_filter(self::cases(), fn (self $courier) => $courier !== self::Daraz));
     }
 
     /** @return array<int, self> */

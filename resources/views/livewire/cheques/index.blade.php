@@ -1,6 +1,8 @@
 <?php
 
 use App\Actions\Cheques;
+use App\Enums\ChequeDirection;
+use App\Enums\ChequeStatus;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Cheque;
 use App\Models\Customer;
@@ -51,8 +53,7 @@ new #[Layout('layouts.app')] #[Title('Cheques')] class extends Component
 
     public function mount(): void
     {
-        abort_unless(Auth::user()->shop?->usesTool('cheques'), 404);
-        $this->direction = in_array($this->direction, [Cheque::RECEIVED, Cheque::ISSUED], true) ? $this->direction : Cheque::RECEIVED;
+        $this->direction = ChequeDirection::tryFrom($this->direction)?->value ?? ChequeDirection::Received->value;
         $this->partyId = (string) request()->query('customer', '');
 
         if ($this->partyId !== '') {
@@ -68,8 +69,8 @@ new #[Layout('layouts.app')] #[Title('Cheques')] class extends Component
 
     public function updatedDirection(): void
     {
-        if ($this->direction === Cheque::ISSUED && ! $this->canIssue()) {
-            $this->direction = Cheque::RECEIVED;
+        if ($this->direction === ChequeDirection::Issued->value && ! $this->canIssue()) {
+            $this->direction = ChequeDirection::Received->value;
         }
     }
 
@@ -84,8 +85,8 @@ new #[Layout('layouts.app')] #[Title('Cheques')] class extends Component
 
     public function record(): void
     {
-        abort_if($this->direction === Cheque::ISSUED && ! $this->canIssue(), 403);
-        $this->validate(Cheques::rules() + ['shopAccountId' => ['nullable', 'integer']], [], ['partyId' => $this->direction === Cheque::RECEIVED ? 'customer' : 'vendor', 'chequeNumber' => 'cheque number', 'chequeDate' => 'cheque date', 'receivedOn' => 'date']);
+        abort_if($this->direction === ChequeDirection::Issued->value && ! $this->canIssue(), 403);
+        $this->validate(Cheques::rules() + ['shopAccountId' => ['nullable', 'integer']], [], ['partyId' => $this->direction === ChequeDirection::Received->value ? 'customer' : 'vendor', 'chequeNumber' => 'cheque number', 'chequeDate' => 'cheque date', 'receivedOn' => 'date']);
 
         $cheque = Cheques::record([
             'direction' => $this->direction,
@@ -134,7 +135,7 @@ new #[Layout('layouts.app')] #[Title('Cheques')] class extends Component
         $this->toastSuccess(match ($this->action) {
             'deposit' => 'Marked deposited.',
             'clear' => 'Cleared. The money has been put against what is owed.',
-            'bounce' => $cheque->status === Cheque::CLEARED ? 'Marked bounced. What it paid is owed again.' : 'Marked bounced.',
+            'bounce' => $cheque->status === ChequeStatus::Cleared ? 'Marked bounced. What it paid is owed again.' : 'Marked bounced.',
             default => 'Cheque cancelled.',
         });
     }
@@ -146,17 +147,17 @@ new #[Layout('layouts.app')] #[Title('Cheques')] class extends Component
 
         return [
             'cheques' => (clone $base)
-                ->when($this->status === 'open', fn ($q) => $q->whereIn('status', [Cheque::PENDING, Cheque::DEPOSITED]))
+                ->when($this->status === 'open', fn ($q) => $q->whereIn('status', array_column(ChequeStatus::open(), 'value')))
                 ->when(! in_array($this->status, ['open', 'all'], true), fn ($q) => $q->where('status', $this->status))
                 ->with(['customer', 'vendor', 'shopAccount'])
                 ->orderBy($this->status === 'open' ? 'cheque_date' : 'id', $this->status === 'open' ? 'asc' : 'desc')
                 ->limit(200)
                 ->get(),
-            'inHand' => (float) (clone $base)->whereIn('status', [Cheque::PENDING, Cheque::DEPOSITED])->sum('amount'),
-            'dueNow' => (float) (clone $base)->whereIn('status', [Cheque::PENDING, Cheque::DEPOSITED])->where('cheque_date', '<=', now()->parse($today)->addDays(7)->toDateString())->sum('amount'),
-            'bouncedMonth' => (float) (clone $base)->where('status', Cheque::BOUNCED)->where('bounced_on', '>=', now()->parse($today)->startOfMonth()->toDateString())->sum('amount'),
+            'inHand' => (float) (clone $base)->whereIn('status', array_column(ChequeStatus::open(), 'value'))->sum('amount'),
+            'dueNow' => (float) (clone $base)->whereIn('status', array_column(ChequeStatus::open(), 'value'))->where('cheque_date', '<=', now()->parse($today)->addDays(7)->toDateString())->sum('amount'),
+            'bouncedMonth' => (float) (clone $base)->where('status', ChequeStatus::Bounced->value)->where('bounced_on', '>=', now()->parse($today)->startOfMonth()->toDateString())->sum('amount'),
             'today' => $today,
-            'parties' => $this->direction === Cheque::RECEIVED ? Customer::query()->orderBy('name')->get() : Vendor::query()->orderBy('name')->get(),
+            'parties' => $this->direction === ChequeDirection::Received->value ? Customer::query()->orderBy('name')->get() : Vendor::query()->orderBy('name')->get(),
             'accounts' => ShopAccount::query()->orderBy('name')->get(),
             'canIssue' => $this->canIssue(),
             'acting' => $this->actingId ? Cheque::find($this->actingId) : null,
@@ -170,7 +171,7 @@ new #[Layout('layouts.app')] #[Title('Cheques')] class extends Component
     </x-slot>
 
     <x-ui.stat-row>
-        <x-ui.stat :label="$direction === 'received' ? 'In hand' : 'Given, not cleared'" value="Rs {{ number_format($inHand, 2) }}" sub="Not yet cleared" />
+        <x-ui.stat :label="$direction === ChequeDirection::Received->value ? 'In hand' : 'Given, not cleared'" value="Rs {{ number_format($inHand, 2) }}" sub="Not yet cleared" />
         <x-ui.stat label="Due within 7 days" value="Rs {{ number_format($dueNow, 2) }}" sub="Cheque date today or in the next week" />
         <x-ui.stat label="Bounced this month" value="Rs {{ number_format($bouncedMonth, 2) }}" />
     </x-ui.stat-row>
@@ -198,7 +199,7 @@ new #[Layout('layouts.app')] #[Title('Cheques')] class extends Component
     @if ($cheques->isEmpty())
         <x-ui.empty-state title="No cheques here" description="Record a cheque when a customer hands one over, or when you give one to a vendor." />
     @else
-        <x-ui.table stack :headers="['Cheque', $direction === 'received' ? 'From' : 'To', 'Cheque date', 'Amount', 'Status', '']">
+        <x-ui.table stack :headers="['Cheque', $direction === ChequeDirection::Received->value ? 'From' : 'To', 'Cheque date', 'Amount', 'Status', '']">
             @foreach ($cheques as $cheque)
                 @php($late = $cheque->isOpen() && $cheque->cheque_date->toDateString() <= $today)
                 <x-ui.table-row wire:key="cheque-{{ $cheque->id }}" data-cheque="{{ $cheque->id }}">
@@ -206,19 +207,19 @@ new #[Layout('layouts.app')] #[Title('Cheques')] class extends Component
                         <span class="font-semibold text-ink">{{ $cheque->cheque_number }}</span>
                         <span class="block text-xs text-ink-faint">{{ $cheque->bank }}{{ $cheque->shopAccount ? ' · '.$cheque->shopAccount->name : '' }}</span>
                     </x-ui.table-cell>
-                    <x-ui.table-cell label="{{ $direction === 'received' ? 'From' : 'To' }}">{{ $cheque->partyName() }}</x-ui.table-cell>
+                    <x-ui.table-cell label="{{ $direction === ChequeDirection::Received->value ? 'From' : 'To' }}">{{ $cheque->partyName() }}</x-ui.table-cell>
                     <x-ui.table-cell label="Cheque date" @class(['font-semibold text-warning' => $late])>{{ $cheque->cheque_date->format('d M Y') }}{{ $late ? ' · can be banked' : '' }}</x-ui.table-cell>
                     <x-ui.table-cell label="Amount" class="font-semibold tabular-nums text-ink">Rs {{ number_format($cheque->amount, 2) }}</x-ui.table-cell>
                     <x-ui.table-cell label="Status">
-                        <x-ui.badge :variant="match ($cheque->status) { 'cleared' => 'success', 'bounced' => 'danger', 'cancelled' => 'default', default => 'warning' }">{{ $cheque->statusLabel() }}</x-ui.badge>
+                        <x-ui.badge :variant="match ($cheque->status) { ChequeStatus::Cleared => 'success', ChequeStatus::Bounced => 'danger', ChequeStatus::Cancelled => 'default', default => 'warning' }">{{ $cheque->statusLabel() }}</x-ui.badge>
                         @if ($cheque->bounce_reason)
                             <span class="block text-xs text-ink-faint">{{ $cheque->bounce_reason }}</span>
                         @endif
                     </x-ui.table-cell>
                     <x-ui.table-cell actions align="right">
-                        @if ($cheque->isOpen() || $cheque->status === 'cleared')
+                        @if ($cheque->isOpen() || $cheque->status === ChequeStatus::Cleared)
                             <x-ui.row-actions label="Actions for cheque {{ $cheque->cheque_number }}">
-                                @if ($cheque->isReceived() && $cheque->status === 'pending')
+                                @if ($cheque->isReceived() && $cheque->status === ChequeStatus::Pending)
                                     <x-ui.menu-item wire:click="openAction({{ $cheque->id }}, 'deposit')">Deposited</x-ui.menu-item>
                                 @endif
                                 @if ($cheque->isOpen())
@@ -239,10 +240,10 @@ new #[Layout('layouts.app')] #[Title('Cheques')] class extends Component
 
     <x-ui.modal name="cheque-form" max-width="lg">
         <form wire:submit="record" class="p-6">
-            <h2 class="text-lg font-bold text-ink">{{ $direction === 'received' ? 'Cheque Received' : 'Cheque Issued' }}</h2>
-            <p class="mt-1 text-sm text-ink-muted">{{ $direction === 'received' ? 'Nothing is paid off until it clears. Then it pays their udhaar, then their oldest bills.' : 'The vendor is paid when it clears, oldest stock first.' }}</p>
+            <h2 class="text-lg font-bold text-ink">{{ $direction === ChequeDirection::Received->value ? 'Cheque Received' : 'Cheque Issued' }}</h2>
+            <p class="mt-1 text-sm text-ink-muted">{{ $direction === ChequeDirection::Received->value ? 'Nothing is paid off until it clears. Then it pays their udhaar, then their oldest bills.' : 'The vendor is paid when it clears, oldest stock first.' }}</p>
             <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <x-ui.field :label="$direction === 'received' ? 'Customer' : 'Vendor'" name="partyId" for="partyId" class="sm:col-span-2">
+                <x-ui.field :label="$direction === ChequeDirection::Received->value ? 'Customer' : 'Vendor'" name="partyId" for="partyId" class="sm:col-span-2">
                     <div wire:key="party-{{ $direction }}-{{ $partyId }}">
                         <x-ui.select wire:model="partyId" id="partyId">
                             <option value="">Choose…</option>
@@ -264,10 +265,10 @@ new #[Layout('layouts.app')] #[Title('Cheques')] class extends Component
                 <x-ui.field label="Cheque date" name="chequeDate" for="chequeDate" help="The date written on it">
                     <x-ui.input wire:model="chequeDate" id="chequeDate" type="date" />
                 </x-ui.field>
-                <x-ui.field :label="$direction === 'received' ? 'Received on' : 'Given on'" name="receivedOn" for="receivedOn">
+                <x-ui.field :label="$direction === ChequeDirection::Received->value ? 'Received on' : 'Given on'" name="receivedOn" for="receivedOn">
                     <x-ui.input wire:model="receivedOn" id="receivedOn" type="date" max="{{ $today }}" />
                 </x-ui.field>
-                @if ($direction === 'issued')
+                @if ($direction === ChequeDirection::Issued->value)
                     <x-ui.field label="Drawn on" name="shopAccountId" for="drawnOn">
                         <x-ui.select wire:model="shopAccountId" id="drawnOn">
                             <option value="">Choose an account…</option>
@@ -310,7 +311,7 @@ new #[Layout('layouts.app')] #[Title('Cheques')] class extends Component
                         <x-ui.field label="Why it bounced" name="bounceReason" for="bounceReason" help="As the bank wrote it">
                             <x-ui.input wire:model="bounceReason" id="bounceReason" maxlength="255" placeholder="e.g. Insufficient funds" />
                         </x-ui.field>
-                        @if ($acting->status === 'cleared')
+                        @if ($acting->status === ChequeStatus::Cleared)
                             <x-ui.alert variant="warning">It had cleared, so what it paid will be owed again, and the money leaves {{ $acting->shopAccount?->name ?? 'the account' }} today.</x-ui.alert>
                         @endif
                     @else

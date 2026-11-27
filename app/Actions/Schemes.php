@@ -3,11 +3,12 @@
 namespace App\Actions;
 
 use App\Enums\SaleStatus;
+use App\Enums\SchemeClaimStatus;
+use App\Enums\VendorCreditSource;
 use App\Models\Sale;
 use App\Models\Scheme;
 use App\Models\SchemeClaim;
 use App\Models\SchemeRedemption;
-use App\Models\VendorCredit;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -78,7 +79,7 @@ class Schemes
                 'vendor_id' => $vendorId,
                 'claimed_on' => now()->toDateString(),
                 'claimed_amount' => round((float) $redemptions->sum('cost_value'), 2),
-                'status' => 'submitted',
+                'status' => SchemeClaimStatus::Submitted,
                 'note' => filled($note) ? $note : null,
                 'user_id' => $userId,
             ]);
@@ -100,7 +101,7 @@ class Schemes
             $claim = SchemeClaim::whereKey($claim->id)->lockForUpdate()->firstOrFail();
             $amount = round($amount, 2);
 
-            if ($claim->status !== 'submitted') {
+            if ($claim->status !== SchemeClaimStatus::Submitted) {
                 throw ValidationException::withMessages(['settleAmount' => 'This claim is already '.$claim->status.'.']);
             }
 
@@ -111,7 +112,7 @@ class Schemes
             $credit = null;
 
             if ($amount > 0) {
-                $credit = VendorCredits::issue($claim->vendor_id, $amount, VendorCredit::CLAIM, $claim->id, $userId, $claim->number(), $settlement === 'credit');
+                $credit = VendorCredits::issue($claim->vendor_id, $amount, VendorCreditSource::Claim, $claim->id, $userId, $claim->number(), $settlement === 'credit');
 
                 if ($settlement === 'cash') {
                     VendorCredits::refund($credit, $amount, $method, $shopAccountId, $userId);
@@ -119,7 +120,7 @@ class Schemes
             }
 
             $claim->update([
-                'status' => 'settled',
+                'status' => SchemeClaimStatus::Settled,
                 'settled_amount' => $amount,
                 'settled_on' => now()->toDateString(),
                 'settlement' => $settlement,
@@ -136,12 +137,12 @@ class Schemes
         DB::transaction(function () use ($claim) {
             $claim = SchemeClaim::whereKey($claim->id)->lockForUpdate()->firstOrFail();
 
-            if ($claim->status !== 'submitted') {
+            if ($claim->status !== SchemeClaimStatus::Submitted) {
                 throw ValidationException::withMessages(['claim' => 'Only a claim not yet settled can be withdrawn.']);
             }
 
             SchemeRedemption::where('scheme_claim_id', $claim->id)->update(['scheme_claim_id' => null]);
-            $claim->update(['status' => 'cancelled']);
+            $claim->update(['status' => SchemeClaimStatus::Cancelled]);
         });
     }
 
@@ -160,15 +161,15 @@ class Schemes
             ->groupBy(fn (SchemeRedemption $r) => $r->scheme->vendor_id)
             ->map(fn ($rows) => round((float) $rows->sum('cost_value'), 2));
 
-        $claims = SchemeClaim::query()->where('status', '!=', 'cancelled')->get()->groupBy('vendor_id');
+        $claims = SchemeClaim::query()->where('status', '!=', SchemeClaimStatus::Cancelled->value)->get()->groupBy('vendor_id');
         $vendorIds = $unclaimed->keys()->merge($claims->keys())->unique();
 
         return $vendorIds->map(fn ($id) => [
             'vendor_id' => (int) $id,
             'unclaimed' => $unclaimed[$id] ?? 0.0,
-            'waiting' => round((float) ($claims[$id] ?? collect())->where('status', 'submitted')->sum('claimed_amount'), 2),
-            'settled' => round((float) ($claims[$id] ?? collect())->where('status', 'settled')->sum('settled_amount'), 2),
-            'short' => round((float) ($claims[$id] ?? collect())->where('status', 'settled')->sum(fn ($c) => (float) $c->claimed_amount - (float) $c->settled_amount), 2),
+            'waiting' => round((float) ($claims[$id] ?? collect())->where('status', SchemeClaimStatus::Submitted)->sum('claimed_amount'), 2),
+            'settled' => round((float) ($claims[$id] ?? collect())->where('status', SchemeClaimStatus::Settled)->sum('settled_amount'), 2),
+            'short' => round((float) ($claims[$id] ?? collect())->where('status', SchemeClaimStatus::Settled)->sum(fn ($c) => (float) $c->claimed_amount - (float) $c->settled_amount), 2),
         ])->values();
     }
 }

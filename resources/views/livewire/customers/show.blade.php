@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\StoreCredit;
+use App\Enums\WholesaleTool;
 use App\Livewire\Concerns\ChoosesPaymentSource;
 use App\Livewire\Concerns\Toasts;
 use App\Models\Customer;
@@ -79,7 +80,7 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
         $this->toastSuccess('Rs '.number_format(abs((float) $entry->amount), 2).' of store credit paid out.');
     }
 
-    protected function wholesale(): bool
+    protected function isWholesale(): bool
     {
         return (bool) Auth::user()->shop?->isWholesale();
     }
@@ -87,7 +88,7 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
     /** Taking money against what the customer owes is the Udhaar permission's job. */
     protected function canReceive(): bool
     {
-        return $this->wholesale() && Auth::user()->hasAccessTo('udhaar');
+        return $this->isWholesale() && Auth::user()->hasAccessTo('udhaar');
     }
 
     public function openReceive(): void
@@ -127,19 +128,14 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
 
     public function downloadReceipt(int $id): \Symfony\Component\HttpFoundation\StreamedResponse
     {
-        abort_unless($this->wholesale(), 404);
-        $receipt = \App\Models\CustomerReceipt::query()->where('customer_id', $this->customer->id)->with(['customer.shop', 'user', 'shopAccount'])->findOrFail($id);
-        $output = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.customer-receipt', [
-            'receipt' => $receipt,
-            'balanceNow' => \App\Support\CustomerDuesStatement::for($this->customer)->total(),
-        ])->setPaper('a6')->output();
+        abort_unless($this->isWholesale(), 404);
 
-        return response()->streamDownload(fn () => print ($output), $receipt->number().'.pdf');
+        return app(\App\Services\CustomerReceiptPdfService::class)->download(\App\Models\CustomerReceipt::query()->where('customer_id', $this->customer->id)->findOrFail($id));
     }
 
     protected function canContra(): bool
     {
-        return (bool) Auth::user()->shop?->usesTool('contra') && $this->customer->vendor_id !== null
+        return (bool) Auth::user()->shop?->usesTool(WholesaleTool::Contra) && $this->customer->vendor_id !== null
             && Auth::user()->hasAccessTo('udhaar') && Auth::user()->hasAccessTo('vendors');
     }
 
@@ -181,22 +177,22 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
         return [
             'aging' => \App\ReportQueries\DuesAging::today()->forCustomer($this->customer),
             'creditCheck' => \App\Support\CreditControl::check($this->customer, 0),
-            'tierLabel' => $this->customer->price_tier === \App\Support\PriceTiers::NORMAL ? 'Normal selling price' : \App\Support\PriceTiers::label(Auth::user()->shop),
+            'tierLabel' => $this->customer->price_tier === \App\Enums\PriceTier::Normal ? 'Normal selling price' : \App\Support\PriceTiers::label(Auth::user()->shop),
             'receipts' => $this->customer->receipts()->with('shopAccount')->limit(10)->get(),
             'canReceive' => $this->canReceive(),
             'receiptPlan' => $plan,
-            'chequesInHand' => Auth::user()->shop?->usesTool('cheques') ? \App\Models\Cheque::query()->where('customer_id', $this->customer->id)->where('direction', 'received')->whereIn('status', ['pending', 'deposited'])->orderBy('cheque_date')->get() : null,
+            'chequesInHand' => Auth::user()->shop?->usesTool(WholesaleTool::Cheques) ? \App\Models\Cheque::query()->where('customer_id', $this->customer->id)->where('direction', \App\Enums\ChequeDirection::Received->value)->whereIn('status', array_column(\App\Enums\ChequeStatus::open(), 'value'))->orderBy('cheque_date')->get() : null,
             'canContra' => $this->canContra(),
             'contra' => $this->canContra() ? \App\Actions\Contra::position($this->customer) : null,
             'contraSettlements' => $this->customer->vendor_id ? \App\Models\ContraSettlement::query()->where('customer_id', $this->customer->id)->latest('id')->limit(10)->get() : collect(),
-            'canBookOrder' => Auth::user()->shop?->usesTool('orders') && Auth::user()->hasAccessTo('sales'),
+            'canBookOrder' => Auth::user()->shop?->usesTool(WholesaleTool::SalesOrders) && Auth::user()->hasAccessTo('sales'),
         ];
     }
 
     public function with(): array
     {
         $this->customer->load(['sales', 'udhaarTransactions']);
-        $wholesale = $this->wholesale();
+        $wholesale = $this->isWholesale();
 
         return [
             'sales' => $this->customer->sales,
@@ -229,8 +225,13 @@ new #[Layout('layouts.app')] #[Title('Customer Profile')] class extends Componen
     <x-party.tabs type="customer" :party="$customer" active="profile" />
 
     @if ($wholesale)
-        @include('customers.wholesale-panels')
+        <x-customers.wholesale-panels :customer="$customer" :aging="$aging" :credit-check="$creditCheck" :tier-label="$tierLabel" :receipts="$receipts"
+            :can-receive="$canReceive" :receipt-plan="$receiptPlan" :cheques-in-hand="$chequesInHand" :can-contra="$canContra" :contra="$contra"
+            :contra-settlements="$contraSettlements" :can-book-order="$canBookOrder" :total-owed="$totalOwed" :paid-from="$paidFrom" />
     @endif
+@if (auth()->user()->shop?->isServiceTrade())
+    <livewire:customers.service-panel :customer-id="$customer->id" />
+@endif
 
     <x-ui.stat-row>
         <x-ui.stat label="Total Owed" value="Rs {{ number_format(abs($totalOwed), 2) }}" :sub="$totalOwed < 0 ? 'In advance · as on the Udhaar list' : 'Udhaar, sales and services · as on the Udhaar list'" />

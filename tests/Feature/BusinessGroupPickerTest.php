@@ -40,13 +40,14 @@ class BusinessGroupPickerTest extends TestCase
         return User::where('email', $email)->sole()->shop;
     }
 
-    public function test_step_one_offers_exactly_the_three_built_groups(): void
+    public function test_step_one_offers_exactly_the_four_built_groups(): void
     {
-        $this->assertSame(['retail', 'wholesale', 'online'], array_map(fn ($g) => $g->value, BusinessGroup::cases()));
+        $this->assertSame(['retail', 'wholesale', 'online', 'service_trades'], array_map(fn ($g) => $g->value, BusinessGroup::cases()));
 
         $html = Livewire::test('signup.form')->html();
 
-        $this->assertSame(3, substr_count($html, 'data-business-group='));
+        $this->assertSame(4, substr_count($html, 'data-business-group='));
+        $this->assertStringContainsString('Services &amp; appointments', $html);
         $this->assertStringContainsString('What kind of business are you?', $html);
         $this->assertStringContainsString('Shops (Retail)', $html);
         $this->assertStringContainsString('Wholesale / Distribution', $html);
@@ -120,7 +121,7 @@ class BusinessGroupPickerTest extends TestCase
 
     public function test_every_offered_sub_type_keeps_its_existing_setup(): void
     {
-        config(['billing.signup.per_hour' => 100, 'billing.signup.per_day' => 100, 'billing.signup.attempts_per_10_minutes' => 100]);
+        config(['billing.signup.per_hour' => 100, 'billing.signup.per_day' => 100, 'billing.signup.attempts_per_10_minutes' => 100, 'verification.max_sends_per_ip_per_hour' => 100]);
         $n = 0;
         foreach (BusinessGroup::cases() as $group) {
             foreach ($group->signupCases() as $category) {
@@ -133,7 +134,7 @@ class BusinessGroupPickerTest extends TestCase
             }
         }
 
-        $this->assertSame(11, $n);
+        $this->assertSame(16, $n);
     }
 
     public function test_the_google_completion_page_uses_the_same_picker(): void
@@ -141,7 +142,7 @@ class BusinessGroupPickerTest extends TestCase
         session([\App\Http\Controllers\Auth\SocialLoginController::PENDING_KEY => ['provider' => 'google', 'provider_user_id' => 'g-1', 'email' => 'sana@example.pk', 'name' => 'Sana']]);
 
         $component = Livewire::test('signup.complete');
-        $this->assertSame(3, substr_count($component->html(), 'data-business-group='));
+        $this->assertSame(4, substr_count($component->html(), 'data-business-group='));
 
         $component->set('shopName', 'Sana Traders')->set('businessGroup', 'wholesale')->set('businessCategory', 'trader')->set('phone', '0321 5556667')
             ->call('submit')->assertHasNoErrors();

@@ -23,6 +23,7 @@ use Illuminate\Support\Collection;
  *     day each loan was given. A reversal cancels the entry it reverses.
  *
  * Shop-wide, like every balance: a customer's dues never depend on the branch.
+ * How this differs from the other "what they owe" figures: docs/customer-balances.md.
  */
 class DuesAging
 {

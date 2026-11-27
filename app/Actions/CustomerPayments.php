@@ -102,7 +102,8 @@ class CustomerPayments
 
             if (in_array($code, JazzCash::PAID_CODES, true) && $amountMatches) {
                 $payment->fill(['status' => CustomerPayment::PAID, 'paid_at' => now()]);
-                $payment->applied_to = self::apply($payment, $connection);
+                // A one-order link (O7) pays that order; the account link spreads over everything owed.
+                $payment->applied_to = $payment->sale_payment_link_id !== null ? self::applyToOrder($payment, $connection) : self::apply($payment, $connection);
                 $connection->update(['last_paid_at' => now()]);
             } elseif (! in_array($code, JazzCash::PENDING_CODES, true)) {
                 $payment->status = CustomerPayment::FAILED;
@@ -112,6 +113,37 @@ class CustomerPayments
 
             return $payment;
         }));
+    }
+
+    /**
+     * A one-order link's payment (O7): on that sale, up to what it still owes. If the
+     * shop was paid some other way meanwhile, the rest is kept as the customer's
+     * udhaar advance, as the account link does with any overpayment.
+     *
+     * @return list<array{source: string, id: ?int, amount: float}>
+     */
+    protected static function applyToOrder(CustomerPayment $payment, PaymentGatewayConnection $connection): array
+    {
+        $link = \App\Models\SalePaymentLink::withoutGlobalScopes()->findOrFail($payment->sale_payment_link_id);
+        $sale = \App\Models\Sale::withoutGlobalScopes()->findOrFail($link->sale_id);
+        [$method, $accountId] = $connection->shop_account_id ? [SalePaymentMethod::Account->value, $connection->shop_account_id] : [null, null];
+        $amount = round((float) $payment->amount, 2);
+        $onSale = $sale->isCancelled() ? 0.0 : round(min($amount, $sale->amountDue()), 2);
+        $applied = [];
+
+        if ($onSale > 0) {
+            RecordSalePayment::handle($sale, $onSale, null, $method, $accountId);
+            $applied[] = ['source' => 'sale', 'id' => $sale->id, 'amount' => $onSale];
+        }
+
+        if (($left = round($amount - $onSale, 2)) > 0) {
+            $customer = Customer::withoutGlobalScopes()->findOrFail($payment->customer_id);
+            $note = 'Paid online by '.$connection->gateway->label().' ('.$payment->reference.')';
+            self::payer($customer, $method, $accountId, $note, null)('udhaar', null, $left);
+            $applied[] = ['source' => 'udhaar', 'id' => null, 'amount' => $left];
+        }
+
+        return $applied;
     }
 
     /**

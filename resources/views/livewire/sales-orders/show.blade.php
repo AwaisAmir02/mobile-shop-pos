@@ -1,11 +1,13 @@
 <?php
 
+use App\Actions\LoadSheets;
 use App\Actions\SalesOrders;
+use App\Enums\WholesaleTool;
 use App\Livewire\Concerns\ChoosesPaymentSource;
 use App\Livewire\Concerns\Toasts;
 use App\Models\SalesOrder;
+use App\Services\DeliveryChallanPdfService;
 use App\Support\BranchContext;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -32,7 +34,6 @@ new #[Layout('layouts.app')] #[Title('Order')] class extends Component
 
     public function mount(SalesOrder $order): void
     {
-        abort_unless(Auth::user()->shop?->usesTool('orders'), 404);
         $this->order = $order;
     }
 
@@ -50,7 +51,7 @@ new #[Layout('layouts.app')] #[Title('Order')] class extends Component
         $this->validate(['collected' => ['nullable', 'numeric', 'min:0'], 'delivered.*' => ['nullable', 'numeric', 'min:0']], [], ['collected' => 'amount collected']);
         [$method, $accountId] = $this->paidFromParts();
 
-        $sale = SalesOrders::deliver($this->order, $this->delivered, (float) ($this->collected ?: 0), $method, $accountId, Auth::id(), (bool) Auth::user()->shop?->usesTool('schemes'));
+        $sale = SalesOrders::deliver($this->order, $this->delivered, (float) ($this->collected ?: 0), $method, $accountId, Auth::id(), (bool) Auth::user()->shop?->usesTool(WholesaleTool::Schemes));
 
         $this->dispatch('close-modal', name: 'deliver-order');
         $this->order = $this->order->fresh();
@@ -59,7 +60,7 @@ new #[Layout('layouts.app')] #[Title('Order')] class extends Component
 
     public function bringBack(): void
     {
-        SalesOrders::bringBack($this->order);
+        LoadSheets::bringBack($this->order);
         $this->order = $this->order->fresh();
         $this->toastSuccess('Taken off the van. It stays booked for another day.');
     }
@@ -74,15 +75,12 @@ new #[Layout('layouts.app')] #[Title('Order')] class extends Component
 
     public function challan(): StreamedResponse
     {
-        $order = $this->order->fresh(['lines.product', 'customer', 'booker', 'loadSheet', 'sale.items']);
-        $output = Pdf::loadView('pdf.delivery-challan', ['order' => $order, 'shop' => Auth::user()->shop])->setPaper('a5')->output();
-
-        return response()->streamDownload(fn () => print ($output), 'Challan-'.$order->number().'.pdf');
+        return app(DeliveryChallanPdfService::class)->download($this->order);
     }
 
     public function with(): array
     {
-        $this->order->load(['lines', 'customer', 'booker', 'route', 'loadSheet', 'sale']);
+        $this->order->load(['lines', 'customer', 'booker', 'deliveryRoute', 'loadSheet', 'sale']);
 
         return [
             'owed' => $this->order->customer ? \App\Support\CustomerDuesStatement::for($this->order->customer)->total() : 0.0,
@@ -122,7 +120,7 @@ new #[Layout('layouts.app')] #[Title('Order')] class extends Component
                 <div class="flex justify-between gap-3"><dt class="text-ink-faint">Status</dt><dd class="font-semibold text-ink">{{ $order->statusLabel() }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-ink-faint">Booked</dt><dd class="text-ink">{{ $order->order_date->format('d M Y') }}{{ $order->booker ? ' by '.$order->booker->name : '' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-ink-faint">Deliver on</dt><dd class="text-ink">{{ $order->delivery_date?->format('d M Y') ?? '—' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-faint">Route</dt><dd class="text-ink">{{ $order->route?->name ?? '—' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-faint">Route</dt><dd class="text-ink">{{ $order->deliveryRoute?->name ?? '—' }}</dd></div>
                 @if ($order->loadSheet)
                     <div class="flex justify-between gap-3"><dt class="text-ink-faint">Van</dt><dd><a href="{{ route('load-sheets.show', $order->loadSheet) }}" wire:navigate class="text-link hover:underline">{{ $order->loadSheet->number() }}</a></dd></div>
                 @endif

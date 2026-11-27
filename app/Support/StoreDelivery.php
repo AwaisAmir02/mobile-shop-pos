@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\StoreConnection;
 use App\Models\StoreEvent;
 use App\Models\StoreProduct;
+use App\Storefronts\Storefronts;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -43,7 +44,7 @@ class StoreDelivery
 
         $connections = StoreConnection::withoutGlobalScopes()
             ->whereNull('removed_at')
-            ->whereNotNull('callback_url')
+            ->sendingChanges()
             ->whereNull('delivery_paused_at')
             ->get();
 
@@ -159,7 +160,10 @@ class StoreDelivery
 
     protected function send(StoreConnection $connection, StoreEvent $event): bool
     {
-        [$status, $error] = $this->post($connection, $event);
+        // Shopify and WooCommerce are called through their own APIs (App\Storefronts); the rest get our signed POST.
+        [$status, $error] = $connection->driver->isPlatform()
+            ? app(Storefronts::class)->platform($connection->driver)->deliver($connection, $event)
+            : $this->post($connection, $event);
 
         $event->attempts++;
         $event->response_status = $status;

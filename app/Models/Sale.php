@@ -23,6 +23,7 @@ class Sale extends Model
         'source',
         'subtotal',
         'discount_amount',
+        'delivery_charge',
         'total',
         'due_date',
         'credit_override_by',
@@ -34,6 +35,9 @@ class Sale extends Model
         'cancel_reason',
     ];
 
+    /** The column's own default, so a sale just created reads 0 and not null. */
+    protected $attributes = ['delivery_charge' => 0];
+
     protected static function booted(): void
     {
         static::addGlobalScope(new ExcludesCancelledSalesScope);
@@ -44,6 +48,7 @@ class Sale extends Model
         return [
             'subtotal' => 'decimal:2',
             'discount_amount' => 'decimal:2',
+            'delivery_charge' => 'decimal:2',
             'total' => 'decimal:2',
             'due_date' => 'date',
             'status' => SaleStatus::class,
@@ -186,6 +191,41 @@ class Sale extends Model
     {
         return $query->withSum('payments', 'amount')->withSum('returns', 'due_reduction')
             ->havingRaw('total - COALESCE(payments_sum_amount, 0) - COALESCE(returns_sum_due_reduction, 0) > 0');
+    }
+
+    /**
+     * The sales a customer owes (O4): owing(), less any whose unpaid part is with a
+     * courier as cash on delivery (Shipment::heldByCourier). That money is owed by
+     * the courier until it pays out, so Udhaar, aging, the customer's statement,
+     * reminders and receipts all leave it out. Only tracked parcels (cod_tracked,
+     * online sellers) are ever held, so every other shop reads exactly as owing().
+     */
+    public function scopeOwedByCustomer(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->owing()->whereDoesntHave('shipments', fn ($shipments) => $shipments->heldByCourier());
+    }
+
+    public function shipments(): HasMany
+    {
+        return $this->hasMany(Shipment::class);
+    }
+
+    /** Where it goes, for a sale taken by message or call (O1). */
+    public function delivery(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(SaleDelivery::class);
+    }
+
+    /** The parcel holding this sale's cash on delivery, if a courier has it (O4). */
+    public function heldByCourier(): ?Shipment
+    {
+        return $this->shipments()->heldByCourier()->latest('id')->first();
+    }
+
+    /** What the goods came to: the total without the delivery charge (O2). */
+    public function goodsTotal(): float
+    {
+        return round((float) $this->total - (float) $this->delivery_charge, 2);
     }
 
     /** Past its due date with money still owed. */

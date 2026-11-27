@@ -22,8 +22,9 @@ class AcceptWhatsAppOrder
         int $userId,
         ?string $paymentMethod = null,
         ?int $shopAccountId = null,
+        float $deliveryCharge = 0.0,
     ): Sale {
-        $sale = DB::transaction(function () use ($order, $lines, $invoiceDiscount, $customerId, $amountPaid, $userId, $paymentMethod, $shopAccountId) {
+        $sale = DB::transaction(function () use ($order, $lines, $invoiceDiscount, $customerId, $amountPaid, $userId, $paymentMethod, $shopAccountId, $deliveryCharge) {
             $order = WhatsAppOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
 
             if (! $order->isDecidable()) {
@@ -45,6 +46,7 @@ class AcceptWhatsAppOrder
                 attributes: ['source' => SaleSource::WhatsApp->value],
                 paymentMethod: $paymentMethod,
                 shopAccountId: $shopAccountId,
+                deliveryCharge: $deliveryCharge,
             );
 
             $total = (float) $sale->total;

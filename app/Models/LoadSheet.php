@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\LoadSheetStatus;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,7 +17,7 @@ class LoadSheet extends Model
 
     protected function casts(): array
     {
-        return ['load_date' => 'date', 'settled_at' => 'datetime'];
+        return ['load_date' => 'date', 'settled_at' => 'datetime', 'status' => LoadSheetStatus::class];
     }
 
     public function orders(): HasMany
@@ -29,7 +30,8 @@ class LoadSheet extends Model
         return $this->belongsTo(User::class, 'salesman_id');
     }
 
-    public function route(): BelongsTo
+    /** The delivery route the van is running, if one (W7). Not route(), which reads like the URL helper. */
+    public function deliveryRoute(): BelongsTo
     {
         return $this->belongsTo(DeliveryRoute::class, 'route_id');
     }
@@ -41,6 +43,6 @@ class LoadSheet extends Model
 
     public function isOpen(): bool
     {
-        return $this->status === 'open';
+        return $this->status === LoadSheetStatus::Open;
     }
 }

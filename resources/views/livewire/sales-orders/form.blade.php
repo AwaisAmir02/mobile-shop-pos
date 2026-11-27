@@ -34,7 +34,13 @@ new #[Layout('layouts.app')] #[Title('Book Order')] class extends Component
     public string $note = '';
     public string $search = '';
 
-    /** @var array<int, array{product_id: int, name: string, quantity: string, by_pack: bool, pack_name: ?string, pack_size: ?int, unit_price: string, price_tier: ?string, discount: string, unit: string}> */
+    /**
+     * Each line is ordered in pieces, packs or outer packs (level, as the
+     * register's sellAs), priced per that level; packs lists the levels the
+     * product has besides pieces.
+     *
+     * @var array<int, array{product_id: int, name: string, quantity: string, level: string, packs: array<string, array{name: string, size: int}>, unit_price: string, price_tier: ?string, discount: string, unit: string}>
+     */
     public array $lines = [];
 
     public function boot(): void
@@ -44,7 +50,6 @@ new #[Layout('layouts.app')] #[Title('Book Order')] class extends Component
 
     public function mount(?SalesOrder $order = null): void
     {
-        abort_unless(Auth::user()->shop?->usesTool('orders'), 404);
         $this->deliveryDate = now()->parse(BatchExpiry::today())->addDay()->toDateString();
         $this->bookerId = (string) Auth::id();
 
@@ -57,23 +62,25 @@ new #[Layout('layouts.app')] #[Title('Book Order')] class extends Component
             $this->note = (string) $order->note;
 
             foreach ($order->lines as $line) {
-                $byPack = $line->pack_size > 1 && fmod((float) $line->quantity, $line->pack_size) == 0.0;
+                $packs = $line->product ? self::packLevels($line->product) : [];
+                // Back in the level it was booked in: the pack whose size it was saved with, in whole packs.
+                $level = collect($packs)->search(fn (array $pack) => $line->pack_size === $pack['size'] && fmod((float) $line->quantity, $pack['size']) == 0.0) ?: PriceTiers::PIECE;
+                $size = $packs[$level]['size'] ?? 1;
                 $this->lines[] = [
                     'product_id' => $line->product_id,
                     'name' => $line->product_name,
-                    'quantity' => (string) ($byPack ? (float) $line->quantity / $line->pack_size : $line->quantity),
-                    'by_pack' => $byPack,
-                    'pack_name' => $line->product?->pack_name,
-                    'pack_size' => $line->product?->pack_size,
-                    'unit_price' => (string) ($byPack ? round((float) $line->unit_price * $line->pack_size, 2) : $line->unit_price),
-                    'price_tier' => $line->price_tier,
+                    'quantity' => (string) ($size > 1 ? (float) $line->quantity / $size : $line->quantity),
+                    'level' => $level,
+                    'packs' => $packs,
+                    'unit_price' => (string) ($size > 1 ? round((float) $line->unit_price * $size, 2) : $line->unit_price),
+                    'price_tier' => $line->price_tier?->value,
                     'discount' => (string) $line->discount,
                     'unit' => $line->product?->unit->value ?? 'piece',
                 ];
             }
         } elseif (($customerId = request()->query('customer')) !== null) {
             $this->customerId = (string) $customerId;
-            $this->bookerId = (string) (Customer::find($customerId)?->route?->booker_id ?? Auth::id());
+            $this->bookerId = (string) (Customer::find($customerId)?->deliveryRoute?->booker_id ?? Auth::id());
         }
     }
 
@@ -82,69 +89,66 @@ new #[Layout('layouts.app')] #[Title('Book Order')] class extends Component
         return ctype_digit($this->customerId) ? Customer::find((int) $this->customerId) : null;
     }
 
+    /** @return array<string, array{name: string, size: int}> the pack levels a product can be ordered in, size in pieces */
+    protected static function packLevels(Product $product): array
+    {
+        return array_filter([
+            PriceTiers::PACK => $product->hasPack() ? ['name' => (string) $product->pack_name, 'size' => (int) $product->pack_size] : null,
+            PriceTiers::OUTER => $product->hasOuterPack() ? ['name' => (string) $product->outer_pack_name, 'size' => $product->outerPackPieces()] : null,
+        ]);
+    }
+
     public function updatedCustomerId(): void
     {
-        if (($route = $this->customer()?->route) && $route->booker_id) {
-            $this->bookerId = (string) $route->booker_id;
+        if (($deliveryRoute = $this->customer()?->deliveryRoute) && $deliveryRoute->booker_id) {
+            $this->bookerId = (string) $deliveryRoute->booker_id;
         }
+
+        $customer = $this->customer();
 
         foreach ($this->lines as $i => $line) {
             if (($product = Product::find($line['product_id'])) !== null) {
-                [$price, $tier] = $this->priceFor($product, $line['by_pack']);
-                $this->lines[$i]['unit_price'] = (string) $price;
-                $this->lines[$i]['price_tier'] = $tier;
+                $priced = PriceTiers::priceFor($product, $customer, $line['level']);
+                $this->lines[$i]['unit_price'] = (string) $priced['price'];
+                $this->lines[$i]['price_tier'] = $priced['tier']?->value;
             }
         }
-    }
-
-    /** @return array{0: float, 1: ?string} the price for one piece (or one pack) and its level */
-    protected function priceFor(Product $product, bool $byPack): array
-    {
-        $tier = PriceTiers::forCustomer($this->customer());
-        $piece = PriceTiers::piecePrice($product, $tier);
-
-        if ($byPack && $product->hasPack()) {
-            $pack = PriceTiers::packPrice($product, $tier, (int) $product->pack_size, $product->packSellingPrice());
-
-            return [$pack ?? $product->packSellingPrice(), $pack !== null ? $tier : null];
-        }
-
-        return [$piece ?? $product->currentSellingPrice(), $piece !== null ? $tier : null];
     }
 
     public function add(int $productId): void
     {
         $product = Product::findOrFail($productId);
-        $byPack = $product->hasPack();
-        [$price, $tier] = $this->priceFor($product, $byPack);
+        $packs = self::packLevels($product);
+        // A product with a pack is booked by the pack to begin with.
+        $level = isset($packs[PriceTiers::PACK]) ? PriceTiers::PACK : PriceTiers::PIECE;
+        $priced = PriceTiers::priceFor($product, $this->customer(), $level);
 
         $this->lines[] = [
             'product_id' => $product->id,
             'name' => $product->name,
             'quantity' => '1',
-            'by_pack' => $byPack,
-            'pack_name' => $product->pack_name,
-            'pack_size' => $product->pack_size,
-            'unit_price' => (string) $price,
-            'price_tier' => $tier,
+            'level' => $level,
+            'packs' => $packs,
+            'unit_price' => (string) $priced['price'],
+            'price_tier' => $priced['tier']?->value,
             'discount' => '0',
             'unit' => $product->unit->value,
         ];
         $this->search = '';
     }
 
-    public function togglePack(int $i): void
+    /** Switches a line between pieces, packs and outer packs, at the customer's price for that level. */
+    public function sellAs(int $i, string $level): void
     {
         $line = $this->lines[$i] ?? null;
         $product = $line ? Product::find($line['product_id']) : null;
 
-        if ($product === null || ! $product->hasPack()) {
+        if ($product === null || ($level !== PriceTiers::PIECE && ! isset($line['packs'][$level]))) {
             return;
         }
 
-        $byPack = ! $line['by_pack'];
-        [$price, $tier] = $this->priceFor($product, $byPack);
-        $this->lines[$i] = array_merge($line, ['by_pack' => $byPack, 'unit_price' => (string) $price, 'price_tier' => $tier]);
+        $priced = PriceTiers::priceFor($product, $this->customer(), $level);
+        $this->lines[$i] = array_merge($line, ['level' => $level, 'unit_price' => (string) $priced['price'], 'price_tier' => $priced['tier']?->value]);
     }
 
     public function remove(int $i): void
@@ -157,7 +161,8 @@ new #[Layout('layouts.app')] #[Title('Book Order')] class extends Component
     protected function orderLines(): array
     {
         return array_map(function (array $line) {
-            $size = $line['by_pack'] && $line['pack_size'] > 1 ? (int) $line['pack_size'] : 1;
+            $pack = $line['packs'][$line['level']] ?? null;
+            $size = $pack['size'] ?? 1;
             $quantity = is_numeric($line['quantity']) ? (float) $line['quantity'] * $size : 0;
 
             return [
@@ -166,7 +171,7 @@ new #[Layout('layouts.app')] #[Title('Book Order')] class extends Component
                 'unit_price' => is_numeric($line['unit_price']) ? round((float) $line['unit_price'] / $size, 2) : 0,
                 'price_tier' => $line['price_tier'],
                 'discount' => is_numeric($line['discount']) ? (float) $line['discount'] : 0,
-                'pack_name' => $size > 1 ? $line['pack_name'] : null,
+                'pack_name' => $size > 1 ? $pack['name'] : null,
                 'pack_size' => $size > 1 ? $size : null,
             ];
         }, $this->lines);
@@ -201,14 +206,14 @@ new #[Layout('layouts.app')] #[Title('Book Order')] class extends Component
 
         $productIds = array_column($this->lines, 'product_id');
         $products = Product::query()->whereIn('id', $productIds)->get()->keyBy('id');
-        $held = SalesOrders::reserved($productIds, $this->order?->id);
+        $free = \App\Support\StockAvailability::free($products->values(), $this->order ? [\App\Enums\StockHoldKind::SalesOrder, $this->order->id] : null);
         $today = BatchExpiry::today();
 
         return [
             'customers' => Customer::query()->orderBy('name')->get(),
             'users' => User::query()->where('shop_id', Auth::user()->shop_id)->orderBy('name')->get(),
             'results' => $this->search !== '' ? Product::query()->whereNull('archived_at')->where('name', 'like', "%{$this->search}%")->orderBy('name')->limit(8)->get() : collect(),
-            'free' => collect($productIds)->mapWithKeys(fn ($id) => [$id => isset($products[$id]) ? max(0, (float) $products[$id]->stock_quantity - (float) ($held[$id] ?? 0)) : 0])->all(),
+            'free' => collect($productIds)->mapWithKeys(fn ($id) => [$id => (float) ($free[$id] ?? 0)])->all(),
             'schemes' => collect($productIds)->mapWithKeys(fn ($id) => [$id => Schemes::runningFor($id, $today)])->filter()->all(),
             'total' => round($total, 2),
             'credit' => $customer ? CreditControl::check($customer, $total) : null,
@@ -255,8 +260,16 @@ new #[Layout('layouts.app')] #[Title('Book Order')] class extends Component
                                                 · scheme {{ $scheme->offerLabel() }} (added on delivery)
                                             @endif
                                         </p>
-                                        @if ($line['pack_size'] > 1 && $line['pack_name'])
-                                            <button type="button" wire:click="togglePack({{ $i }})" class="mt-1 text-xs font-semibold text-link hover:underline">{{ $line['by_pack'] ? 'In '.mb_strtolower($line['pack_name']).'s of '.$line['pack_size'].' · switch to pieces' : 'In pieces · switch to '.mb_strtolower($line['pack_name']).'s' }}</button>
+                                        @if ($line['packs'] !== [])
+                                            @php($in = $line['packs'][$line['level']] ?? null)
+                                            @php($others = array_diff_key(['piece' => 'pieces'] + array_map(fn (array $pack) => mb_strtolower($pack['name']).'s', $line['packs']), [$line['level'] => true]))
+                                            <p class="mt-1 text-xs font-semibold text-link">
+                                                {{ $in ? 'In '.mb_strtolower($in['name']).'s of '.$in['size'] : 'In pieces' }} · switch to
+                                                @foreach ($others as $level => $label)
+                                                    @if (! $loop->first) or @endif
+                                                    <button type="button" wire:click="sellAs({{ $i }}, '{{ $level }}')" class="hover:underline" data-order-level="{{ $level }}">{{ $label }}</button>
+                                                @endforeach
+                                            </p>
                                         @endif
                                         @error('lines.'.$i.'.quantity')<p class="mt-1 text-xs text-danger">{{ $message }}</p>@enderror
                                     </div>
@@ -264,7 +277,7 @@ new #[Layout('layouts.app')] #[Title('Book Order')] class extends Component
                                         <label class="text-xs text-ink-faint">Qty
                                             <input type="number" min="0" step="any" wire:model.live.debounce.400ms="lines.{{ $i }}.quantity" class="mt-1 block w-20 rounded-lg border-line-strong bg-surface py-1.5 text-right text-sm text-ink" />
                                         </label>
-                                        <label class="text-xs text-ink-faint">{{ $line['by_pack'] ? 'Price per '.mb_strtolower($line['pack_name']) : 'Price each' }}
+                                        <label class="text-xs text-ink-faint">{{ isset($line['packs'][$line['level']]) ? 'Price per '.mb_strtolower($line['packs'][$line['level']]['name']) : 'Price each' }}
                                             <input type="number" min="0" step="0.01" wire:model.live.debounce.400ms="lines.{{ $i }}.unit_price" class="mt-1 block w-28 rounded-lg border-line-strong bg-surface py-1.5 text-right text-sm text-ink" />
                                         </label>
                                         <label class="text-xs text-ink-faint">Discount

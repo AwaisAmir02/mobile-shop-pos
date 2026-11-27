@@ -61,4 +61,12 @@ return [
         'tenant' => env('MICROSOFT_TENANT', 'common'),
     ],
 
+    // O9: our one Shopify app, installed by each shop through OAuth (App\Storefronts\Shopify).
+    'shopify' => [
+        'client_id' => env('SHOPIFY_CLIENT_ID'),
+        'client_secret' => env('SHOPIFY_CLIENT_SECRET'),
+        // An Admin API version Shopify still supports (each is supported for about a year).
+        'api_version' => env('SHOPIFY_API_VERSION', '2026-10'),
+    ],
+
 ];

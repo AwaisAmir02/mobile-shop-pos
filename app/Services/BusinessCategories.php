@@ -57,6 +57,16 @@ class BusinessCategories
         if ($category->tracksExpiryByDefault() && ! $shop->expiry_tracking_enabled) {
             $shop->update(['expiry_tracking_enabled' => true]);
         }
+
+        $this->createStarterServiceCategories($shop, $category);
+    }
+
+    /** A service business starts with categories for its service menu (Hair, Skin… or Labour, Site visits). */
+    protected function createStarterServiceCategories(Shop $shop, BusinessCategory $category): void
+    {
+        foreach ($category->starterServiceCategories() as $name) {
+            \App\Models\ServiceCategory::withoutGlobalScope(ShopScope::class)->firstOrCreate(['shop_id' => $shop->id, 'name' => $name]);
+        }
     }
 
     protected function createStarterCategories(Shop $shop, BusinessCategory $category): void

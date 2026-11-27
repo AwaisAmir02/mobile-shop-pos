@@ -2,7 +2,11 @@
 
 namespace App\Actions;
 
+use App\Enums\ChequeDirection;
+use App\Enums\ChequeStatus;
+use App\Enums\RecordStatus;
 use App\Enums\StockInPaymentSource;
+use App\Enums\VendorCreditSource;
 use App\Models\Cheque;
 use App\Models\Customer;
 use App\Models\ShopAccount;
@@ -48,7 +52,7 @@ class Cheques
     /** @param  array{direction: string, party_id: int, cheque_number: string, bank: string, amount: float|string, cheque_date: string, received_on: string, note?: ?string, shop_account_id?: ?int}  $data */
     public static function record(array $data, ?int $userId): Cheque
     {
-        $received = $data['direction'] === Cheque::RECEIVED;
+        $received = $data['direction'] === ChequeDirection::Received->value;
         $party = $received ? Customer::find($data['party_id']) : Vendor::find($data['party_id']);
 
         if ($party === null) {
@@ -68,7 +72,7 @@ class Cheques
             'amount' => round((float) $data['amount'], 2),
             'cheque_date' => $data['cheque_date'],
             'received_on' => $data['received_on'],
-            'status' => Cheque::PENDING,
+            'status' => ChequeStatus::Pending,
             'shop_account_id' => $data['shop_account_id'] ?? null,
             'note' => filled($data['note'] ?? null) ? $data['note'] : null,
             'user_id' => $userId,
@@ -92,11 +96,11 @@ class Cheques
         DB::transaction(function () use ($cheque, $shopAccountId) {
             $cheque = self::lock($cheque);
 
-            if (! $cheque->isReceived() || $cheque->status !== Cheque::PENDING) {
+            if (! $cheque->isReceived() || $cheque->status !== ChequeStatus::Pending) {
                 throw ValidationException::withMessages(['cheque' => 'Only a received cheque in hand can be deposited.']);
             }
 
-            $cheque->update(['status' => Cheque::DEPOSITED, 'shop_account_id' => self::account($shopAccountId)->id, 'deposited_on' => now()->toDateString()]);
+            $cheque->update(['status' => ChequeStatus::Deposited, 'shop_account_id' => self::account($shopAccountId)->id, 'deposited_on' => now()->toDateString()]);
         });
     }
 
@@ -115,17 +119,17 @@ class Cheques
 
             if ($cheque->isReceived()) {
                 $receipt = CustomerPayments::receiveAtCounter($cheque->customer, (float) $cheque->amount, 'account', $account->id, $userId, $note, ['udhaar', 'sale']);
-                $cheque->update(['status' => Cheque::CLEARED, 'cleared_on' => now()->toDateString(), 'shop_account_id' => $account->id, 'customer_receipt_id' => $receipt->id]);
+                $cheque->update(['status' => ChequeStatus::Cleared, 'cleared_on' => now()->toDateString(), 'shop_account_id' => $account->id, 'customer_receipt_id' => $receipt->id]);
 
                 return;
             }
 
-            $applied = VendorCredits::payBatches($cheque->vendor_id, (float) $cheque->amount, StockInPaymentSource::Cheque, 'account', $account->id, $userId, $note);
+            $applied = VendorPayments::payOldestFirst($cheque->vendor_id, (float) $cheque->amount, StockInPaymentSource::Cheque, 'account', $account->id, $userId, $note);
             $left = round((float) $cheque->amount - array_sum(array_column($applied, 'amount')), 2);
-            $credit = $left > 0 ? VendorCredits::issue($cheque->vendor_id, $left, VendorCredit::CHEQUE, $cheque->id, $userId, $note, false) : null;
+            $credit = $left > 0 ? VendorCredits::issue($cheque->vendor_id, $left, VendorCreditSource::Cheque, $cheque->id, $userId, $note, false) : null;
 
             $cheque->update([
-                'status' => Cheque::CLEARED,
+                'status' => ChequeStatus::Cleared,
                 'cleared_on' => now()->toDateString(),
                 'shop_account_id' => $account->id,
                 'applied_to' => ['batches' => $applied, 'vendor_credit_id' => $credit?->id],
@@ -143,17 +147,17 @@ class Cheques
         DB::transaction(function () use ($cheque, $reason, $userId) {
             $cheque = self::lock($cheque);
 
-            if (! $cheque->isOpen() && $cheque->status !== Cheque::CLEARED) {
+            if (! $cheque->isOpen() && $cheque->status !== ChequeStatus::Cleared) {
                 throw ValidationException::withMessages(['cheque' => 'This cheque is already '.mb_strtolower($cheque->statusLabel()).'.']);
             }
 
             $note = $cheque->label().' bounced';
 
-            if ($cheque->status === Cheque::CLEARED && $cheque->isReceived() && $cheque->receipt) {
+            if ($cheque->status === ChequeStatus::Cleared && $cheque->isReceived() && $cheque->receipt) {
                 CustomerPayments::reverseReceipt($cheque->receipt, $note, $userId);
             }
 
-            if ($cheque->status === Cheque::CLEARED && ! $cheque->isReceived()) {
+            if ($cheque->status === ChequeStatus::Cleared && ! $cheque->isReceived()) {
                 $creditId = $cheque->applied_to['vendor_credit_id'] ?? null;
 
                 if ($creditId !== null && ($credit = VendorCredit::find($creditId)) !== null) {
@@ -161,13 +165,13 @@ class Cheques
                         throw ValidationException::withMessages(['cheque' => 'Part of what this cheque overpaid has already been used, so undo that first.']);
                     }
 
-                    $credit->update(['status' => 'cancelled', 'remaining' => 0]);
+                    $credit->update(['status' => RecordStatus::Cancelled, 'remaining' => 0]);
                 }
 
-                VendorCredits::unpayBatches($cheque->applied_to['batches'] ?? [], StockInPaymentSource::Cheque, 'account', $cheque->shop_account_id, $userId, $note);
+                VendorPayments::undo($cheque->applied_to['batches'] ?? [], StockInPaymentSource::Cheque, 'account', $cheque->shop_account_id, $userId, $note);
             }
 
-            $cheque->update(['status' => Cheque::BOUNCED, 'bounced_on' => now()->toDateString(), 'bounce_reason' => mb_substr($reason, 0, 255)]);
+            $cheque->update(['status' => ChequeStatus::Bounced, 'bounced_on' => now()->toDateString(), 'bounce_reason' => mb_substr($reason, 0, 255)]);
         });
     }
 
@@ -181,7 +185,7 @@ class Cheques
                 throw ValidationException::withMessages(['cheque' => 'Only a cheque in hand or deposited can be cancelled.']);
             }
 
-            $cheque->update(['status' => Cheque::CANCELLED]);
+            $cheque->update(['status' => ChequeStatus::Cancelled]);
         });
     }
 
@@ -189,8 +193,8 @@ class Cheques
     public static function inHand(?int $customerId = null): float
     {
         return round((float) Cheque::query()
-            ->where('direction', Cheque::RECEIVED)
-            ->whereIn('status', [Cheque::PENDING, Cheque::DEPOSITED])
+            ->where('direction', ChequeDirection::Received->value)
+            ->whereIn('status', array_column(ChequeStatus::open(), 'value'))
             ->when($customerId !== null, fn ($q) => $q->where('customer_id', $customerId))
             ->sum('amount'), 2);
     }

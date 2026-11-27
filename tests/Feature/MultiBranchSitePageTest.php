@@ -35,7 +35,7 @@ class MultiBranchSitePageTest extends TestCase
 
     public function test_no_site_page_claims_per_branch_stock_or_transfers(): void
     {
-        foreach (['/', '/features', '/pricing', '/about', '/contact', ...array_map(fn ($slug) => '/features/'.$slug, SiteFeatures::slugs())] as $path) {
+        foreach (['/', '/features', '/industries', '/pricing', '/about', '/contact', ...array_map(fn ($slug) => '/features/'.$slug, SiteFeatures::slugs()), ...array_map(fn ($slug) => '/industries/'.$slug, \App\Support\SiteIndustries::slugs())] as $path) {
             $text = strtolower(html_entity_decode(strip_tags($this->get($path)->getContent())));
 
             foreach (self::PHASE_TWO_CLAIMS as $claim) {

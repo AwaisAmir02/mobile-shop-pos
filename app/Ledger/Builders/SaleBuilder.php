@@ -2,6 +2,7 @@
 
 namespace App\Ledger\Builders;
 
+use App\Enums\SaleLineKind;
 use App\Enums\SalePaymentMethod;
 use App\Enums\SaleStatus;
 use App\Ledger\ChartOfAccounts as Chart;
@@ -32,11 +33,23 @@ class SaleBuilder implements EntryBuilder
         $items = SaleItem::withoutGlobalScopes()->where('sale_id', $document->id)->get();
 
         $discounts = round($items->sum(fn (SaleItem $item) => (float) $item->discount_amount) + (float) $document->discount_amount, 2);
+        // A delivery charge (O2) is revenue on its own line; without one the entry is as it always was.
+        $delivery = round((float) $document->delivery_charge, 2);
+        // Services and memberships on the bill (Services group) are service sales, before discounts like goods.
+        $services = round($items->filter(fn (SaleItem $item) => in_array($item->line_kind, [SaleLineKind::Service, SaleLineKind::Membership], true))->sum(fn (SaleItem $item) => (float) $item->line_total + (float) $item->discount_amount), 2);
         $lines = [
             Line::debit(Chart::RECEIVABLE, $document->total, $date, $branch, 'customer', $customer),
             Line::debit(Chart::DISCOUNTS, $discounts, $date, $branch),
-            Line::credit(Chart::SALES, round((float) $document->total + $discounts, 2), $date, $branch),
+            Line::credit(Chart::SALES, round((float) $document->total + $discounts - $delivery - $services, 2), $date, $branch),
         ];
+
+        if ($delivery > 0) {
+            $lines[] = Line::credit(Chart::DELIVERY_INCOME, $delivery, $date, $branch);
+        }
+
+        if ($services > 0) {
+            $lines[] = Line::credit(Chart::SERVICE_SALES, $services, $date, $branch);
+        }
 
         $cost = round($items->sum(fn (SaleItem $item) => $item->cost_price !== null ? Quantity::money($item->cost_price, $item->quantity) : 0.0), 2);
         $lines[] = Line::debit(Chart::COGS, $cost, $date, $branch);
@@ -44,9 +57,13 @@ class SaleBuilder implements EntryBuilder
 
         foreach (SalePayment::withoutGlobalScopes()->where('sale_id', $document->id)->get() as $payment) {
             // Store credit is owed to one customer, so it keeps their name on the line.
-            $lines[] = $payment->payment_method === SalePaymentMethod::StoreCredit
-                ? Line::debit(Chart::CUSTOMER_CREDIT, $payment->amount, $payment->payment_date, $branch, 'customer', $customer)
-                : Line::debit(self::paidInto($payment), $payment->amount, $payment->payment_date, $branch);
+            $lines[] = match ($payment->payment_method) {
+                SalePaymentMethod::StoreCredit => Line::debit(Chart::CUSTOMER_CREDIT, $payment->amount, $payment->payment_date, $branch, 'customer', $customer),
+                // A deposit was held for this customer; a gift voucher for whoever had the code.
+                SalePaymentMethod::Deposit => Line::debit(Chart::CUSTOMER_DEPOSITS, $payment->amount, $payment->payment_date, $branch, 'customer', $customer),
+                SalePaymentMethod::GiftVoucher => Line::debit(Chart::GIFT_VOUCHERS, $payment->amount, $payment->payment_date, $branch),
+                default => Line::debit(self::paidInto($payment), $payment->amount, $payment->payment_date, $branch),
+            };
             $lines[] = Line::credit(Chart::RECEIVABLE, $payment->amount, $payment->payment_date, $branch, 'customer', $customer);
         }
 
@@ -76,6 +93,8 @@ class SaleBuilder implements EntryBuilder
             $payment->payment_method === SalePaymentMethod::TradeIn => Chart::TRADE_IN,
             $payment->payment_method === SalePaymentMethod::Exchange => Chart::EXCHANGE_CLEARING,
             $payment->payment_method === SalePaymentMethod::Contra => Chart::CONTRA_CLEARING,
+            // The money reaches an account with the payout, net of the courier's deductions (CourierSettlementBuilder).
+            $payment->payment_method === SalePaymentMethod::Courier => Chart::COURIER_CLEARING,
             default => Chart::NOT_CLASSIFIED,
         };
     }

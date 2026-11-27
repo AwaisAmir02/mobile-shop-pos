@@ -88,7 +88,18 @@ class CustomerLedgerController extends Controller
         };
 
         // The IPN is a server call with no customer to show a page to.
-        if ($request->expectsJson() || ! $customer->ledger_token) {
+        if ($request->expectsJson()) {
+            return response('OK');
+        }
+
+        // Paid through one order's link (O7): back to that order's page.
+        if ($payment->sale_payment_link_id !== null) {
+            $token = \App\Models\SalePaymentLink::withoutGlobalScopes()->whereKey($payment->sale_payment_link_id)->value('token');
+
+            return $token !== null ? redirect()->route('order-payment.show', $token)->with($flash) : response('OK');
+        }
+
+        if (! $customer->ledger_token) {
             return response('OK');
         }
 

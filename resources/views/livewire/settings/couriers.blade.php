@@ -151,7 +151,7 @@ new class extends Component
         $connections = CourierConnection::all()->keyBy(fn ($c) => $c->courier->value);
 
         return [
-            'couriers' => CourierKey::cases(),
+            'couriers' => CourierKey::connectable(),
             'connections' => $connections,
         ];
     }

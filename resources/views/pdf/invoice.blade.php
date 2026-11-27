@@ -243,6 +243,12 @@
                 <td class="text-right">Rs {{ number_format($sale->discount_amount, 2) }}</td>
             </tr>
         @endif
+@if ((float) $sale->delivery_charge > 0)
+            <tr>
+                <td>Delivery charge</td>
+                <td class="text-right">Rs {{ number_format($sale->delivery_charge, 2) }}</td>
+            </tr>
+@endif
         <tr class="total-row">
             <td>Total</td>
             <td class="text-right">Rs {{ number_format($sale->total, 2) }}</td>

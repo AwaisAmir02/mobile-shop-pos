@@ -32,6 +32,8 @@ class Customer extends Model
         'shop_id',
         'name',
         'phone',
+        'member_no',
+        'checkin_token',
         'address',
         // Wholesale businesses (W2, W3, W5); all optional.
         'business_name',
@@ -55,6 +57,8 @@ class Customer extends Model
         return [
             'credit_limit' => 'decimal:2',
             'payment_terms_days' => 'integer',
+            // Null is the default level, the trade price (PriceTiers::forCustomer).
+            'price_tier' => \App\Enums\PriceTier::class,
         ];
     }
 
@@ -72,7 +76,8 @@ class Customer extends Model
         return $parts === [] ? null : collect($parts)->map(fn ($value, $label) => $label.' '.$value)->implode(' · ');
     }
 
-    public function route(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    /** The delivery route they are on, and visited in route_sequence order (W8). Not route(), which reads like the URL helper. */
+    public function deliveryRoute(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(DeliveryRoute::class, 'route_id');
     }
@@ -174,7 +179,7 @@ class Customer extends Model
     {
         return Sale::withoutGlobalScope(BranchScope::class)
             ->where('customer_id', $this->id)
-            ->owing()
+            ->owedByCustomer()
             ->orderBy('sales.id')
             ->get()
             ->sum(fn (Sale $sale) => $sale->amountDue());

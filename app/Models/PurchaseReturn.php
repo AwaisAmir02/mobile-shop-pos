@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\RecordStatus;
+use App\Enums\VendorCreditSource;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,7 +20,7 @@ class PurchaseReturn extends Model
 
     protected function casts(): array
     {
-        return ['return_date' => 'date', 'total_value' => 'decimal:2', 'cancelled_at' => 'datetime'];
+        return ['return_date' => 'date', 'total_value' => 'decimal:2', 'cancelled_at' => 'datetime', 'status' => RecordStatus::class];
     }
 
     public function items(): HasMany
@@ -38,7 +40,7 @@ class PurchaseReturn extends Model
 
     public function credit(): ?VendorCredit
     {
-        return VendorCredit::query()->where('source', VendorCredit::DEBIT_NOTE)->where('source_id', $this->id)->first();
+        return VendorCredit::query()->where('source', VendorCreditSource::DebitNote->value)->where('source_id', $this->id)->first();
     }
 
     public function number(): string
@@ -48,7 +50,7 @@ class PurchaseReturn extends Model
 
     public function isCancelled(): bool
     {
-        return $this->status === 'cancelled';
+        return $this->status === RecordStatus::Cancelled;
     }
 
     public function reasonLabel(): string

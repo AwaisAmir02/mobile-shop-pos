@@ -64,6 +64,31 @@ class TemplateLibrary
                 ],
                 'button_payloads' => ['rate:5', 'rate:4', 'rate:2'],
             ],
+            // Services group: sent automatically by services:reminders (ServiceReminders).
+            'appointment_reminder' => [
+                'category' => 'UTILITY',
+                'body' => [
+                    'en' => 'Hi {{1}}, a reminder of your appointment at {{2}} on {{3}} for {{4}}. Reply to this message if you need to change it.',
+                    'ur' => 'Assalam o Alaikum {{1}}, {{2}} par aapki appointment {{3}} ko hai: {{4}}. Waqt badalna ho to isi message ka jawab dein.',
+                ],
+                'examples' => ['Hina', 'Glow Salon', 'Sat 29 Nov at 4:00 PM', 'Haircut, Facial'],
+            ],
+            'membership_renewal' => [
+                'category' => 'UTILITY',
+                'body' => [
+                    'en' => 'Hi {{1}}, your {{2}} at {{3}} ends on {{4}}. Renew at the counter to keep it running. Thank you!',
+                    'ur' => 'Assalam o Alaikum {{1}}, {{3}} par aapki {{2}} {{4}} ko khatam ho rahi hai. Jari rakhne ke liye counter par renew karwa lein. Shukriya!',
+                ],
+                'examples' => ['Bilal', 'Monthly membership', 'Iron Gym', '30 Nov 2026'],
+            ],
+            'service_due' => [
+                'category' => 'UTILITY',
+                'body' => [
+                    'en' => 'Hi {{1}}, your {{2}} is due for its next service at {{3}} ({{4}}). Reply to book a time. Thank you!',
+                    'ur' => 'Assalam o Alaikum {{1}}, aapke {{2}} ki agli service {{3}} par due hai ({{4}}). Waqt lene ke liye jawab dein. Shukriya!',
+                ],
+                'examples' => ['Ahmed', 'Honda CD70 (LEB-1234)', 'Khan Autos', 'due 1 Dec 2026'],
+            ],
         ];
     }
 

@@ -66,6 +66,9 @@ return [
 
     'repair_ready' => 'Assalam o Alaikum :name, :shop par aapka :device repair (:ref) tayyar hai, aa kar le jayein. ✅',
     'repair_ready_due' => 'Is repair ke Rs :amount baaki hain.',
+    'appointment_reminder' => 'Assalam o Alaikum :name, :shop par aapki appointment :when ko hai: :services. Waqt badalna ho to isi message ka jawab dein.',
+    'membership_renewal' => 'Assalam o Alaikum :name, :shop par aapki :plan :date ko khatam ho rahi hai. Jari rakhne ke liye counter par renew karwa lein. Shukriya!',
+    'service_due' => 'Assalam o Alaikum :name, aapke :unit ki agli service :shop par due hai (:due). Waqt lene ke liye jawab dein. Shukriya!',
 
     'reminder_intro' => 'Assalam o Alaikum :name, :shop ki taraf se aapke baaki hisaab ki yaad dehani:',
     'reminder_total' => '*Kul baaki: Rs :total*',

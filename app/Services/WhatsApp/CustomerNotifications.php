@@ -79,6 +79,92 @@ class CustomerNotifications
         );
     }
 
+    /**
+     * A repair workshop's job is ready (Services group). Reuses the approved
+     * repair_ready template, worded for any unit, so no new template goes to
+     * every shop's WhatsApp account.
+     */
+    public function jobCardReady(\App\Models\JobCard $job, ?int $userId): CustomerNotification
+    {
+        $shop = Shop::findOrFail($job->shop_id);
+        $customer = Customer::withoutGlobalScope(ShopScope::class)->find($job->customer_id)
+            ?? throw new RuntimeException('This job card has no customer.');
+        $connection = $this->connectionFor($shop, NotificationType::RepairReady);
+        $contact = CustomerMessenger::contactForCustomer($customer, $connection)
+            ?? throw new RuntimeException("{$customer->name} has no valid phone number.");
+
+        $job->loadMissing(['items', 'lines']);
+        $total = $job->total();
+        $dueLine = $total > 0 ? WhatsAppLanguage::t($contact, 'repair_ready_due', ['amount' => self::money($total)]) : '';
+        $text = trim(WhatsAppLanguage::t($contact, 'repair_ready', [
+            'name' => $customer->name,
+            'device' => $job->unitsLabel(),
+            'ref' => $job->number(),
+            'shop' => $shop->invoiceDisplayName(),
+        ])."\n".$dueLine);
+
+        $notification = $this->messenger->deliver(
+            $connection, $contact, NotificationType::RepairReady, $job,
+            $text, [],
+            'repair_ready', [$customer->name, $job->unitsLabel(), $job->number(), $shop->invoiceDisplayName(), $dueLine !== '' ? $dueLine : 'Thank you!'],
+            $userId,
+        );
+
+        if ($notification->status !== \App\Enums\NotificationStatus::Sent) {
+            throw new RuntimeException($notification->error ?? 'The message could not be sent.');
+        }
+
+        return $notification;
+    }
+
+    /** A booking coming up (Services group, sent once by services:reminders). */
+    public function appointmentReminder(\App\Models\Appointment $appointment): CustomerNotification
+    {
+        $when = $appointment->starts_at->copy()->timezone('Asia/Karachi')->format('D d M \a\t g:i A');
+
+        return $this->serviceReminder($appointment->customer_id, $appointment->shop_id, NotificationType::AppointmentReminder, $appointment, 'appointment_reminder',
+            fn (Customer $c, Shop $shop) => ['name' => $c->name, 'shop' => $shop->invoiceDisplayName(), 'when' => $when, 'services' => $appointment->servicesLabel()],
+            fn (Customer $c, Shop $shop) => [$c->name, $shop->invoiceDisplayName(), $when, $appointment->servicesLabel()]);
+    }
+
+    /** A membership ending soon. */
+    public function renewalReminder(\App\Models\Membership $membership): CustomerNotification
+    {
+        $date = $membership->ends_on->format('d M Y');
+
+        return $this->serviceReminder($membership->customer_id, $membership->shop_id, NotificationType::RenewalReminder, $membership, 'membership_renewal',
+            fn (Customer $c, Shop $shop) => ['name' => $c->name, 'plan' => $membership->plan_name, 'shop' => $shop->invoiceDisplayName(), 'date' => $date],
+            fn (Customer $c, Shop $shop) => [$c->name, $membership->plan_name, $shop->invoiceDisplayName(), $date]);
+    }
+
+    /** A unit a workshop serviced is due again. */
+    public function serviceDue(\App\Models\JobCard $job): CustomerNotification
+    {
+        $job->loadMissing('items');
+        $due = 'due '.$job->service_due_on->format('d M Y');
+
+        return $this->serviceReminder($job->customer_id, $job->shop_id, NotificationType::ServiceDue, $job, 'service_due',
+            fn (Customer $c, Shop $shop) => ['name' => $c->name, 'unit' => $job->unitsLabel(), 'shop' => $shop->invoiceDisplayName(), 'due' => $due],
+            fn (Customer $c, Shop $shop) => [$c->name, $job->unitsLabel(), $shop->invoiceDisplayName(), $due]);
+    }
+
+    /**
+     * One Services reminder: inside the 24-hour window as plain text, outside it
+     * through its approved template. Throws when it can't go (not on WhatsApp
+     * Messaging, no phone), so the caller leaves the manual link in place.
+     */
+    protected function serviceReminder(?int $customerId, int $shopId, NotificationType $type, \Illuminate\Database\Eloquent\Model $about, string $key, \Closure $textParams, \Closure $templateParams): CustomerNotification
+    {
+        $shop = Shop::findOrFail($shopId);
+        $customer = ($customerId ? Customer::withoutGlobalScope(ShopScope::class)->find($customerId) : null)
+            ?? throw new RuntimeException('There is no customer to remind.');
+        $connection = $this->connectionFor($shop, $type);
+        $contact = CustomerMessenger::contactForCustomer($customer, $connection)
+            ?? throw new RuntimeException("{$customer->name} has no valid phone number.");
+
+        return $this->messenger->deliver($connection, $contact, $type, $about, WhatsAppLanguage::t($contact, $key, $textParams($customer, $shop)), [], $key, $templateParams($customer, $shop));
+    }
+
     public function paymentReminderPreview(Customer $customer, ?WhatsAppContact $contact = null): array
     {
         $statement = CustomerDuesStatement::for($customer);
@@ -299,6 +385,33 @@ class CustomerNotifications
                 'rate:2' => WhatsAppLanguage::t($contact, 'btn_review_bad'),
             ],
             'review_request', [$name, $order->orderNumber(), $shop->invoiceDisplayName()],
+        );
+    }
+
+    /**
+     * A delivered parcel's review request (O8, App\Actions\ParcelReviews): the same approved
+     * review_request template and rating buttons as a WhatsApp order's, plus the feedback
+     * page's link when the chat is open. Throws when the customer can't be messaged.
+     */
+    public function parcelReviewRequest(\App\Models\Shipment $shipment): CustomerNotification
+    {
+        $shop = Shop::findOrFail($shipment->shop_id);
+        $connection = $this->connectionFor($shop, NotificationType::ReviewRequest);
+        $customer = \App\Models\Customer::withoutGlobalScopes()->whereKey(\App\Models\Sale::withoutGlobalScopes()->whereKey($shipment->sale_id)->value('customer_id'))->first()
+            ?? throw new RuntimeException('This parcel\'s sale has no customer to ask.');
+        $contact = CustomerMessenger::contactForCustomer($customer, $connection)
+            ?? throw new RuntimeException('This customer has no WhatsApp number.');
+        $name = $contact->displayName();
+
+        return $this->messenger->deliver(
+            $connection, $contact, NotificationType::ReviewRequest, $shipment,
+            WhatsAppLanguage::t($contact, 'review_request', ['name' => $name, 'order' => $shipment->reference, 'shop' => $shop->invoiceDisplayName()])."\n\n".\App\Actions\ParcelReviews::link($shipment),
+            [
+                'rate:5' => WhatsAppLanguage::t($contact, 'btn_review_great'),
+                'rate:4' => WhatsAppLanguage::t($contact, 'btn_review_good'),
+                'rate:2' => WhatsAppLanguage::t($contact, 'btn_review_bad'),
+            ],
+            'review_request', [$name, $shipment->reference, $shop->invoiceDisplayName()],
         );
     }
 

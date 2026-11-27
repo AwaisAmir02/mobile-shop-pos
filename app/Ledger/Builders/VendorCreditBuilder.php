@@ -2,11 +2,12 @@
 
 namespace App\Ledger\Builders;
 
+use App\Enums\RecordStatus;
+use App\Enums\VendorCreditSource;
 use App\Ledger\ChartOfAccounts as Chart;
 use App\Ledger\EntryBuilder;
 use App\Ledger\Line;
 use App\Models\Cheque;
-use App\Models\VendorCredit;
 use App\Models\VendorCreditRefund;
 use Illuminate\Database\Eloquent\Model;
 
@@ -23,7 +24,7 @@ class VendorCreditBuilder implements EntryBuilder
 {
     public function lines(Model $document): array
     {
-        if ($document->status === 'cancelled') {
+        if ($document->status === RecordStatus::Cancelled) {
             return [];
         }
 
@@ -32,9 +33,9 @@ class VendorCreditBuilder implements EntryBuilder
         $amount = (float) $document->amount;
 
         $from = match ($document->source) {
-            VendorCredit::DEBIT_NOTE => Chart::INVENTORY,
-            VendorCredit::CLAIM => Chart::SCHEME_INCOME,
-            default => Chart::paidThrough('account', Cheque::withoutGlobalScopes()->whereKey($document->source_id)->value('shop_account_id')),
+            VendorCreditSource::DebitNote => Chart::INVENTORY,
+            VendorCreditSource::Claim => Chart::SCHEME_INCOME,
+            VendorCreditSource::Cheque => Chart::paidThrough('account', Cheque::withoutGlobalScopes()->whereKey($document->source_id)->value('shop_account_id')),
         };
 
         $lines = [
@@ -52,6 +53,6 @@ class VendorCreditBuilder implements EntryBuilder
 
     public function description(Model $document): string
     {
-        return 'Vendor credit: '.$document->sourceLabel().($document->status === 'cancelled' ? ' (cancelled)' : '');
+        return 'Vendor credit: '.$document->sourceLabel().($document->status === RecordStatus::Cancelled ? ' (cancelled)' : '');
     }
 }

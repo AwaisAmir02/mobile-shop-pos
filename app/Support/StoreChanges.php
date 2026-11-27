@@ -95,7 +95,7 @@ class StoreChanges
         return $this->connections[$shopId] ??= StoreConnection::withoutGlobalScopes()
             ->where('shop_id', $shopId)
             ->whereNull('removed_at')
-            ->whereNotNull('callback_url')
+            ->sendingChanges()
             ->pluck('price_sync', 'id')
             ->map(fn ($sync) => (bool) $sync)
             ->all();

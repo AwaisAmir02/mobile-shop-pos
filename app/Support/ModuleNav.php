@@ -35,14 +35,14 @@ class ModuleNav
                 ['label' => 'History', 'route' => 'sales.history', 'show' => true],
                 ['label' => 'Instalments', 'route' => 'sales.installments', 'show' => (bool) $shop?->sellsDevices()],
                 ['label' => 'Warranty Check', 'route' => 'sales.warranty', 'show' => (bool) $shop?->sellsDevices()],
-                ['label' => 'Orders', 'route' => 'sales-orders.index', 'show' => (bool) $shop?->usesTool('orders')],
-                ['label' => 'Load Sheets', 'route' => 'load-sheets.index', 'show' => (bool) $shop?->usesTool('orders')],
+                ['label' => 'Orders', 'route' => 'sales-orders.index', 'show' => (bool) $shop?->usesTool(\App\Enums\WholesaleTool::SalesOrders)],
+                ['label' => 'Load Sheets', 'route' => 'load-sheets.index', 'show' => (bool) $shop?->usesTool(\App\Enums\WholesaleTool::SalesOrders)],
             ],
             'stock' => [
                 ['label' => 'Receipts', 'route' => 'stock-ins.history', 'show' => true],
                 ['label' => 'Expiring & Expired', 'route' => 'stock-ins.expiry', 'show' => (bool) $shop?->expiry_tracking_enabled],
                 ['label' => 'Write-offs', 'route' => 'stock-ins.write-offs', 'show' => true],
-                ['label' => 'Purchase Returns', 'route' => 'purchase-returns.index', 'show' => (bool) $shop?->usesTool('returns')],
+                ['label' => 'Purchase Returns', 'route' => 'purchase-returns.index', 'show' => (bool) $shop?->usesTool(\App\Enums\WholesaleTool::PurchaseReturns)],
             ],
             'purchasing' => [
                 ['label' => 'Orders', 'route' => 'purchase-orders.index', 'show' => true],

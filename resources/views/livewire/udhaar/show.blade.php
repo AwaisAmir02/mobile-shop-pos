@@ -135,7 +135,7 @@ new #[Layout('layouts.app')] #[Title('Udhaar History')] class extends Component
         $customerId = $this->customer->id;
         $rows = collect();
 
-        Sale::where('customer_id', $customerId)->owing()->orderBy('sales.id')->with('installments')->get()
+        Sale::where('customer_id', $customerId)->owedByCustomer()->orderBy('sales.id')->with('installments')->get()
             ->each(function (Sale $sale) use ($rows) {
                 if ($sale->amountDue() > 0) {
                     $schedule = InstallmentSchedule::for($sale);

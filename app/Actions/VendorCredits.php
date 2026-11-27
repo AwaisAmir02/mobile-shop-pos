@@ -2,9 +2,9 @@
 
 namespace App\Actions;
 
-use App\Enums\PaymentStatus;
+use App\Enums\RecordStatus;
 use App\Enums\StockInPaymentSource;
-use App\Models\StockIn;
+use App\Enums\VendorCreditSource;
 use App\Models\Vendor;
 use App\Models\VendorCredit;
 use App\Models\VendorCreditRefund;
@@ -19,15 +19,15 @@ use Illuminate\Validation\ValidationException;
  * (Vendor::totalOwed). A credit reaches that figure the one way any payment
  * does: a stock-in payment row (method vendor_credit) on an unpaid batch, so
  * nothing is counted twice and every existing screen and the ledger read it
- * unchanged. Whatever can't be taken off unpaid stock stays `remaining`,
- * to take off later stock or to be refunded in money.
+ * unchanged (VendorPayments). Whatever can't be taken off unpaid stock stays
+ * `remaining`, to take off later stock or to be refunded in money.
  */
 class VendorCredits
 {
     public const METHOD = 'vendor_credit';
 
     /** @param  list<int>  $preferBatchIds  batches to take it off first (the goods' own, for a debit note) */
-    public static function issue(int $vendorId, float $amount, string $source, ?int $sourceId, ?int $userId, ?string $note = null, bool $apply = true, array $preferBatchIds = []): VendorCredit
+    public static function issue(int $vendorId, float $amount, VendorCreditSource $source, ?int $sourceId, ?int $userId, ?string $note = null, bool $apply = true, array $preferBatchIds = []): VendorCredit
     {
         $amount = round($amount, 2);
 
@@ -46,7 +46,7 @@ class VendorCredits
                 'entry_date' => now()->toDateString(),
                 'applied_to' => [],
                 'note' => $note,
-                'status' => 'active',
+                'status' => RecordStatus::Active,
                 'user_id' => $userId,
             ]);
 
@@ -58,74 +58,17 @@ class VendorCredits
         });
     }
 
-    /** The vendor's unpaid batches, oldest first, preferred ones before the rest. */
-    protected static function unpaidBatches(int $vendorId, array $preferBatchIds = [])
-    {
-        return StockIn::query()
-            ->where('vendor_id', $vendorId)
-            ->where('payment_status', '!=', PaymentStatus::Paid->value)
-            ->whereNotNull('total_cost')
-            ->orderBy('stock_date')->orderBy('id')
-            ->get()
-            ->filter(fn (StockIn $batch) => $batch->amountOwed() > 0)
-            ->sortBy(fn (StockIn $batch) => in_array($batch->id, $preferBatchIds, true) ? 0 : 1)
-            ->values();
-    }
-
-    /** What the vendor is owed in total, as unpaid batches. */
-    public static function owedTo(int $vendorId): float
-    {
-        return round((float) self::unpaidBatches($vendorId)->sum(fn (StockIn $batch) => $batch->amountOwed()), 2);
-    }
-
-    /**
-     * Pays the vendor's unpaid batches with $amount, oldest first, through
-     * RecordStockInPayment (one row per batch). Returns [[stock_in_id, amount]].
-     *
-     * @return list<array{stock_in_id: int, amount: float}>
-     */
-    public static function payBatches(int $vendorId, float $amount, StockInPaymentSource $source, ?string $method, ?int $accountId, ?int $userId, string $note, array $preferBatchIds = []): array
-    {
-        $left = round($amount, 2);
-        $applied = [];
-
-        foreach (self::unpaidBatches($vendorId, $preferBatchIds) as $batch) {
-            if ($left <= 0) {
-                break;
-            }
-
-            $take = round(min($left, $batch->amountOwed()), 2);
-            RecordStockInPayment::add($batch, $take, $userId, $source, null, $method, $accountId, $note);
-            $applied[] = ['stock_in_id' => $batch->id, 'amount' => $take];
-            $left = round($left - $take, 2);
-        }
-
-        return $applied;
-    }
-
-    /** Undoes payBatches(): a negative row on each batch, dated today. */
-    public static function unpayBatches(array $applied, StockInPaymentSource $source, ?string $method, ?int $accountId, ?int $userId, string $note): void
-    {
-        foreach ($applied as $part) {
-            $batch = StockIn::withoutGlobalScopes()->find($part['stock_in_id']);
-
-            if ($batch !== null && round((float) $part['amount'], 2) > 0) {
-                RecordStockInPayment::add($batch, -round((float) $part['amount'], 2), $userId, $source, null, $method, $accountId, $note);
-            }
-        }
-    }
-
     /** Takes what's left of a credit off the vendor's unpaid stock. Returns the amount applied. */
     public static function applyToStock(VendorCredit $credit, ?int $userId, array $preferBatchIds = []): float
     {
         return DB::transaction(function () use ($credit, $userId, $preferBatchIds) {
             $credit = VendorCredit::whereKey($credit->id)->lockForUpdate()->firstOrFail();
 
-            if ($credit->status !== 'active' || (float) $credit->remaining <= 0) {
+            if ($credit->status !== RecordStatus::Active || (float) $credit->remaining <= 0) {
                 return 0.0;
             }
 
-            $applied = self::payBatches($credit->vendor_id, (float) $credit->remaining, StockInPaymentSource::VendorCredit, self::METHOD, null, $userId, $credit->sourceLabel(), $preferBatchIds);
+            $applied = VendorPayments::payOldestFirst($credit->vendor_id, (float) $credit->remaining, StockInPaymentSource::VendorCredit, self::METHOD, null, $userId, $credit->sourceLabel(), $preferBatchIds);
             $total = round(array_sum(array_column($applied, 'amount')), 2);
 
             $credit->update([
@@ -144,7 +87,7 @@ class VendorCredits
             $credit = VendorCredit::whereKey($credit->id)->lockForUpdate()->firstOrFail();
             $amount = round($amount, 2);
 
-            if ($credit->status !== 'active' || $amount <= 0 || $amount > round((float) $credit->remaining, 2)) {
+            if ($credit->status !== RecordStatus::Active || $amount <= 0 || $amount > round((float) $credit->remaining, 2)) {
                 throw ValidationException::withMessages(['refundAmount' => 'Enter up to Rs '.number_format((float) $credit->remaining, 2).', what is left of this credit.']);
             }
 
@@ -169,7 +112,7 @@ class VendorCredits
         DB::transaction(function () use ($credit, $userId) {
             $credit = VendorCredit::whereKey($credit->id)->lockForUpdate()->firstOrFail();
 
-            if ($credit->status !== 'active') {
+            if ($credit->status !== RecordStatus::Active) {
                 return;
             }
 
@@ -177,14 +120,14 @@ class VendorCredits
                 throw ValidationException::withMessages(['credit' => 'The vendor has already paid some of this credit back, so it can\'t be undone.']);
             }
 
-            self::unpayBatches($credit->applied_to ?? [], StockInPaymentSource::VendorCredit, self::METHOD, null, $userId, 'Undone: '.$credit->sourceLabel());
-            $credit->update(['status' => 'cancelled', 'remaining' => 0]);
+            VendorPayments::undo($credit->applied_to ?? [], StockInPaymentSource::VendorCredit, self::METHOD, null, $userId, 'Undone: '.$credit->sourceLabel());
+            $credit->update(['status' => RecordStatus::Cancelled, 'remaining' => 0]);
         });
     }
 
     /** What the vendor holds for the shop, across all active credits. */
     public static function available(int $vendorId): float
     {
-        return round((float) VendorCredit::query()->where('vendor_id', $vendorId)->where('status', 'active')->sum('remaining'), 2);
+        return round((float) VendorCredit::query()->where('vendor_id', $vendorId)->where('status', RecordStatus::Active->value)->sum('remaining'), 2);
     }
 }

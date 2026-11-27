@@ -45,12 +45,12 @@ new class extends Component
 
     public function mount(): void
     {
-        $this->select(StoreConnection::notRemoved()->orderBy('id')->value('id'));
+        $this->select(StoreConnection::notRemoved()->ownApi()->orderBy('id')->value('id'));
     }
 
     public function select(?int $id): void
     {
-        $connection = $id === null ? null : StoreConnection::notRemoved()->find($id);
+        $connection = $id === null ? null : StoreConnection::notRemoved()->ownApi()->find($id);
 
         $this->selectedId = $connection?->id;
         $this->safetyBuffer = $connection?->safety_buffer ?? 0;
@@ -62,7 +62,7 @@ new class extends Component
 
     protected function selected(): StoreConnection
     {
-        return StoreConnection::notRemoved()->findOrFail($this->selectedId);
+        return StoreConnection::notRemoved()->ownApi()->findOrFail($this->selectedId);
     }
 
     public function updatedSearch(): void
@@ -118,7 +118,7 @@ new class extends Component
     {
         StoreConnections::remove($this->selected());
         $this->hideCredentials();
-        $this->select(StoreConnection::notRemoved()->orderBy('id')->value('id'));
+        $this->select(StoreConnection::notRemoved()->ownApi()->orderBy('id')->value('id'));
         $this->toastSuccess('Connection removed. Its token no longer works.');
     }
 
@@ -186,7 +186,7 @@ new class extends Component
 
     public function with(): array
     {
-        $connection = $this->selectedId === null ? null : StoreConnection::notRemoved()->find($this->selectedId);
+        $connection = $this->selectedId === null ? null : StoreConnection::notRemoved()->ownApi()->find($this->selectedId);
 
         $products = $connection === null ? null : Product::publishableOnline()
             ->when($this->search !== '', fn ($query) => $query->where('name', 'like', '%'.$this->search.'%'))
@@ -194,7 +194,7 @@ new class extends Component
             ->paginate(25);
 
         return [
-            'connections' => StoreConnection::notRemoved()->orderBy('id')->get(),
+            'connections' => StoreConnection::notRemoved()->ownApi()->orderBy('id')->get(),
             'accounts' => ShopAccount::query()->orderBy('name')->get(),
             'recentEvents' => $connection === null ? collect() : StoreEvent::where('store_connection_id', $connection->id)->latest('id')->limit(10)->get(),
             'connection' => $connection,
@@ -209,6 +209,7 @@ new class extends Component
 
 <div class="space-y-6">
     <x-ui.card title="Online store" description="Connect your own online store. It reads your published products and live stock, and sends its orders here. Stock in HisabOKitab is always the true figure; the store can't change it.">
+        <p class="mb-4 text-sm text-ink-muted">Your website's developer can do the rest alone: <a href="{{ route('developers.store-api') }}" target="_blank" rel="noopener" class="font-semibold text-link hover:underline">developer guide</a>.</p>
         <form wire:submit="createConnection" class="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div class="flex-1">
                 <x-ui.field label="New connection" name="newName" for="newStoreName">

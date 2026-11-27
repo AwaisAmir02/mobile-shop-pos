@@ -3,25 +3,18 @@
 namespace App\Support;
 
 use App\Models\Product;
-use App\Models\Shop;
-use App\Models\StockIn;
 use App\Models\StoreConnection;
-use App\Models\StoreOrderItem;
-use App\Models\WhatsAppOrderItem;
-use App\Enums\StoreOrderStatus;
-use App\Enums\WhatsAppOrderStatus;
 use Illuminate\Support\Collection;
 
 /**
- * What a store may sell: sellable stock, less what's held for orders still waiting
- * for a decision, less the shop's safety buffer, never below zero. Only ever worked
- * out, never stored, so nothing here touches stock or batches.
+ * What a store may sell: what's free to sell (StockAvailability, the same
+ * figure the chatbot, the register and sales orders use), less the
+ * connection's safety buffer, in whole pieces, never below zero. Only ever
+ * worked out, never stored, so nothing here touches stock or batches.
  */
 class StoreAvailability
 {
     /**
-     * Product::sellableStock() for many products at once.
-     *
      * @param  Collection<int, Product>  $products  all from the connection's shop
      * @return array<int, int> keyed by product id
      */
@@ -31,21 +24,11 @@ class StoreAvailability
             return [];
         }
 
-        $ids = $products->pluck('id');
-        $expired = self::expiredThousandths($connection->shop_id, $ids);
-        $pending = self::pendingWhatsAppThousandths($ids);
-        $held = self::pendingStoreThousandths($ids);
         $buffer = $connection->safety_buffer * 1000;
 
-        return $products->mapWithKeys(function (Product $product) use ($expired, $pending, $held, $buffer) {
-            $left = Quantity::toThousandths($product->stock_quantity)
-                - ($expired[$product->id] ?? 0)
-                - ($pending[$product->id] ?? 0)
-                - ($held[$product->id] ?? 0)
-                - $buffer;
-
-            return [$product->id => $left > 0 ? intdiv($left, 1000) : 0];
-        })->all();
+        return collect(StockAvailability::free($products))
+            ->map(fn (int|float $free) => max(0, intdiv(Quantity::toThousandths($free) - $buffer, 1000)))
+            ->all();
     }
 
     /**
@@ -55,58 +38,5 @@ class StoreAvailability
     public static function nextSequence(): int
     {
         return (int) floor(microtime(true) * 1000);
-    }
-
-    /** @return array<int, int> */
-    protected static function expiredThousandths(int $shopId, Collection $ids): array
-    {
-        if (! Shop::whereKey($shopId)->value('expiry_tracking_enabled')) {
-            return [];
-        }
-
-        return StockIn::query()
-            ->whereIn('product_id', $ids)
-            ->where('quantity_remaining', '>', 0)
-            ->where('expiry_date', '<', BatchExpiry::today())
-            ->selectRaw('product_id, SUM(quantity_remaining) as total')
-            ->groupBy('product_id')
-            ->toBase()
-            ->get()
-            ->mapWithKeys(fn ($row) => [(int) $row->product_id => Quantity::toThousandths(Quantity::normalize($row->total))])
-            ->all();
-    }
-
-    /**
-     * Across all the shop's connections: the stock is one pool, so a second store
-     * mustn't be offered what the first has sold.
-     *
-     * @return array<int, int>
-     */
-    protected static function pendingStoreThousandths(Collection $ids): array
-    {
-        return StoreOrderItem::query()
-            ->whereIn('product_id', $ids)
-            ->where('removed', false)
-            ->whereHas('order', fn ($query) => $query->where('status', StoreOrderStatus::Pending->value))
-            ->selectRaw('product_id, SUM(quantity) as total')
-            ->groupBy('product_id')
-            ->toBase()
-            ->get()
-            ->mapWithKeys(fn ($row) => [(int) $row->product_id => (int) $row->total * 1000])
-            ->all();
-    }
-
-    /** @return array<int, int> */
-    protected static function pendingWhatsAppThousandths(Collection $ids): array
-    {
-        return WhatsAppOrderItem::query()
-            ->whereIn('product_id', $ids)
-            ->whereHas('order', fn ($query) => $query->where('status', WhatsAppOrderStatus::Pending->value))
-            ->selectRaw('product_id, SUM(quantity) as total')
-            ->groupBy('product_id')
-            ->toBase()
-            ->get()
-            ->mapWithKeys(fn ($row) => [(int) $row->product_id => Quantity::toThousandths(Quantity::normalize($row->total))])
-            ->all();
     }
 }

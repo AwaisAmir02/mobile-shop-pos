@@ -15,7 +15,18 @@ class ServiceItem extends Model
         'shop_id',
         'service_category_id',
         'name',
+        'price',
+        'duration_minutes',
+        'capacity',
+        'is_active',
     ];
+
+    protected $attributes = ['capacity' => 1, 'is_active' => true];
+
+    protected function casts(): array
+    {
+        return ['price' => 'decimal:2', 'duration_minutes' => 'integer', 'capacity' => 'integer', 'is_active' => 'boolean'];
+    }
 
     public function serviceCategory(): BelongsTo
     {

@@ -24,6 +24,8 @@ class VerifyStoreSignature
     {
         $connection = StoreConnection::withoutGlobalScopes()
             ->where('public_id', (string) $request->route('connection'))
+            // Only our own-website API signs with this scheme; platform stores have their own webhooks.
+            ->where('driver', \App\Enums\StoreDriver::Api->value)
             ->whereNull('removed_at')
             ->first();
 

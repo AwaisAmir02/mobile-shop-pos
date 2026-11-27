@@ -3,8 +3,8 @@
 use App\Actions\PurchaseReturns;
 use App\Livewire\Concerns\Toasts;
 use App\Models\PurchaseReturn;
+use App\Services\DebitNotePdfService;
 use App\Support\BranchContext;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -21,11 +21,6 @@ new #[Layout('layouts.app')] #[Title('Purchase Returns')] class extends Componen
         BranchContext::current()->shopWideForRequest();
     }
 
-    public function mount(): void
-    {
-        abort_unless(Auth::user()->shop?->usesTool('returns'), 404);
-    }
-
     public function cancel(int $id): void
     {
         PurchaseReturns::cancel(PurchaseReturn::findOrFail($id), Auth::id());
@@ -34,10 +29,7 @@ new #[Layout('layouts.app')] #[Title('Purchase Returns')] class extends Componen
 
     public function debitNote(int $id): StreamedResponse
     {
-        $return = PurchaseReturn::with(['items', 'vendor', 'user'])->findOrFail($id);
-        $output = Pdf::loadView('pdf.debit-note', ['return' => $return, 'shop' => Auth::user()->shop, 'credit' => $return->credit()])->setPaper('a5')->output();
-
-        return response()->streamDownload(fn () => print ($output), $return->number().'.pdf');
+        return app(DebitNotePdfService::class)->download(PurchaseReturn::findOrFail($id));
     }
 
     public function with(): array

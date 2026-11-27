@@ -3,7 +3,7 @@
 @php
     $brand = config('branding.name');
     $pageTitle = $title ? $title.' | '.$brand : 'POS & Business Management Software in Pakistan | '.$brand;
-    $metaDescription = $description ?? 'POS, inventory and accounts software for shops, online sellers and growing businesses in Pakistan: sales, stock, udhaar, cash, payroll and WhatsApp orders in one app.';
+    $metaDescription = $description ?? 'POS, inventory and accounts software for shops, wholesalers, online sellers and service businesses in Pakistan: sales, stock, udhaar, cash, payroll and WhatsApp orders in one app.';
     $links = [
         ['route' => 'site.features', 'label' => 'Features'],
         ['route' => 'site.industries', 'label' => 'Industries'],
@@ -13,7 +13,8 @@
     ];
     $siteFeatures = \App\Support\SiteFeatures::all();
     $currentUrl = url()->current();
-    // The two header dropdowns: capabilities ("what it does") and business types ("who it's for"). Same markup, different lists.
+    // The two header dropdowns: capabilities ("what it does", a flat list) and business types ("who it's for",
+    // one column per business group with its business types underneath).
     $menus = [
         'site.features' => [
             'id' => 'site-features-menu', 'mobileId' => 'site-mobile-features', 'toggleLabel' => 'Show all features', 'allLabel' => 'All features',
@@ -23,9 +24,8 @@
         ],
         'site.industries' => [
             'id' => 'site-industries-menu', 'mobileId' => 'site-mobile-industries', 'toggleLabel' => 'Show all industries', 'allLabel' => 'All industries',
-            'grid' => 'grid-cols-2 xl:grid-cols-4',
             'active' => request()->routeIs('site.industries', 'site.industry'),
-            'items' => \App\Support\SiteIndustries::menu(),
+            'columns' => \App\Support\SiteIndustries::menu(),
         ],
     ];
     $chevron = '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="h-4 w-4 transition-transform duration-200 group-data-[open]:rotate-180"><path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>';
@@ -167,6 +167,23 @@
                                 </div>
                                 <div id="{{ $menu['id'] }}" class="invisible absolute inset-x-4 top-full z-50 translate-y-1 pt-1 opacity-0 sm:inset-x-6 lg:inset-x-8 transition duration-150 group-data-[open]:visible group-data-[open]:translate-y-0 group-data-[open]:opacity-100">
                                     <div class="flex max-h-[calc(100vh-5.5rem)] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-brand-950/15 ring-1 ring-slate-900/5">
+                                        @if (isset($menu['columns']))
+                                            <div class="grid min-h-0 grid-cols-4 gap-2 overflow-y-auto overscroll-contain p-3">
+                                                @foreach ($menu['columns'] as $column)
+                                                    <div class="min-w-0">
+                                                        <a href="{{ $column['url'] }}" @class(['flex items-center gap-3 rounded-xl p-3 transition hover:bg-slate-50', 'bg-brand-50' => $column['url'] === $currentUrl]) @if ($column['url'] === $currentUrl) aria-current="page" @endif>
+                                                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><x-site.icon :name="$column['icon']" class="h-5 w-5" /></span>
+                                                            <span class="min-w-0 text-sm font-semibold text-slate-900">{{ $column['name'] }}@if ($column['badge'])<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $column['badge'] }}</span>@endif</span>
+                                                        </a>
+                                                        <ul class="mb-2 ml-[1.875rem] mt-1 space-y-0.5 border-l border-slate-100 pl-3">
+                                                            @foreach ($column['items'] as $item)
+                                                                <li><a href="{{ $item['url'] }}" @class(['block rounded-lg px-2.5 py-1.5 text-sm transition hover:bg-slate-50 hover:text-brand-700', 'bg-brand-50 font-medium text-brand-700' => $item['url'] === $currentUrl, 'text-slate-600' => $item['url'] !== $currentUrl]) @if ($item['url'] === $currentUrl) aria-current="page" @endif>{{ $item['name'] }}</a></li>
+                                                            @endforeach
+                                                        </ul>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @else
                                         <div class="grid min-h-0 gap-1 overflow-y-auto overscroll-contain p-3 {{ $menu['grid'] }}">
                                             @foreach ($menu['items'] as $item)
                                                 <a href="{{ $item['url'] }}" @class(['flex gap-3 rounded-xl p-3 transition hover:bg-slate-50', 'bg-brand-50' => $item['url'] === $currentUrl]) @if ($item['url'] === $currentUrl) aria-current="page" @endif>
@@ -178,6 +195,7 @@
                                                 </a>
                                             @endforeach
                                         </div>
+                                        @endif
                                         <div class="shrink-0 border-t border-slate-100 bg-slate-50 px-6 py-3">
                                             <a href="{{ route($link['route']) }}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:text-brand-800">{{ $menu['allLabel'] }} <x-site.icon name="arrow-right" class="h-4 w-4" /></a>
                                         </div>
@@ -218,7 +236,16 @@
                                 <button type="button" data-submenu-toggle class="rounded-lg p-3 text-slate-500 hover:bg-slate-50" aria-expanded="false" aria-controls="{{ $menu['mobileId'] }}" aria-label="{{ $menu['toggleLabel'] }}">{!! $chevron !!}</button>
                             </div>
                             <div id="{{ $menu['mobileId'] }}" class="hidden pb-2 pl-3 group-data-[open]:block">
-                                @foreach ($menu['items'] as $item)
+                                @foreach ($menu['columns'] ?? [] as $column)
+                                    <a href="{{ $column['url'] }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
+                                        <x-site.icon :name="$column['icon']" class="h-5 w-5 text-brand-600" />
+                                        <span>{{ $column['name'] }}@if ($column['badge'])<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $column['badge'] }}</span>@endif</span>
+                                    </a>
+                                    @foreach ($column['items'] as $item)
+                                        <a href="{{ $item['url'] }}" class="block rounded-lg py-2 pl-11 pr-3 text-sm text-slate-600 hover:bg-slate-50">{{ $item['name'] }}</a>
+                                    @endforeach
+                                @endforeach
+                                @foreach ($menu['items'] ?? [] as $item)
                                     <a href="{{ $item['url'] }}" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
                                         <x-site.icon :name="$item['icon']" class="h-5 w-5 text-brand-600" />
                                         <span>{{ $item['name'] }}@if (! empty($item['badge']))<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $item['badge'] }}</span>@endif</span>
@@ -249,7 +276,7 @@
             <div class="mx-auto grid grid-cols-1 max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-6 lg:px-8">
                 <div class="lg:col-span-2">
                     <img src="{{ $logo1x }}" srcset="{{ $logo1x }} 1x, {{ $logo2x }} 2x" alt="{{ $brand }}" class="h-9 w-auto" width="144" height="38" loading="lazy">
-                    <p class="mt-4 max-w-sm text-sm leading-6 text-slate-600">POS, inventory and accounts software for Pakistani shops, online sellers and growing businesses — from kiryana stores, pharmacies, mobile shops and clothing &amp; shoe shops to wholesalers and companies with several branches. {{ config('branding.slogan') }}</p>
+                    <p class="mt-4 max-w-sm text-sm leading-6 text-slate-600">Business management software for Pakistan — POS, inventory and accounts for kiryana stores, pharmacies, mobile shops and clothing &amp; shoe shops, wholesalers and distributors, online and Daraz sellers, and salons, gyms and workshops. {{ config('branding.slogan') }}</p>
                 </div>
                 <div>
                     <h2 class="text-sm font-semibold text-slate-900">Features</h2>
@@ -262,9 +289,10 @@
                 <div>
                     <h2 class="text-sm font-semibold text-slate-900">Industries</h2>
                     <ul class="mt-4 space-y-3 text-sm text-slate-600">
-                        @foreach ($menus['site.industries']['items'] as $item)
-                            <li><a href="{{ $item['url'] }}" class="hover:text-brand-700">{{ $item['name'] }}</a></li>
+                        @foreach ($menus['site.industries']['columns'] as $column)
+                            <li><a href="{{ $column['url'] }}" class="hover:text-brand-700">{{ $column['name'] }}</a></li>
                         @endforeach
+                        <li><a href="{{ route('site.industries') }}" class="hover:text-brand-700">All industries</a></li>
                     </ul>
                 </div>
                 <div>

@@ -83,6 +83,14 @@ new #[Layout('layouts.app')] #[Title('Customer Messages')] class extends Compone
             : $this->toastError("Not sent: {$notification->error}");
     }
 
+    /** Services group: automatic booking, renewal and service-due reminders on or off. */
+    public function toggleServiceReminders(): void
+    {
+        $shop = Auth::user()->shop;
+        abort_unless($shop->isServiceTrade(), 404);
+        $shop->update(['service_reminders_enabled' => ! $shop->service_reminders_enabled]);
+    }
+
     public function with(): array
     {
         $notifications = app(CustomerNotifications::class);
@@ -138,6 +146,13 @@ new #[Layout('layouts.app')] #[Title('Customer Messages')] class extends Compone
     </x-slot>
 
     <x-billing.limit-notice limit="whatsapp_messages_per_month" />
+
+@if (auth()->user()->shop->isServiceTrade())
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3 text-sm" data-service-reminders>
+        <span class="text-ink">Automatic reminders for bookings, membership renewals and service due are <strong>{{ auth()->user()->shop->service_reminders_enabled ? 'on' : 'off' }}</strong>. Each one counts towards your monthly messages.</span>
+        <x-ui.button size="sm" variant="secondary" wire:click="toggleServiceReminders">{{ auth()->user()->shop->service_reminders_enabled ? 'Turn off' : 'Turn on' }}</x-ui.button>
+    </div>
+@endif
 
     @if (! $connected)
         <div class="mb-4 rounded-lg bg-warning-soft p-3 text-sm text-warning">

@@ -17,10 +17,14 @@ use Illuminate\Support\Facades\Hash;
  * Going over the limit is never silently allowed and never a dead end: the
  * shop owner can approve it, from their own login or by typing their
  * password on the cashier's screen. The sale records who approved it and why.
+ *
+ * Not the same figure as "Total Owed" (an advance offsets that one): see
+ * docs/customer-balances.md for which balance answers which question.
  */
 final class CreditControl
 {
-    public static function owed(Customer $customer): float
+    /** How much of the credit limit is used: every unpaid bill, plus udhaar only when owed (an advance frees up nothing). */
+    public static function creditUsed(Customer $customer): float
     {
         $statement = CustomerDuesStatement::for($customer);
 
@@ -40,7 +44,7 @@ final class CreditControl
         }
 
         $limit = round((float) $customer->credit_limit, 2);
-        $owed = self::owed($customer);
+        $owed = self::creditUsed($customer);
         $after = round($owed + max(0.0, $newDue), 2);
 
         return [

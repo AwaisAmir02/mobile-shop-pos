@@ -68,6 +68,11 @@ class SaleReturns
         $groups = [];
 
         foreach ($items as $item) {
+            // A membership or a session taken from a package is undone by cancelling its bill, not returned.
+            if ($item->line_kind !== null && ! $item->line_kind->isReturnable()) {
+                continue;
+            }
+
             $key = $item->product_id !== null ? 'p'.$item->product_id : 'n'.substr(md5($item->product_name.'|'.$item->unit_price), 0, 12);
             $returned = $item->returnedQuantity();
             $returnedValue = $item->returnedValue();

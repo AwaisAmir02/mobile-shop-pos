@@ -1,6 +1,7 @@
 <?php
 
-use App\Actions\SalesOrders;
+use App\Actions\LoadSheets;
+use App\Enums\SalesOrderStatus;
 use App\Livewire\Concerns\Toasts;
 use App\Models\DeliveryRoute;
 use App\Models\LoadSheet;
@@ -35,13 +36,12 @@ new #[Layout('layouts.app')] #[Title('Load Sheets')] class extends Component
 
     public function mount(): void
     {
-        abort_unless(Auth::user()->shop?->usesTool('orders'), 404);
         $this->loadDate = BatchExpiry::today();
     }
 
     public function updatedRouteId(): void
     {
-        $this->orderIds = SalesOrder::query()->where('status', SalesOrder::BOOKED)->whereNull('load_sheet_id')
+        $this->orderIds = SalesOrder::query()->where('status', SalesOrderStatus::Booked->value)->whereNull('load_sheet_id')
             ->when($this->routeId !== '', fn ($q) => $q->where('route_id', (int) $this->routeId))
             ->pluck('id')->map(fn ($id) => (string) $id)->all();
     }
@@ -57,7 +57,7 @@ new #[Layout('layouts.app')] #[Title('Load Sheets')] class extends Component
             'note' => ['nullable', 'string', 'max:255'],
         ], [], ['loadDate' => 'date', 'salesmanId' => 'salesman']);
 
-        $sheet = SalesOrders::createLoadSheet(array_map('intval', $this->orderIds), $this->loadDate, $this->vehicle, $this->driver, $this->salesmanId !== '' ? (int) $this->salesmanId : null, $this->routeId !== '' ? (int) $this->routeId : null, $this->note, Auth::id());
+        $sheet = LoadSheets::create(array_map('intval', $this->orderIds), $this->loadDate, $this->vehicle, $this->driver, $this->salesmanId !== '' ? (int) $this->salesmanId : null, $this->routeId !== '' ? (int) $this->routeId : null, $this->note, Auth::id());
 
         $this->redirectRoute('load-sheets.show', $sheet, navigate: true);
     }
@@ -65,11 +65,11 @@ new #[Layout('layouts.app')] #[Title('Load Sheets')] class extends Component
     public function with(): array
     {
         return [
-            'sheets' => LoadSheet::query()->with(['route', 'salesman'])->withCount('orders')->latest('load_date')->latest('id')->limit(100)->get(),
-            'waiting' => SalesOrder::query()->where('status', SalesOrder::BOOKED)->whereNull('load_sheet_id')
+            'sheets' => LoadSheet::query()->with(['deliveryRoute', 'salesman'])->withCount('orders')->latest('load_date')->latest('id')->limit(100)->get(),
+            'waiting' => SalesOrder::query()->where('status', SalesOrderStatus::Booked->value)->whereNull('load_sheet_id')
                 ->when($this->routeId !== '', fn ($q) => $q->where('route_id', (int) $this->routeId))
-                ->with(['customer', 'route'])->orderBy('delivery_date')->get(),
-            'routes' => DeliveryRoute::query()->orderBy('name')->get(),
+                ->with(['customer', 'deliveryRoute'])->orderBy('delivery_date')->get(),
+            'deliveryRoutes' => DeliveryRoute::query()->orderBy('name')->get(),
             'users' => User::query()->where('shop_id', Auth::user()->shop_id)->orderBy('name')->get(),
         ];
     }
@@ -86,8 +86,8 @@ new #[Layout('layouts.app')] #[Title('Load Sheets')] class extends Component
                 <x-ui.field label="Route" name="routeId" for="sheetRoute" help="Picks its booked orders">
                     <x-ui.select wire:model.live="routeId" id="sheetRoute">
                         <option value="">Any route</option>
-                        @foreach ($routes as $route)
-                            <option value="{{ $route->id }}">{{ $route->name }}</option>
+                        @foreach ($deliveryRoutes as $deliveryRoute)
+                            <option value="{{ $deliveryRoute->id }}">{{ $deliveryRoute->name }}</option>
                         @endforeach
                     </x-ui.select>
                 </x-ui.field>
@@ -139,7 +139,7 @@ new #[Layout('layouts.app')] #[Title('Load Sheets')] class extends Component
                                 <span class="block text-xs text-ink-faint">{{ collect([$sheet->vehicle, $sheet->salesman?->name])->filter()->implode(' · ') }}</span>
                             </x-ui.table-cell>
                             <x-ui.table-cell label="Date">{{ $sheet->load_date->format('d M Y') }}</x-ui.table-cell>
-                            <x-ui.table-cell label="Route">{{ $sheet->route?->name ?? '—' }}</x-ui.table-cell>
+                            <x-ui.table-cell label="Route">{{ $sheet->deliveryRoute?->name ?? '—' }}</x-ui.table-cell>
                             <x-ui.table-cell label="Orders">{{ $sheet->orders_count }}</x-ui.table-cell>
                             <x-ui.table-cell label="Status">{{ $sheet->isOpen() ? 'Out' : 'Settled' }}</x-ui.table-cell>
                         </x-ui.table-row>

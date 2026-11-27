@@ -16,6 +16,7 @@ class CustomerReview extends Model
         'whatsapp_contact_id',
         'customer_id',
         'whatsapp_order_id',
+        'shipment_id',
         'rating',
         'comment',
         'display_name',

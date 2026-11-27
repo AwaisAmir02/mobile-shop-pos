@@ -4,6 +4,7 @@ use App\Actions\CreateStockIn;
 use App\Enums\PaymentStatus;
 use App\Enums\PurchaseOrderStatus;
 use App\Enums\QuantityUnit;
+use App\Enums\WholesaleTool;
 use App\Livewire\Concerns\Toasts;
 use App\Models\AccessoryCategoryOption;
 use App\Models\MainCategory;
@@ -312,7 +313,7 @@ new #[Layout('layouts.app')] #[Title('Stock In')] class extends Component
 
     protected function bonusOn(): bool
     {
-        return (bool) Auth::user()->shop?->usesTool('bonus');
+        return (bool) Auth::user()->shop?->usesTool(WholesaleTool::BonusQuantity);
     }
 
     /**

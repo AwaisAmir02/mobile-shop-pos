@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
 class LedgerOpening
 {
     /** Balances carried from documents. Income, costs and past cash movements are history, not opening balances. */
-    public const FROM_DOCUMENTS = [Chart::RECEIVABLE, Chart::PAYABLE, Chart::EMPLOYEE_ADVANCES, Chart::WITHHOLDINGS, Chart::CLEARING, Chart::CANCELLED_UNCONFIRMED, Chart::CUSTOMER_CREDIT, Chart::VENDOR_CREDITS];
+    public const FROM_DOCUMENTS = [Chart::RECEIVABLE, Chart::PAYABLE, Chart::EMPLOYEE_ADVANCES, Chart::WITHHOLDINGS, Chart::CLEARING, Chart::CANCELLED_UNCONFIRMED, Chart::CUSTOMER_CREDIT, Chart::VENDOR_CREDITS, Chart::COURIER_CLEARING, Chart::TAX_DEDUCTED, Chart::CUSTOMER_DEPOSITS, Chart::GIFT_VOUCHERS];
 
     /** @return array<int, array{account: string, branch_id: ?int, party_type: ?string, party_id: ?int, paise: int}> */
     public static function fromBuilders(Shop $shop): array

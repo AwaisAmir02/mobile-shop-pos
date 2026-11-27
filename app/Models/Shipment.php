@@ -24,16 +24,20 @@ class Shipment extends Model
         'shop_id',
         'courier_connection_id',
         'courier',
+        'courier_name',
         'sale_id',
         'whatsapp_order_id',
         'store_order_id',
         'reference',
         'consignee_name',
         'consignee_phone',
+        'consignee_phone_key',
         'consignee_address',
         'city',
         'city_name',
         'cod_amount',
+        'cod_tracked',
+        'courier_settlement_id',
         'weight_grams',
         'pieces',
         'description',
@@ -50,8 +54,16 @@ class Shipment extends Model
         'delivered_at',
         'returned_at',
         'return_received_at',
+        'return_charge',
+        'review_token',
+        'review_requested_at',
         'cancelled_at',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(fn (self $shipment) => $shipment->consignee_phone_key = \App\Support\PhoneNumber::normalize($shipment->consignee_phone));
+    }
 
     protected function casts(): array
     {
@@ -59,6 +71,8 @@ class Shipment extends Model
             'courier' => CourierKey::class,
             'status' => ShipmentStatus::class,
             'cod_amount' => 'decimal:2',
+            'cod_tracked' => 'boolean',
+            'return_charge' => 'decimal:2',
             'weight_grams' => 'integer',
             'pieces' => 'integer',
             'events' => 'array',
@@ -67,6 +81,7 @@ class Shipment extends Model
             'delivered_at' => 'datetime',
             'returned_at' => 'datetime',
             'return_received_at' => 'datetime',
+            'review_requested_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
     }
@@ -95,6 +110,46 @@ class Shipment extends Model
     public function bookedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'booked_by');
+    }
+
+    public function settlement(): BelongsTo
+    {
+        return $this->belongsTo(CourierSettlement::class, 'courier_settlement_id');
+    }
+
+    /** Booked on the courier's own portal and typed in here: no connection, status moved by hand. */
+    public function isManual(): bool
+    {
+        return $this->courier_connection_id === null;
+    }
+
+    /** The courier's name as the shop knows it ("Other" carries its own). */
+    public function courierLabel(): string
+    {
+        return $this->courier === CourierKey::Other && filled($this->courier_name) ? $this->courier_name : $this->courier->label();
+    }
+
+    /**
+     * Cash on delivery the courier holds or will hold for the shop (O4): a tracked
+     * COD parcel on its way, delivered but not yet paid out, or coming back and not
+     * yet in the shop's hands. While a sale has one, its unpaid part is owed by the
+     * courier, not the customer, so customer dues leave it out (Sale::owedByCustomer).
+     */
+    public function scopeHeldByCourier(Builder $query): Builder
+    {
+        return $query->where('cod_tracked', true)
+            ->where('cod_amount', '>', 0)
+            ->where('status', '!=', ShipmentStatus::Cancelled->value)
+            ->whereNull('return_received_at')
+            ->where(fn ($q) => $q->whereNull('courier_settlement_id')
+                ->orWhereIn('status', [ShipmentStatus::Returning->value, ShipmentStatus::Returned->value]));
+    }
+
+    /** Delivered with cash to collect and not on any payout yet: what the courier owes. */
+    public function scopeAwaitingPayout(Builder $query): Builder
+    {
+        return $query->where('cod_tracked', true)->whereNull('courier_settlement_id')
+            ->where('status', ShipmentStatus::Delivered->value);
     }
 
     public function scopeOpen(Builder $query): Builder

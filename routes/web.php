@@ -21,8 +21,13 @@ Route::middleware('throttle:site')->group(function () {
     Route::get('features/{feature}', fn (string $feature) => view('site.feature', ['slug' => $feature, 'feature' => \App\Support\SiteFeatures::find($feature)]))
         ->whereIn('feature', \App\Support\SiteFeatures::slugs())
         ->name('site.feature');
+    // The mobile shop page moved from Features to its place under Shops & Retail; keep old links and rankings.
+    Route::permanentRedirect('features/mobile-shop-services', '/industries/mobile-shop');
     Route::view('industries', 'site.industries')->name('site.industries');
-    Route::get('industries/{industry}', fn (string $industry) => view('site.feature', ['slug' => $industry, 'feature' => \App\Support\SiteIndustries::find($industry), 'kind' => 'industry']))
+    // Both levels share one URL shape: a group overview (/industries/online-sellers) or a business type (/industries/daraz-seller).
+    Route::get('industries/{industry}', fn (string $industry) => ($group = \App\Support\SiteIndustries::findGroup($industry)) !== null
+        ? view('site.industry-group', ['slug' => $industry, 'group' => $group])
+        : view('site.industry', ['slug' => $industry, 'page' => \App\Support\SiteIndustries::find($industry)]))
         ->whereIn('industry', \App\Support\SiteIndustries::slugs())
         ->name('site.industry');
     Route::view('pricing', 'site.pricing')->name('site.pricing');
@@ -32,7 +37,7 @@ Route::middleware('throttle:site')->group(function () {
     Route::get('robots.txt', fn () => response(implode("
 ", [
         'User-agent: *',
-        ...array_map(fn ($path) => 'Disallow: '.$path, ['/admin', '/api/', '/webhooks/', '/auth/', '/signup/complete', '/billing', '/support', '/k/']),
+        ...array_map(fn ($path) => 'Disallow: '.$path, ['/admin', '/api/', '/webhooks/', '/auth/', '/signup/complete', '/billing', '/support', '/k/', '/o/', '/r/']),
         '',
         'Sitemap: '.route('site.sitemap'),
     ])."
@@ -43,6 +48,13 @@ Route::middleware('throttle:site')->group(function () {
 // A customer's own ledger at a private link (no login), and paying it with the shop's own JazzCash.
 Route::get('k/{token}', [\App\Http\Controllers\CustomerLedgerController::class, 'show'])->middleware('throttle:60,1')->name('customer-ledger.show');
 Route::post('k/{token}/pay', [\App\Http\Controllers\CustomerLedgerController::class, 'pay'])->middleware('throttle:10,1')->name('customer-ledger.pay');
+// O9: the own-website API's developer docs (docs/channel-api-v1.md), public so a shop's developer can work alone.
+Route::get('developers/store-api', fn () => view('developers.store-api', ['html' => \Illuminate\Support\Str::markdown(file_get_contents(base_path('docs/channel-api-v1.md')), ['html_input' => 'escape', 'allow_unsafe_links' => false])]))->name('developers.store-api');
+// O7: one order's JazzCash link; O8: a delivered parcel's feedback page. Token-only, like /k/.
+Route::get('o/{token}', [\App\Http\Controllers\OrderPaymentController::class, 'show'])->middleware('throttle:60,1')->name('order-payment.show');
+Route::post('o/{token}/pay', [\App\Http\Controllers\OrderPaymentController::class, 'pay'])->middleware('throttle:10,1')->name('order-payment.pay');
+Route::get('r/{token}', [\App\Http\Controllers\ParcelReviewController::class, 'show'])->middleware('throttle:60,1')->name('parcel-review.show');
+Route::post('r/{token}', [\App\Http\Controllers\ParcelReviewController::class, 'store'])->middleware('throttle:10,1')->name('parcel-review.store');
 Route::post('webhooks/payments/jazzcash', [\App\Http\Controllers\CustomerLedgerController::class, 'jazzcashReturn'])->middleware('throttle:60,1')->name('payments.jazzcash.return');
 
 Route::view('signup', 'site.signup')->middleware(['guest', 'throttle:30,1'])->name('site.signup');
@@ -161,20 +173,40 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('udhaar', 'udhaar.index')->name('udhaar.index')->middleware('shop.access:udhaar');
         Volt::route('udhaar/{customer}', 'udhaar.show')->name('udhaar.show')->middleware('shop.access:udhaar');
-        Volt::route('dues-aging', 'aging.index')->name('aging.index')->middleware('shop.access:udhaar');
-        // Wholesale P2: each screen also checks its tool (Shop::usesTool) and 404s without it.
-        Volt::route('cheques', 'cheques.index')->name('cheques.index')->middleware('shop.access:udhaar');
-        Volt::route('purchase-returns', 'purchase-returns.index')->name('purchase-returns.index')->middleware('shop.access:stock-ins');
-        Volt::route('purchase-returns/create', 'purchase-returns.create')->name('purchase-returns.create')->middleware('shop.access:stock-ins');
-        Volt::route('schemes', 'schemes.index')->name('schemes.index')->middleware('shop.access:sales');
-        Volt::route('delivery-routes', 'delivery-routes.index')->name('delivery-routes.index')->middleware('shop.access:customers');
-        Volt::route('orders', 'sales-orders.index')->name('sales-orders.index')->middleware('shop.access:sales');
-        Volt::route('orders/create', 'sales-orders.form')->name('sales-orders.create')->middleware('shop.access:sales');
-        Volt::route('orders/{order}/edit', 'sales-orders.form')->name('sales-orders.edit')->whereNumber('order')->middleware('shop.access:sales');
-        Volt::route('orders/{order}', 'sales-orders.show')->name('sales-orders.show')->whereNumber('order')->middleware('shop.access:sales');
-        Volt::route('load-sheets', 'load-sheets.index')->name('load-sheets.index')->middleware('shop.access:sales');
-        Volt::route('load-sheets/{sheet}', 'load-sheets.show')->name('load-sheets.show')->whereNumber('sheet')->middleware('shop.access:sales');
-        Volt::route('sales-by-booker', 'sales-performance.index')->name('sales-performance.index')->middleware('shop.access:reports');
+        Volt::route('dues-aging', 'dues-aging.index')->name('dues-aging.index')->middleware('shop.access:udhaar');
+        // Wholesale P2: shop.tool 404s unless the shop's trade uses that tool (App\Enums\WholesaleTool).
+        Volt::route('cheques', 'cheques.index')->name('cheques.index')->middleware(['shop.access:udhaar', 'shop.tool:cheques']);
+        Volt::route('purchase-returns', 'purchase-returns.index')->name('purchase-returns.index')->middleware(['shop.access:stock-ins', 'shop.tool:returns']);
+        Volt::route('purchase-returns/create', 'purchase-returns.create')->name('purchase-returns.create')->middleware(['shop.access:stock-ins', 'shop.tool:returns']);
+        Volt::route('schemes', 'schemes.index')->name('schemes.index')->middleware(['shop.access:sales', 'shop.tool:schemes']);
+        Volt::route('delivery-routes', 'delivery-routes.index')->name('delivery-routes.index')->middleware(['shop.access:customers', 'shop.tool:routes']);
+        Volt::route('sales-orders', 'sales-orders.index')->name('sales-orders.index')->middleware(['shop.access:sales', 'shop.tool:orders']);
+        Volt::route('sales-orders/create', 'sales-orders.form')->name('sales-orders.create')->middleware(['shop.access:sales', 'shop.tool:orders']);
+        Volt::route('sales-orders/{order}/edit', 'sales-orders.form')->name('sales-orders.edit')->whereNumber('order')->middleware(['shop.access:sales', 'shop.tool:orders']);
+        Volt::route('sales-orders/{order}', 'sales-orders.show')->name('sales-orders.show')->whereNumber('order')->middleware(['shop.access:sales', 'shop.tool:orders']);
+        Volt::route('load-sheets', 'load-sheets.index')->name('load-sheets.index')->middleware(['shop.access:sales', 'shop.tool:orders']);
+        Volt::route('load-sheets/{sheet}', 'load-sheets.show')->name('load-sheets.show')->whereNumber('sheet')->middleware(['shop.access:sales', 'shop.tool:orders']);
+        Volt::route('sales-performance', 'sales-performance.index')->name('sales-performance.index')->middleware(['shop.access:reports', 'shop.tool:routes']);
+
+        // Online P1: shop.tool 404s unless the shop's trade uses that tool (App\Enums\OnlineTool).
+        Volt::route('courier-settlements', 'courier-settlements.index')->name('courier-settlements.index')->middleware(['shop.access:sales', 'shop.tool:settlements']);
+        Volt::route('courier-settlements/create', 'courier-settlements.create')->name('courier-settlements.create')->middleware(['shop.access:sales', 'shop.tool:settlements']);
+        Volt::route('courier-settlements/{settlement}', 'courier-settlements.show')->name('courier-settlements.show')->whereNumber('settlement')->middleware(['shop.access:sales', 'shop.tool:settlements']);
+
+        // Services group: shop.tool 404s unless the shop's trade uses that tool (App\Enums\ServiceTradeTool).
+        Volt::route('service-menu', 'service-menu.index')->name('service-menu.index')->middleware(['shop.access:products', 'shop.tool:service_menu']);
+        Volt::route('staff', 'staff.index')->name('staff.index')->middleware(['shop.access:users', 'shop.tool:commission']);
+        Volt::route('staff-earnings', 'staff-earnings.index')->name('staff-earnings.index')->middleware(['shop.access:users', 'shop.tool:commission']);
+        Volt::route('staff-attendance', 'staff-attendance.index')->name('staff-attendance.index')->middleware(['shop.access:users', 'shop.tool:attendance']);
+        Volt::route('appointments', 'appointments.index')->name('appointments.index')->middleware(['shop.access:sales', 'shop.tool:appointments']);
+        Volt::route('memberships', 'memberships.index')->name('memberships.index')->middleware(['shop.access:customers', 'shop.tool:memberships']);
+        Volt::route('check-ins', 'check-ins.index')->name('check-ins.index')->middleware(['shop.access:customers', 'shop.tool:check_ins']);
+        Volt::route('biometric-devices', 'biometric-devices.index')->name('biometric-devices.index')->middleware(['shop.access:settings', 'shop.tool:biometric']);
+        Volt::route('gift-vouchers', 'gift-vouchers.index')->name('gift-vouchers.index')->middleware(['shop.access:sales', 'shop.tool:vouchers']);
+        Volt::route('broadcasts', 'broadcasts.index')->name('broadcasts.index')->middleware(['shop.access:customers', 'shop.tool:broadcasts']);
+        Volt::route('job-cards', 'job-cards.index')->name('job-cards.index')->middleware(['shop.access:sales', 'shop.tool:job_cards']);
+        Volt::route('job-cards/create', 'job-cards.create')->name('job-cards.create')->middleware(['shop.access:sales', 'shop.tool:job_cards']);
+        Volt::route('job-cards/{jobCard}', 'job-cards.show')->name('job-cards.show')->whereNumber('jobCard')->middleware(['shop.access:sales', 'shop.tool:job_cards']);
 
         Volt::route('balance-loads', 'balance-loads.create')->name('balance-loads.index')->middleware('shop.access:balance-loads');
         Volt::route('balance-loads/history', 'balance-loads.history')->name('balance-loads.history')->middleware('shop.access:balance-loads');
@@ -252,6 +284,12 @@ Route::middleware(['auth'])->group(function () {
 
         Volt::route('settings', 'settings.index')->name('settings.index')->middleware('shop.access:settings,users,shop-accounts,settings-categories,settings-networks,settings-bill-config,settings-percentage,settings-brands,settings-branding,settings-services,settings-integrations');
 
+        // Online P2: back from Shopify's or WooCommerce's approval page (O9), Daraz files (O6), website requests (O9).
+        Route::get('storefronts/shopify/callback', [\App\Http\Controllers\Store\StorefrontConnectController::class, 'shopify'])->name('storefronts.shopify.callback')->middleware(['shop.access:settings-integrations', 'shop.tool:storefronts']);
+        Route::get('storefronts/woocommerce/return', [\App\Http\Controllers\Store\StorefrontConnectController::class, 'wooCommerce'])->name('storefronts.woocommerce.return')->middleware(['shop.access:settings-integrations', 'shop.tool:storefronts']);
+        Volt::route('daraz', 'daraz.index')->name('daraz.index')->middleware(['shop.access:sales', 'shop.tool:marketplace']);
+        Volt::route('website-request', 'website-requests.index')->name('website-requests.index')->middleware(['shop.access:settings', 'shop.tool:website']);
+
         Volt::route('users', 'users.index')->name('users.index')->middleware('shop.access:users');
         Volt::route('branches', 'branches.index')->name('branches.index')->middleware('shop.access:branches');
         });
@@ -276,6 +314,8 @@ Route::middleware(['auth'])->group(function () {
         })->name('backups.download');
         Volt::route('payments', 'admin.payments')->name('payments');
         Volt::route('payment-accounts', 'admin.payment-accounts')->name('payment-accounts');
+        Volt::route('website-requests', 'admin.website-requests.index')->name('website-requests');
+        Volt::route('website-requests/{websiteRequest}', 'admin.website-requests.show')->name('website-requests.show')->whereNumber('websiteRequest');
         Volt::route('support', 'admin.support.index')->name('support');
         Volt::route('support/{ticket}', 'admin.support.show')->name('support.show')->whereNumber('ticket');
         Route::get('support/attachments/{attachment}', fn (\App\Models\SupportTicketAttachment $attachment) => $attachment->response())

@@ -63,7 +63,7 @@ new #[Layout('layouts.app')] #[Title('Online Store Order')] class extends Compon
         return $matches->count() === 1 ? $matches->first() : null;
     }
 
-    /** Prepaid money counts up to the goods total: delivery isn't part of the sale in this version. */
+    /** Prepaid money counts up to the sale total: the goods, plus delivery for an online seller (StoreOrders::deliveryChargeFor). */
     protected function suggestedPaid(): string
     {
         return $this->order->isPrepaid()
@@ -132,7 +132,7 @@ new #[Layout('layouts.app')] #[Title('Online Store Order')] class extends Compon
 
     public function total(): float
     {
-        return round(max(0.0, $this->subtotal() - (float) $this->order->discount_amount), 2);
+        return round(max(0.0, $this->subtotal() - (float) $this->order->discount_amount) + StoreOrders::deliveryChargeFor($this->order), 2);
     }
 
     public function subtotal(): float
@@ -334,7 +334,7 @@ new #[Layout('layouts.app')] #[Title('Online Store Order')] class extends Compon
                             <span class="text-lg font-semibold text-ink">Rs {{ number_format($this->total(), 2) }}</span>
                         </div>
 
-                        @if ((float) $order->shipping_amount > 0 || ($order->isPrepaid() && (float) $order->amount_paid > $this->total()))
+                        @if (((float) $order->shipping_amount > 0 && StoreOrders::deliveryChargeFor($order) == 0.0) || ($order->isPrepaid() && (float) $order->amount_paid > $this->total()))
                             <p class="text-xs text-ink-faint">The sale records goods only. The delivery charge, and any prepaid money above the goods total, isn't part of it.</p>
                         @endif
 

@@ -18,7 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
-        then: fn () => Route::middleware('api')->group(base_path('routes/store-webhooks.php')),
+        then: function () {
+            Route::middleware('api')->group(base_path('routes/store-webhooks.php'));
+            // Fingerprint devices (ADMS): fixed paths at the site root, stateless.
+            Route::middleware('api')->group(base_path('routes/iclock.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
@@ -31,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'super.admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
             'shop.user' => \App\Http\Middleware\EnsureShopUser::class,
             'shop.access' => \App\Http\Middleware\EnsureShopScreenAccess::class,
+            'shop.tool' => \App\Http\Middleware\EnsureShopUsesTool::class,
             'shop.paid' => \App\Http\Middleware\EnsureSubscriptionPaid::class,
             'store.token' => \App\Http\Middleware\AuthenticateStoreToken::class,
             'store.signature' => \App\Http\Middleware\VerifyStoreSignature::class,

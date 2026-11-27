@@ -24,12 +24,17 @@
         ? ' Extra branches and product packs are available as add-ons from Billing inside the app.'
         : ' On a plan without one, add it as a monthly add-on from Billing inside the app, along with extra branches and product packs.');
 
+    // FeatureKey::Services is the mobile shop's counter services screen; said plainly here so a salon, gym or
+    // wholesaler doesn't read "Services module" as "not for me". Site copy only: the plan data is unchanged.
+    $siteLabel = fn (string $label): string => $label === \App\Enums\FeatureKey::Services->label() ? 'Counter services (mobile shops)' : $label;
+
     $faqs = [
         ['Do I need to install anything?', 'No. HisabOKitab runs in your browser on a phone, tablet or computer. Log in and start selling.'],
         ['Who pays for Meta ads?', 'Ads are billed by Meta directly to your own ad account. HisabOKitab never charges you for ad spend, and you confirm the maximum spend before any ad goes live.'],
         ['Can I run more than one branch?', 'Yes. Each plan includes a set number of branches, and you can add more with a monthly or yearly branch add-on. Products, customers and stock are shared by every branch; each branch records its own sales, stock-ins, udhaar and expenses, and you see them side by side.'],
         ['Can I keep using WhatsApp Business on my phone?', 'Yes. Your number stays usable in the WhatsApp Business app while HisabOKitab handles chatbot orders and messages.'],
-        ['Do returns, store credit and promotions cost extra?', 'No. Returns with credit notes, store credit, exchanges, promotions and pack selling are part of every plan, along with the tools for your kind of shop: warranty, instalments and buybacks for mobile shops, and the prescription register for pharmacies.'],
+        ['Do returns, store credit and promotions cost extra?', 'No. Returns with credit notes, store credit, exchanges, promotions and pack selling are part of every plan, along with the tools for your kind of business: warranty, instalments and buybacks for mobile shops, the prescription register for pharmacies, trade prices, credit limits and cheques for wholesalers, courier payouts and returns for online sellers, and appointments, job cards and memberships for service businesses.'],
+        ['Is there a separate plan for wholesalers, online sellers or salons?', 'No. Choose the plan that fits your size; the tools for your kind of business come with it. Tell us what you do when you sign up and we switch on the right screens.'],
         ...($addonsAnswer !== '' ? [['Do purchase orders and payroll cost extra?', $addonsAnswer]] : []),
         ['Is my shop’s data private?', 'Yes. Every shop’s records are isolated from every other shop, and staff only see the screens you allow.'],
     ];
@@ -51,6 +56,14 @@
         'Repairs, SIM, loads, bills & NADRA for mobile shops',
         'Warranty, instalments, buybacks & trade-in for mobile shops',
         'Prescription & controlled-drug register for pharmacies',
+        'Trade prices, credit limits & dues aging for wholesalers',
+        'Cheques & PDC, purchase returns & bonus stock for wholesalers',
+        'Sales orders, load sheets, routes & trade schemes for distributors',
+        'Delivery charges, courier payouts & RTO returns for online sellers',
+        'Daraz order & payout imports for online sellers',
+        'Appointments, staff commission & memberships for salons, spas & gyms',
+        'Job cards with estimates for repair workshops',
+        'Staff attendance by PIN or QR badge for service businesses',
         'Guide on every screen in Roman Urdu & English',
         'Help & support tickets',
     ];
@@ -118,14 +131,14 @@
                                     @if ($line['included'])
                                         <x-site.icon name="check" @class(['h-5 w-5 shrink-0', 'text-accent-300' => $plan->is_featured, 'text-brand-600' => ! $plan->is_featured]) />
                                         <span>
-                                            {{ $line['label'] }}
+                                            {{ $siteLabel($line['label']) }}
                                             @if ($line['detail'])
                                                 <span @class(['block text-xs', 'text-brand-100' => $plan->is_featured, 'text-slate-500' => ! $plan->is_featured])>{{ $line['detail'] }}</span>
                                             @endif
                                         </span>
                                     @else
                                         <x-site.icon name="close" class="h-5 w-5 shrink-0" />
-                                        <span class="line-through decoration-1"><span class="sr-only">Not included: </span>{{ $line['label'] }}</span>
+                                        <span class="line-through decoration-1"><span class="sr-only">Not included: </span>{{ $siteLabel($line['label']) }}</span>
                                     @endif
                                 </li>
                             @endforeach
@@ -144,7 +157,7 @@
     <section class="mx-auto max-w-5xl px-4 pb-24 sm:px-6 lg:px-8">
         <div class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm sm:p-10" data-reveal>
             <h2 class="text-xl font-bold text-slate-900">Included in every plan</h2>
-            <p class="mt-2 text-sm text-slate-600">Whichever plan you pick, these are part of it. Expiry date tracking is free and already on for kiryana stores and pharmacies. Product variants, weighed and measured items, and expiry tracking for any other shop are free too — ask us and we’ll switch them on.</p>
+            <p class="mt-2 text-sm text-slate-600">Whichever plan you pick, these are part of it, with the tools for your kind of business switched on for you. Expiry date tracking is free and already on for kiryana stores and pharmacies. Product variants, weighed and measured items, and expiry tracking for any other shop are free too — ask us and we’ll switch them on.</p>
             <ul class="mt-6 grid grid-cols-1 gap-x-8 gap-y-3 text-sm text-slate-700 sm:grid-cols-2">
                 @foreach ($everyPlan as $item)
                     <li class="flex gap-3"><x-site.icon name="check" class="h-5 w-5 shrink-0 text-brand-600" /><span>{{ $item }}</span></li>

@@ -4,7 +4,7 @@ return [
     'name' => 'HisabOKitab',
     'short_name' => 'HisabOKitab',
     'domain' => 'hisabokitab.com',
-    'tagline' => 'Shop Management Software',
+    'tagline' => 'Business Management Software',
     'slogan' => 'Hisab Ab Hua Asaan!',
     'powered_by' => 'Powered by HisabOKitab.com',
 

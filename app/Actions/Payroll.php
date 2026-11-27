@@ -17,6 +17,7 @@ use App\Models\PayslipLine;
 use App\Models\Scopes\ExcludesCancelledScope;
 use App\Models\Shop;
 use App\Support\BranchContext;
+use App\Support\StaffEarnings;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -73,6 +74,11 @@ class Payroll
                 foreach ($defaults as $type) {
                     $payslip->lines()->create(['shop_id' => $payslip->shop_id, 'kind' => PayslipLine::DEDUCTION, 'label' => $type->name, 'amount' => $type->default_amount, 'deduction_type_id' => $type->id, 'reduces_cost' => $type->reduces_cost]);
                 }
+
+                // Commission on what they did this month (Services group), fixed on this payslip.
+                StaffEarnings::prefill($payslip);
+                // A daily wage starts with the days present (Services group staff attendance).
+                StaffAttendance::prefillDays($payslip);
 
                 $payslip->load('lines');
                 $payslip->recalculate($payslip->lines);
@@ -227,6 +233,8 @@ class Payroll
             if ($expense !== null) {
                 CancelExpense::handle($expense, $userId, $reason, fromPayslip: true);
             }
+
+            StaffEarnings::release($payslip);
 
             EmployeeAdvance::where('payslip_id', $payslip->id)->get()->each(fn (EmployeeAdvance $row) => $row->update([
                 'status' => RecordStatus::Cancelled,

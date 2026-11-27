@@ -7,9 +7,9 @@ use App\Models\Product;
 use App\Models\Scheme;
 use App\Models\SchemeClaim;
 use App\Models\Vendor;
+use App\Services\SchemeClaimPdfService;
 use App\Support\BatchExpiry;
 use App\Support\BranchContext;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -54,7 +54,6 @@ new #[Layout('layouts.app')] #[Title('Schemes')] class extends Component
 
     public function mount(): void
     {
-        abort_unless(Auth::user()->shop?->usesTool('schemes'), 404);
         $this->tab = in_array($this->tab, ['schemes', 'claims'], true) ? $this->tab : 'schemes';
     }
 
@@ -162,10 +161,7 @@ new #[Layout('layouts.app')] #[Title('Schemes')] class extends Component
 
     public function statement(int $id): StreamedResponse
     {
-        $claim = SchemeClaim::with(['vendor', 'redemptions.scheme', 'redemptions.sale.customer'])->findOrFail($id);
-        $output = Pdf::loadView('pdf.scheme-claim', ['claim' => $claim, 'shop' => Auth::user()->shop])->setPaper('a4')->output();
-
-        return response()->streamDownload(fn () => print ($output), $claim->number().'.pdf');
+        return app(SchemeClaimPdfService::class)->download(SchemeClaim::findOrFail($id));
     }
 
     public function with(): array
@@ -273,15 +269,15 @@ new #[Layout('layouts.app')] #[Title('Schemes')] class extends Component
                         <x-ui.table-cell label="Company">{{ $claim->vendor?->name }}</x-ui.table-cell>
                         <x-ui.table-cell label="Claimed" class="tabular-nums">Rs {{ number_format($claim->claimed_amount, 2) }}</x-ui.table-cell>
                         <x-ui.table-cell label="Status">
-                            {{ ucfirst($claim->status) }}
-                            @if ($claim->status === 'settled')
+                            {{ $claim->status->label() }}
+                            @if ($claim->status === \App\Enums\SchemeClaimStatus::Settled)
                                 <span class="block text-xs text-ink-faint">Rs {{ number_format($claim->settled_amount, 2) }} {{ $claim->settlement === 'cash' ? 'paid' : 'as credit' }} on {{ $claim->settled_on->format('d M Y') }}</span>
                             @endif
                         </x-ui.table-cell>
                         <x-ui.table-cell actions align="right">
                             <x-ui.row-actions label="Actions for {{ $claim->number() }}">
                                 <x-ui.menu-item wire:click="statement({{ $claim->id }})">Claim statement PDF</x-ui.menu-item>
-                                @if ($claim->status === 'submitted')
+                                @if ($claim->status === \App\Enums\SchemeClaimStatus::Submitted)
                                     <x-ui.menu-item wire:click="openSettle({{ $claim->id }})">Settled by company</x-ui.menu-item>
                                     <x-ui.menu-divider />
                                     <x-ui.menu-item danger wire:click="cancelClaim({{ $claim->id }})" confirm="Withdraw {{ $claim->number() }}? Its free goods can be claimed again." confirm-label="Withdraw">Withdraw</x-ui.menu-item>

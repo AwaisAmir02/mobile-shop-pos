@@ -386,10 +386,14 @@ class WhatsAppChatbot
             .($product->stock_quantity > 0 ? $this->t('in_stock_tag', ['stock' => $this->sellable($product)]) : $this->t('out_of_stock_tag'));
     }
 
-    /** What a customer can order: never counts expired batches. */
+    /**
+     * What a customer can order: free to sell (StockAvailability), so never expired
+     * batches and never what another confirmed order, an online-store order or a
+     * booked order already holds. This customer's own cart isn't a hold until they confirm.
+     */
     protected function sellable(Product $product): int|float
     {
-        return $this->shop->expiry_tracking_enabled ? $product->sellableStock() : $product->stock_quantity;
+        return \App\Support\StockAvailability::freeFor($product);
     }
 
     protected function findGroup(int $groupId): ?ProductGroup
@@ -1512,6 +1516,25 @@ class WhatsAppChatbot
             ->value('id');
     }
 
+    protected function latestReviewableParcelId(): ?int
+    {
+        if ($this->contact->customer_id === null) {
+            return null;
+        }
+
+        $parcel = \App\Models\Shipment::withoutGlobalScopes()
+            ->where('shop_id', $this->shop->id)
+            ->whereNotNull('review_requested_at')
+            ->whereIn('sale_id', \App\Models\Sale::withoutGlobalScopes()->where('customer_id', $this->contact->customer_id)->select('id'))
+            ->latest('review_requested_at')
+            ->first(['id', 'review_requested_at']);
+
+        $order = WhatsAppOrder::withoutGlobalScope(ShopScope::class)->where('shop_id', $this->shop->id)->where('whatsapp_contact_id', $this->contact->id)
+            ->whereNotNull('review_requested_at')->max('review_requested_at');
+
+        return $parcel !== null && ($order === null || $parcel->review_requested_at->gte(\Illuminate\Support\Carbon::parse($order))) ? $parcel->id : null;
+    }
+
     protected function captureRating(int $rating): void
     {
         $rating = max(1, min(5, $rating));
@@ -1521,6 +1544,8 @@ class WhatsAppChatbot
             'whatsapp_contact_id' => $this->contact->id,
             'customer_id' => $this->contact->customer_id,
             'whatsapp_order_id' => $this->latestReviewableOrderId(),
+            // A delivered parcel asked about more recently than any WhatsApp order (O8).
+            'shipment_id' => $this->latestReviewableParcelId(),
             'rating' => $rating,
             'display_name' => $this->contact->customer?->name ?? $this->contact->profile_name,
             'status' => 'collecting',

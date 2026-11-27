@@ -29,6 +29,9 @@ class Employee extends Model
         'rate',
         'joined_on',
         'is_active',
+        'takes_appointments',
+        'attendance_pin',
+        'badge_token',
         'notes',
     ];
 
@@ -43,6 +46,7 @@ class Employee extends Model
             'rate' => 'decimal:2',
             'joined_on' => 'date',
             'is_active' => 'boolean',
+            'takes_appointments' => 'boolean',
         ];
     }
 

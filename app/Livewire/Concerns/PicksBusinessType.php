@@ -7,12 +7,23 @@ use App\Enums\BusinessGroup;
 use Illuminate\Validation\Rule;
 
 /**
- * The two-step business picker on signup: a group, then a sub-type in it.
- * Only $businessCategory is saved; $businessGroup just drives the UI.
+ * The two-step business picker on signup: a group, then a sub-type in it,
+ * and for a service business any related trade it also runs (a salon that is
+ * also a spa: BusinessCategory::combinesWith). $businessCategory and
+ * $businessAddons are saved; $businessGroup just drives the UI.
  */
 trait PicksBusinessType
 {
     public string $businessGroup = '';
+
+    /** @var list<string> related trades also run, only from BusinessCategory::combinesWith() */
+    public array $businessAddons = [];
+
+    /** @return list<string> the addons the chosen category allows */
+    protected function chosenBusinessAddons(): array
+    {
+        return BusinessCategory::tryFrom($this->businessCategory)?->cleanAddons($this->businessAddons) ?? [];
+    }
 
     public function updatedBusinessGroup(): void
     {
@@ -29,6 +40,8 @@ trait PicksBusinessType
 
     public function updatedBusinessCategory(): void
     {
+        $this->businessAddons = $this->chosenBusinessAddons();
+
         $group = BusinessCategory::tryFrom($this->businessCategory)?->group();
 
         if ($group !== null) {

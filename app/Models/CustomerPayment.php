@@ -23,7 +23,7 @@ class CustomerPayment extends Model
     public const FAILED = 'failed';
 
     protected $fillable = [
-        'shop_id', 'customer_id', 'payment_gateway_connection_id', 'gateway', 'reference', 'amount', 'status',
+        'shop_id', 'customer_id', 'sale_payment_link_id', 'payment_gateway_connection_id', 'gateway', 'reference', 'amount', 'status',
         'response_code', 'response_message', 'gateway_reference', 'applied_to', 'paid_at',
     ];
 

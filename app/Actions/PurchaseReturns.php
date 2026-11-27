@@ -2,10 +2,11 @@
 
 namespace App\Actions;
 
+use App\Enums\RecordStatus;
+use App\Enums\VendorCreditSource;
 use App\Models\Product;
 use App\Models\PurchaseReturn;
 use App\Models\StockIn;
-use App\Models\VendorCredit;
 use App\Support\Quantity;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -85,7 +86,7 @@ class PurchaseReturns
                 'reason' => $reason,
                 'note' => filled($note) ? $note : null,
                 'total_value' => round($total, 2),
-                'status' => 'active',
+                'status' => RecordStatus::Active,
                 'user_id' => $userId,
             ]);
 
@@ -93,7 +94,7 @@ class PurchaseReturns
                 $return->items()->create($item + ['shop_id' => $return->shop_id]);
             }
 
-            VendorCredits::issue($vendorId, round($total, 2), VendorCredit::DEBIT_NOTE, $return->id, $userId, $return->number().': '.$return->reasonLabel(), true, array_column($items, 'stock_in_id'));
+            VendorCredits::issue($vendorId, round($total, 2), VendorCreditSource::DebitNote, $return->id, $userId, $return->number().': '.$return->reasonLabel(), true, array_column($items, 'stock_in_id'));
 
             return $return;
         });
@@ -124,7 +125,7 @@ class PurchaseReturns
                 $product?->increment('stock_quantity', Quantity::normalize($item->quantity));
             }
 
-            $return->update(['status' => 'cancelled', 'cancelled_at' => now(), 'cancelled_by' => $userId]);
+            $return->update(['status' => RecordStatus::Cancelled, 'cancelled_at' => now(), 'cancelled_by' => $userId]);
         });
     }
 }

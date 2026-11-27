@@ -1,13 +1,11 @@
 <?php
 
-use App\Actions\SalesOrders;
+use App\Actions\LoadSheets;
 use App\Livewire\Concerns\Toasts;
 use App\Models\LoadSheet;
 use App\Models\SalesOrder;
+use App\Services\LoadSheetPdfService;
 use App\Support\BranchContext;
-use App\Support\CustomerDuesStatement;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
@@ -31,50 +29,33 @@ new #[Layout('layouts.app')] #[Title('Load Sheet')] class extends Component
 
     public function mount(LoadSheet $sheet): void
     {
-        abort_unless(Auth::user()->shop?->usesTool('orders'), 404);
         $this->sheet = $sheet;
     }
 
     public function bringBack(int $orderId): void
     {
-        SalesOrders::bringBack(SalesOrder::where('load_sheet_id', $this->sheet->id)->findOrFail($orderId));
+        LoadSheets::bringBack(SalesOrder::where('load_sheet_id', $this->sheet->id)->findOrFail($orderId));
         $this->toastSuccess('Taken off the van. It stays booked.');
     }
 
     public function settle(): void
     {
-        SalesOrders::settle($this->sheet);
+        LoadSheets::settle($this->sheet);
         $this->sheet = $this->sheet->fresh();
         $this->toastSuccess('Load sheet settled.');
     }
 
-    /** @return \Illuminate\Support\Collection<int, SalesOrder> in visiting order */
-    protected function stops()
-    {
-        return $this->sheet->orders()->with(['customer', 'sale'])->get()
-            ->sortBy(fn (SalesOrder $order) => sprintf('%06d|%s', $order->customer?->route_sequence ?? 999999, $order->customer?->name))
-            ->values();
-    }
-
     public function pdf(): StreamedResponse
     {
-        $output = Pdf::loadView('pdf.load-sheet', [
-            'sheet' => $this->sheet->load(['route', 'salesman']),
-            'loading' => SalesOrders::loadingList($this->sheet),
-            'stops' => $this->stops(),
-            'owed' => $this->stops()->mapWithKeys(fn ($o) => [$o->id => $o->customer ? CustomerDuesStatement::for($o->customer)->total() : 0.0])->all(),
-            'shop' => Auth::user()->shop,
-        ])->setPaper('a4')->output();
-
-        return response()->streamDownload(fn () => print ($output), $this->sheet->number().'.pdf');
+        return app(LoadSheetPdfService::class)->download($this->sheet);
     }
 
     public function with(): array
     {
-        $stops = $this->stops();
+        $stops = LoadSheets::stops($this->sheet);
 
         return [
-            'loading' => SalesOrders::loadingList($this->sheet),
+            'loading' => LoadSheets::loadingList($this->sheet),
             'stops' => $stops,
             'collected' => round((float) $stops->filter(fn ($o) => $o->sale)->sum(fn ($o) => $o->sale->amountPaid()), 2),
             'deliveredValue' => round((float) $stops->filter(fn ($o) => $o->sale)->sum(fn ($o) => (float) $o->sale->total), 2),
@@ -84,11 +65,11 @@ new #[Layout('layouts.app')] #[Title('Load Sheet')] class extends Component
 
 <div>
     <x-slot name="header">
-        <x-ui.page-header back="{{ route('load-sheets.index') }}" back-label="Load Sheets" :subtitle="collect([$sheet->load_date->format('d M Y'), $sheet->route?->name, $sheet->vehicle, $sheet->driver, $sheet->salesman?->name])->filter()->implode(' · ')">{{ $sheet->number() }}</x-ui.page-header>
+        <x-ui.page-header back="{{ route('load-sheets.index') }}" back-label="Load Sheets" :subtitle="collect([$sheet->load_date->format('d M Y'), $sheet->deliveryRoute?->name, $sheet->vehicle, $sheet->driver, $sheet->salesman?->name])->filter()->implode(' · ')">{{ $sheet->number() }}</x-ui.page-header>
     </x-slot>
 
     <x-ui.stat-row>
-        <x-ui.stat label="Stops" :value="$stops->count()" :sub="$stops->where('status', 'booked')->count().' still to deliver'" />
+        <x-ui.stat label="Stops" :value="$stops->count()" :sub="$stops->where('status', \App\Enums\SalesOrderStatus::Booked)->count().' still to deliver'" />
         <x-ui.stat label="Delivered" value="Rs {{ number_format($deliveredValue, 2) }}" />
         <x-ui.stat label="Collected" value="Rs {{ number_format($collected, 2) }}" sub="Cash and account, on delivery" />
     </x-ui.stat-row>
@@ -131,7 +112,7 @@ new #[Layout('layouts.app')] #[Title('Load Sheet')] class extends Component
                             <p class="text-xs text-ink-faint">{{ collect([$order->customer?->area, $order->customer?->phone, $order->number(), 'Rs '.number_format($order->estimated_total, 0)])->filter()->implode(' · ') }}</p>
                         </div>
                         <div class="flex items-center gap-2">
-                            @if ($order->status === 'delivered')
+                            @if ($order->status === \App\Enums\SalesOrderStatus::Delivered)
                                 <x-ui.badge variant="success">Delivered</x-ui.badge>
                                 @if ($order->sale)
                                     <a href="{{ route('sales.show', $order->sale) }}" wire:navigate class="text-xs text-link hover:underline">{{ $order->sale->invoiceNumber() }}</a>

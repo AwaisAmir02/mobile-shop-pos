@@ -18,7 +18,7 @@ class StoreEvents
 
     public static function record(StoreConnection $connection, string $type, array $data = []): ?StoreEvent
     {
-        if (blank($connection->callback_url) || $connection->removed_at !== null) {
+        if (! $connection->sendsChanges() || $connection->removed_at !== null) {
             return null;
         }
 

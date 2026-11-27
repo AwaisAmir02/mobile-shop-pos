@@ -235,7 +235,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
         } else {
             $ids = $ids
                 ->concat(
-                    Sale::whereNotNull('customer_id')->owing()->orderBy('sales.id')->get()
+                    Sale::whereNotNull('customer_id')->owedByCustomer()->orderBy('sales.id')->get()
                         ->filter(fn (Sale $sale) => $sale->amountDue() > 0)
                         ->pluck('customer_id')
                 )
@@ -368,7 +368,7 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
     {
         $canOpen = Auth::user()->hasAccessTo('sales');
 
-        return Sale::where('customer_id', $customer->id)->with(['payments', 'returns'])->get()
+        return Sale::where('customer_id', $customer->id)->with(['payments', 'returns', 'shipments' => fn ($query) => $query->heldByCourier()])->get()
             ->flatMap(function (Sale $sale) use ($canOpen) {
                 $url = $canOpen ? route('sales.show', $sale) : null;
 
@@ -380,6 +380,11 @@ new #[Layout('layouts.app')] #[Title('Party Ledger')] class extends Component
                     }
 
                     $movements[] = $this->movement('sale-payment-'.$payment->id, $payment->payment_date, $this->sortKey($payment->payment_date, $sale->id, 1, $payment->id), 'Payment received', $sale->invoiceNumber(), $url, 'credit', (float) $payment->amount);
+                }
+
+                // Cash on delivery a courier holds (O4) is owed by the courier, not the customer, until it pays out.
+                foreach ($sale->shipments as $shipment) {
+                    $movements[] = $this->movement('sale-courier-'.$shipment->id, $shipment->booked_at ?? $shipment->created_at, $this->sortKey($shipment->booked_at ?? $shipment->created_at, $sale->id, 1, 0), 'With '.$shipment->courierLabel().' to collect', $shipment->tracking_number, $url, 'credit', min((float) $shipment->cod_amount, $sale->amountDue()));
                 }
 
                 // A return gives the goods' value back; money handed back on it is paid out again.

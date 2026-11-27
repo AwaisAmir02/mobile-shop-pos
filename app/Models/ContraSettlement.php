@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RecordStatus;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,7 +20,7 @@ class ContraSettlement extends Model
 
     protected function casts(): array
     {
-        return ['amount' => 'decimal:2', 'settled_on' => 'date', 'applied_to' => 'array', 'cancelled_at' => 'datetime'];
+        return ['amount' => 'decimal:2', 'settled_on' => 'date', 'applied_to' => 'array', 'cancelled_at' => 'datetime', 'status' => RecordStatus::class];
     }
 
     public function customer(): BelongsTo
@@ -39,6 +40,6 @@ class ContraSettlement extends Model
 
     public function isCancelled(): bool
     {
-        return $this->status === 'cancelled';
+        return $this->status === RecordStatus::Cancelled;
     }
 }

@@ -17,7 +17,7 @@ return [
                 ],
                 [
                     'label' => 'Qty',
-                    'text' => 'In pieces, or in cartons when the line says so.',
+                    'text' => 'In pieces, or in the product\'s packs and outer packs (a box, a carton of boxes): tap the one you want under the item.',
                 ],
                 [
                     'label' => 'Price each',

@@ -37,11 +37,6 @@ new #[Layout('layouts.app')] #[Title('Routes')] class extends Component
         BranchContext::current()->shopWideForRequest();
     }
 
-    public function mount(): void
-    {
-        abort_unless(Auth::user()->shop?->usesTool('routes'), 404);
-    }
-
     public function openCreate(): void
     {
         $this->reset(['editingId', 'name', 'visitDays', 'bookerId']);
@@ -52,12 +47,12 @@ new #[Layout('layouts.app')] #[Title('Routes')] class extends Component
 
     public function openEdit(int $id): void
     {
-        $route = DeliveryRoute::findOrFail($id);
-        $this->editingId = $route->id;
-        $this->name = $route->name;
-        $this->visitDays = $route->visit_days ?? [];
-        $this->bookerId = (string) ($route->booker_id ?? '');
-        $this->isActive = $route->is_active;
+        $deliveryRoute = DeliveryRoute::findOrFail($id);
+        $this->editingId = $deliveryRoute->id;
+        $this->name = $deliveryRoute->name;
+        $this->visitDays = $deliveryRoute->visit_days ?? [];
+        $this->bookerId = (string) ($deliveryRoute->booker_id ?? '');
+        $this->isActive = $deliveryRoute->is_active;
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'route-form');
     }
@@ -72,18 +67,18 @@ new #[Layout('layouts.app')] #[Title('Routes')] class extends Component
         ], [], ['bookerId' => 'booker']);
 
         $attributes = ['name' => $this->name, 'visit_days' => array_values($this->visitDays), 'booker_id' => $this->bookerId !== '' ? (int) $this->bookerId : null, 'is_active' => $this->isActive];
-        $route = $this->editingId ? tap(DeliveryRoute::findOrFail($this->editingId))->update($attributes) : DeliveryRoute::create($attributes);
+        $deliveryRoute = $this->editingId ? tap(DeliveryRoute::findOrFail($this->editingId))->update($attributes) : DeliveryRoute::create($attributes);
 
-        $this->routeId = $route->id;
+        $this->routeId = $deliveryRoute->id;
         $this->dispatch('close-modal', name: 'route-form');
         $this->toastSuccess('Route saved.');
     }
 
     public function addCustomer(): void
     {
-        $route = DeliveryRoute::findOrFail($this->routeId);
+        $deliveryRoute = DeliveryRoute::findOrFail($this->routeId);
         $customer = Customer::findOrFail((int) $this->addCustomerId);
-        $customer->update(['route_id' => $route->id, 'route_sequence' => (int) Customer::where('route_id', $route->id)->max('route_sequence') + 1]);
+        $customer->update(['route_id' => $deliveryRoute->id, 'route_sequence' => (int) Customer::where('route_id', $deliveryRoute->id)->max('route_sequence') + 1]);
         $this->addCustomerId = '';
     }
 
@@ -121,13 +116,13 @@ new #[Layout('layouts.app')] #[Title('Routes')] class extends Component
 
     public function with(): array
     {
-        $route = $this->routeId ? DeliveryRoute::with('booker')->find($this->routeId) : null;
+        $deliveryRoute = $this->routeId ? DeliveryRoute::with('booker')->find($this->routeId) : null;
 
         return [
-            'routes' => DeliveryRoute::query()->with('booker')->withCount('customers')->orderBy('name')->get(),
-            'route' => $route,
-            'stops' => $route ? $route->customers()->get() : collect(),
-            'unassigned' => $route ? Customer::query()->whereNull('route_id')->orderBy('name')->limit(500)->get() : collect(),
+            'deliveryRoutes' => DeliveryRoute::query()->with('booker')->withCount('customers')->orderBy('name')->get(),
+            'deliveryRoute' => $deliveryRoute,
+            'stops' => $deliveryRoute ? $deliveryRoute->customers()->get() : collect(),
+            'unassigned' => $deliveryRoute ? Customer::query()->whereNull('route_id')->orderBy('name')->limit(500)->get() : collect(),
             'users' => User::query()->where('shop_id', Auth::user()->shop_id)->orderBy('name')->get(),
         ];
     }
@@ -143,11 +138,11 @@ new #[Layout('layouts.app')] #[Title('Routes')] class extends Component
             <x-slot name="actions">
                 <x-ui.button size="sm" wire:click="openCreate" data-new-route>New Route</x-ui.button>
             </x-slot>
-            @if ($routes->isEmpty())
+            @if ($deliveryRoutes->isEmpty())
                 <p class="px-5 py-8 text-center text-sm text-ink-faint">No routes yet.</p>
             @else
                 <ul class="divide-y divide-line">
-                    @foreach ($routes as $item)
+                    @foreach ($deliveryRoutes as $item)
                         <li wire:key="route-{{ $item->id }}">
                             <button type="button" wire:click="$set('routeId', {{ $item->id }})" @class(['flex w-full items-center justify-between gap-3 px-5 py-3 text-left hover:bg-surface-sunken', 'bg-surface-sunken' => $routeId === $item->id])>
                                 <span class="min-w-0">
@@ -163,10 +158,10 @@ new #[Layout('layouts.app')] #[Title('Routes')] class extends Component
         </x-ui.card>
 
         <div class="lg:col-span-2">
-            @if ($route)
-                <x-ui.card :title="$route->name" :description="$route->daysLabel().($route->booker ? ' · booker '.$route->booker->name : '')" data-route-stops>
+            @if ($deliveryRoute)
+                <x-ui.card :title="$deliveryRoute->name" :description="$deliveryRoute->daysLabel().($deliveryRoute->booker ? ' · booker '.$deliveryRoute->booker->name : '')" data-route-stops>
                     <x-slot name="actions">
-                        <x-ui.button size="sm" variant="secondary" wire:click="openEdit({{ $route->id }})">Edit</x-ui.button>
+                        <x-ui.button size="sm" variant="secondary" wire:click="openEdit({{ $deliveryRoute->id }})">Edit</x-ui.button>
                     </x-slot>
                     @if ($stops->isEmpty())
                         <p class="text-sm text-ink-faint">No customers on this route yet.</p>

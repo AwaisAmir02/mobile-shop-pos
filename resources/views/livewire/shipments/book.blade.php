@@ -2,6 +2,8 @@
 
 use App\Actions\Shipments;
 use App\Couriers\CourierException;
+use App\Enums\CourierKey;
+use App\Enums\OnlineTool;
 use App\Livewire\Concerns\Toasts;
 use App\Models\CourierConnection;
 use App\Models\Sale;
@@ -16,6 +18,9 @@ use Livewire\Volt\Component;
  * Book a courier for one sale. Delivery details start from the WhatsApp or
  * online-store order the sale came from (else its customer); the amount to
  * collect starts at what's still owed on the sale.
+ *
+ * An online seller (OnlineTool::Delivery) can instead type in a parcel already
+ * booked on the courier's own portal, with its tracking number (O1).
  */
 new #[Layout('layouts.app')] #[Title('Book a Courier')] class extends Component
 {
@@ -41,11 +46,16 @@ new #[Layout('layouts.app')] #[Title('Book a Courier')] class extends Component
     public string $description = '';
     public string $instructions = '';
 
+    // A parcel booked on the courier's own portal (online sellers).
+    public string $manualCourier = '';
+    public string $manualCourierName = '';
+    public string $manualTracking = '';
+
     protected string $cityHint = '';
 
     public function mount(Sale $sale): void
     {
-        abort_unless(Auth::user()->shop?->couriers_enabled, 404);
+        abort_unless((bool) Auth::user()->shop?->tracksParcels(), 404);
         abort_if($sale->isCancelled(), 404);
 
         $this->saleId = $sale->id;
@@ -112,6 +122,31 @@ new #[Layout('layouts.app')] #[Title('Book a Courier')] class extends Component
         $this->guessCity();
     }
 
+    protected function typesInParcels(): bool
+    {
+        return (bool) Auth::user()->shop?->usesTool(OnlineTool::Delivery);
+    }
+
+    public function recordManual(): void
+    {
+        abort_unless($this->typesInParcels(), 404);
+
+        $this->validate([
+            'manualCourier' => ['required', \Illuminate\Validation\Rule::enum(CourierKey::class)],
+            'manualCourierName' => [$this->manualCourier === CourierKey::Other->value ? 'required' : 'nullable', 'string', 'max:60'],
+            'manualTracking' => ['required', 'string', 'max:60'],
+            'name' => ['required', 'string', 'max:100'],
+            'phone' => ['required', 'string', 'max:20'],
+            'address' => ['required', 'string', 'max:300'],
+        ], [], ['manualCourier' => 'courier', 'manualCourierName' => 'courier name', 'manualTracking' => 'tracking number']);
+
+        $shipment = Shipments::recordManual(Sale::findOrFail($this->saleId), CourierKey::from($this->manualCourier), $this->manualCourierName, $this->manualTracking,
+            ['name' => $this->name, 'phone' => $this->phone, 'address' => $this->address, 'city' => $this->cityHint], Auth::id());
+
+        $this->toastSuccess('Parcel '.$shipment->tracking_number.' added. Move it on from Shipments as the courier\'s portal shows it.');
+        $this->redirectRoute('shipments.index', ['focus' => $shipment->id], navigate: true);
+    }
+
     public function book(): void
     {
         $sale = Sale::findOrFail($this->saleId);
@@ -161,6 +196,9 @@ new #[Layout('layouts.app')] #[Title('Book a Courier')] class extends Component
             'cityOptions' => $this->cities(),
             'existing' => Shipment::where('sale_id', $sale->id)->where('status', '!=', 'cancelled')->first(),
             'source' => $this->whatsappOrderId ? 'WhatsApp order' : ($this->storeOrderId ? 'online store order' : null),
+            'typesInParcels' => $this->typesInParcels(),
+            'tracksCod' => Shipments::tracksCod(Auth::user()->shop_id),
+            'couriers' => CourierKey::typedIn(),
         ];
     }
 }; ?>
@@ -176,6 +214,8 @@ new #[Layout('layouts.app')] #[Title('Book a Courier')] class extends Component
         <x-ui.empty-state title="Already booked" :description="'This sale is booked with '.$existing->courier->label().', tracking number '.$existing->tracking_number.'. Cancel that parcel first to book again.'">
             <x-ui.button href="{{ route('shipments.index', ['focus' => $existing->id]) }}" wire:navigate>See the parcel</x-ui.button>
         </x-ui.empty-state>
+    @elseif ($connections->isEmpty() && $typesInParcels)
+        <x-shipments.manual-parcel :couriers="$couriers" :manual-courier="$manualCourier" :sale="$sale" standalone />
     @elseif ($connections->isEmpty())
         <x-ui.empty-state title="Connect a courier first" description="Add your own Leopards or PostEx account in Settings › Integrations › Couriers, then come back to book.">
             @if (auth()->user()->hasAccessTo('settings-integrations'))
@@ -245,10 +285,16 @@ new #[Layout('layouts.app')] #[Title('Book a Courier')] class extends Component
                             <span wire:loading.remove wire:target="book">Book parcel</span>
                             <span wire:loading wire:target="book">Booking…</span>
                         </x-ui.button>
-                        <p class="text-xs text-ink-faint">The courier collects the cash and pays it to you. Record it against the sale when they do.</p>
+                        <p class="text-xs text-ink-faint">{{ $tracksCod ? 'The courier collects the cash and owes it to you, not the customer, until you record its payout under Courier Payouts.' : 'The courier collects the cash and pays it to you. Record it against the sale when they do.' }}</p>
                     </div>
                 </x-ui.card>
             </div>
         </form>
+
+        @if ($typesInParcels)
+            <div class="mt-6">
+                <x-shipments.manual-parcel :couriers="$couriers" :manual-courier="$manualCourier" :sale="$sale" />
+            </div>
+        @endif
     @endif
 </div>

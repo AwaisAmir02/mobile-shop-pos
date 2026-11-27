@@ -1,22 +1,16 @@
 <?php
 
-use App\Enums\SaleStatus;
 use App\Models\DeliveryRoute;
 use App\Models\User;
+use App\ReportQueries\SalesPerformance;
 use App\Support\BatchExpiry;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
-/**
- * Sales by booker, by route and by brand (W8), with each one's cost and gross
- * profit, the same figures as the Gross Profit report (sale lines at the cost
- * they left stock at), before returns. Filter by booker or route to see that
- * person's or beat's brands.
- */
+/** Sales by booker, by route and by brand (W8): the figures are App\ReportQueries\SalesPerformance. */
 new #[Layout('layouts.app')] #[Title('Sales by Booker & Route')] class extends Component
 {
     #[Url(except: 'booker')]
@@ -36,63 +30,23 @@ new #[Layout('layouts.app')] #[Title('Sales by Booker & Route')] class extends C
 
     public function mount(): void
     {
-        abort_unless(Auth::user()->shop?->usesTool('routes'), 404);
-        $this->by = in_array($this->by, ['booker', 'route', 'brand'], true) ? $this->by : 'booker';
+        $this->by = in_array($this->by, SalesPerformance::GROUPINGS, true) ? $this->by : 'booker';
         $this->from = $this->from ?: now()->parse(BatchExpiry::today())->startOfMonth()->toDateString();
         $this->to = $this->to ?: BatchExpiry::today();
     }
 
     public function with(): array
     {
-        $group = match ($this->by) {
-            'route' => 'customers.route_id',
-            'brand' => "COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(products.details, '$.brand')), ''), '')",
-            default => 'sales.booker_id',
-        };
-
-        $rows = DB::table('sale_items')
-            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
-            ->leftJoin('customers', 'customers.id', '=', 'sales.customer_id')
-            ->leftJoin('products', 'products.id', '=', 'sale_items.product_id')
-            ->where('sales.shop_id', Auth::user()->shop_id)
-            ->where('sales.status', '!=', SaleStatus::Cancelled->value)
-            ->whereDate('sales.created_at', '>=', $this->from)
-            ->whereDate('sales.created_at', '<=', $this->to)
-            ->when($this->bookerId !== '', fn ($q) => $q->where('sales.booker_id', (int) $this->bookerId))
-            ->when($this->routeId !== '', fn ($q) => $q->where('customers.route_id', (int) $this->routeId))
-            ->groupByRaw($group)
-            ->selectRaw("{$group} as grp, COUNT(DISTINCT sales.id) as sales, SUM(sale_items.line_total) as revenue, SUM(CASE WHEN sale_items.cost_price IS NULL THEN 0 ELSE sale_items.cost_price * sale_items.quantity END) as cost, SUM(CASE WHEN sale_items.cost_price IS NULL THEN 1 ELSE 0 END) as no_cost")
-            ->get();
-
-        $names = match ($this->by) {
-            'route' => DeliveryRoute::query()->pluck('name', 'id'),
-            'booker' => User::query()->where('shop_id', Auth::user()->shop_id)->pluck('name', 'id'),
-            default => collect(),
-        };
-
-        $rows = $rows->map(function ($row) use ($names) {
-            $revenue = round((float) $row->revenue, 2);
-            $cost = round((float) $row->cost, 2);
-
-            return [
-                'name' => match ($this->by) {
-                    'brand' => $row->grp !== '' && $row->grp !== null ? $row->grp : 'No brand',
-                    'route' => $names[$row->grp] ?? 'No route',
-                    default => $names[$row->grp] ?? 'Not booked (counter)',
-                },
-                'sales' => (int) $row->sales,
-                'revenue' => $revenue,
-                'cost' => $cost,
-                'profit' => round($revenue - $cost, 2),
-                'margin' => $revenue > 0 ? round(($revenue - $cost) / $revenue * 100, 1) : null,
-                'noCost' => (int) $row->no_cost > 0,
-            ];
-        })->sortByDesc('revenue')->values();
+        $rows = (new SalesPerformance(
+            Auth::user()->shop_id, $this->by, $this->from, $this->to,
+            $this->bookerId !== '' ? (int) $this->bookerId : null,
+            $this->routeId !== '' ? (int) $this->routeId : null,
+        ))->rows();
 
         return [
             'rows' => $rows,
-            'totals' => ['sales' => $rows->sum('sales'), 'revenue' => round($rows->sum('revenue'), 2), 'cost' => round($rows->sum('cost'), 2), 'profit' => round($rows->sum('profit'), 2)],
-            'routes' => DeliveryRoute::query()->orderBy('name')->get(),
+            'totals' => SalesPerformance::totals($rows),
+            'deliveryRoutes' => DeliveryRoute::query()->orderBy('name')->get(),
             'users' => User::query()->where('shop_id', Auth::user()->shop_id)->orderBy('name')->get(),
             'canSeeCost' => Auth::user()->hasAccessTo('sales-view-cost-price'),
         ];
@@ -125,8 +79,8 @@ new #[Layout('layouts.app')] #[Title('Sales by Booker & Route')] class extends C
         <x-ui.field label="Route" for="perfRoute" class="w-full sm:w-44">
             <x-ui.select wire:model.live="routeId" id="perfRoute">
                 <option value="">All routes</option>
-                @foreach ($routes as $route)
-                    <option value="{{ $route->id }}">{{ $route->name }}</option>
+                @foreach ($deliveryRoutes as $deliveryRoute)
+                    <option value="{{ $deliveryRoute->id }}">{{ $deliveryRoute->name }}</option>
                 @endforeach
             </x-ui.select>
         </x-ui.field>

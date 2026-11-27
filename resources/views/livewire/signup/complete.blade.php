@@ -81,7 +81,7 @@ new class extends Component
         $user = DB::transaction(function () use ($payments, $pending) {
             [, $user] = $payments->register(
                 Plan::active()->findOrFail((int) $this->planId),
-                ['name' => $this->shopName, 'phone' => '+'.PhoneNumber::normalize($this->phone), 'email' => $pending['email'], 'business_category' => $this->businessCategory],
+                ['name' => $this->shopName, 'phone' => '+'.PhoneNumber::normalize($this->phone), 'email' => $pending['email'], 'business_category' => $this->businessCategory, 'business_addons' => $this->chosenBusinessAddons()],
                 ['name' => $this->ownerName, 'email' => $pending['email']],
                 emailVerified: true,
             );
@@ -130,7 +130,7 @@ new class extends Component
             <x-ui.field label="Shop name" name="shopName" for="shopName">
                 <x-ui.input wire:model="shopName" id="shopName" autocomplete="organization" maxlength="120" required />
             </x-ui.field>
-            <x-signup.business-picker :group="$businessGroup" :category="$businessCategory" />
+            <x-signup.business-picker :group="$businessGroup" :category="$businessCategory" :addons="$businessAddons" />
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <x-ui.field label="Your name" name="ownerName" for="ownerName">
                     <x-ui.input wire:model="ownerName" id="ownerName" autocomplete="name" maxlength="120" required />

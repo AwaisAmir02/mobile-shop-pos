@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\RecordStatus;
+use App\Enums\SalePaymentMethod;
 use App\Enums\SaleRevisionAction;
 use App\Enums\SaleStatus;
 use App\Models\Buyback;
@@ -37,8 +38,16 @@ class CancelSale
                 throw ValidationException::withMessages(['cancelReason' => 'This sale was paid for by exchange '.$exchange->number().' on '.$exchange->sale?->invoiceNumber().'. Cancel that return to undo the whole exchange.']);
             }
 
+            // Cash a courier paid out on it (O4): undone with that payout, never by cancelling the sale.
+            if (round((float) $sale->payments->where('payment_method', SalePaymentMethod::Courier)->sum('amount'), 2) > 0) {
+                throw ValidationException::withMessages(['cancelReason' => 'A courier payout paid this sale. Cancel that payout under Courier Payouts first.']);
+            }
+
             // Store credit it was paid with goes back to the customer.
             StoreCredit::cancelSpendsFor($sale, $userId);
+
+            // Memberships sold on it end; a booking or job card it billed opens again (Services group).
+            ServiceLines::cancelWith($sale);
 
             $snapshot = [
                 'subtotal' => (float) $sale->subtotal,
@@ -70,7 +79,8 @@ class CancelSale
                 }
             }
 
-            $skipped = RestoreStockFifo::handle($sale->items);
+            // Only goods go back into stock; a service line has no product to restock.
+            $skipped = RestoreStockFifo::handle($sale->items->filter(fn ($item) => $item->line_kind === null || $item->line_kind->isProduct()));
             $skippedNames = array_unique($skipped);
 
             $restocked = $sale->items

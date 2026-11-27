@@ -42,27 +42,7 @@ class StoreWebhookController extends Controller
             return StoreApiController::error('connection_paused', 'This connection is paused. Stop selling until it resumes.', 403);
         }
 
-        $validator = Validator::make($data, [
-            'external_order_id' => ['required', 'string', 'max:100'],
-            'placed_at' => ['required', 'date'],
-            'customer' => ['nullable', 'array'],
-            'customer.name' => ['nullable', 'string', 'max:120'],
-            'customer.phone' => ['nullable', 'string', 'max:50', Rule::requiredIf(fn () => ($data['payment']['method'] ?? null) === StoreOrder::COD)],
-            'customer.address' => ['nullable', 'string', 'max:500'],
-            'customer.area' => ['nullable', 'string', 'max:200'],
-            'payment' => ['required', 'array'],
-            'payment.method' => ['required', Rule::in([StoreOrder::PREPAID, StoreOrder::COD])],
-            'payment.amount_paid' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
-            'shipping_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
-            'discount_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
-            'note' => ['nullable', 'string', 'max:500'],
-            'items' => ['required', 'array', 'min:1', 'max:200'],
-            'items.*.product_id' => ['nullable', 'integer', 'min:1', 'required_without:items.*.external_sku'],
-            'items.*.external_sku' => ['nullable', 'string', 'max:100', 'required_without:items.*.product_id'],
-            'items.*.name' => ['required', 'string', 'max:255'],
-            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:1000000'],
-            'items.*.unit_price' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
-        ]);
+        $validator = Validator::make($data, StoreOrders::rules($data));
 
         if ($validator->fails()) {
             return $this->invalid($validator->errors()->toArray());

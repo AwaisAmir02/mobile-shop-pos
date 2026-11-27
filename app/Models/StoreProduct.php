@@ -19,6 +19,8 @@ class StoreProduct extends Model
         'store_connection_id',
         'product_id',
         'external_sku',
+        'external_ref',
+        'inventory_ref',
         'published',
     ];
 

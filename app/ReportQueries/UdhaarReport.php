@@ -113,13 +113,13 @@ class UdhaarReport implements ScreenReport
         $collect('nadra_verification', $unpaidOrPartial(NadraVerification::query())->get(), fn (NadraVerification $m) => $m->amountOwed());
         $collect('sim_sale', $unpaidOrPartial(SimSale::query())->get(), fn (SimSale $m) => $m->amountOwed());
         $collect('service_payment', $unpaidOrPartial(ServicePayment::query())->get(), fn (ServicePayment $m) => $m->amountOwed());
-        // Only sales that can still be owed leave the database (Sale::scopeOwing);
-        // amountDue() still decides, exactly as before.
+        // Only sales the customer can still owe leave the database (Sale::scopeOwedByCustomer:
+        // owing(), less cash on delivery a courier holds); amountDue() still decides, as before.
         $collect(
             'sale',
             Sale::query()->whereNotNull('customer_id')
                 ->when($customerId !== null, fn ($q) => $q->where('customer_id', $customerId))
-                ->owing()->orderBy('sales.id')->get(),
+                ->owedByCustomer()->orderBy('sales.id')->get(),
             fn (Sale $m) => $m->amountDue()
         );
 
@@ -156,6 +156,8 @@ class UdhaarReport implements ScreenReport
     }
 
     /**
+     * (Which balance to use where: docs/customer-balances.md.)
+     *
      * Combines every customer's real Udhaar loan balance with their
      * other-source dues (rows() above already added the two together per
      * customer) — this is the shop's one true total of everything

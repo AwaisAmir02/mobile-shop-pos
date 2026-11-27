@@ -22,6 +22,7 @@ class CreateShopWithOwner
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string', 'max:255'],
             'business_category' => ['nullable', Rule::enum(BusinessCategory::class)],
+            'business_addons' => ['nullable', 'array'],
         ];
     }
 
@@ -51,6 +52,8 @@ class CreateShopWithOwner
                 'email' => self::blankToNull($shop['email'] ?? null),
                 'address' => self::blankToNull($shop['address'] ?? null),
                 'business_category' => self::blankToNull($shop['business_category'] ?? null),
+                // A related trade run alongside (a salon that is also a spa); anything else is dropped.
+                'business_addons' => ($category = BusinessCategory::tryFrom((string) ($shop['business_category'] ?? ''))) && ($addons = $category->cleanAddons($shop['business_addons'] ?? [])) !== [] ? $addons : null,
                 'plan_id' => $subscription['plan_id'] ?? null,
                 'plan_type' => $subscription['plan_type'],
                 'subscription_status' => $status instanceof SubscriptionStatus ? $status->value : $status,

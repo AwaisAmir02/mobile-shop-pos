@@ -56,6 +56,9 @@ class LedgerSources
         'nadra_verification' => ['model' => NadraVerification::class, 'builder' => Builders\NadraVerificationBuilder::class],
         'service_payment' => ['model' => ServicePayment::class, 'builder' => Builders\ServicePaymentBuilder::class],
         'vendor_credit' => ['model' => \App\Models\VendorCredit::class, 'builder' => Builders\VendorCreditBuilder::class],
+        'courier_settlement' => ['model' => \App\Models\CourierSettlement::class, 'builder' => Builders\CourierSettlementBuilder::class],
+        'customer_deposit' => ['model' => \App\Models\CustomerDeposit::class, 'builder' => Builders\CustomerDepositBuilder::class],
+        'gift_voucher' => ['model' => \App\Models\GiftVoucher::class, 'builder' => Builders\GiftVoucherBuilder::class],
     ];
 
     /** @var array<class-string<Model>, array{0: string, 1: string}> child model => [document key, foreign key] */

@@ -24,6 +24,8 @@ Schedule::command('backup:run')->dailyAt('03:30')->timezone('Asia/Karachi')->wit
 Schedule::command('backup:monitor')->hourly()->withoutOverlapping();
 Schedule::command('couriers:refresh')->everyThirtyMinutes()->withoutOverlapping(25);
 Schedule::command('credits:expire')->dailyAt('00:20')->timezone('Asia/Karachi')->withoutOverlapping();
+Schedule::command('members:sync-devices')->dailyAt('00:30')->timezone('Asia/Karachi')->withoutOverlapping();
+Schedule::command('services:reminders')->everyFifteenMinutes()->withoutOverlapping();
 
 // Last on purpose: schedule:run does these one at a time, and a slow store can take
 // about a minute here. Nothing after it means it can't hold up anything else.

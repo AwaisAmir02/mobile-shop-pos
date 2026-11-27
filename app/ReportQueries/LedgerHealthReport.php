@@ -224,8 +224,9 @@ class LedgerHealthReport
         $alreadyInOpening = LedgerBaseline::where('shop_id', $this->shop->id)->where('epoch', $this->shop->ledger_epoch)->where('source_type', 'sale')
             ->whereIn('source_id', DB::table('sales')->where('shop_id', $this->shop->id)->whereDate('created_at', '>=', $startDate)->select('id'))
             ->get()
-            ->sum(fn (LedgerBaseline $baseline) => collect($baseline->lines)->whereIn('account', [Chart::SALES, Chart::DISCOUNTS])->sum('paise'));
+            ->sum(fn (LedgerBaseline $baseline) => collect($baseline->lines)->whereIn('account', [Chart::SALES, Chart::DISCOUNTS, Chart::DELIVERY_INCOME, Chart::SERVICE_SALES])->sum('paise'));
 
-        return $this->check('Sales since the start, after discounts', -$this->ledgerBalance(Chart::SALES, Chart::DISCOUNTS), $total + $alreadyInOpening / 100, 0.0, 'Excludes changes to older sales, which go to Prior Period.');
+        // A delivery charge (O2) and services on the bill are part of the sale's total, on their own income lines.
+        return $this->check('Sales since the start, after discounts', -$this->ledgerBalance(Chart::SALES, Chart::DISCOUNTS, Chart::DELIVERY_INCOME, Chart::SERVICE_SALES), $total + $alreadyInOpening / 100, 0.0, 'Excludes changes to older sales, which go to Prior Period.');
     }
 }

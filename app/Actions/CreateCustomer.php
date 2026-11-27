@@ -3,7 +3,7 @@
 namespace App\Actions;
 
 use App\Models\Customer;
-use App\Support\PriceTiers;
+use App\Enums\PriceTier;
 use Illuminate\Validation\Rule;
 
 class CreateCustomer
@@ -30,7 +30,7 @@ class CreateCustomer
             'ntn' => ['nullable', 'string', 'max:30'],
             'strn' => ['nullable', 'string', 'max:30'],
             'cnic' => ['nullable', 'string', 'max:20'],
-            'price_tier' => ['nullable', Rule::in([PriceTiers::NORMAL])],
+            'price_tier' => ['nullable', Rule::in([PriceTier::Normal->value])],
             'credit_limit' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
             'payment_terms_days' => ['nullable', 'integer', 'min:0', 'max:365'],
         ];
@@ -66,7 +66,8 @@ class CreateCustomer
 
         $out['credit_limit'] = $out['credit_limit'] !== null ? round((float) $out['credit_limit'], 2) : null;
         $out['payment_terms_days'] = $out['payment_terms_days'] !== null && (int) $out['payment_terms_days'] > 0 ? (int) $out['payment_terms_days'] : null;
-        $out['price_tier'] = $out['price_tier'] === PriceTiers::NORMAL ? PriceTiers::NORMAL : null;
+        // Only "normal" is stored; blank (null) is the default, the trade price.
+        $out['price_tier'] = $out['price_tier'] === PriceTier::Normal->value ? PriceTier::Normal->value : null;
 
         return $out;
     }

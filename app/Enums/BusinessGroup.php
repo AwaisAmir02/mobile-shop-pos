@@ -4,7 +4,9 @@ namespace App\Enums;
 
 /**
  * Step 1 of the signup business picker. Only groups with real feature support
- * are listed; Food, Services, Education and Company are left out until built.
+ * are listed; Food, Education, Company and Clinic/Lab are left out until built.
+ * Service businesses are "service_trades", not "services": that name is the
+ * mobile shop's Services module, feature and route.
  * Nothing is stored for the group: the shop keeps only its BusinessCategory.
  */
 enum BusinessGroup: string
@@ -12,6 +14,7 @@ enum BusinessGroup: string
     case Retail = 'retail';
     case Wholesale = 'wholesale';
     case Online = 'online';
+    case ServiceTrades = 'service_trades';
 
     public function label(): string
     {
@@ -19,6 +22,7 @@ enum BusinessGroup: string
             self::Retail => 'Shops (Retail)',
             self::Wholesale => 'Wholesale / Distribution',
             self::Online => 'Online seller',
+            self::ServiceTrades => 'Services & appointments',
         };
     }
 
@@ -28,6 +32,7 @@ enum BusinessGroup: string
             self::Retail => 'You sell to customers at a counter.',
             self::Wholesale => 'You sell in bulk to shops and other businesses.',
             self::Online => 'You sell through social media, Daraz or your own site.',
+            self::ServiceTrades => 'A workshop, salon, spa, gym or trainer: you sell your time and work.',
         };
     }
 
@@ -38,6 +43,7 @@ enum BusinessGroup: string
             self::Retail => [BusinessCategory::MobileElectronics, BusinessCategory::Kiryana, BusinessCategory::Pharmacy, BusinessCategory::Clothing, BusinessCategory::Other],
             self::Wholesale => [BusinessCategory::Wholesaler, BusinessCategory::Trader, BusinessCategory::Distributor],
             self::Online => [BusinessCategory::SocialSeller, BusinessCategory::DarazSeller, BusinessCategory::OnlineBrand],
+            self::ServiceTrades => [BusinessCategory::RepairWorkshop, BusinessCategory::Salon, BusinessCategory::Spa, BusinessCategory::Gym, BusinessCategory::PersonalTraining],
         };
     }
 

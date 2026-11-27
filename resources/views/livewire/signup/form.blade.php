@@ -145,6 +145,7 @@ new class extends Component
             'method' => $this->method,
             'shop_name' => $this->shopName,
             'business_category' => $this->businessCategory,
+            'business_addons' => $this->chosenBusinessAddons(),
             'owner_name' => $this->ownerName,
             'phone' => $phone,
             'email' => $this->email !== '' ? $this->email : null,
@@ -214,7 +215,7 @@ new class extends Component
 
         [, $user] = $payments->register(
             Plan::active()->findOrFail($pending['plan_id']),
-            ['name' => $pending['shop_name'], 'phone' => '+'.$pending['phone'], 'email' => $pending['email'], 'business_category' => $pending['business_category'] ?? null],
+            ['name' => $pending['shop_name'], 'phone' => '+'.$pending['phone'], 'email' => $pending['email'], 'business_category' => $pending['business_category'] ?? null, 'business_addons' => $pending['business_addons'] ?? []],
             [
                 'name' => $pending['owner_name'],
                 'email' => $pending['email'],
@@ -299,7 +300,7 @@ new class extends Component
                 <x-ui.field label="Shop name" name="shopName" for="shopName">
                     <x-ui.input wire:model="shopName" id="shopName" autocomplete="organization" maxlength="120" required />
                 </x-ui.field>
-                <x-signup.business-picker :group="$businessGroup" :category="$businessCategory" />
+                <x-signup.business-picker :group="$businessGroup" :category="$businessCategory" :addons="$businessAddons" />
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <x-ui.field label="Your name" name="ownerName" for="ownerName">
                         <x-ui.input wire:model="ownerName" id="ownerName" autocomplete="name" maxlength="120" required />

@@ -314,6 +314,7 @@ class SidebarVisibilityGuardTest extends TestCase
             'Payments' => '/admin/payments',
             'Payment Accounts' => '/admin/payment-accounts',
             'Support' => '/admin/support',
+            'Website Requests' => '/admin/website-requests',
             'Integrations' => '/admin/integrations',
             'Backups' => '/admin/backups',
         ], $this->linksFor($admin));

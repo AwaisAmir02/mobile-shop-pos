@@ -1,7 +1,9 @@
 @php
     $faqs = [
         ['What is HisabOKitab?', 'HisabOKitab is POS, inventory and accounts software made in Pakistan. It records your sales, stock, udhaar, cash and expenses in one place, and adds WhatsApp ordering, Facebook and Instagram posting and Meta ads on the plans that include them.'],
-        ['Which businesses is it for?', 'Shops: mobile and electronics shops, pharmacies and medical stores, kiryana and general stores, clothing and shoe shops, and any other counter. Wholesalers, traders and distributors. Online sellers on Facebook, Instagram, WhatsApp and Daraz, and small online brands. Screens like repairs and loads, or the prescription register, only appear for the businesses that need them.'],
+        ['Which businesses is it for?', 'Four kinds of business. Shops: mobile and electronics shops, pharmacies and medical stores, kiryana and general stores, clothing and shoe shops, and any other counter. Wholesale: wholesalers, traders and distributors. Online sellers on Facebook, Instagram, WhatsApp and Daraz, and small online brands. Services: repair workshops, salons and barbers, spas, gyms and personal trainers. Screens like job cards, load sheets or the prescription register only appear for the businesses that need them.'],
+        ['Can a wholesaler or distributor use it?', 'Yes. Wholesalers, traders and distributors get trade prices per customer, credit limits, payment terms with a dues aging report, a cheque and PDC register, purchase returns and bonus stock — and distributors also get sales orders, load sheets, routes and trade schemes with claims.'],
+        ['Does it work for salons, gyms and workshops?', 'Yes. Service businesses get appointments and a walk-in queue, a service menu billed with products, staff commission that flows into payroll, memberships and packages, staff attendance and WhatsApp reminders. Workshops get job cards, and gyms can check members in with a fingerprint device or a QR card.'],
         ['Can customers return or exchange items?', 'Yes, on every plan. Take items back against the original invoice with a credit note PDF, refund in cash or as store credit, or exchange for another item in one step. You can also run promotions with start and end dates that apply at the counter automatically.'],
         ['Do I need to install anything?', 'No. HisabOKitab runs in your browser on a phone, tablet or computer. Log in and start selling.'],
         ['Is it available in Urdu?', 'Every screen has a guide in Roman Urdu and English, and the WhatsApp chatbot replies to customers in Urdu or English, whichever they write in.'],
@@ -18,7 +20,7 @@
         'applicationSubCategory' => 'Point of sale and inventory management',
         'operatingSystem' => 'Web browser (Android, iOS, Windows, macOS)',
         'inLanguage' => ['en', 'ur'],
-        'description' => 'POS, inventory and accounts software for shops, pharmacies, kiryana stores, mobile shops, clothing and shoe shops, online sellers and growing businesses in Pakistan.',
+        'description' => 'Business management software for Pakistan: POS, inventory and accounts for shops, pharmacies, kiryana stores, mobile shops, clothing and shoe shops, wholesalers and distributors, online and Daraz sellers, and salons, gyms and workshops.',
         'publisher' => ['@id' => url('/').'#organization'],
         // Every feature page, then the shop-type features that live inside those pages.
         'featureList' => [
@@ -27,6 +29,10 @@
             'IMEI validation', 'Warranty check', 'Instalment sales', 'Used-phone buyback and trade-in',
             'Salt and generic name search with substitutes', 'DRAP registration numbers', 'Batch numbers', 'Prescription and controlled-drug register',
             'Size-by-colour stock grid', 'Barcode label printing', 'Customer ledger link', 'JazzCash customer payments', 'Courier booking with Leopards and PostEx',
+            'Wholesale and trade price lists', 'Customer credit limits', 'Dues aging report', 'Cheque and PDC register', 'Purchase returns with debit notes', 'Contra settlement',
+            'Sales orders and load sheets', 'Delivery routes and bookers', 'Trade schemes and claims',
+            'Delivery charges', 'Courier COD payout reconciliation', 'RTO parcel returns', 'Daraz order and payout imports', 'Shopify and WooCommerce stock sync', 'Order payment links',
+            'Appointment booking', 'Walk-in queue', 'Staff commission', 'Memberships and packages', 'Gift vouchers', 'Job cards', 'Fingerprint and QR check-in', 'Staff attendance', 'WhatsApp appointment and renewal reminders',
         ],
     ];
     if ($plans->isNotEmpty()) {
@@ -48,7 +54,7 @@
     ];
 @endphp
 
-<x-site.layout :schema="$schema" description="POS software in Pakistan for kiryana stores, pharmacies, mobile shops and clothing & shoe shops: sales, stock, udhaar, returns, cash and WhatsApp orders in one app.">
+<x-site.layout :schema="$schema" description="Business management software in Pakistan for shops, wholesalers and distributors, online and Daraz sellers, and salons, gyms and workshops: sales, stock, udhaar, cash and WhatsApp orders.">
     <section class="relative overflow-hidden">
         <div class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
             <div class="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_0%,#000_60%,transparent_100%)] opacity-60"></div>
@@ -120,7 +126,7 @@
     <section class="border-y border-slate-200 bg-slate-50/70" aria-label="Modules included">
         <div class="relative overflow-hidden py-5 [mask-image:linear-gradient(to_right,transparent,#000_10%,#000_90%,transparent)]">
             <div class="site-marquee flex w-max gap-3">
-                @php($modules = ['Sales & invoices', 'Barcode scanning', 'Returns & credit notes', 'Exchange', 'Store credit', 'Promotions', 'Stock In', 'FIFO batch costing', 'Expiry tracking', 'Batch numbers', 'Variants', 'Cartons, packs & pieces', 'Purchase orders', 'Vendor invoices', 'Vendors', 'Udhaar ledger', 'JazzCash payments', 'Cash & balances', 'Expenses', 'Payroll', 'Party ledger', 'Gross profit', 'Reports', 'Multi-branch', 'WhatsApp orders', 'Courier booking', 'Social posting', 'Meta ads', 'Staff roles', 'Salt search', 'Prescription register', 'IMEI check', 'Warranty', 'Instalments', 'Buybacks & trade-in', 'Repairs', 'SIM sales', 'Balance loads', 'Wallet loads', 'Bills & NADRA'])
+                @php($modules = ['Sales & invoices', 'Barcode scanning', 'Returns & credit notes', 'Exchange', 'Store credit', 'Promotions', 'Stock In', 'FIFO batch costing', 'Expiry tracking', 'Batch numbers', 'Variants', 'Cartons, packs & pieces', 'Purchase orders', 'Vendor invoices', 'Vendors', 'Udhaar ledger', 'JazzCash payments', 'Cash & balances', 'Expenses', 'Payroll', 'Party ledger', 'Gross profit', 'Reports', 'Multi-branch', 'WhatsApp orders', 'Courier booking', 'Social posting', 'Meta ads', 'Staff roles', 'Salt search', 'Prescription register', 'IMEI check', 'Warranty', 'Instalments', 'Buybacks & trade-in', 'Repairs', 'SIM sales', 'Balance loads', 'Wallet loads', 'Bills & NADRA', 'Trade prices', 'Credit limits', 'Dues aging', 'Cheques & PDC', 'Load sheets', 'Delivery routes', 'Trade schemes', 'Delivery charges', 'Courier payouts', 'RTO returns', 'Daraz imports', 'Shopify & WooCommerce', 'Appointments', 'Job cards', 'Memberships', 'Staff commission', 'Fingerprint check-in', 'Staff attendance'])
                 {{-- Listed twice for the seamless loop; the second copy is hidden from screen readers. --}}
                 @foreach (array_merge($modules, $modules) as $i => $module)
                     <span class="whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-medium text-slate-600" @if ($i >= count($modules)) aria-hidden="true" @endif>{{ $module }}</span>
@@ -141,7 +147,7 @@
                 ['cash-balances', 'calculator', 'Cash & balances', 'Cash in hand and every JazzCash, Easypaisa and bank account, with the day’s money in and out.'],
                 ['reports', 'chart', 'Reports & profit', 'Gross profit, sales, dues and expenses by day, month or year, exportable to Excel and PDF.'],
                 ['payroll', 'users', 'Payroll', 'Salaries, advances and deductions, monthly payslips — and paid salaries land in your expenses.'],
-                ['mobile-shop-services', 'device', 'Counter services', 'Repairs, SIM sales, balance & wallet loads, bills and NADRA — switched on when you need them.'],
+                ['returns-exchange', 'layers', 'Returns & exchange', 'Returns with credit notes, store credit and one-step exchanges — with stock and dues correcting themselves.'],
             ] as $i => [$slug, $icon, $title, $text])
                 <a href="{{ route('site.feature', $slug) }}" class="group rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-xl hover:shadow-brand-950/5" data-reveal style="--reveal-delay: {{ ($i % 4) * 80 }}ms">
                     <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition group-hover:bg-brand-600 group-hover:text-white"><x-site.icon :name="$icon" /></span>
@@ -154,23 +160,20 @@
 
     <section class="bg-slate-50 py-24 lg:py-28">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <x-site.section-heading eyebrow="Who it’s for" title="Made for the way you sell" lead="One app, set up for your kind of business — from a single counter to several branches." />
+            <x-site.section-heading eyebrow="Who it’s for" title="Made for the way you do business" lead="One app, set up for your kind of business — shops, wholesale, online selling or services, from a single counter to several branches." />
+            {{-- Driven by SiteIndustries, so a new business type shows up here, in the menu and in the footer together. --}}
             <div class="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                @foreach ([
-                    [route('site.feature', 'mobile-shop-services'), 'device', 'Mobile & electronics shops', 'IMEI checks, warranty and instalments, used-phone buybacks and trade-ins — plus repairs, SIMs, loads, bills and NADRA.'],
-                    [route('site.industry', 'pharmacy'), 'heart', 'Pharmacies & medical stores', 'Search by salt with substitutes, batch numbers, expiry-first selling, box-strip-tablet prices and a prescription register.'],
-                    [route('site.industry', 'kiryana-store'), 'store', 'Kiryana & general stores', 'Barcode billing, carton-to-piece selling, expiry from day one, and udhaar with a ledger link and JazzCash payments.'],
-                    [route('site.industry', 'clothing-shoes'), 'layers', 'Clothing & shoe shops', 'Sizes and colours with their own barcodes, a size-by-colour Stock In grid, labels, exchanges and season sales.'],
-                    [route('site.feature', 'returns-exchange'), 'cart', 'Any other shop', 'Hardware, cosmetics, stationery or gifts: fast billing, stock, udhaar, returns, store credit and promotions.'],
-                    [route('site.feature', 'courier-booking'), 'megaphone', 'Online sellers', 'Selling on Instagram, Facebook, WhatsApp or Daraz? Keep stock, orders and real profit in one place, and book Leopards or PostEx parcels.'],
-                    [route('site.feature', 'purchase-orders'), 'receipt', 'Wholesalers & distributors', 'Purchase orders, goods received and vendor invoices checked against each other, with a running ledger for every party.'],
-                    [route('site.feature', 'multi-branch'), 'chart', 'Growing businesses', 'Several branches, staff on payroll and roles for who sees what — with every location’s numbers side by side.'],
-                ] as $i => [$url, $icon, $title, $text])
-                    <a href="{{ $url }}" class="group rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-xl hover:shadow-brand-950/5" data-reveal style="--reveal-delay: {{ ($i % 4) * 80 }}ms">
-                        <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600"><x-site.icon :name="$icon" /></span>
-                        <h3 class="mt-5 text-base font-semibold text-slate-900 group-hover:text-brand-700">{{ $title }}</h3>
-                        <p class="mt-2 text-sm leading-6 text-slate-600">{{ $text }}</p>
-                    </a>
+                @foreach (\App\Support\SiteIndustries::menu() as $i => $group)
+                    <div class="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 transition duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-xl hover:shadow-brand-950/5" data-reveal style="--reveal-delay: {{ ($i % 4) * 80 }}ms">
+                        <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600"><x-site.icon :name="$group['icon']" /></span>
+                        <h3 class="mt-5 text-base font-semibold text-slate-900"><a href="{{ $group['url'] }}" class="hover:text-brand-700">{{ $group['name'] }}</a>@if ($group['badge'])<span class="ml-1.5 inline-flex rounded-full bg-accent-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-accent-700">{{ $group['badge'] }}</span>@endif</h3>
+                        <p class="mt-2 flex-1 text-sm leading-6 text-slate-600">{{ $group['summary'] }}</p>
+                        <ul class="mt-5 flex flex-wrap gap-2" aria-label="{{ $group['name'] }} businesses">
+                            @foreach ($group['items'] as $industry)
+                                <li><a href="{{ $industry['url'] }}" class="inline-flex rounded-full bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-brand-50 hover:text-brand-700 hover:ring-brand-200">{{ $industry['short'] }}</a></li>
+                            @endforeach
+                        </ul>
+                    </div>
                 @endforeach
             </div>
             <div class="mt-10 text-center" data-reveal>

@@ -2,12 +2,13 @@
 
 namespace App\Actions;
 
+use App\Enums\StockHoldKind;
+use App\Support\StockAvailability;
+use App\Enums\SalesOrderStatus;
 use App\Models\Customer;
-use App\Models\LoadSheet;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SalesOrder;
-use App\Models\SalesOrderLine;
 use App\Support\Quantity;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -15,11 +16,12 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Booked orders and their delivery (W7), the distributor's daily cycle: the
- * booker takes orders on the route, the van is loaded from a load sheet, and
- * each order is delivered (or brought back) and settled.
+ * booker takes orders on the route, the van is loaded from a load sheet
+ * (LoadSheets), and each order is delivered here (or brought back) and the
+ * sheet settled.
  *
  * A booked order holds its stock: nothing is taken from a batch, but what is
- * free to sell is stock less every open order (reserved()), so the register
+ * free to sell is stock less every open order (StockAvailability), so the register
  * and other orders can't promise it twice. Delivery turns the order into an
  * ordinary sale through CreateSale, which is when stock, cost, dues and money
  * move, exactly as for a counter sale; nothing about sales changes.
@@ -27,35 +29,13 @@ use Illuminate\Validation\ValidationException;
 class SalesOrders
 {
     /**
-     * Pieces held for open orders, per product, leaving one order out.
-     *
-     * @param  list<int>  $productIds
-     * @return array<int, int|float>
+     * What is free to sell or book, leaving this order out: the shared figure
+     * (StockAvailability), which also holds back pending WhatsApp and
+     * online-store orders and expired batches.
      */
-    public static function reserved(array $productIds, ?int $exceptOrderId = null): array
-    {
-        if ($productIds === []) {
-            return [];
-        }
-
-        return SalesOrderLine::query()
-            ->join('sales_orders', 'sales_orders.id', '=', 'sales_order_lines.sales_order_id')
-            ->where('sales_orders.status', SalesOrder::BOOKED)
-            ->when($exceptOrderId !== null, fn ($q) => $q->where('sales_orders.id', '!=', $exceptOrderId))
-            ->whereIn('sales_order_lines.product_id', $productIds)
-            ->groupBy('sales_order_lines.product_id')
-            ->selectRaw('sales_order_lines.product_id, SUM(sales_order_lines.quantity) as held')
-            ->pluck('held', 'product_id')
-            ->map(fn ($held) => Quantity::normalize($held))
-            ->all();
-    }
-
-    /** What is free to sell or book: stock less what open orders hold. */
     public static function available(Product $product, ?int $exceptOrderId = null): int|float
     {
-        $held = self::reserved([$product->id], $exceptOrderId)[$product->id] ?? 0;
-
-        return Quantity::normalize(max(0, (float) Quantity::subtract($product->stock_quantity, $held)));
+        return StockAvailability::freeFor($product, $exceptOrderId !== null ? [StockHoldKind::SalesOrder, $exceptOrderId] : null);
     }
 
     /**
@@ -122,7 +102,7 @@ class SalesOrders
             ];
 
             if ($order === null) {
-                $order = SalesOrder::create($attributes + ['order_date' => now()->toDateString(), 'status' => SalesOrder::BOOKED, 'user_id' => $userId]);
+                $order = SalesOrder::create($attributes + ['order_date' => now()->toDateString(), 'status' => SalesOrderStatus::Booked, 'user_id' => $userId]);
             } else {
                 $order->update($attributes);
                 $order->lines()->delete();
@@ -149,7 +129,7 @@ class SalesOrders
                 throw ValidationException::withMessages(['cancelReason' => 'Only a booked order can be cancelled.']);
             }
 
-            $order->update(['status' => SalesOrder::CANCELLED, 'cancelled_at' => now(), 'cancel_reason' => mb_substr($reason, 0, 255), 'load_sheet_id' => null]);
+            $order->update(['status' => SalesOrderStatus::Cancelled, 'cancelled_at' => now(), 'cancel_reason' => mb_substr($reason, 0, 255), 'load_sheet_id' => null]);
         });
     }
 
@@ -196,7 +176,7 @@ class SalesOrders
 
                 // Agreed at the customer's trade price: it stays the list price, as at the register.
                 if ($line->price_tier !== null) {
-                    $sale += ['tier_price' => (float) $line->unit_price, 'price_tier' => $line->price_tier];
+                    $sale += ['tier_price' => (float) $line->unit_price, 'price_tier' => $line->price_tier->value];
                 }
 
                 if ($applySchemes && ($scheme = Schemes::runningFor($line->product_id, $today)) !== null && ($free = $scheme->freeFor($quantity)) > 0) {
@@ -233,86 +213,9 @@ class SalesOrders
                 $sale->update(['due_date' => Carbon::parse($today)->addDays($customer->payment_terms_days)->toDateString()]);
             }
 
-            $order->update(['status' => SalesOrder::DELIVERED, 'sale_id' => $sale->id, 'delivered_at' => now()]);
+            $order->update(['status' => SalesOrderStatus::Delivered, 'sale_id' => $sale->id, 'delivered_at' => now()]);
 
             return $sale->fresh();
-        });
-    }
-
-    /** Not delivered (shop closed, refused…): off the van, booked again for another day. */
-    public static function bringBack(SalesOrder $order): void
-    {
-        DB::transaction(function () use ($order) {
-            $order = SalesOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
-
-            if ($order->isOpen()) {
-                $order->update(['load_sheet_id' => null]);
-            }
-        });
-    }
-
-    /** @param  list<int>  $orderIds */
-    public static function createLoadSheet(array $orderIds, string $loadDate, ?string $vehicle, ?string $driver, ?int $salesmanId, ?int $routeId, ?string $note, ?int $userId): LoadSheet
-    {
-        if ($orderIds === []) {
-            throw ValidationException::withMessages(['orderIds' => 'Choose the orders going on this van.']);
-        }
-
-        return DB::transaction(function () use ($orderIds, $loadDate, $vehicle, $driver, $salesmanId, $routeId, $note, $userId) {
-            $orders = SalesOrder::whereIn('id', $orderIds)->lockForUpdate()->get();
-
-            if ($orders->contains(fn (SalesOrder $o) => ! $o->isOpen() || $o->load_sheet_id !== null)) {
-                throw ValidationException::withMessages(['orderIds' => 'Some of those orders are already on a van, delivered or cancelled.']);
-            }
-
-            $sheet = LoadSheet::create([
-                'load_date' => $loadDate,
-                'vehicle' => filled($vehicle) ? mb_substr($vehicle, 0, 60) : null,
-                'driver' => filled($driver) ? mb_substr($driver, 0, 80) : null,
-                'salesman_id' => $salesmanId,
-                'route_id' => $routeId,
-                'status' => 'open',
-                'note' => filled($note) ? mb_substr($note, 0, 255) : null,
-                'user_id' => $userId,
-            ]);
-
-            SalesOrder::whereIn('id', $orders->pluck('id'))->update(['load_sheet_id' => $sheet->id]);
-
-            return $sheet;
-        });
-    }
-
-    /** What to load: every product on the sheet's undelivered orders, totalled. */
-    public static function loadingList(LoadSheet $sheet): array
-    {
-        return SalesOrderLine::query()
-            ->whereIn('sales_order_id', $sheet->orders()->where('status', SalesOrder::BOOKED)->pluck('id'))
-            ->with('product')
-            ->get()
-            ->groupBy('product_id')
-            ->map(fn ($lines) => [
-                'product' => $lines->first()->product_name,
-                'quantity' => Quantity::sum($lines->pluck('quantity')),
-                'pack_name' => $lines->first()->product?->pack_name,
-                'pack_size' => $lines->first()->product?->pack_size,
-                'unit' => $lines->first()->product?->unit,
-            ])
-            ->sortBy('product')
-            ->values()
-            ->all();
-    }
-
-    /** The day is done: every order on it was delivered or brought back. */
-    public static function settle(LoadSheet $sheet): void
-    {
-        DB::transaction(function () use ($sheet) {
-            $sheet = LoadSheet::whereKey($sheet->id)->lockForUpdate()->firstOrFail();
-
-            if ($sheet->orders()->where('status', SalesOrder::BOOKED)->exists()) {
-                throw ValidationException::withMessages(['settle' => 'Mark every order on this van delivered or not delivered first.']);
-            }
-
-            $sheet->update(['status' => 'settled', 'settled_at' => now()]);
         });
     }
 }

@@ -9,7 +9,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Shop;
 use App\Support\BatchExpiry;
-use App\Support\PriceTiers;
+use App\Enums\PriceTier;
 use App\Support\Imei;
 use App\Support\Quantity;
 use Carbon\Carbon;
@@ -34,8 +34,12 @@ class CreateSale
         float $storeCredit = 0.0,
         bool $applyPromotions = false,
         ?array $prescription = null,
+        float $deliveryCharge = 0.0,
+        ?array $delivery = null,
+        array $services = [],
+        array $prepaid = [],
     ): Sale {
-        return DB::transaction(function () use ($lines, $invoiceDiscount, $customerId, $userId, $saleDate, $amountPaid, $shopId, $attributes, $paymentMethod, $shopAccountId, $installments, $tradeIn, $storeCredit, $applyPromotions, $prescription) {
+        return DB::transaction(function () use ($lines, $invoiceDiscount, $customerId, $userId, $saleDate, $amountPaid, $shopId, $attributes, $paymentMethod, $shopAccountId, $installments, $tradeIn, $storeCredit, $applyPromotions, $prescription, $deliveryCharge, $delivery, $services, $prepaid) {
             $subtotal = 0;
             $allItemsData = [];
             $redemptions = [];
@@ -78,7 +82,7 @@ class CreateSale
                     $lineCost = (float) array_sum(array_map(fn (array $a) => Quantity::money($a['cost_price'] ?? 0, $a['quantity']), $allocations));
                     $redemptions[] = [(int) $line['scheme_id'], $product->id, $free, (float) $quantity > 0 ? $lineCost * (float) $free / (float) $quantity : 0.0];
                 }
-                $tier = $tierPrice !== null ? ['list_price' => $tierPrice, 'price_tier' => $line['price_tier'] ?? PriceTiers::TRADE] : [];
+                $tier = $tierPrice !== null ? ['list_price' => $tierPrice, 'price_tier' => $line['price_tier'] ?? PriceTier::Trade->value] : [];
 
                 // The pack it was sold in (strip, box…), when the line was whole packs.
                 $pack = SaleItem::packAttributes($line['pack_name'] ?? null, $line['pack_size'] ?? null, $quantity);
@@ -96,16 +100,25 @@ class CreateSale
                 $product->decrement('stock_quantity', $quantity);
             }
 
+            // Services, memberships and package sessions (Services group): lines with no stock.
+            if ($services !== []) {
+                $priced = ServiceLines::price($services, $shopId ?? (int) auth()->user()?->shop_id, $customerId, $saleDate);
+                $allItemsData = array_merge($allItemsData, $priced['items']);
+                $subtotal += $priced['subtotal'];
+            }
+
             $subtotal = round($subtotal, 2);
             $invoiceDiscount = min($invoiceDiscount, $subtotal);
+            // O2: what the customer pays for delivery is part of the sale, after any discount.
+            $deliveryCharge = round(max(0.0, $deliveryCharge), 2);
 
             $sale = new Sale(array_merge($attributes, [
                 'user_id' => $userId,
                 'customer_id' => $customerId,
                 'subtotal' => $subtotal,
                 'discount_amount' => $invoiceDiscount,
-                'total' => $subtotal - $invoiceDiscount,
-            ]));
+                'total' => $subtotal - $invoiceDiscount + $deliveryCharge,
+            ], $deliveryCharge > 0 ? ['delivery_charge' => $deliveryCharge] : []));
 
             if ($shopId !== null) {
                 $sale->shop_id = $shopId;
@@ -116,6 +129,14 @@ class CreateSale
 
             foreach ($allItemsData as $itemData) {
                 $sale->items()->create(array_merge($itemData, ['shop_id' => $sale->shop_id]));
+            }
+
+            if ($delivery !== null) {
+                SaleDeliveries::save($sale, $delivery);
+            }
+
+            if ($services !== []) {
+                ServiceLines::record($sale, $saleDate);
             }
 
             foreach ($redemptions as [$schemeId, $productId, $free, $costValue]) {
@@ -135,6 +156,8 @@ class CreateSale
 
             $tradeInValue = $tradeIn !== null ? self::addTradeIn($sale, $tradeIn, $amountPaid, $userId, $saleDate) : 0.0;
             $creditValue = round($storeCredit, 2) > 0 ? self::addStoreCredit($sale, round($storeCredit, 2), $amountPaid + $tradeInValue, $userId) : 0.0;
+            // Gift vouchers and deposits (Services group): payments that move no money now.
+            $creditValue += $prepaid !== [] ? ServiceLines::applyPrepaid($sale, $prepaid, $amountPaid + $tradeInValue + $creditValue, $userId, $saleDate) : 0.0;
 
             if ($installments !== []) {
                 self::createInstallments($sale, $installments, $amountPaid + $tradeInValue + $creditValue);
